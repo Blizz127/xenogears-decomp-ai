@@ -113,30 +113,6 @@ static void m14c_transpose_rotation(u32 input, u32 output)
     m14c_sh(output + 0x10u, m22);
 }
 
-s32 wm_8007BB60(s32 slot_index)
-{
-    u32 context;
-    u32 slot;
-
-    wm_800848B4(0, 1);
-    wm_800848B4(0, 2);
-#if !defined(W34N72_MUTANT_SKIP_THIRD_LINK)
-    wm_800848B4(0, 3);
-#endif
-
-    context = m14c_lw(WM_M14C_CONTEXT_PTR);
-    slot = m14c_slot(slot_index);
-    m14c_sw(slot + 0x50u, 0u);
-    m14c_sw(slot + 0x54u, 256u);
-    m14c_sw(slot + 0x58u, 256u);
-    m14c_sh(context + 0x18u, 0u);
-    m14c_sh(context + 0x1Au, 0u);
-    m14c_sh(context + 0x1Cu, 0u);
-    (void)RotMatrixYXZ((SVECTOR *)PSX_ADDR(context + 0x18u),
-                       (MATRIX *)PSX_ADDR(context + 0x20u));
-    return 3;
-}
-
 static s32 m14c_advance_motion(u32 slot)
 {
     u32 phase = m14c_lw(slot + 0x50u);

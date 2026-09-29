@@ -1047,7 +1047,6 @@ s32 func_80078E2C(s32 arg0) {
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80078EA4);
 
-#ifndef XENO_PC_PORT
 s32 func_800794D8(s32 arg0) {
     WmObj *obj;
     u8 *scene;
@@ -1063,9 +1062,7 @@ s32 func_800794D8(s32 arg0) {
     RotMatrixYXZ(scene + 0x558, scene + 0x560);
     return 1;
 }
-#endif
 
-#ifndef XENO_PC_PORT
 s32 func_80079538(s32 arg0) {
     WmObj *obj;
     u8 *scene;
@@ -1083,7 +1080,6 @@ s32 func_80079538(s32 arg0) {
     *(s32 *)(D_8009C620 + 0x550) = obj->pos[2] >> 0xC;
     return 1;
 }
-#endif
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_800795E4);
 
@@ -1114,19 +1110,17 @@ s32 func_8007A568(void) {
 #endif
 
 
-#ifndef XENO_PC_PORT
 s32 func_8007A570(s32 arg0) {
     WmObj* obj;
 
     obj = &D_8009BE24[arg0];
     obj->unk4 = 0;
-    *(s16 *)0x1F8000A0 = *(s32 *)(D_8009C620 + 8);
-    *(s16 *)0x1F8000A2 = *(s32 *)(D_8009C620 + 0xC);
-    *(s16 *)0x1F8000A4 = *(s32 *)(D_8009C620 + 0x10);
-    func_80089160(0xA, 0x1F8000A0, 0);
+    *(s16 *)WM_SPAD(0x1F8000A0) = *(s32 *)(D_8009C620 + 8);
+    *(s16 *)WM_SPAD(0x1F8000A2) = *(s32 *)(D_8009C620 + 0xC);
+    *(s16 *)WM_SPAD(0x1F8000A4) = *(s32 *)(D_8009C620 + 0x10);
+    func_80089160(0xA, WM_SPAD(0x1F8000A0), 0);
     return 3;
 }
-#endif
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8007A5DC);
 
@@ -1214,7 +1208,6 @@ s32 func_8007BA08(void) {
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8007BA10);
 
-#ifndef XENO_PC_PORT
 s32 func_8007BB60(s32 arg0) {
     WmObj *temp_v0;
     u8 *scene;
@@ -1233,7 +1226,6 @@ s32 func_8007BB60(s32 arg0) {
     RotMatrixYXZ(scene + 0x18, scene + 0x20, scene);
     return 3;
 }
-#endif
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8007BBEC);
 
@@ -2774,6 +2766,7 @@ INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80090FB4);
 extern WmVec D_8009D55C_vec asm("D_8009D55C");
 extern s16 D_8009BD3A_arr[] asm("D_8009BD3A");
 extern u16 D_8009D52C;
+#endif
 s32 func_80091430(s32 arg0) {
     WmObj *obj;
 
@@ -2790,7 +2783,6 @@ s32 func_80091430(s32 arg0) {
     }
     return 1;
 }
-#endif
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_800914D0);
 

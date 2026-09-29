@@ -70,4 +70,10 @@
  * the bodies address it as (u8 *)&g_GameState + offset. */
 extern u8 g_GameState[];
 
+/* batch 5: func_8007A570, 800794D8, 80079538, 8007BB60, 80091430 */
+#define D_8009BE10 WM_GUEST(s32, 0x8009BE10) /* world-map mode word */
+#define D_8009D52C WM_GUEST(u16, 0x8009D52C) /* published heading */
+#define D_8009D55C_vec WM_GUEST(WmVec, 0x8009D55C) /* published position */
+#define D_8009BD3A_arr ((s16*)PSX_ADDR(0x8009BD3A)) /* array view of D_8009BD3A */
+
 #endif /* WORLD_MAP_PORT_DATA_H */

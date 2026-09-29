@@ -251,3 +251,10 @@ s32 wm_80093A5C(u32 x_bits, u32 z_bits)
     return a5c_bits_to_s32(a5c_lw(WM_A5C_EDGE_1 + 4u) << 12u);
 #endif
 }
+
+/* Entry for the matched C in src/world_map/main.c (0x80093A5C is not
+ * matched yet); both arguments are scalar fixed-point coordinates. */
+s32 func_80093A5C(s32 x, s32 z)
+{
+    return wm_80093A5C((u32)x, (u32)z);
+}

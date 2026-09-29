@@ -71,53 +71,6 @@ static u32 m10_slot(s32 slot_index)
     return m10_lw(WM_M10_POOL_PTR) + ((u32)slot_index << 7u);
 }
 
-s32 wm_800794D8(s32 slot_index)
-{
-    u32 slot = m10_slot(slot_index);
-    u32 context = m10_lw(WM_M10_CONTEXT_PTR);
-
-    m10_sw(slot + 0x28u, 0x02000000u);
-    m10_sw(slot + 0x30u, 0x01500000u);
-    m10_sh(slot + 0x20u, 0u);
-    m10_sh(context + 0x558u, 0u);
-#if defined(W34N62_MUTANT_WRONG_ROTATION_ANGLE)
-    m10_sh(context + 0x55Au, 0x0700u);
-#else
-    m10_sh(context + 0x55Au, 0x0780u);
-#endif
-    m10_sh(context + 0x55Cu, 0u);
-    (void)RotMatrixYXZ((SVECTOR*)PSX_ADDR(context + 0x558u),
-                       (MATRIX*)PSX_ADDR(context + 0x560u));
-    return 1;
-}
-
-s32 wm_80079538(s32 slot_index)
-{
-    u32 slot = m10_slot(slot_index);
-    u32 context;
-    u32 height;
-
-    if (m10_lh(slot + 4u) != 0) {
-        context = m10_lw(WM_M10_CONTEXT_PTR);
-        m10_sh(slot + 4u, 0u);
-        m10_sh(context + 0x540u, 1u);
-    }
-
-    wm_80093354(slot + 0x28u);
-    height = (u32)wm_80093A5C(m10_lw(slot + 0x28u),
-                              m10_lw(slot + 0x30u));
-#if !defined(W34N62_MUTANT_SKIP_HEIGHT_OFFSET)
-    height += 0x00018000u;
-#endif
-    m10_sw(slot + 0x2Cu, height);
-
-    context = m10_lw(WM_M10_CONTEXT_PTR);
-    m10_sw(context + 0x548u, m10_sra12(m10_lw(slot + 0x28u)));
-    m10_sw(context + 0x54Cu, m10_sra12(m10_lw(slot + 0x2Cu)));
-    m10_sw(context + 0x550u, m10_sra12(m10_lw(slot + 0x30u)));
-    return 1;
-}
-
 s32 wm_8007A410(s32 slot_index)
 {
     u32 slot = m10_slot(slot_index);
@@ -177,19 +130,3 @@ s32 wm_8007A568(s32 slot_index)
     return 3;
 }
 
-s32 wm_8007A570(s32 slot_index)
-{
-    u32 slot = m10_slot(slot_index);
-    u32 context = m10_lw(WM_M10_CONTEXT_PTR);
-
-    m10_sh(slot + 4u, 0u);
-    m10_sh(WM_M10_SCRATCH_VECTOR + 0u, (u16)m10_lw(context + 8u));
-    m10_sh(WM_M10_SCRATCH_VECTOR + 2u, (u16)m10_lw(context + 0x0Cu));
-    m10_sh(WM_M10_SCRATCH_VECTOR + 4u, (u16)m10_lw(context + 0x10u));
-#if defined(W34N62_MUTANT_WRONG_INIT_MARKER)
-    wm_80089160(9u, WM_M10_SCRATCH_VECTOR, 0u);
-#else
-    wm_80089160(10u, WM_M10_SCRATCH_VECTOR, 0u);
-#endif
-    return 3;
-}

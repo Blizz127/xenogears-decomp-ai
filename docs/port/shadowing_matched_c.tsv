@@ -75,6 +75,7 @@ func_800750DC	pc_port body wm_800750DC (pc_port/src/world_map_mode811_lifecycle.
 func_80075228	pc_port body wm_80075228 (pc_port/src/world_map_common_tail.c)	wm_80075228
 func_80075D4C	port arm in src/movie/main.c	func_80075D4C
 func_800762FC	pc_port body wm_800762FC (pc_port/src/world_map_helper_762fc.c)	wm_800762FC
+func_800767D4	pc_port body wm_800767D4 (pc_port/src/world_map_state_vertical_8f690.c)	wm_800767D4
 func_80076858	pc_port body wm_80076858 (pc_port/src/world_map_helper_76858.c)	wm_80076858
 func_80076A10	generated logging stub (matched C not linked)	func_80076A10
 func_80076A14	pc_port body wm_80076A14 (pc_port/src/world_map_callback_76a14.c)	wm_80076A14
@@ -87,16 +88,12 @@ func_80077480	pc_port body wm_80077480 (pc_port/src/world_map_mode811_lifecycle.
 func_80077CC0	pc_port body wm_80077CC0 (pc_port/src/world_map_mode9_lifecycle.c)	wm_80077CC0
 func_80078948	pc_port body wm_80078948 (pc_port/src/world_map_callback_78948.c)	wm_80078948
 func_80078D24	pc_port body wm_80078D24 (pc_port/src/world_map_mode10_lifecycle.c)	wm_80078D24
-func_800794D8	pc_port body wm_800794D8 (pc_port/src/world_map_callback_794d8.c)	wm_800794D8
-func_80079538	pc_port body wm_80079538 (pc_port/src/world_map_callback_794d8.c)	wm_80079538
 func_8007A410	pc_port body wm_8007A410 (pc_port/src/world_map_callback_794d8.c)	wm_8007A410
 func_8007A568	pc_port body wm_8007A568 (pc_port/src/world_map_callback_794d8.c)	wm_8007A568
-func_8007A570	pc_port body wm_8007A570 (pc_port/src/world_map_callback_794d8.c)	wm_8007A570
 func_8007A8AC	pc_port body wm_8007A8AC (pc_port/src/world_map_mode14_lifecycle.c)	wm_8007A8AC
 func_8007A9B4	pc_port body wm_8007A9B4 (pc_port/src/world_map_callback_7a9b4.c)	wm_8007A9B4
 func_8007AD34	pc_port body wm_8007AD34 (pc_port/src/world_map_callback_7ad34.c)	wm_8007AD34
 func_8007BA08	pc_port body wm_8007BA08 (pc_port/src/world_map_callback_7ba08.c)	wm_8007BA08
-func_8007BB60	pc_port body wm_8007BB60 (pc_port/src/world_map_callback_7bb60.c)	wm_8007BB60
 func_8007C260	pc_port body wm_8007C260 (pc_port/src/world_map_mode12_lifecycle.c)	wm_8007C260
 func_8007C724	pc_port body wm_8007C724 (pc_port/src/world_map_callback_7c724.c)	wm_8007C724
 func_8007D1A8	port arm in src/battle/mainc25.c	func_8007D1A8
@@ -124,6 +121,7 @@ func_800838E8	pc_port body wm_800838E8 (pc_port/src/world_map_callback_838e8.c)	
 func_80084818	pc_port body wm_80084818 (pc_port/src/world_map_teardown_7299c.c)	wm_80084818
 func_800848B4	pc_port body wm_800848B4 (pc_port/src/world_map_helper_848b4.c)	wm_800848B4
 func_80084D00	pc_port body wm_80084D00 (pc_port/src/world_map_helper_84d00.c)	wm_80084D00
+func_800855C8	port arm in src/field/main/misc8.c	func_800855C8
 func_80085D34	port arm in src/battle/main37.c	func_80085D34
 func_80086124	pc_port body wm_80086124 (pc_port/src/world_map_helper_86124.c)	wm_80086124
 func_80086568	pc_port body wm_80086568 (pc_port/src/world_map_mode811_lifecycle.c)	wm_80086568
@@ -132,6 +130,7 @@ func_80087734	pc_port body wm_80087734 (pc_port/src/world_map_callback_87734.c)	
 func_800879E0	pc_port body wm_800879E0 (pc_port/src/world_map_resume_initializers.c)	wm_800879E0
 func_80087B5C	port arm spanning the body in src/field/main/misc.c	func_80087B5C
 func_80087F60	pc_port body wm_80087F60 (pc_port/src/world_map_resume_initializers.c)	wm_80087F60
+func_80088198	port arm in src/field/main/misc.c	func_80088198
 func_80088FF4	pc_port body wm_80088FF4 (pc_port/src/world_map_mode811_lifecycle.c)	wm_80088FF4
 func_80089038	port arm in src/battle/main40.c	func_80089038
 func_80089110	port arm in src/battle/main40.c	func_80089110
@@ -183,6 +182,7 @@ func_80097770	pc_port body wm_80097770 (pc_port/src/world_map_helper_97770.c)	wm
 func_8009795C	port arm in src/battle/main.c	func_8009795C
 func_80097D64	pc_port body wm_80097D64 (pc_port/src/world_map_teardown_7299c.c)	wm_80097D64
 func_800984EC	port arm spanning the body in src/field/main/misc7.c	func_800984EC
+func_8009CA90	port arm in src/battle/main59.c	func_8009CA90
 func_8009D948	port arm in src/battle/main61.c	func_8009D948
 func_8009F5B0	port arm in src/battle/main.c	func_8009F5B0
 func_800A2330	generated logging stub (matched C not linked)	func_800A2330

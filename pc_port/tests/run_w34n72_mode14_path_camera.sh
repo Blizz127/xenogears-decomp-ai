@@ -18,6 +18,8 @@ COMMON=(
 )
 
 mkdir -p "$OUT"
+source "$ROOT/pc_port/tests/lib/world_map_matched.sh"
+COMMON+=("$(world_map_matched_obj "$OUT" func_8007BB60)")
 
 actual="$(dd if="$ROOT/disc/world_map.bin" bs=1 \
   skip=$((0x8007BB60 - 0x8006FAF0)) \
@@ -57,11 +59,10 @@ run_regime o0 -O0
 run_regime o2 -O2
 run_regime ubsan -O2 -fsanitize=undefined -fno-sanitize-recover=undefined
 
-run_mutant m1 -DW34N72_MUTANT_SKIP_THIRD_LINK init.links
 run_mutant m2 -DW34N72_MUTANT_WRONG_LOW_SPEED_CLAMP motion.low_clamp
 run_mutant m3 -DW34N72_MUTANT_WRONG_HIGH_SPEED_CLAMP motion.high_clamp
 run_mutant m4 -DW34N72_MUTANT_IGNORE_PATH_SENTINEL sample.sentinel_skip
 run_mutant m5 -DW34N72_MUTANT_SKIP_MATRIX_TRANSPOSE matrix.transpose
 run_mutant m6 -DW34N72_MUTANT_WRONG_MARKER_THRESHOLD marker.visibility
 
-echo "W34N72 MODE14 PATH CAMERA CERTIFICATE PASS: O0/O2/UBSan; M1-M6 detected; strict warnings clean"
+echo "W34N72 MODE14 PATH CAMERA CERTIFICATE PASS: O0/O2/UBSan; M2-M6 detected (M1 targeted the retired wm_8007BB60; 0x8007BB60 now runs the matched C); strict warnings clean"

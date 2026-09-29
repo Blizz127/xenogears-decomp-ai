@@ -9,6 +9,11 @@
 #include "world_map_callback_794d8.h"
 #include "world_map_scheduler.h"
 
+/* matched C (src/world_map/main.c), linked from the matched object */
+s32 func_800794D8(s32 arg0);
+s32 func_80079538(s32 arg0);
+s32 func_8007A570(s32 arg0);
+
 uint8_t g_PsxRam[PSX_RAM_SIZE];
 uint8_t g_PsxScratchpad[4096];
 
@@ -136,6 +141,17 @@ void wm_80089160(u32 a0, u32 a1, u32 a2)
     presence_third = a2;
 }
 
+s32 func_80093A5C(s32 x, s32 z)
+{
+    return wm_80093A5C((u32)x, (u32)z);
+}
+
+void func_80089160(s32 id, void *vector, void *flags)
+{
+    wm_80089160((u32)id, PsxMemory_GuestAddr(vector),
+                flags != NULL ? PsxMemory_GuestAddr(flags) : 0u);
+}
+
 void wm_800894C8(u32 record_index)
 {
     clear_calls++;
@@ -146,7 +162,7 @@ static void test_orbit_init(void)
 {
     u32 index;
     seed();
-    check(wm_800794D8(SLOT_INDEX) == 1, "orbit_init.return");
+    check(func_800794D8(SLOT_INDEX) == 1, "orbit_init.return");
     check(read32(SLOT + 0x28u) == 0x02000000u &&
           read32(SLOT + 0x30u) == 0x01500000u &&
           read16(SLOT + 0x20u) == 0u,
@@ -166,11 +182,12 @@ static void test_orbit_follow(void)
     write16(SLOT + 4u, 7u);
     write32(SLOT + 0x28u, 0xFFF23000u);
     write32(SLOT + 0x30u, 0x00145000u);
-    check(wm_80079538(SLOT_INDEX) == 1, "orbit_follow.return");
+    check(func_80079538(SLOT_INDEX) == 1, "orbit_follow.return");
     check(read16(SLOT + 4u) == 0u && read16(CONTEXT + 0x540u) == 1u,
           "orbit_follow.latch");
-    check(wrap_calls == 1 && wrap_address == SLOT + 0x28u &&
-          height_calls == 1 && height_x == 0xFFF23000u &&
+    /* The wrap is the matched func_80093354 (linked from the matched object),
+     * so it runs for real instead of reaching the wm_80093354 mock. */
+    check(height_calls == 1 && height_x == 0xFFF23000u &&
           height_z == 0x00145000u,
           "orbit_follow.sources");
     check(read32(SLOT + 0x2Cu) == 0x0004C000u &&
@@ -237,14 +254,16 @@ static void test_marker_initializer(void)
     write32(CONTEXT + 8u, 0x12345678u);
     write32(CONTEXT + 0x0Cu, 0xABCDEF01u);
     write32(CONTEXT + 0x10u, 0x76543210u);
-    check(wm_8007A570(SLOT_INDEX) == 3, "marker_init.return");
+    check(func_8007A570(SLOT_INDEX) == 3, "marker_init.return");
     check(read16(SLOT + 4u) == 0u &&
           read16(SCRATCH_VEC + 0u) == 0x5678u &&
           read16(SCRATCH_VEC + 2u) == 0xEF01u &&
           read16(SCRATCH_VEC + 4u) == 0x3210u,
           "marker_init.vector");
+    /* The port maps the scratchpad through PSX_ADDR, so the matched body's
+     * WM_SPAD(0x1F8000A0) comes back as the RAM alias of the same bytes. */
     check(presence_calls == 1 && presence_id == 10u &&
-          presence_vector == SCRATCH_VEC && presence_third == 0u,
+          PSX_ADDR(presence_vector) == PSX_ADDR(SCRATCH_VEC) && presence_third == 0u,
           "marker_init.id");
 }
 

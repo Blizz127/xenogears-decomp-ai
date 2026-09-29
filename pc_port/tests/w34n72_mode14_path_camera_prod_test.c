@@ -9,6 +9,9 @@
 #include "world_map_callback_7bb60.h"
 #include "world_map_scheduler.h"
 
+/* matched C (src/world_map/main.c), linked from the matched object */
+s32 func_8007BB60(s32 arg0);
+
 uint8_t g_PsxRam[PSX_RAM_SIZE];
 uint8_t g_PsxScratchpad[4096];
 
@@ -249,11 +252,11 @@ static void test_initializer(void)
     write32(SLOT + 0x58u, UINT32_C(0xCCCCCCCC));
     memset(PSX_ADDR(CONTEXT + 0x18u), 0x7E, 0x28u);
 
-    check(wm_8007BB60(SLOT_INDEX) == 3, "init.return");
-    check(link_count == 3 && link_source[0] == 0 &&
-          link_source[1] == 0 && link_source[2] == 0 &&
-          link_destination[0] == 1 && link_destination[1] == 2 &&
-          link_destination[2] == 3,
+    check(func_8007BB60(SLOT_INDEX) == 3, "init.return");
+    /* func_800848B4 stores record src's guest address at record dst +0x50 */
+    check(read32(CONTEXT + 1u * 0x54u + 0x50u) == CONTEXT + 0u * 0x54u &&
+          read32(CONTEXT + 2u * 0x54u + 0x50u) == CONTEXT + 0u * 0x54u &&
+          read32(CONTEXT + 3u * 0x54u + 0x50u) == CONTEXT + 0u * 0x54u,
           "init.links");
     check(read32(SLOT + 0x50u) == 0u &&
           read32(SLOT + 0x54u) == 256u &&
