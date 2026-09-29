@@ -8,12 +8,16 @@ s16 func_800A35C8(s16 arg0, s16 arg1, s16 arg2);
 #ifndef XENO_PC_PORT
 #include "system/memory.h"
 #endif
+#ifdef XENO_PC_PORT
+extern u_int HeapFree(void* p);
+#endif
 #ifndef XENO_PC_PORT
 void func_800A429C(void *arg0);
 #endif
 
 #ifdef XENO_PC_PORT
 #include "psyq/libgte.h"
+#include "psyq/libgpu.h"
 #endif
 
 
@@ -74,8 +78,14 @@ s16 func_800A35C8(s16 arg0, s16 arg1, s16 arg2) {
 
 INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A3640);
 INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A3E98);
+#endif
 
-#ifndef XENO_PC_PORT
+/* Rebase stored PS1 heap pointers only on the native port. */
+#ifdef XENO_PC_PORT
+#define M68_EFFECT_HEAP_PTR(p) ((void*)PSX_ADDR((u32)(p)))
+#else
+#define M68_EFFECT_HEAP_PTR(p) (p)
+#endif
 void func_800A429C(void *arg0) {
     s32 temp_a0;
     s32 temp_a0_2;
@@ -85,26 +95,27 @@ void func_800A429C(void *arg0) {
         temp_a1 = *(s32 *)((s8*)(arg0) + 4);
         if (temp_a1 != 0) {
             if ((u8) *(u8 *)((s8*)(arg0) + 0x10) < 4U) {
-                LoadImage(arg0 + 0x28, temp_a1);
+                LoadImage(arg0 + 0x28, M68_EFFECT_HEAP_PTR(temp_a1));
             }
-            HeapFree(*(s32 *)((s8*)(arg0) + 4));
+            HeapFree(M68_EFFECT_HEAP_PTR(*(s32 *)((s8*)(arg0) + 4)));
             *(s32 *)((s8*)(arg0) + 4) = 0;
         }
         temp_a0 = *(s32 *)((s8*)(arg0) + 8);
         if (temp_a0 != 0) {
-            HeapFree(temp_a0);
+            HeapFree(M68_EFFECT_HEAP_PTR(temp_a0));
             *(s32 *)((s8*)(arg0) + 8) = 0;
         }
         temp_a0_2 = *(s32 *)((s8*)(arg0) + 0xC);
         if (temp_a0_2 != 0) {
-            HeapFree(temp_a0_2);
+            HeapFree(M68_EFFECT_HEAP_PTR(temp_a0_2));
             *(s32 *)((s8*)(arg0) + 0xC) = 0;
         }
         *(u16 *)((s8*)(arg0) + 0x1A) = 0U;
     }
 }
-#endif
+#undef M68_EFFECT_HEAP_PTR
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A4348);
 INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A43F8);
 INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A44C0);
@@ -144,12 +155,11 @@ u32 func_800A578C(void) {
 }
 
 
-/* ---- Port bodies (fo/bat3, effect-image / effect-render group).  Not
- * byte-matching: the matching build keeps the retail bytes from the
- * INCLUDE_ASM block above; these are compiled only for the port and the
- * differential harness.  Guest pointers loaded from RAM go through PSX_ADDR,
- * pointers stored into RAM are guest addresses (PsxMemory_GuestAddr), and
- * main-exe / libgpu / libgte callees take host pointers. ---- */
+/* ---- Remaining port bodies (fo/bat3, effect-image / effect-render group).
+ * These are compiled only for the port and differential harness. Guest
+ * pointers loaded from RAM go through PSX_ADDR, pointers stored into RAM are
+ * guest addresses (PsxMemory_GuestAddr), and main-exe / libgpu / libgte
+ * callees take host pointers. ---- */
 #ifndef XENO_PC_PORT
 extern u8 D_800D2FC8[];
 #endif
@@ -184,7 +194,6 @@ extern u8* D_800658C8;
 extern s32 D_80050100;
 #ifdef XENO_PC_PORT
 #include <stdio.h>
-#include "psyq/libgpu.h"
 
 extern void MTC2(unsigned int value, int reg);
 extern unsigned int MFC2(int reg);
@@ -238,31 +247,6 @@ static s32 m68_effect_callback(u32 fn, s32 phase, s32 divisor, s32 base) {
         return func_800A35C8((s16)phase, (s16)divisor, (s16)base);
     fprintf(stderr, "[battle-effect] unresolved retail callback %08x\n", fn);
     __builtin_trap();
-}
-
-/* func_800A429C.s: release an effect-image record (0x30 bytes): when active
- * (+0x1A), for types < 4 upload the +0x4 buffer back to its VRAM rect at
- * +0x28 first, then free the +0x4/+0x8/+0xC buffers and clear +0x1A. */
-void func_800A429C(u8* e) {
-    if (*(u16*)(e + 0x1A) == 0) {
-        return;
-    }
-    if (*(u32*)(e + 0x4) != 0) {
-        if (e[0x10] < 4) {
-            LoadImage((RECT16*)(e + 0x28), (u_long*)M68_GP(*(u32*)(e + 0x4)));
-        }
-        HeapFree(M68_GP(*(u32*)(e + 0x4)));
-        *(u32*)(e + 0x4) = 0;
-    }
-    if (*(u32*)(e + 0x8) != 0) {
-        HeapFree(M68_GP(*(u32*)(e + 0x8)));
-        *(u32*)(e + 0x8) = 0;
-    }
-    if (*(u32*)(e + 0xC) != 0) {
-        HeapFree(M68_GP(*(u32*)(e + 0xC)));
-        *(u32*)(e + 0xC) = 0;
-    }
-    *(u16*)(e + 0x1A) = 0;
 }
 
 /* func_800A4348.s: type-4 frame: scale each +0x4 texel by factor/32 into the

@@ -83,7 +83,7 @@ The port compiles decompiled C with `-DXENO_PC_PORT -DSKIP_ASM` and links it to 
 | Game TUs compiled into the port | 58 | Field, menus, shop, movie, member change, and the rest of the main executable |
 | Port-only C files | 268 | `pc_port/src`, 79,689 lines. Checkpoints, movie player, battle adapter, boot, overrides |
 | Port-owned symbol overrides | 22 | `pc_port/port_owned_overrides.txt`. Each row names the symbol and when it should retire |
-| `INCLUDE_ASM` that also has a port C body | 128 | Menu 80, main executable 26, battle 16, shop 6 |
+| `INCLUDE_ASM` that also has a port C body | 127 | Menu 80, main executable 26, battle 15, shop 6 |
 | `INCLUDE_ASM` omitted from the port compile | 608 | 506 of these are battle. The matching build still assembles them. The port has no body |
 | `INCLUDE_ASM` in `src/battling` | 169 | Outside the 3,294-function split above |
 
