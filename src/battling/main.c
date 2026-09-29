@@ -22,9 +22,9 @@ void func_80089210(s32, u32);
 void func_80089534(); /* (s16, s16); func_8008976C forwards its s32 arguments unconverted */
 extern s16 D_8009285C;
 extern s16 D_8009286C;
-void func_80089B44(s32);
+void *func_80089B44(s32);
 void func_80089EB4(void *);
-void func_80089F8C(s32);
+s32 *func_80089F8C(s32 *);
 void func_8002CBBC(s32);
 extern s16 D_80092800;
 extern s16 D_80092804;
@@ -73,7 +73,7 @@ void func_8008FFEC(void *, s32);
 s32 func_800891C0(s32 arg0);
 void func_800896C4(s32 arg0, u32 arg1);
 void func_8008973C(void);
-void func_80089C54(void);
+void *func_80089C54(void);
 void func_80089CD8(void *arg0);
 void func_80089D5C(void *arg0);
 void func_80089E2C(void *arg0, s32 arg1);
@@ -160,9 +160,9 @@ INCLUDE_ASM("asm/battling/nonmatchings/main", func_800898BC);
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_80089A98);
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_80089B44);
 
-void func_80089C54(void) {
+void *func_80089C54(void) {
     HeapSetCurrentContentType(8);
-    func_80089B44(HeapAlloc(0x9C, 0));
+    return func_80089B44(HeapAlloc(0x9C, 0));
 }
 
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_80089C88);
@@ -265,7 +265,19 @@ void func_80089E74(void) {
 }
 
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_80089EB4);
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_80089F8C);
+s32 *func_80089F8C(s32 *arg0) {
+    arg0[1] = 1;
+    arg0[0] = 0;
+    arg0[2] = 0;
+    arg0[3] = 0;
+    arg0[4] = 0;
+    arg0[5] = 0;
+    arg0[7] = 0;
+    ((u8 *)arg0)[0x1A] = 0x40;
+    ((u8 *)arg0)[0x19] = 0x40;
+    ((u8 *)arg0)[0x18] = 0x40;
+    return arg0;
+}
 
 void func_80089FC4(void) {
     HeapSetCurrentContentType(1);
@@ -525,7 +537,36 @@ void func_8008C120(void *arg0) {
     }
 }
 
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008C188);
+extern s32 D_80092824;
+void *func_8008C188(void *arg0, void *arg1) {
+    s32 count;
+    void *node;
+    s32 buf;
+    void *child;
+    s32 *entry;
+
+    HeapSetCurrentContentType(6);
+    node = func_80089C54();
+    entry = func_8008C0CC(arg0);
+    func_8008C0BC(node, entry);
+    if (entry[0] == 1) {
+        count = *(s32 *)(*(u8 **)((u8 *)arg0 + 4) + 0x14);
+        HeapSetCurrentContentType(5);
+        buf = HeapAlloc(0x18, 2);
+        entry[3] = buf;
+        func_8008BE4C(buf, count);
+    }
+    child = *(void **)((u8 *)arg0 + 0x94);
+    D_80092824++;
+    if (child != NULL) {
+        func_80089C88(node, func_8008C188(child, node));
+    }
+    child = *(void **)((u8 *)arg0 + 0x90);
+    if (child != NULL) {
+        func_80089C88(arg1, func_8008C188(child, arg1));
+    }
+    return node;
+}
 extern s32 D_80092824;
 /* K&R definition: func_8008C1DC calls it with no arguments, and retail
  * forwards whatever a0 holds to func_8008C188. */
@@ -697,7 +738,12 @@ INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008E78C);
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008E8B0);
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008EADC);
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008EB4C);
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008EB88);
+void func_8008EB88(void *arg0, s32 arg1, s32 arg2, s32 arg3) {
+    if (arg1 != 0) {
+        func_8008E78C(arg1 + 0x60000, arg3, arg2,
+                      (arg1 & 0x7F) | ((*(u32 *)((u8 *)arg0 + 0xD0) >> 0x14) & 0x80));
+    }
+}
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008EBD0);
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008ECEC);
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008ED6C);
@@ -708,7 +754,16 @@ void func_8008EF00(s32 arg0, void *arg1) {
     *(s16 *)((s8*)(arg1) + 4) = 0x3C;
 }
 
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008EF30);
+void func_8008EF30(s32 arg0, void *arg1, s32 arg2) {
+    s16 duration;
+
+    func_8008FE80(arg0);
+    duration = 0x1E;
+    if (arg2 == 0) {
+        duration = 0xA;
+    }
+    *(s16 *)((u8 *)arg1 + 4) = duration;
+}
 
 #ifndef XENO_PC_PORT
 void func_8008EF74(s32 arg0, void *arg1) {
