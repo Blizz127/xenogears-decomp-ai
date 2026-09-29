@@ -164,7 +164,7 @@ found-and-fixed case: [port/RETAIL_DIVERGENCES.md](port/RETAIL_DIVERGENCES.md).
 
 | # | Area | Divergence | Status |
 |---|---|---|---|
-| D1 | field `func_800ACB90` | uploads a TIM at VRAM (0x380, 0) instead of (0x380, 0x100) | open; retail C still `INCLUDE_ASM` |
+| D1 | field `func_800ACB90` | previously used y=0 for its TIM upload and wrote its 0x200-byte clear buffer past the allocation | fixed against retail assembly arguments and clear-loop addresses; `run_field_acb90_retail_test.sh` checks both behaviors and rejects old-value mutants; retail function remains `INCLUDE_ASM` |
 | D2 | menu `func_801CD710` | retail returns 0 when the case handler returns nonzero; the handlers (`func_801CD2AC` / `CC6D8` / `CB304` / `CBD90`) have no port body, so the result is not used | partly fixed (433db88e) |
 | D3 | slus `MenuExecute` debug branch | the developer KernelMenu route reserves/loads nothing where retail reserves the heap top for two overlays (the port runs them natively) | by design for that developer-only route; retail bytes unchanged |
 | D4 | CD / movies | XA ADPCM audio sectors (read mode 0x200, 2340-byte sectors) are refused (fail-closed), so XA audio is not played | open: needs the XA sector path in the platform layer |
@@ -186,7 +186,7 @@ entry from play, save/load via the memory card UI). Asset replacement for
 textures and sound samples is covered by tests only through the identity
 mod on boot; streamed-file replacement has a live test.
 
-**Known-divergence list: 8 tracked items (D1–D8; D5 and D6 fixed, D3 by design,
+**Known-divergence list: 8 tracked items (D1–D8; D1, D5 and D6 fixed, D3 by design,
 the others open or partly fixed), plus 3 unsupported options (U1–U3). A
 further 267 matched functions run port bodies of unproven equivalence.**
 

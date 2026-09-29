@@ -919,13 +919,21 @@ void func_800ACB90(void) {
     s32 i;
     u8* pBuf;
 
+#ifdef FIELD_ACB90_MUTANT_OLD_Y
     FieldLoadTIMWithClut(D_800AF784, 0x380, 0, 0, 0x1FF, 0, 0);
+#else
+    FieldLoadTIMWithClut(D_800AF784, 0x380, 0x100, 0, 0x1FF, 0, 0);
+#endif
     DrawSync(0);
     HeapFree(D_800AF784);
 
     pBuf = HeapAlloc(0x200, 1);
     for (i = 0x7F; i >= 0; i--) {
+#ifdef FIELD_ACB90_MUTANT_BAD_CLEAR_RANGE
         *(s32*)(pBuf + i * 4 + 0x1FC) = -1;
+#else
+        *(s32*)(pBuf + i * 4) = -1;
+#endif
     }
 
     rect.x = 0x3C0;
