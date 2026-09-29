@@ -2,11 +2,14 @@
 #define WORLD_MAP_WM_SPAD_H
 
 /* PSX scratchpad (0x1F800000, 1 KiB) addresses as the world-map code writes
- * them. The retail build keeps the literal address; the port maps it onto its
- * emulated scratchpad buffer. Byte-neutral for the matching build. */
+ * them. The retail build keeps the literal address. The port maps them the
+ * way its hand-written world-map bodies do (PSX_ADDR, from psx_memory.h via
+ * world_map_port_data.h), so matched and hand-written bodies share one
+ * scratchpad image while they call each other; a port-wide scratchpad
+ * (g_PsxScratchpad for every 0x1F80xxxx access) is a separate change.
+ * Byte-neutral for the matching build. */
 #ifdef XENO_PC_PORT
-extern unsigned char g_PsxScratchpad[];
-#define WM_SPAD(a) ((void*)(g_PsxScratchpad + ((unsigned int)(a) & 0x3FFu)))
+#define WM_SPAD(a) ((void*)PSX_ADDR((unsigned int)(a)))
 #else
 #define WM_SPAD(a) (a)
 #endif

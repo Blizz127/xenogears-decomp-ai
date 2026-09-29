@@ -1545,3 +1545,12 @@ u32 wm_8007295C_common_tail_p5(void)
             "[worldmap-common-tail-p5] exit cut=0x%08x\n", cut);
     return cut;
 }
+
+/* Entry for the matched C in src/world_map/main.c (0x80089160 is not
+ * matched yet): the vector and the optional third argument arrive as host
+ * pointers into emulated RAM (NULL stays 0). */
+void func_80089160(s32 id, void* vector, void* flags)
+{
+    wm_80089160((u32)id, PsxMemory_GuestAddr(vector),
+                flags != NULL ? PsxMemory_GuestAddr(flags) : 0u);
+}

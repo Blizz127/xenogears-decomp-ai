@@ -172,6 +172,13 @@ void func_80087904(void* record, s32 packets, u16 count, s32 unused)
     resume_model_packets(PsxMemory_GuestAddr(record), (u32)packets, count);
 }
 
+/* Entry for the matched C (func_80088570 in src/world_map/main.c;
+ * 0x8008868C itself is not matched yet): the slot index is a scalar. */
+s32 func_8008868C(s32 index)
+{
+    return wm_8008868C(index);
+}
+
 s32 wm_800879E0(s32 index)
 {
     (void)index;

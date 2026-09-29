@@ -19,7 +19,7 @@ COMMON=(
 
 mkdir -p "$OUT"
 source "$ROOT/pc_port/tests/lib/world_map_matched.sh"
-COMMON+=("$(world_map_matched_obj "$OUT")")
+COMMON+=("$(world_map_matched_obj "$OUT" func_800834D0)")
 
 check_slice() {
   local lo="$1"

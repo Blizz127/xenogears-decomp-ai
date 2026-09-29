@@ -19,7 +19,7 @@ COMMON=(
 
 mkdir -p "$OUT"
 source "$ROOT/pc_port/tests/lib/world_map_matched.sh"
-COMMON+=("$(world_map_matched_obj "$OUT")")
+COMMON+=("$(world_map_matched_obj "$OUT" func_80080900)")
 
 actual="$(dd if="$ROOT/disc/world_map.bin" bs=1 \
   skip=$((0x80080900 - 0x8006FAF0)) \

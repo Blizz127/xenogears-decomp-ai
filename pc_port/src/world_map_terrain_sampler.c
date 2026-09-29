@@ -116,3 +116,10 @@ s32 wm_80093978(s32 x, s32 z)
 
     return wm_bits_to_s32(scaled_bits);
 }
+
+/* Entry for the matched C in src/world_map/main.c (0x80093978 is not
+ * matched yet); both arguments are scalars. */
+s32 func_80093978(s32 x, s32 z)
+{
+    return wm_80093978(x, z);
+}

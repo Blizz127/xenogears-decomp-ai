@@ -136,6 +136,14 @@ extern s32 wm_80092BE4(s32 slot_index) __attribute__((weak));
 extern s32 wm_80092C70(s32 slot_index) __attribute__((weak));
 extern s32 wm_80092DF8(s32 slot_index) __attribute__((weak));
 extern s32 wm_80092FD8(s32 slot_index) __attribute__((weak));
+/* World-map batch 3: brackets 3-7 story callbacks.  Four are matched C;
+ * 0x80088570 is matched too; 0x80088720 is a stopgap hand body until it matches. */
+extern s32 func_80087C6C(s32 arg0) __attribute__((weak));
+extern s32 func_80087FD0(s32 arg0) __attribute__((weak));
+extern s32 func_80088B40(s32 arg0) __attribute__((weak));
+extern s32 func_80088D00(s32 arg0) __attribute__((weak));
+extern s32 func_80088570(s32 arg0) __attribute__((weak));
+extern s32 wm_80088720(s32 arg0) __attribute__((weak));
 /* World-map batch 2: story-selector callbacks, matched C (src/world_map/main.c).
  * Weak: until those bodies are compiled for the port the slots stay
  * unresolved as before. */
@@ -1150,6 +1158,36 @@ static s16 wm_sched_builtin_80088F5C(int slot_index)
     return (s16)func_80088F5C();
 }
 
+static s16 wm_sched_builtin_80087C6C(int slot_index)
+{
+    return (s16)func_80087C6C((s32)slot_index);
+}
+
+static s16 wm_sched_builtin_80087FD0(int slot_index)
+{
+    return (s16)func_80087FD0((s32)slot_index);
+}
+
+static s16 wm_sched_builtin_80088B40(int slot_index)
+{
+    return (s16)func_80088B40((s32)slot_index);
+}
+
+static s16 wm_sched_builtin_80088D00(int slot_index)
+{
+    return (s16)func_80088D00((s32)slot_index);
+}
+
+static s16 wm_sched_builtin_80088570(int slot_index)
+{
+    return (s16)func_80088570((s32)slot_index);
+}
+
+static s16 wm_sched_builtin_80088720(int slot_index)
+{
+    return (s16)wm_80088720((s32)slot_index);
+}
+
 static s16 wm_sched_builtin_800834D0(int slot_index)
 {
     (void)slot_index;
@@ -1799,6 +1837,30 @@ static wm_sched_cb_resolve_t wm_sched_resolve(u32 guest_addr,
     }
     if (guest_addr == 0x80088F5Cu && func_80088F5C != 0) {
         *out_fn = wm_sched_builtin_80088F5C;
+        return WM_SCHED_CB_IMPLEMENTED;
+    }
+    if (guest_addr == 0x80087C6Cu && func_80087C6C != 0) {
+        *out_fn = wm_sched_builtin_80087C6C;
+        return WM_SCHED_CB_IMPLEMENTED;
+    }
+    if (guest_addr == 0x80087FD0u && func_80087FD0 != 0) {
+        *out_fn = wm_sched_builtin_80087FD0;
+        return WM_SCHED_CB_IMPLEMENTED;
+    }
+    if (guest_addr == 0x80088B40u && func_80088B40 != 0) {
+        *out_fn = wm_sched_builtin_80088B40;
+        return WM_SCHED_CB_IMPLEMENTED;
+    }
+    if (guest_addr == 0x80088D00u && func_80088D00 != 0) {
+        *out_fn = wm_sched_builtin_80088D00;
+        return WM_SCHED_CB_IMPLEMENTED;
+    }
+    if (guest_addr == 0x80088570u && func_80088570 != 0) {
+        *out_fn = wm_sched_builtin_80088570;
+        return WM_SCHED_CB_IMPLEMENTED;
+    }
+    if (guest_addr == 0x80088720u && wm_80088720 != 0) {
+        *out_fn = wm_sched_builtin_80088720;
         return WM_SCHED_CB_IMPLEMENTED;
     }
     if (wm_sched_is_known_missing(guest_addr))

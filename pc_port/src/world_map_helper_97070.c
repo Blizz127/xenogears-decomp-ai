@@ -85,3 +85,10 @@ void wm_80097070(u32 matrix, u32 angles)
     h97070_sh(angles + 4u, (u16)(0u - (u32)angle));
 #endif
 }
+
+/* Entry for the matched C in src/world_map/main.c (0x80097070 is not
+ * matched yet): its callers pass host pointers into emulated RAM. */
+void func_80097070(void* matrix, void* angles)
+{
+    wm_80097070(PsxMemory_GuestAddr(matrix), PsxMemory_GuestAddr(angles));
+}
