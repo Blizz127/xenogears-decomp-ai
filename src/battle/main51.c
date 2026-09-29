@@ -30,7 +30,23 @@ INCLUDE_ASM("asm/battle/nonmatchings/main51", func_800904A0);
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_8009070C);
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_8009080C);
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_8009093C);
-INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80090B90);
+extern s32 func_80076A10(s32, s32, s16, s16);
+extern s32 D_800C3EA4;
+extern u8 D_800CCB34;
+extern u8* D_800D2D28;
+
+void func_80090B90(s32 x, s32 y, s32* frame, u8* timer) {
+    if (++*timer >= 3) {
+        if (--*frame < 0) {
+            *frame = 4;
+        }
+        *timer = 0;
+    }
+    *(s32*)(D_800D2D28 + 0x100) = func_80076A10(*frame + 0xE0, D_800C3EA4 + 0x27C8, x, y);
+    D_800D2D28[0xA7] = D_800CCB34;
+    D_800D2D28[0x9E] = 1;
+}
+
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80090C44);
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80090E7C);
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80091064);
@@ -49,10 +65,48 @@ INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80093578);
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_8009382C);
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_800939CC);
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80093B08);
-INCLUDE_ASM("asm/battle/nonmatchings/main51", func_8009413C);
+extern void func_8007FB70(s32);
+extern u8 D_800D2D24[];
+extern u8* D_800D2D28;
+
+void func_8009413C(u8 idx, u8 flag) {
+    if (D_800D2D24[idx] == 4) {
+        D_800D2D28[0xB7] = 0;
+        D_800D2D28[0xB0] = 0;
+        if (flag) {
+            func_8007FB70(idx);
+        }
+    }
+}
+
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_800941A4);
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_800946F4);
-INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80094C78);
+typedef struct { u8 pad[0x15A]; u8 flags; u8 pad2[0x170 - 0x15B]; } Actor170;
+typedef struct {
+    Actor170 actors[0x42];
+    u8 pad[0x5F54 - 0x42 * 0x170];
+    s32 f5F54[3];
+    s32 f5F60[3];
+    s32 f5F6C[8];
+    u8 pad2[0x5FA0 - 0x5F8C];
+    u8 f5FA0[8];
+} Battle;
+void func_80094C78(void) {
+    u8 i;
+    Battle* b = D_800C34B0;
+    u32 cur = D_800C3E50;
+
+    for (i = 0; i < 3; i++) {
+        if (b->f5FA0[i] == 0) {
+            if (b->actors[i].flags & 0x80) {
+                b->f5F60[i] += b->f5F6C[cur];
+            } else {
+                b->f5F54[i] += b->f5F6C[cur];
+            }
+        }
+    }
+}
+
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80094D24);
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80094EE4);
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80095690);

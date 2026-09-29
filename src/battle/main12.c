@@ -2,13 +2,70 @@
 
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/main12", func_8007916C);
-INCLUDE_ASM("asm/battle/nonmatchings/main12", func_800791FC);
-INCLUDE_ASM("asm/battle/nonmatchings/main12", func_80079270);
+extern u32 func_8007A280(u32 a0, u32 a1, u32 a2, u32 a3);
+extern u8 D_800D2E5D[];
+extern u8 D_800D2E60[];
+extern u8 D_800D2E61[];
+
+void func_8007916C(s32 a0, s32 a1) {
+    u32 s1 = a0 & 0xFF;
+    u32 s0 = (a1 & 0xFF) << 3;
+    u32 r;
+
+    r = func_8007A280(s1, D_800D2E5D[s0], 0, 1);
+    func_8007A280(s1, D_800D2E5D[s0], (D_800D2E60[s0] + (r + (D_800D2E61[s0] << 8))) & 0xFFFF, 0);
+}
+
+extern void func_8007893C(u8, u8);
+extern void func_800785D4(u8, u8);
+extern u8* D_800C3EAC;
+extern u8 D_800C402F[];
+
+void func_800791FC(u8 a, u8 b) {
+    func_8007893C(b, a);
+    D_800C402F[D_800C3EAC[0x2DA] * 0x48] = 0xF4;
+    func_800785D4(a, b);
+}
+
+extern void func_800785D4(u8, u8);
+extern u8* D_800C3EAC;
+extern u8 D_800C402F[];
+extern u16 D_800C3FFE[];
+extern u16 D_800D2E62[];
+
+void func_80079270(u8 a, u8 b) {
+    D_800C402F[D_800C3EAC[0x2DA] * 0x48] = 0xF6;
+    D_800C3FFE[D_800C3EAC[0x2DA] * 0x24] = D_800D2E62[b * 4];
+    func_800785D4(a, b);
+}
+
 INCLUDE_ASM("asm/battle/nonmatchings/main12", func_800792F8);
 INCLUDE_ASM("asm/battle/nonmatchings/main12", func_800793F0);
 INCLUDE_ASM("asm/battle/nonmatchings/main12", func_80079674);
-INCLUDE_ASM("asm/battle/nonmatchings/main12", func_80079778);
+extern void func_80085350(void);
+extern void func_80085388(void);
+extern void func_800716D8(void);
+extern s32 func_80080AE4(u8);
+extern void func_800B89FC(s32, u8, s32, s32);
+extern void func_800793F0(u8);
+extern void func_80079674(u8);
+extern u8* D_800C3EAC;
+extern u8 D_800C400B[];
+
+void func_80079778(u8 a) {
+    D_800C3EAC[0x2DA] = 0;
+    func_80085350();
+    func_80085388();
+    D_800C400B[D_800C3EAC[0x2DA] * 0x48] = a;
+    func_800716D8();
+    func_800B89FC(1, a, 0, func_80080AE4(a));
+    func_800793F0(a);
+    func_80079674(a);
+    while (D_800C3EAC[0x2DB] == 0) {
+        func_800716D8();
+    }
+}
+
 INCLUDE_ASM("asm/battle/nonmatchings/main12", func_80079840);
 #endif
 

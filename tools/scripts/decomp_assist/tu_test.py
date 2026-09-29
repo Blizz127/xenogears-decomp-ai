@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""tu_test.py OV NAME BODY.c
+"""tu_test.py OV NAME BODY.c [--write]
 
 Compile a candidate C definition of NAME *inside its own TU*, on the host,
 without touching the tree: the TU source is read, NAME's INCLUDE_ASM site
@@ -10,7 +10,11 @@ gears.toml preset and compared with the retail words.  This catches the
 in-context differences a standalone draft misses (the TU's own types for
 globals and callees).  Prints MATCH / diff / size; the object is
 $XENO_ASSIST_CACHE/<XENO_CCT_PREFIX or _tut>.o.  `make rom-check` is still
-the authority."""
+the authority.
+
+--write: on a MATCH, write the edited TU back (BODY.c's `#include "common.h"`
+line dropped), so the verified text is exactly what lands.  Only for plain
+sites: one with a port body is left alone (m2c_insert.py --inner keeps it)."""
 import glob
 import os
 import re
@@ -23,6 +27,8 @@ from assist_common import CACHE, REPO, compare, func_words, toolchain
 ov, name, body_path = sys.argv[1], sys.argv[2], os.path.abspath(sys.argv[3])
 os.chdir(REPO)
 body = open(body_path).read()
+if '--write' in sys.argv:
+    body = re.sub(r'^#include "common.h"\n', '', body, flags=re.M).strip('\n') + '\n'
 site = re.compile(r'INCLUDE_ASM\("(?:\.\./)?asm/' + re.escape(ov) + r'/nonmatchings/([^"]+)", ' + re.escape(name) + r'\);')
 tu = None
 for f in glob.glob(f'src/{ov}/**/*.c', recursive=True):
@@ -35,6 +41,7 @@ if tu is None:
     sys.exit(f'no INCLUDE_ASM site for {name} under src/{ov}')
 st, en = m.start(), m.end()
 pre = s[:st].rsplit('\n', 2)
+ported = False
 if pre[-2].strip() == '#ifndef XENO_PC_PORT' and s[en:].startswith('\n#else\n'):
     st = len(s[:st]) - len(pre[-1]) - len(pre[-2]) - 1
     pos, depth = en + len('\n#else\n'), 0
@@ -49,8 +56,10 @@ if pre[-2].strip() == '#ifndef XENO_PC_PORT' and s[en:].startswith('\n#else\n'):
             depth -= 1
         pos = end + 1
     en = end
+    ported = True
     body = '#ifndef XENO_PC_PORT\n' + body + '\n#endif\n'
 s = s[:st] + body + s[en:]
+edited = s
 # the TU in the matching build: drop other INCLUDE_ASM bodies (SKIP_ASM does that)
 pre_ = os.environ.get('XENO_CCT_PREFIX', '_tut')
 c_file, i_file, s_file, o_file = (os.path.join(CACHE, pre_ + e) for e in ('.c', '.i', '.s', '.o'))
@@ -84,3 +93,8 @@ if not got:
     sys.exit('no symbol')
 bad = compare(ins, got[1])
 print(f"{tc['preset']}:", 'MATCH' if bad == 0 else (f'diff {bad}/{len(ins)}' if bad > 0 else f'size {got[0]} vs {len(ins) * 4}'))
+if bad == 0 and '--write' in sys.argv and ported:
+    sys.exit('not written: the site has a port body (use m2c_insert.py --inner)')
+if bad == 0 and '--write' in sys.argv:
+    open(tu, 'w').write(edited)
+    print('wrote', tu)

@@ -58,7 +58,24 @@ void func_800AF180(s32 ctx, s32 index, BattleNode7C* src, BattleNode7C* dst) {
     }
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/main73_p1", func_800AF270);
+/* A 0x7C-byte node of the list func_800AF180 / func_800AF270 walk. */
+
+/* Move every later node's pending flag from src to dst. */
+void func_800AF270(BattleNode7C* src, BattleNode7C* dst) {
+    BattleNode7C* p = src;
+    s32 i;
+    s32 count = src->index;
+
+    for (i = 1; i < count; i++) {
+        p++;
+        dst++;
+        if (p->pending) {
+            p->pending = 0;
+            dst->pending = 1;
+        }
+    }
+}
+
 
 /* n = OuterProduct12(a, b); returns ((dot(vec, n) * 16) / (|n| + 1) << 8)
  * / divisor as an s16. */

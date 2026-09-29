@@ -6,10 +6,69 @@ INCLUDE_ASM("asm/battle/nonmatchings/mainc112", func_800BAF48);
 INCLUDE_ASM("asm/battle/nonmatchings/mainc112", func_800BB080);
 INCLUDE_ASM("asm/battle/nonmatchings/mainc112", func_800BB13C);
 INCLUDE_ASM("asm/battle/nonmatchings/mainc112", func_800BB248);
-INCLUDE_ASM("asm/battle/nonmatchings/mainc112", func_800BB314);
+extern void WorkListRemoveTask(void *pTask);
+extern void TimerWorkListRemoveTask(void *pTask);
+extern void HeapFree(void *pMem);
+
+void func_800BB314(u8 *p) {
+    u8 pad[8];
+
+    WorkListRemoveTask(p + 0x1C);
+    TimerWorkListRemoveTask(p);
+    HeapFree(p);
+}
+
 INCLUDE_ASM("asm/battle/nonmatchings/mainc112", func_800BB350);
-INCLUDE_ASM("asm/battle/nonmatchings/mainc112", func_800BB540);
-INCLUDE_ASM("asm/battle/nonmatchings/mainc112", func_800BB620);
+typedef struct { s16 x, y; } Pos;
+typedef struct Task {
+    u8 pad0[0xC];
+    void (*done)(struct Task*);
+    u8 pad10[0xC];
+    s32 id;
+} Task;
+extern void func_800A979C(s32, s16, s16, s32, s16);
+extern void func_800BB350(s32);
+extern u16 D_800C3666[];
+extern Pos D_800C3668[];
+extern u8 D_800C3CB8[];
+extern s32 D_800C35D8[];
+extern u8 D_800C37CC[];
+
+void func_800BB540(Task* t) {
+    s32 i;
+    s32 bit;
+    s32 id;
+
+    for (i = 0, bit = 1; i != 3; i++, bit <<= 1) {
+        if (!(D_800C3666[0] & bit)) {
+            D_800C3666[0] |= bit;
+            break;
+        }
+    }
+    func_800A979C(t->id, D_800C3668[i].x, D_800C3668[i].y, 0, *(u16*)&t->id + 0x1C0);
+    id = t->id;
+    D_800C3CB8[0]--;
+    func_800BB350(id);
+    t->done(t);
+    if (--D_800C35D8[0] == 0) {
+        D_800C37CC[0] = 1;
+    }
+}
+
+void func_800BB620(u8* p) {
+    u8* stack;
+
+    if (ArchiveDataSync() == 0) {
+        stack = HeapAlloc(0x1000, 1);
+        /* run func_800BB540 on the heap block's stack (top at +0xF00) */
+        __asm__ volatile("addu $8, %0, $0\n\tsw $sp, 0($8)\n\taddiu $8, $8, -4\n\taddu $sp, $8, $0"
+                         : : "r"(stack + 0xF00) : "$8");
+        func_800BB540(p);
+        __asm__ volatile("addiu $sp, $sp, 4\n\tlw $sp, 0($sp)");
+        HeapFree(stack);
+    }
+}
+
 #endif
 
 

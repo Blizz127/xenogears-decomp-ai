@@ -50,7 +50,39 @@ s32 func_800A23E8(Pool20* pool, u8* slot) {
 INCLUDE_ASM("asm/battle/nonmatchings/main66", func_800A2434);
 INCLUDE_ASM("asm/battle/nonmatchings/main66", func_800A2704);
 INCLUDE_ASM("asm/battle/nonmatchings/main66", func_800A2ACC);
-INCLUDE_ASM("asm/battle/nonmatchings/main66", func_800A2BB8);
+typedef struct BattleNode7C {
+    struct BattleNode7C* parent;
+    u8 unk4[3];
+    u8 pending;
+    u8 unk8[2];
+    u16 index;
+    u8 unkC[0x64];
+    u8* handle70;
+    u8* handle74;
+    u8* handle78;
+} BattleNode7C;
+
+void func_800A2BB8(s32 ctx, BattleNode7C* nodes, u8 id) {
+    u8 pad[1];
+    s32 i;
+    s32 count = nodes->index;
+
+    for (i = 0; i < count; i++, nodes++) {
+        if (nodes->handle70 != NULL && nodes->handle70[3] == id) {
+            func_800A23E8(ctx, nodes->handle70);
+            nodes->handle70 = NULL;
+        }
+        if (nodes->handle74 != NULL && nodes->handle74[3] == id) {
+            func_800A23E8(ctx, nodes->handle74);
+            nodes->handle74 = NULL;
+        }
+        if (nodes->handle78 != NULL && nodes->handle78[3] == id) {
+            func_800A23E8(ctx, nodes->handle78);
+            nodes->handle78 = NULL;
+        }
+    }
+}
+
 #endif
 extern void HeapChangeCurrentUser(u32 user, u32 arg);
 extern void* HeapAlloc(u32 size, u32 flags);

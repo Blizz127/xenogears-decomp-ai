@@ -2,7 +2,25 @@
 
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/main74", func_800B00F4);
+extern void func_800A23E8(s32, s32);
+extern void func_800B00D0(void);
+extern s32 D_800C3BAC[];
+
+/* Release the nine handles in D_800C3BAC, then func_800B00D0. */
+void func_800B00F4(s32 ctx) {
+    s32 h;
+    s32 i;
+    s32* p;
+
+    for (i = 0, p = D_800C3BAC; i < 9; i++) {
+        h = *p++;
+        if (h != 0) {
+            func_800A23E8(ctx, h);
+        }
+    }
+    func_800B00D0();
+}
+
 INCLUDE_ASM("asm/battle/nonmatchings/main74", func_800B0164);
 INCLUDE_ASM("asm/battle/nonmatchings/main74", func_800B026C);
 INCLUDE_ASM("asm/battle/nonmatchings/main74", func_800B0AB4);

@@ -2,7 +2,20 @@
 
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/mainc79", func_800B3658);
+extern u8* func_800B35C0(void);
+extern void func_800B3358(u8* p);
+
+void func_800B3658(s16* pos, s32 v) {
+    u8* p = func_800B35C0();
+
+    *(s16*)(p + 0x2C) = pos[0];
+    *(s16*)(p + 0x2E) = pos[1];
+    *(s16*)(p + 0x30) = pos[2];
+    *(s32*)(p + 0x38) = v * 2;
+    *(s32*)(p + 0x3C) = v * 2;
+    func_800B3358(p);
+}
+
 INCLUDE_ASM("asm/battle/nonmatchings/mainc79", func_800B36BC);
 #endif
 
