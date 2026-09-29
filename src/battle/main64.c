@@ -3,6 +3,7 @@
 
 #ifndef XENO_PC_PORT
 extern u8* D_800C34B0;
+#endif
 extern u8 g_GameState[];
 
 /* 1 when entry idx's +0x5B47 byte (20-byte stride off D_800C34B0) is one of
@@ -18,6 +19,7 @@ s32 func_8009E53C(u8 idx) {
     return g_GameState[0x99D + o] == id;
 }
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/battle/nonmatchings/main64", func_8009E5C8);
 INCLUDE_ASM("asm/battle/nonmatchings/main64", func_8009E788);
 INCLUDE_ASM("asm/battle/nonmatchings/main64", func_8009E868);
@@ -66,29 +68,14 @@ void func_8009F5B0(void) {
 }
 
 
-/* ---- Port bodies (fo/bat3).  Not byte-matching: the matching build keeps
- * the retail bytes from the INCLUDE_ASM block above. ---- */
+/* ---- Port bodies (fo/bat3). ---- */
 #ifndef XENO_PC_PORT
 extern u8* D_800C34B0;
 #endif
 #ifndef XENO_PC_PORT
 extern u8* D_800D2D6C;
 #endif
-extern u8 g_GameState[];
 #ifdef XENO_PC_PORT
-/* func_8009E53C.s: 1 when entry idx's +0x5B47 byte (20-byte stride off
- * D_800C34B0) is one of the three Gear slot ids of the current Gear party
- * record (g_GameState+0x59C selects the 0xA4-stride record; ids at
- * +0x98D/+0x995/+0x99D). */
-u32 func_8009E53C(u8 idx) {
-    u32 o = g_GameState[0x59C] * 0xA4;
-    u32 id = D_800C34B0[idx * 20 + 0x5B47];
-
-    if (g_GameState[0x98D + o] == id) return 1;
-    if (g_GameState[0x995 + o] == id) return 1;
-    return g_GameState[0x99D + o] == id;
-}
-
 /* func_8009E5C8.s: the Gear counterpart of func_8009A854: copy entry a0's
  * bytes (+0xE/+0x10/+0x11, 20-byte stride at D_800C34B0+0x5750) into the
  * Gear slot whose id matches its +0xF byte (slot 0, 1 or 3; the last match
