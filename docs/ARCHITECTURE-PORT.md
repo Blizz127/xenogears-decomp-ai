@@ -73,10 +73,15 @@ from a game TU uses that TU's overlay.
 - `tools/analysis/port_preservation.py shadows` lists every port body that
   shadows byte-exact matched C: [port/shadowing_matched_c.tsv](port/shadowing_matched_c.tsv).
 
-## Measured state (2026-09-28, integration 9dddbd6b)
+## Measured state
 
-objdiff: 2,512 of 4,440 retail game functions byte-exact. `make rom-check`:
-10/10.
+Matching build (2026-09-29, commit `2ea6fce5`): objdiff reports **2,638 / 4,464
+retail functions byte-exact (59.09%)** and **379,404 / 1,383,684 code bytes
+(27.42%)**. `make rom-check` passed all 10 pinned artifacts. The generated
+progress report is [DASHBOARD.md](evidence/decomp-campaign/DASHBOARD.md).
+
+The executed-route coverage below was measured on 2026-09-28 at integration
+`9dddbd6b`; those route counts and ratios have not been rerun for `2ea6fce5`.
 
 Routes (coverage build, retail disc):
 
@@ -112,14 +117,13 @@ only; only the interpreter itself appears, as shim.
 
 ### Port bodies shadowing matched C
 
-384 port bodies shadow 373 byte-exact functions
+300 port bodies shadow 297 byte-exact functions
 ([port/shadowing_matched_c.tsv](port/shadowing_matched_c.tsv)):
 
 | Where | Bodies |
 |---|---:|
-| `XENO_PC_PORT` arms in game TUs: menu 166, slus 60, battle 25, movie 1 | 252 |
-| world map `wm_XXXXXXXX` / named bodies in `pc_port/src/world_map_*.c` | 77 |
-| other `pc_port/src` bodies (`work_list_port.c`, `game_overrides.c`, `archive_port.c`, ...) | 37 |
+| `XENO_PC_PORT` arms in game TUs: battle 96, slus 27, menu 24, field 12, movie 1, shop menu 1 | 161 |
+| `pc_port` bodies, including world-map callbacks and adapters | 121 |
 | generated logging stubs standing in for matched C that is not linked | 18 |
 
 Their equivalence to retail is not proven. They are switched to the matched
@@ -156,7 +160,7 @@ textures and sound samples is covered by tests only through the identity
 mod on boot; streamed-file replacement has a live test.
 
 **Divergence count: 8 known divergences (D1–D8) plus 3 unsupported options
-(U1–U3). A further 373 matched functions run port bodies of unproven
+(U1–U3). A further 297 matched functions run port bodies of unproven
 equivalence.**
 
 ## Switching shadowing bodies to the matched C
