@@ -586,7 +586,28 @@ void func_800750DC(void) {
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80075104);
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80075228);
+#ifndef XENO_PC_PORT
+extern s32 D_8009BCC4;
+extern s32 D_8009BE40;
+extern s32 D_8009D64C;
+extern s32 D_8009D80C;
+extern s16 D_8009C854[];
+void func_80075228(void) {
+    s32 i;
+
+    for (i = 15; i >= 0; i--) {
+        D_8009C854[i] = 0;
+    }
+    D_8009D64C = 1;
+    if (*(u16 *)(g_GameState + 0x1834) & 0x4000) {
+        D_8009BE40 = 0x300;
+    } else {
+        D_8009BE40 = 0x180;
+    }
+    D_8009BCC4 = 1;
+    D_8009D80C = 0;
+}
+#endif
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8007528C);
 
@@ -1014,7 +1035,23 @@ s32 func_80078E2C(s32 arg0) {
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80078EA4);
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_800794D8);
+#ifndef XENO_PC_PORT
+s32 func_800794D8(s32 arg0) {
+    WmObj *obj;
+    u8 *scene;
+
+    obj = &D_8009BE24[arg0];
+    scene = D_8009C620;
+    obj->pos[0] = 0x02000000;
+    obj->pos[2] = 0x01500000;
+    obj->unk20 = 0;
+    *(s16 *)(scene + 0x558) = 0;
+    *(s16 *)(scene + 0x55A) = 0x780;
+    *(s16 *)(scene + 0x55C) = 0;
+    RotMatrixYXZ(scene + 0x558, scene + 0x560);
+    return 1;
+}
+#endif
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80079538);
 

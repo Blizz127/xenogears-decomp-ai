@@ -19,7 +19,7 @@ void SetGeomOffset(s32, s32);
 void SetGeomScreen(s32);
 void func_8002DFF0(s32, u32);
 void func_80089210(s32, u32);
-void func_80089534(s16, s16);
+void func_80089534(); /* (s16, s16); func_8008976C forwards its s32 arguments unconverted */
 extern s16 D_8009285C;
 extern s16 D_8009286C;
 void func_80089B44(s32);
@@ -151,7 +151,10 @@ void func_8008973C(void) {
     func_80089534(D_8009285C, D_8009286C);
 }
 
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008976C);
+void func_8008976C(s32 arg0, s32 arg1) {
+    func_80089330();
+    func_80089534(arg0, arg1);
+}
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_800897AC);
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_800898BC);
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_80089A98);
@@ -356,7 +359,9 @@ void func_8008A254(void) {
     *(s16 *)((s8*)(temp_v0) + 0xC) = 0;
 }
 
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008A298);
+void func_8008A298(s32 arg0) {
+    HeapFree(arg0);
+}
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008A2B8);
 
 void func_8008A3A0(void) {
@@ -434,7 +439,9 @@ void func_8008B070(s32 arg0) {
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008B0D8);
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008B13C);
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008B38C);
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008B5DC);
+void func_8008B5DC(void *arg0, s32 arg1) {
+    func_8008B730(arg0, arg1, 1);
+}
 
 s16 func_8008B5FC(s32 arg0, s32 arg1, s32 arg2) {
     s16 temp_a0;
@@ -456,8 +463,34 @@ s16 func_8008B5FC(s32 arg0, s32 arg1, s32 arg2) {
 
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008B650);
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008B730);
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008BA2C);
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008BAE0);
+void *func_8008BA2C(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
+    s32 *p;
+    s32 i;
+    s32 cursor;
+    u8 *obj;
+
+    HeapSetCurrentContentType(3);
+    obj = HeapAlloc(0x84, 2);
+    i = 0x1F;
+    p = (s32 *)(obj + 0x7C);
+    do {
+        *p = 0;
+        i--;
+        p--;
+    } while (i >= 0);
+    *(s32 *)(obj + 0x80) = arg2;
+    *(s32 *)(obj + 0x70) = func_800405E4();
+    *(s32 *)(obj + 0x7C) = arg0;
+    *(s32 *)(obj + 0x10) = arg1;
+    cursor = *(s32 *)(obj + 0x80) + arg3 * 4;
+    *(s32 *)(obj + 0x74) = cursor;
+    *(s32 *)(obj + 0x78) = cursor;
+    func_8008BB3C(obj);
+    return obj;
+}
+void func_8008BAE0(s32 arg0) {
+    HeapFree(arg0);
+}
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008BB00);
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008BB1C);
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008BB3C);
@@ -493,7 +526,15 @@ void func_8008C120(void *arg0) {
 }
 
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008C188);
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008C298);
+extern s32 D_80092824;
+/* K&R definition: func_8008C1DC calls it with no arguments, and retail
+ * forwards whatever a0 holds to func_8008C188. */
+void func_8008C298(arg0)
+    s32 arg0;
+{
+    D_80092824 = 0;
+    func_8008C188(arg0, 0);
+}
 
 void func_8008C2C0(s32 arg0) {
     D_80092828 = arg0;
