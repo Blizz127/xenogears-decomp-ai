@@ -117,12 +117,12 @@ only; only the interpreter itself appears, as shim.
 
 ### Port bodies shadowing matched C
 
-290 port bodies shadow 287 byte-exact functions
+289 port bodies shadow 286 byte-exact functions
 ([port/shadowing_matched_c.tsv](port/shadowing_matched_c.tsv)):
 
 | Where | Bodies |
 |---|---:|
-| `XENO_PC_PORT` arms in game TUs: battle 86, slus 27, menu 24, field 12, movie 1, shop menu 1 | 151 |
+| `XENO_PC_PORT` arms in game TUs: battle 85, slus 27, menu 24, field 12, movie 1, shop menu 1 | 150 |
 | `pc_port` bodies, including world-map callbacks and adapters | 121 |
 | generated logging stubs standing in for matched C that is not linked | 18 |
 
@@ -136,6 +136,10 @@ retail/host row-address adapter. Each compiles to the exact 20 retail words.
 `func_8007A874` also moved from a port-only body into the matched battle TU.
 Its retail output is exact (16/16 words); the existing remu differential passed
 238 seeds at O0, O2 and UBSan, and rejected the row-offset mutant.
+`func_8007AEF0` now shares its retail body, using compiler-pinned MIPS
+registers and a host declaration seam. It compiles to the exact 27 words; the
+remu differential passed 238 seeds at O0, O2 and UBSan and rejected the add
+mutant.
 
 ## Known divergences (public list)
 

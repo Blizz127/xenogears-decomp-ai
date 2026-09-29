@@ -1,11 +1,14 @@
 /* battle mainasm_B400: the retail-asm run at file offset 0xB400, in retail order.
- * Functions still listed as INCLUDE_ASM are not byte-matching C yet. The whole
- * file is retail-build only; any port body for these functions lives in the
- * port's own TU. */
+ * The byte-exact C body below is shared with the port. */
 #include "common.h"
 
-#ifndef XENO_PC_PORT
 extern u8 D_800D3430[];
+
+#ifdef XENO_PC_PORT
+#define BATTLE_PINNED(type, name, reg) type name
+#else
+#define BATTLE_PINNED(type, name, reg) register type name asm(reg)
+#endif
 
 /* func_8007AEF0: row = D_800D3430 + ((idx&0xFF)<<6); prod = row[p[1]] *
  * row[p[2]]; row[p[3]] = (prod as s16 >= 0x100) ? 0xFF : (u8)prod. Row-table
@@ -16,9 +19,9 @@ extern u8 D_800D3430[];
  * p in a0 and picks the opposite v0/v1 pair for the mult, which mismatches
  * retail's mult a0,v0 encoding. */
 void func_8007AEF0(u8 **pp, s32 idx) {
-    register u8 *p asm("$6");
-    register u32 v1term asm("$4");
-    register u32 v2term asm("$2");
+    BATTLE_PINNED(u8 *, p, "$6");
+    BATTLE_PINNED(u32, v1term, "$4");
+    BATTLE_PINNED(u32, v2term, "$2");
     u8 *row;
     u32 prod;
     s16 clipped;
@@ -36,5 +39,3 @@ void func_8007AEF0(u8 **pp, s32 idx) {
     }
     row[p[3]] = result;
 }
-
-#endif
