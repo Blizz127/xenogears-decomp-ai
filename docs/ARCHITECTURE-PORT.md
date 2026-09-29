@@ -82,9 +82,9 @@ Routes (coverage build, retail disc):
 
 | Route | What it reaches |
 |---|---|
-| R1 title | boot → title map 490 → attract movie (the headless title smoke; Circle does not interrupt the attract yet, so new game is not reached, see D6) |
+| R1 title | boot → title map 490 → new game → prologue map 4 → Lahan map 2 (`run_title_newgame_smoke.sh`; route observed on 2026-09-29) |
 | R2 field | `XENO_FIELD_TEST=1` developer field entry, 60 s |
-| R3 field → battle | `XENO_FIELD_TEST=1 XENO_FIELD_MAP=1`, battle 1 via `XENO_BATTLE_WARP_FILE`; retail `battle.bin` runs about 694,700 instructions, then stops (D5) |
+| R3 field → battle | `XENO_FIELD_TEST=1 XENO_FIELD_MAP=1`, battle 1 via `XENO_BATTLE_WARP_FILE`; `run_static_data_cwd_test.sh` enters retail `battle.bin` from an unrelated cwd and runs it for the 35-second regression window (D5) |
 
 Executed functions by class:
 
@@ -137,8 +137,8 @@ found-and-fixed case: [port/RETAIL_DIVERGENCES.md](port/RETAIL_DIVERGENCES.md).
 | D2 | menu `func_801CD710` | retail returns 0 when the case handler returns nonzero; the handlers (`func_801CD2AC` / `CC6D8` / `CB304` / `CBD90`) have no port body, so the result is not used | partly fixed (433db88e) |
 | D3 | slus `MenuExecute` debug branch | the developer KernelMenu route reserves/loads nothing where retail reserves the heap top for two overlays (the port runs them natively) | by design for that developer-only route; retail bytes unchanged |
 | D4 | CD / movies | XA ADPCM audio sectors (read mode 0x200, 2340-byte sectors) are refused (fail-closed), so XA audio is not played | open: needs the XA sector path in the platform layer |
-| D5 | battle | the tested battle stops after about 694,700 retail instructions at an unresolved native call (0x80044bd0) | open: battle native-call bridge incomplete |
-| D6 | title | in the headless title smoke, Circle does not interrupt the attract movie, so the new-game chain is not reached there | open (the chain's own runner, `run_title_newgame_chain.sh`, passes) |
+| D5 | static data / battle | when launched outside the project root with `XENO_DATA_DIR`, the loader left main-exe `.rodata` / `.sdata` zero-filled; battle then stopped in DrawOTag | fixed: shared disc-layer search order; `run_static_data_cwd_test.sh` and `run_static_data_package_test.sh` |
+| D6 | title test harness | the input schedule used physical button bits while documented as game button bits, so Circle did not interrupt the attract movie in the smoke | fixed: map-layout button translation; current smoke log has ordered markers through Lahan, but its wrapper exited 143 before writing the final summary, so the full smoke verdict is unverified |
 | D7 | world map | runs hand-written `wm_*` C rather than the retail overlay code (107 world_map functions have byte-exact C now; the port calls none of them) | open: switch batches below |
 | D8 | missing bodies | 72 retail functions still have only a generated logging stub, which returns without retail behaviour; 18 of them have matched C that the port does not link | open |
 
@@ -155,8 +155,8 @@ entry from play, save/load via the memory card UI). Asset replacement for
 textures and sound samples is covered by tests only through the identity
 mod on boot; streamed-file replacement has a live test.
 
-**Divergence count: 8 known divergences (D1–D8) plus 3 unsupported options
-(U1–U3). A further 373 matched functions run port bodies of unproven
+**Divergence count: 8 tracked items (D1–D8; D5 and D6 fixed, D3 by design,
+the others open or partly fixed) plus 3 unsupported options (U1–U3). A further 373 matched functions run port bodies of unproven
 equivalence.**
 
 ## Switching shadowing bodies to the matched C
