@@ -89,7 +89,7 @@ Routes (coverage build, retail disc):
 |---|---|
 | R1 title | boot → title map 490 → interrupt attract → title menu → New Game → prologue map 4 → Lahan map 2 (`run_title_newgame_smoke.sh`, 68 captures; passed 2026-09-29) |
 | R2 field | `XENO_FIELD_TEST=1` developer field entry, 60 s |
-| R3 field → battle | `XENO_FIELD_TEST=1 XENO_FIELD_MAP=1`, battle 1 via `XENO_BATTLE_WARP_FILE`; the `claude/field` binary from `2ea6fce5` still stops around 694,700 instructions when launched outside its root, while the `claude/port` D5 binary passes `run_static_data_cwd_test.sh` for 90 seconds from a fresh working directory |
+| R3 field → battle | `XENO_FIELD_TEST=1 XENO_FIELD_MAP=1`, battle 1 via `XENO_BATTLE_WARP_FILE`; `run_static_data_cwd_test.sh` enters retail `battle.bin` from an unrelated cwd and runs it for the 35-second regression window (D5) |
 
 Executed functions by class:
 
@@ -188,7 +188,7 @@ mod on boot; streamed-file replacement has a live test.
 
 **Known-divergence list: 8 tracked items (D1–D8; D1, D5 and D6 fixed, D3 by design,
 the others open or partly fixed), plus 3 unsupported options (U1–U3). A
-further 267 matched functions run port bodies of unproven equivalence.**
+further @SHADOWS@ matched functions run port bodies of unproven equivalence.**
 
 ## Switching shadowing bodies to the matched C
 

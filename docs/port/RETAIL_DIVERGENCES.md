@@ -109,3 +109,14 @@ them (they're still INCLUDE_ASM in retail); the port bodies are unchanged.
 | `func_801C81E0` (menu angle/slope) | port fixed in 281aa39f: the port arm returned 0x100 on a zero divisor; the retail body now runs, with MENU_DIV giving the R3000 divide-by-zero result (-1, or 1 when the dividend is negative) | rom-check 10/10; full menu test set |
 | `func_801C8EE8`, `func_801D3B00` | port fixed in 281aa39f: the port arms skipped work when unk32C / pManager / windowParameters[i] was NULL. The retail body now runs, with those pointers going through MENU_GUEST_PTR (NULL reads guest address 0) | card_scan_state and window_open tests (retargeted mutants all rejected); rom-check 10/10 |
 | `func_801DBDB4` (inventory scroll pages) | kept as a one-line port seam: with an empty bag retail reads `last` from an uninitialised register; the port initialises it to 0 (the one-page layout). Initialising it on PSX changes the codegen | rom-check 10/10 |
+
+## Port correctness bugs found and fixed (2026-09-28/29, port audit)
+
+Functional breaks in port-owned code, more severe than a behaviour mismatch.
+
+| Bug | Effect | Cause | Fix / verification |
+| --- | --- | --- | --- |
+| Main-exe static data zero-filled outside the repo root | Any run whose working directory was not the repo root or build_native (the normal case for an installed game) with `XENO_DATA_DIR` set lost SLUS_006.64's .rodata/.sdata. The first battle stopped in DrawOTag after ~694,700 instructions (the OT sentinel 0x8005698C read 0 instead of tag 0x04FFFFFF), and anything else reading main-exe data got zeros | `PsxMemory_LoadStaticData` searched only `XENO_SLUS` and cwd-relative paths | b1be8e8f: uses the disc layer's resolver (`XENO_DATA_DIR`, ..., and now `<exe dir>/disc/`, `<exe dir>/` for installs). `run_static_data_cwd_test.sh` runs from a temp directory and warps into battle 1 |
+| exit() on a second world-map session in one visit | Revisiting the world map inside one visit (a mode change that keeps the map) killed the process | The pool stage refused the pointer the previous session left set (retail func_8009766C allocates unconditionally), and a dozen setup stages refused a second run | 592fdef3: retail allocation, stage guards reset per session. `run_world_map_second_session_test.sh` |
+| World-map exits could start the field at a stale destination | Ten mode teardowns wrote map/entrance/heading (D_8006F94E/F954/F950) to guest RAM only; FieldMain reads the host g_GameState | Two copies of g_GameState (guest image vs host blob) | fa79d217: one store for both copies (`world_map_gamestate.h`). `run_world_map_gamestate_sync_test.sh` |
+| World position missing from saves | func_8008E034 / func_8008DFF4 kept the world position (g_GameState+0x182C..) in the guest copy only | as above | fa79d217 |
