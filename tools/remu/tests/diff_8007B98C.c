@@ -89,9 +89,9 @@ static int check_one(remu_t *m, uint32_t entry, opfn fn, int which,
 int main(void) {
     remu_t *m = remu_create();
     if (!m) { printf("FAIL create\n"); return 1; }
-    uint32_t e16 = remu_load_s(m, "asm/battle/matchings/main22/func_8007B98C.s");
-    uint32_t e32 = remu_load_s(m, "asm/battle/matchings/main22/func_8007B9C8.s");
-    uint32_t e816 = remu_load_s(m, "asm/battle/matchings/main22/func_8007BA04.s");
+    uint32_t e16 = remu_load_s(m, "asm/battle/matchings/main22_q1/func_8007B98C.s");
+    uint32_t e32 = remu_load_s(m, "asm/battle/matchings/main22_q1/func_8007B9C8.s");
+    uint32_t e816 = remu_load_s(m, "asm/battle/matchings/mainasm_BF14/func_8007BA04.s");
     if (e16 != 0x8007B98Cu || e32 != 0x8007B9C8u || e816 != 0x8007BA04u) {
         printf("FAIL load\n");
         return 1;

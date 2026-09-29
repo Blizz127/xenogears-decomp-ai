@@ -6,14 +6,31 @@
  * 0 (host/port/tests) compiles every run. */
 #define BATTLE_SUB(n) (BATTLE_TU_SUB == 0 || BATTLE_TU_SUB == (n))
 
-#ifndef XENO_PC_PORT
 extern u8 D_800D3420[];
-#endif
-#ifndef XENO_PC_PORT
 extern u8 D_800D3410[];
-#endif
+extern u8 D_800D343F;
+extern u8 D_800D342E;
+
 #ifndef XENO_PC_PORT
-extern u8 D_800D3430[];
+static __inline__ u16* BattleCopyRow16(s32 idx) {
+    register u16* base asm("$4");
+    u32 offset = (idx & 0xFF) << 6;
+    base = (u16*)D_800D3420;
+    return (u16*)((u8*)base + offset);
+}
+static __inline__ u32* BattleCopyRow32(s32 idx) {
+    register u32* base asm("$4");
+    u32 offset = (idx & 0xFF) << 6;
+    base = (u32*)D_800D3410;
+    return (u32*)((u8*)base + offset);
+}
+#else
+static __inline__ u16* BattleCopyRow16(s32 idx) {
+    return (u16*)(D_800D3420 + ((idx & 0xFF) << 6));
+}
+static __inline__ u32* BattleCopyRow32(s32 idx) {
+    return (u32*)(D_800D3410 + ((idx & 0xFF) << 6));
+}
 #endif
 
 
@@ -21,15 +38,7 @@ extern u8 D_800D3430[];
 #if BATTLE_SUB(1)
 void func_8007B98C(u8 **pp, s32 idx) {
     u8 *p = *pp;
-#if !defined(XENO_PC_PORT)
-    register u16 *base asm("$4");
-    u16 *t;
-    u32 offset = (idx & 0xFF) << 6;
-    base = (u16 *)D_800D3420;
-    t = (u16 *)((u8 *)base + offset);
-#else
-    u16 *t = (u16 *)(D_800D3420 + ((idx & 0xFF) << 6));
-#endif
+    u16 *t = BattleCopyRow16(idx);
 
     t[p[2]] = t[p[1]];
 }
@@ -39,15 +48,7 @@ void func_8007B98C(u8 **pp, s32 idx) {
 #if BATTLE_SUB(1)
 void func_8007B9C8(u8 **pp, s32 idx) {
     u8 *p = *pp;
-#if !defined(XENO_PC_PORT)
-    register u32 *base asm("$4");
-    u32 *t;
-    u32 offset = (idx & 0xFF) << 6;
-    base = (u32 *)D_800D3410;
-    t = (u32 *)((u8 *)base + offset);
-#else
-    u32 *t = (u32 *)(D_800D3410 + ((idx & 0xFF) << 6));
-#endif
+    u32 *t = BattleCopyRow32(idx);
 
     t[p[2]] = t[p[1]];
 }
