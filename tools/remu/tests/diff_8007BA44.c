@@ -1,5 +1,5 @@
-/* Differential test: host-compiled src/battle/main22.c func_8007BA44
- * vs the retail bytes (asm/battle/nonmatchings/main22/func_8007BA44.s)
+/* Differential test: host-compiled src/battle/mainasm_BF14.c func_8007BA44
+ * vs the retail bytes (asm/battle/matchings/mainasm_BF14/func_8007BA44.s)
  * executed by remu. Fails on any behavioral mismatch.
  *
  * func_8007BA44(pp, idx): T-row = D_800D3410 + ((idx & 0xFF) << 6), p = *pp;
@@ -29,7 +29,7 @@ u8 D_800D3410[18432];
 u8 D_800D343F;
 u8 D_800D342E;
 
-#define RETAIL_S "asm/battle/matchings/main22/func_8007BA44.s"
+#define RETAIL_S "asm/battle/matchings/mainasm_BF14/func_8007BA44.s"
 #define B10 0x800D3410u
 #define PBOX 0x80181000u
 #define PBYTES (PBOX + 0x10u)

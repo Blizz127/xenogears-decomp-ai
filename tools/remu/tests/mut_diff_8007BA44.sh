@@ -8,9 +8,9 @@ src = open(sys.argv[1]).read()
 start = src.index("void func_8007BA44(")
 end = src.index("\n}\n", start)
 body = src[start:end]
-old = "((u32 *)(D_800D3410 + row))[p[2]] = *(u16 *)(D_800D3410 + 0x10 + row + (p[1] << 1));"
+old = "*(u32 *)(f2 + t_base) = val;"
 assert body.count(old) == 1, body.count(old)
-new = "((u32 *)(D_800D3410 + row))[p[1]] = *(u16 *)(D_800D3410 + 0x10 + row + (p[2] << 1));"
+new = "*(u32 *)(f1 + t_base) = val;"
 src = src[:start] + body.replace(old, new) + src[end:]
 open(sys.argv[2], "w").write(src)
 PY

@@ -70,22 +70,7 @@ void func_8007BA04(u8 **pp, s32 idx) {
 }
 #endif /* XENO_PC_PORT */
 
-/* func_8007BA44.s: row u32 = u16: T[p[2]] = B16[p[1]] (T = D_800D3410 row,
- * B16 = row base + 0x10, p[1] scaled by 2, p[2] scaled by 4). */
-/* Not yet byte-matching: the matching build assembles retail bytes for
- * this function from its own asm segment (see config/battle.yaml).  The
- * body below is kept for the port and the differential harnesses. */
-#ifdef XENO_PC_PORT
-void func_8007BA44(u8 **pp, s32 idx) {
-    u32 row = (idx & 0xFF) << 6;
-    u8 *base = D_800D3410;
-    u32 *t = (u32 *)(base + row);
-    u16 *b16 = (u16 *)(base + 0x10 + row);
-    u8 *p = *pp;
 
-    t[p[2]] = b16[p[1]];
-}
-#endif /* XENO_PC_PORT */
 
 
 

@@ -36,30 +36,37 @@ void func_8007BA04(u8 **pp, s32 idx) {
     *(u16 *)(idx2 + t_base) = b16[idx1];
 }
 
+#endif /* !XENO_PC_PORT */
+
 extern u8 D_800D3410[];
 
-/* func_8007BA44: row u32 = u16: T[p[2]] = B16[p[1]]  (T = D_800D3410 row,
- * B16 = row base + 0x10, p[2] scaled by 4, p[1] scaled by 2). Sibling of
- * func_8007BA04 (src/battle/main22.c has the not-yet-matching port body
- * for both). Byte-exact reg alloc needs base/$3, the row+base pointer/
- * $6, and both scaled indices/$4,$2 pinned; the address adds must stay
- * plain u32 math (not pointer types) or gcc's commutative-operand
- * canonicalization picks the wrong rs/rt order for the final adds. */
+#ifdef XENO_PC_PORT
+#define BATTLE_PINNED(type, name, reg) type name
+#define BATTLE_UADDR unsigned long
+#else
+#define BATTLE_PINNED(type, name, reg) register type name asm(reg)
+#define BATTLE_UADDR u32
+#endif
+
+
+/* func_8007BA44: shared matched C body. MIPS register pins preserve retail
+ * allocation; BATTLE_UADDR keeps the same 32-bit arithmetic on MIPS and
+ * pointer-width arithmetic in host differential builds. */
 void func_8007BA44(u8 **pp, s32 idx) {
-    register u8 *base asm("$3");
-    register u32 t_base asm("$6");
-    register u32 f2 asm("$4");
-    register u32 f1 asm("$2");
+    BATTLE_PINNED(u8 *, base, "$3");
+    BATTLE_PINNED(BATTLE_UADDR, t_base, "$6");
+    BATTLE_PINNED(u32, f2, "$4");
+    BATTLE_PINNED(u32, f1, "$2");
     u32 row;
-    u32 temp;
+    BATTLE_UADDR temp;
     u8 *p;
-    u32 b16;
+    BATTLE_UADDR b16;
     u16 val;
 
     row = (idx & 0xFF) << 6;
     base = D_800D3410;
-    t_base = (u32)base + row;
-    temp = (u32)base + 0x10;
+    t_base = (BATTLE_UADDR)base + row;
+    temp = (BATTLE_UADDR)base + 0x10;
     p = *pp;
     b16 = row + temp;
     f2 = p[2];
@@ -69,5 +76,3 @@ void func_8007BA44(u8 **pp, s32 idx) {
     val = *(u16 *)(f1 + b16);
     *(u32 *)(f2 + t_base) = val;
 }
-
-#endif
