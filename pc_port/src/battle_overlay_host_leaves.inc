@@ -17,7 +17,8 @@
  *
  * UNPROVEN rather than wrong -- the sweep cannot construct a conclusive case,
  * so adoption would be unverified: func_8008AA40, func_8008AB94, both hitting
- * "unresolved native call target=0x80028470".
+ * "unresolved native call target=0x80028470"; func_80076A10 and
+ * func_80076A6C call func_8002675C, which is not yet linked as a real body.
  */
     "func_80079934",
     "func_80089B50",
@@ -140,8 +141,6 @@
     "func_8007FB70",
     "func_8007FBE0",
     "func_8007FDEC",
-    "func_80076A10",
-    "func_80076A6C",
     "func_80076AC8",
     "func_80076B00",
     "func_80076B68",
