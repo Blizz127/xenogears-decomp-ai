@@ -32,11 +32,6 @@ static void m13m_sh(u32 address, u16 value)
     memcpy(PSX_ADDR(address), &value, sizeof(value));
 }
 
-static void m13m_sw(u32 address, u32 value)
-{
-    memcpy(PSX_ADDR(address), &value, sizeof(value));
-}
-
 static u32 m13m_sra12(u32 bits)
 {
     u32 shifted = bits >> 12u;
@@ -55,19 +50,7 @@ static u32 m13m_slot(s32 slot_index)
 #endif
 }
 
-s32 wm_80080900(s32 slot_index)
-{
-    u32 slot = m13m_slot(slot_index);
-
-#if defined(W34N89_MUTANT_WRONG_RESET_SOURCE)
-    m13m_sw(slot + 0x28u, m13m_lw(WM_M13M_RESET_Z));
-#else
-    m13m_sw(slot + 0x28u, m13m_lw(WM_M13M_RESET_X));
-#endif
-    m13m_sw(slot + 0x2Cu, m13m_lw(WM_M13M_RESET_Y));
-    m13m_sw(slot + 0x30u, m13m_lw(WM_M13M_RESET_Z));
-    return 1;
-}
+/* 0x80080900 (init) is the matched C func_80080900 (src/world_map/main.c). */
 
 s32 wm_80080944(s32 slot_index)
 {

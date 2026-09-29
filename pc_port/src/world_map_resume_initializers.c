@@ -162,6 +162,16 @@ static void resume_model_packets(u32 record, u32 packets, u32 count)
     memcpy(PSX_ADDR(U32(record + 0x4Cu)),
            PSX_ADDR(U32(record + 0x48u)), count * 0x28u);
 }
+/* Entry for the matched C (func_800879E0 in src/world_map/main.c; 0x80087904
+ * itself is not matched yet): the record arrives as a host pointer into
+ * g_PsxRam (the port view of D_8009C620), the packet buffer as the guest
+ * address read from the record. */
+void func_80087904(void* record, s32 packets, u16 count, s32 unused)
+{
+    (void)unused;
+    resume_model_packets(PsxMemory_GuestAddr(record), (u32)packets, count);
+}
+
 s32 wm_800879E0(s32 index)
 {
     (void)index;

@@ -11,5 +11,7 @@
 #include "common.h"
 
 void wm_8008BFD4(u16 tag, u32 src_vec, u16 half2, s16 sh_val);
+/* Entry for the matched C callers (host pointer to the vector). */
+void func_8008BFD4(s32 tag, s32 src_vec_host, s32 half2, s32 sh_val);
 
 #endif

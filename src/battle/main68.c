@@ -19,22 +19,25 @@ void func_800A429C(void *arg0);
 
 #ifndef XENO_PC_PORT
 
-#ifndef XENO_PC_PORT
+#endif
+/* Shared by the matching build and the port (matched C). */
 s16 func_800A3490(s16 arg0, s16 arg1, s32 arg2) {
     return (s16) (arg2 + ((s32) (rsin(arg0) + 0x1000) / arg1));
 }
-#endif
+#ifndef XENO_PC_PORT
 
 INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A3514);
 
-#ifndef XENO_PC_PORT
+#endif
+/* Shared by the matching build and the port (matched C). */
 s16 func_800A3578(s16 arg0, s16 arg1, s32 arg2) {
     return (s16) (arg2 - (arg0 / arg1));
 }
-#endif
-
-
 #ifndef XENO_PC_PORT
+
+
+#endif
+/* Shared by the matching build and the port (matched C). */
 s16 func_800A35C8(s16 arg0, s16 arg1, s16 arg2) {
     s16 temp_v0;
     s16 var_v1;
@@ -46,7 +49,7 @@ s16 func_800A35C8(s16 arg0, s16 arg1, s16 arg2) {
     }
     return var_v1;
 }
-#endif
+#ifndef XENO_PC_PORT
 
 INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A3640);
 INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A3E98);
@@ -102,23 +105,11 @@ static s32 effect_divide(s32 numerator, s16 divisor) {
     return numerator / divisor;
 }
 
-s32 func_800A3490(s16 phase, s16 divisor, s16 base) {
-    return (s16)(base + effect_divide(rsin(phase) + 0x1000, divisor));
-}
-
 s32 func_800A3514(s16 phase, s16 divisor, s16 base) {
     s16 value = (s16)(base + effect_divide(phase, divisor));
     return value < 0x21 ? value : -1;
 }
 
-s32 func_800A3578(s16 phase, s16 divisor, s16 base) {
-    return (s16)(base - effect_divide(phase, divisor));
-}
-
-s32 func_800A35C8(s16 phase, s16 divisor, s16 base) {
-    s16 value = (s16)(0x20 - effect_divide(phase, divisor));
-    return value < base ? base : value;
-}
 #endif
 
 

@@ -913,8 +913,6 @@ PORT_SOURCES=(
     pc_port/src/world_map_callback_92234.c
     pc_port/src/world_map_callback_92be4.c
     pc_port/src/world_map_callback_92df8.c
-    pc_port/src/world_map_callback_71a50.c
-    pc_port/src/world_map_callback_87710.c
     pc_port/src/world_map_callback_87734.c
     pc_port/src/world_map_callback_7756c.c
     pc_port/src/world_map_callback_76a14.c

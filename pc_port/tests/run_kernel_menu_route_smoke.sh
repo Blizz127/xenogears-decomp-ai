@@ -26,15 +26,16 @@ for need in gdb; do command -v "$need" >/dev/null || { echo "KMENU NOT_RUN missi
 line=$(grep -n 'pBuf0 = HeapAlloc(0x4, 0x1);' src/slus_006.64/system/menu.c | head -1 | cut -d: -f1)
 [ -n "$line" ] || { echo "KMENU FAIL overlay-load statement not found in menu.c"; exit 1; }
 
-# CONFIRM pulses (2 frames on / 18 off) once the debug page is up.  The pad
-# schedule is physical: the USA layout ControllerInit installs turns the
-# physical Cross (0x40) into the game's internal Circle = MENU_INPUT_CONFIRM.
+# CONFIRM pulses (2 frames on / 18 off) once the debug page is up.  Schedule
+# values are GAME buttons (XENO_PAD_TEST_INPUT presses the physical button the
+# active layout maps to them): game Circle (0x20) = MENU_INPUT_CONFIRM, which
+# under the retail USA layout is the physical Cross.
 schedule="0:0"
 # Start well after the forced KernelMenu select (~30 frames after MainLoop,
-# about frame 440): a Cross while the KernelMenu is still up would confirm
+# about frame 440): a confirm while the KernelMenu is still up would confirm
 # its default entry (Field) instead.  XENO_KMENU_CONFIRM_FROM overrides.
 from="${XENO_KMENU_CONFIRM_FROM:-900}"
-for f in $(seq "$from" 20 $((from + 2000))); do schedule+=",$f:0x40,$((f + 2)):0"; done
+for f in $(seq "$from" 20 $((from + 2000))); do schedule+=",$f:0x20,$((f + 2)):0"; done
 
 cat > "$OUT/gdb.cmds" <<GDB
 set pagination off

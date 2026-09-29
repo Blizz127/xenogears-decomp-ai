@@ -18,6 +18,8 @@ COMMON=(
 )
 
 mkdir -p "$OUT"
+source "$ROOT/pc_port/tests/lib/world_map_matched.sh"
+COMMON+=("$(world_map_matched_obj "$OUT")")
 
 check_slice() {
   local lo="$1"
@@ -69,11 +71,10 @@ run_regime o0 -O0
 run_regime o2 -O2
 run_regime ubsan -O2 -fsanitize=undefined -fno-sanitize-recover=undefined
 
-run_mutant m1 -DW34N110_MUTANT_WRONG_INIT_RETURN init.return
 run_mutant m2 -DW34N110_MUTANT_WRONG_LATCH_VALUE update.latch_gate
 run_mutant m3 -DW34N110_MUTANT_KEEP_LATCH update.latch_clear
 run_mutant m4 -DW34N110_MUTANT_SKIP_RESET update.order
 run_mutant m5 -DW34N110_MUTANT_WRONG_POSITION update.position
 run_mutant m6 -DW34N110_MUTANT_SINGLE_DRAIN update.drain_loop
 
-echo "W34N110 MODE17 TRANSITION CERTIFICATE PASS: O0/O2/UBSan; M1-M6 detected; strict warnings clean"
+echo "W34N110 MODE17 TRANSITION CERTIFICATE PASS: O0/O2/UBSan; M2-M6 detected (M1 targeted the retired wm_800834D0; 0x800834D0 now runs the matched C); strict warnings clean"

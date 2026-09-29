@@ -89,7 +89,7 @@ static void test_initializer(void)
     write32(SLOT + 0x24u, UINT32_C(0xA5A5A5A5));
     write32(SLOT + 0x34u, UINT32_C(0x5A5A5A5A));
 
-    check(wm_80080900(SLOT_INDEX) == 1, "init.return");
+    check(func_80080900(SLOT_INDEX) == 1, "init.return");
     check(read32(SLOT + 0x28u) == UINT32_C(0x00123000) &&
           read32(SLOT + 0x2Cu) == UINT32_C(0xFFFED000) &&
           read32(SLOT + 0x30u) == UINT32_C(0x00456000),
