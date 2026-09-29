@@ -117,7 +117,7 @@ only; only the interpreter itself appears, as shim.
 
 ### Port bodies shadowing matched C
 
-294 port bodies shadow 291 byte-exact functions
+291 port bodies shadow 288 byte-exact functions
 ([port/shadowing_matched_c.tsv](port/shadowing_matched_c.tsv)):
 
 | Where | Bodies |
@@ -129,6 +129,10 @@ only; only the interpreter itself appears, as shim.
 Their equivalence to retail is not proven. They are switched to the matched
 C in route-tested batches (see below). Until then each one is a potential
 divergence.
+
+The three board operations `func_8007B2C0`, `func_8007B310` and
+`func_8007B360` now share their retail-matching C bodies, with an inline
+retail/host row-address adapter. Each compiles to the exact 20 retail words.
 
 ## Known divergences (public list)
 

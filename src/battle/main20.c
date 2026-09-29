@@ -3,35 +3,37 @@
 
 #ifndef XENO_PC_PORT
 extern u8 D_800D3420[];
-#define BATTLE_D3420_ROW(index) \
-    ({ register u16* base asm("$6"); \
-       u32 offset = (u32)(index) << 6; \
-       base = (u16*)D_800D3420; \
-       (u16*)((u8*)base + offset); })
+static __inline__ u16* BattleD3420Row(u8 index) {
+    register u16* base asm("$6");
+    u32 offset = (u32)index << 6;
+    base = (u16*)D_800D3420;
+    return (u16*)((u8*)base + offset);
+}
 #else
-#define BATTLE_D3420_ROW(index) \
-    ((u16*)(D_800D3420 + ((u32)(index) << 6)))
+static __inline__ u16* BattleD3420Row(u8 index) {
+    return (u16*)(D_800D3420 + ((u32)index << 6));
+}
 #endif
 
 
 /* func_8007B2C0.s: row[p[3]] = row[p[1]] & row[p[2]] on the D_800D3420 halfword row */
 void func_8007B2C0(u8** ppBoard, u8 index) {
     u8* p = *ppBoard;
-    u16* row = BATTLE_D3420_ROW(index);
+    u16* row = BattleD3420Row(index);
 
     row[p[3]] = row[p[1]] & row[p[2]];
 }
 /* func_8007B310.s: row[p[3]] = row[p[1]] | row[p[2]] on the D_800D3420 halfword row */
 void func_8007B310(u8** ppBoard, u8 index) {
     u8* p = *ppBoard;
-    u16* row = BATTLE_D3420_ROW(index);
+    u16* row = BattleD3420Row(index);
 
     row[p[3]] = row[p[1]] | row[p[2]];
 }
 /* func_8007B360.s: row[p[3]] = row[p[1]] ^ row[p[2]] on the D_800D3420 halfword row */
 void func_8007B360(u8** ppBoard, u8 index) {
     u8* p = *ppBoard;
-    u16* row = BATTLE_D3420_ROW(index);
+    u16* row = BattleD3420Row(index);
 
     row[p[3]] = row[p[1]] ^ row[p[2]];
 }
