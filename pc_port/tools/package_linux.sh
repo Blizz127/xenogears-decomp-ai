@@ -31,8 +31,13 @@ SHORT="$(git -C "$ROOT" rev-parse --short=10 HEAD)"
 DIRTY="$(git -C "$ROOT" status --porcelain --untracked-files=no | wc -l)"
 [ "$DIRTY" -eq 0 ] || { echo "tree has uncommitted tracked changes; package a committed HEAD" >&2; exit 1; }
 STAMP="$(date -u +%Y%m%d%H%M)"
-ID="${STAMP}-${SHORT}"
-NAME="xenogears-port-${ID}"
+if [ -n "${XENO_PACKAGE_ID:-}" ]; then
+    ID="$XENO_PACKAGE_ID"
+    NAME="$ID"
+else
+    ID="${STAMP}-${SHORT}"
+    NAME="xenogears-port-${ID}"
+fi
 PKG="$OUTDIR/$NAME"
 [ ! -e "$PKG" ] || { echo "$PKG exists" >&2; exit 1; }
 mkdir -p "$PKG/bin" "$PKG/lib"
@@ -98,7 +103,7 @@ LAUNCHER
 chmod 0755 "$PKG/xenogears.sh"
 
 cat > "$PKG/version.txt" <<EOF
-xenogears-port $ID
+$ID
 commit $COMMIT
 EOF
 

@@ -16,12 +16,20 @@ if [[ "${CARD_TITLE_REAL_KROM:-0}" == 1 ]]; then
     awk '/^void\* func_801E65E4\(/ {body=1} body {print} /^}/ {body=0}' src/menu/main/misc.c > "$OUT/convert.inc"
     BASE+=(-DREAL_KROM)
     EXTRA=(pc_port/src/krom_mapping.c pc_port/src/krom_rom.c $(pkg-config --cflags --libs libcrypto) -pthread)
+elif [[ "${CARD_TITLE_NO_BIOS:-0}" == 1 ]]; then
+    awk '/^void\* func_801E65E4\(/ {body=1} body {print} /^}/ {body=0}' src/menu/main/misc.c > "$OUT/convert.inc"
+    BASE+=(-DNO_BIOS_KROM)
+    EXTRA=(pc_port/src/krom_mapping.c pc_port/src/krom_rom.c $(pkg-config --cflags --libs libcrypto) -pthread)
 fi
 for mode in O0 O2 UBSan; do
     flags=(-"$mode")
     if [[ "$mode" == UBSan ]]; then flags=(-O1 -fsanitize=undefined -fno-sanitize-recover=all); fi
     "${CC:-gcc}" "${BASE[@]}" "${flags[@]}" pc_port/tests/card_title_raster_test.c pc_port/src/battle_mips_adapter.c "${EXTRA[@]}" -o "$OUT/$mode"
-    timeout 180s "$OUT/$mode"
+    if [[ "${CARD_TITLE_NO_BIOS:-0}" == 1 ]]; then
+        env -u XENO_BIOS timeout 180s "$OUT/$mode"
+    else
+        timeout 180s "$OUT/$mode"
+    fi
 done
 cp "$OUT/raster.inc" "$OUT/good.inc"
 for mutant in wrong-card-offset byte-order short-glyph wrong-row-stride wrong-index-stride wrong-limit no-clear; do

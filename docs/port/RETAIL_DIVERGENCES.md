@@ -4,6 +4,16 @@ Found while matching menu.bin and auditing the port. In each case the retail
 build compiles its byte-matching body under `#ifndef XENO_PC_PORT`; port fixes
 and their evidence are tracked in the resolutions below.
 
+## Runtime font resource
+
+The USA build reaches PS1 KROM for two-byte glyphs used by memory-card title
+rendering (`func_801E65E4`) and field text (`func_800ABFDC`). The port's
+default reads no BIOS: it converts Shift-JIS to the JIS grid and uses the
+bundled public-domain Jiskan 16 bitmap data in the same 16x16 layout. Glyph
+pixels can differ from Sony's SCPH-5500 KROM. `XENO_BIOS` explicitly restores
+the verified SCPH-5500 font provider for users who supply that BIOS. Source,
+license status, and checksum are in `pc_port/font_data/README.md`.
+
 | Function (menu.bin) | Retail behaviour | Port behaviour | Suspected impact |
 | --- | --- | --- | --- |
 | `func_801D0E20` | `for (i = 7; i >= 0; i--) {} return i;` returns -1 | `for (i = 6; ...) return i + 1;` returns 0 | None found: both callers ignore the result (it's a spin loop). Worth checking again if a caller starts using it. |

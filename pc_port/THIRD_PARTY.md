@@ -2,6 +2,8 @@
 
 The port (`pc_port/`) ships no Sony Psy-Q SDK code and no game data. Its PSX
 hardware layer is PsyCross, plus the port's own `pc_port/src/psyq_compat.c`.
+The default KROM fallback embeds Jiskan 16 public-domain glyph data; see
+[`font_data/README.md`](font_data/README.md) for its source and checksum.
 
 ## PsyCross
 

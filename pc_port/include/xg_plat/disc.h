@@ -3,9 +3,9 @@
  * Meaning-level access to "the user's copy of the game": the Disc 1 image
  * (raw MODE2/2352 BIN, found via XENO_DISC or disc/), the retail files the
  * matching build extracts from it (SLUS_006.64, field.bin, ..., found via
- * XENO_DATA_DIR / XENO_SLUS or disc/) and the console BIOS (XENO_BIOS or
- * disc/scph5500.bin).  Nothing from the game is shipped; everything is
- * read from the user's files and checked against the retail hashes.
+ * XENO_DATA_DIR / XENO_SLUS or disc/). A Sony BIOS is optional and is used
+ * only when explicitly selected with XENO_BIOS. Nothing from the game is
+ * shipped; retail data is read from the user's files and checked against hashes.
  *
  * Layers (see pc_port/README.md "Port layers"): game/port code calls these
  * functions; the default backend (pc_port/src/plat/xg_plat_disc_default.h,

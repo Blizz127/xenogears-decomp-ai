@@ -18,12 +18,13 @@ WHAT YOU NEED (put them all in one folder)
   shop_menu.bin                   55,296  7890e14bcabddcf85368de10783ecff8daa166dc5ac254e06db5e27959cab4cf
   member_change_menu.bin          26,624  3b9e2b890c27ae0de97fe343ac75cd35c05fe7f9605ae387d2166da0be78109c
   world_map.bin                  180,422  4c15fd32b3a03d7cd5ea4403dcaabc70abaf99b6aaca65d63d6866803edaac70
-  scph5500.bin                   524,288  11052b6499e466bbf0a709b1f9cb6834a9418e66680387912451e971cf8a1fef
-                                          (PS1 BIOS, for the kanji font ROM)
   SLUS_006.64 and the *.bin overlays are files inside the disc image; the
   decomp repository's tools/scripts/extract_exe.py and extract_overlays.py
   write them from disc1.bin. The port checks every hash on start and stops
   with a message naming any file that is missing or different.
+  No Sony BIOS is required. The port includes the public-domain Jiskan 16
+  bitmap font for Japanese glyphs. XENO_BIOS can explicitly opt into a local
+  SCPH-5500 font ROM if desired.
 
 RUNNING
   ./xenogears.sh /path/to/folder      first run: remembers the folder

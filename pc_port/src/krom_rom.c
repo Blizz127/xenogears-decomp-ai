@@ -8,9 +8,39 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include "../include/xg_plat/disc.h"
 
 struct PcPortKromRom { uint8_t bytes[0x80000]; };
+
+/* Jiskan 16 is a public-domain JIS X 0213 bitmap font. Its 94x94 JIS plane
+ * is kept in the same 16-row, two-byte-per-row shape as PS1 KROM glyphs.
+ * See pc_port/font_data/README.md for provenance and regeneration. */
+static const uint8_t jiskan16[94 * 94][32] = {
+#include "krom_jiskan16.inc"
+};
+
+static const uint8_t *jiskan16_glyph(uint32_t code) {
+    unsigned lead = (code >> 8) & 0xff, trail = code & 0xff;
+    unsigned row, cell;
+    if (lead >= 0x81 && lead <= 0x9f)
+        row = (lead - 0x81) * 2 + 0x21;
+    else if (lead >= 0xe0 && lead <= 0xef)
+        row = (lead - 0xc1) * 2 + 0x21;
+    else
+        return (const uint8_t *)(intptr_t)-1;
+    if (trail >= 0x40 && trail <= 0x7e)
+        cell = trail - 0x1f;
+    else if (trail >= 0x80 && trail <= 0xfc)
+        cell = trail - 0x20;
+    else
+        return (const uint8_t *)(intptr_t)-1;
+    if (cell > 0x7e) {
+        ++row;
+        cell -= 0x5e;
+    }
+    if (row < 0x21 || row > 0x7e || cell < 0x21 || cell > 0x7e)
+        return (const uint8_t *)(intptr_t)-1;
+    return jiskan16[(row - 0x21) * 94 + cell - 0x21];
+}
 
 PcPortKromRomResult PcPortKromRomLoad(const char *path, PcPortKromRom **out) {
     static const uint8_t expected[32] = {
@@ -71,16 +101,13 @@ static pthread_once_t font_once = PTHREAD_ONCE_INIT;
 /* Process-lifetime ownership: published spans must never be invalidated by
  * another lookup or by shutdown ordering between game/render threads. */
 static PcPortKromRom *font_rom;
+static int use_bios_font;
 static void load_font_rom(void) {
-    /* An explicit XENO_BIOS is authoritative (no fallback); otherwise look
-     * for scph5500.bin next to the user's other files (xg_plat/disc.h).
-     * The SHA-256 check below applies either way. */
-    static char resolved[1024];
+    /* The game-data-only default embeds the public-domain Jiskan font. A BIOS
+     * is used only when the owner explicitly opts in with XENO_BIOS. */
     const char *path = getenv("XENO_BIOS");
-    if (!path || !*path) {
-        path = "disc/scph5500.bin";
-        if (xg_plat_data_file_path("scph5500.bin", resolved, sizeof resolved)) path = resolved;
-    }
+    if (!path || !*path) return;
+    use_bios_font = 1;
     PcPortKromRomResult result = PcPortKromRomLoad(path, &font_rom);
     if (result != PC_PORT_KROM_ROM_OK) {
         fprintf(stderr, "KROM_UNRESOLVED load=%d path=%s\n", result, path);
@@ -92,6 +119,15 @@ const uint8_t *PcPortKromFont(uint32_t code, size_t length) {
     if (pthread_once(&font_once, load_font_rom) != 0) {
         fputs("KROM_UNRESOLVED initialization\n", stderr);
         abort();
+    }
+    if (!use_bios_font) {
+        const uint8_t *glyph = jiskan16_glyph(code);
+        if (glyph == (const uint8_t *)(intptr_t)-1) return glyph;
+        if (length > 32) {
+            fprintf(stderr, "KROM_UNRESOLVED font length=%zu\n", length);
+            abort();
+        }
+        return glyph;
     }
     const uint8_t *span;
     PcPortKromResult result = PcPortKromRomResolve(font_rom, code, NULL, length, &span);

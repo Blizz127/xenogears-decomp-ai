@@ -24,11 +24,11 @@ void PcPortKromRomFree(PcPortKromRom *rom);
 PcPortKromResult PcPortKromRomResolve(const PcPortKromRom *rom, uint32_t code,
                                     const uint8_t *selector, size_t length,
                                     const uint8_t **span);
-/* Native code-only provider: immutable ROM is loaded once from XENO_BIOS,
- * or disc/scph5500.bin when unset. Returned bytes last for process lifetime.
- * BIOS rejection returns (const uint8_t*)(intptr_t)-1, never NULL.
- * Load errors, unknown selector-dependent mappings, and non-ROM spans abort
- * with KROM_UNRESOLVED instead of inventing glyphs or guest stack state.
- * Set the environment before any call; initialization is thread-safe. */
+/* Native code-only provider: the default font is bundled public-domain
+ * Jiskan 16 data and needs no BIOS. XENO_BIOS opts into the verified SCPH-5500
+ * KROM provider instead. Returned bytes last for process lifetime. A rejected
+ * code returns (const uint8_t*)(intptr_t)-1, never NULL. Explicit BIOS load
+ * errors, unknown selector-dependent mappings, and non-ROM spans abort with
+ * KROM_UNRESOLVED. Set XENO_BIOS before any call; initialization is thread-safe. */
 const uint8_t *PcPortKromFont(uint32_t code, size_t length);
 #endif

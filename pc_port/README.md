@@ -142,20 +142,20 @@ toolbar and F10/F12 queue them, and `cheats.console = on` reads them from stdin.
 
 ## Building (Linux)
 
-The native memory-card title font provider reads a user-supplied SCPH-5500
-BIOS from `XENO_BIOS`, or `disc/scph5500.bin` when unset. It requires exactly
-512 KB with SHA-256
+The port runs from the game discs without a Sony BIOS. Memory-card titles and
+field glyph strips use the bundled public-domain Jiskan 16 bitmap font, mapped
+from Shift-JIS codes to the same 16x16 KROM glyph shape. Its pixels can differ
+from Sony's font; details and source are in `font_data/README.md`. Setting
+`XENO_BIOS` explicitly opts into the SCPH-5500 KROM path, which requires the
+user's 512 KB BIOS with SHA-256
 `11052b6499e466bbf0a709b1f9cb6834a9418e66680387912451e971cf8a1fef`.
-The verified copy is retained for the process lifetime. Missing/wrong BIOS
-data or selector-dependent codes without guest state stop with
-`KROM_UNRESOLVED`; they are not replaced by fabricated glyphs. This path is
-wired for menu titles and field glyph strips. Natural in-game rendering
-acceptance remains separate from the provider and upload-buffer tests.
+The verified copy is retained for the process lifetime. An explicitly chosen
+but invalid BIOS stops with `KROM_UNRESOLVED`.
 
 Requires `cmake`, a C/C++ compiler, and dev packages for **SDL2**, **OpenAL**,
 and **OpenGL**. The full `build_port.sh` driver also requires **OpenSSL 3**
-development files (`libssl-dev` on Ubuntu) for pinned BIOS verification.
-No BIOS payload is embedded in the build. On the immutable Bazzite host, build inside a container or a
+development files (`libssl-dev` on Ubuntu) for the optional `XENO_BIOS` path.
+The BIOS payload is not embedded in the build. On the immutable Bazzite host, build inside a container or a
 `distrobox` (Ubuntu shown):
 
 ```bash
