@@ -176,12 +176,15 @@ void func_80094C78(void) {
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80094D24);
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80094EE4);
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80095690);
+#endif
+#ifndef XENO_PC_PORT
 extern u8 D_800CCD3E[];
-extern void func_8009AC48(u8 actor, s32 a1);
 extern u8* D_800C3E34;
 extern u8 D_800D2C88[];
 extern s32 D_800D2C54[];
 extern u16 D_800D2C9E;
+#endif
+extern void func_8009AC48(u8 actor, s32 a1);
 
 typedef struct {
     u8 pad0[0x4E];
@@ -215,6 +218,7 @@ void func_800957D8(void) {
     D_800D2C9E |= 1 << i;
 }
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_800958D8);
 void func_80095A78(void) {
     u8* act = D_800C3DFC;
