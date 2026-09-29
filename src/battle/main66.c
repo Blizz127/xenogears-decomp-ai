@@ -2,7 +2,23 @@
 
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/main66", func_800A22E8);
+/* Pool20 (base, firstFree, count) is typedef'd just after this site, so the
+ * fields are reached by offset: +0 base, +4 firstFree, +6 count. */
+void func_800A22E8(u8* pool) {
+    u8 pad[1];
+    u8* slot;
+    s32 i;
+
+    if (*(u8**)pool != NULL) {
+        slot = *(u8**)pool;
+        *(u16*)(pool + 4) = 0;
+        for (i = 0; i < *(u16*)(pool + 6); i++) {
+            *slot = 0;
+            slot += 20;
+        }
+    }
+}
+
 #endif
 #ifndef XENO_PC_PORT
 /* A pool of 20-byte slots: base, first free index, slot count. */
@@ -49,7 +65,31 @@ s32 func_800A23E8(Pool20* pool, u8* slot) {
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/battle/nonmatchings/main66", func_800A2434);
 INCLUDE_ASM("asm/battle/nonmatchings/main66", func_800A2704);
-INCLUDE_ASM("asm/battle/nonmatchings/main66", func_800A2ACC);
+/* BattleNode7C is typedef'd just after this site, so the 0x7C-byte nodes are
+ * walked by offset: +0xA count, +0x70/+0x74/+0x78 handles. */
+void func_800A2ACC(s32 ctx, u8* nodes) {
+    u8 pad[1];
+    s32 i;
+    s32 count = *(u16*)(nodes + 0xA);
+    u8** h;
+
+    for (i = 0; i < count; i++, nodes += 0x7C) {
+        h = (u8**)(nodes + 0x70);
+        if (h[0] != NULL && h[0][3] != 0xFF) {
+            func_800A23E8(ctx, h[0]);
+            h[0] = NULL;
+        }
+        if (h[1] != NULL && h[1][3] != 0xFF) {
+            func_800A23E8(ctx, h[1]);
+            h[1] = NULL;
+        }
+        if (h[2] != NULL && h[2][3] != 0xFF) {
+            func_800A23E8(ctx, h[2]);
+            h[2] = NULL;
+        }
+    }
+}
+
 typedef struct BattleNode7C {
     struct BattleNode7C* parent;
     u8 unk4[3];

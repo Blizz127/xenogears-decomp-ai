@@ -39,9 +39,62 @@ void func_80079270(u8 a, u8 b) {
     func_800785D4(a, b);
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/main12", func_800792F8);
+extern void FontPrintf(char* fmt, ...);
+extern s32* D_8005917C;
+extern char D_8006FB08[];
+extern char D_8006FB0C[];
+extern char D_8006FB24[];
+
+/* Fatal-error screen: clear the 32 command bytes, then (unless the table at
+ * D_8005917C is empty) print the two ids forever, indenting 0..20 times. */
+void func_800792F8(u8 a, u8 b) {
+    u8 ff;
+    s32 k;
+    s32 i;
+    s32 n;
+    s32 j;
+
+    ff = 0xFF;
+    for (k = 0x8B8; k >= 0; k -= 0x48) {
+        D_800C402F[k] = ff;
+    }
+    i = 0;
+    n = 0;
+    if (*D_8005917C != -1) {
+        while (1) {
+            for (j = 0; j < n; j++) {
+                FontPrintf(D_8006FB08);
+            }
+            FontPrintf(D_8006FB0C);
+            i++;
+            FontPrintf(D_8006FB24, a, b);
+            func_800716D8();
+            if (i >= 3) {
+                i = 0;
+                if (++n >= 21) {
+                    n = 0;
+                }
+            }
+        }
+    }
+}
+
 INCLUDE_ASM("asm/battle/nonmatchings/main12", func_800793F0);
-INCLUDE_ASM("asm/battle/nonmatchings/main12", func_80079674);
+extern u8 D_800D32A1[];
+extern u8 D_800D366C;
+extern u8 D_800C400B[];
+
+void func_80079674(u8 a) {
+    if (D_800D32A1[a * 8] != 0) {
+        D_800C400B[D_800C3EAC[0x2DA] * 0x48] = a;
+        D_800C402F[D_800C3EAC[0x2DA] * 0x48] = 0x1B;
+        D_800C3EAC[0x2DA]++;
+    }
+    D_800C400B[D_800C3EAC[0x2DA] * 0x48] = a;
+    D_800C402F[D_800C3EAC[0x2DA] * 0x48] = 0xFE;
+    D_800D366C = 0;
+}
+
 extern void func_80085350(void);
 extern void func_80085388(void);
 extern void func_800716D8(void);

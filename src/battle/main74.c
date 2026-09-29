@@ -21,7 +21,35 @@ void func_800B00F4(s32 ctx) {
     func_800B00D0();
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/main74", func_800B0164);
+extern u8 D_800C37C8;
+extern u8* func_800A2330(u8* pool);
+
+/* Take (once) a pool slot for handle `index` and fill its 20-byte record. */
+void func_800B0164(u8* pool, s32 index, u8 a, u8 b, u16 p0, u16 p1, u16 p2, u16 p3, u16 p4, u16 p5, u16 p6) {
+    u8* e;
+
+    if (D_800C37C8 == 0) {
+        if (D_800C3BAC[index] == 0) {
+            D_800C3BAC[index] = (s32)func_800A2330(pool);
+        }
+        e = (u8*)D_800C3BAC[index];
+        if (e != NULL) {
+            e[0] = 1;
+            e[1] = 0;
+            e[2] = a;
+            e[3] = b;
+            *(u16*)(e + 0x4) = p0;
+            *(u16*)(e + 0x6) = p1;
+            *(u16*)(e + 0x8) = p2;
+            *(u16*)(e + 0xA) = p3;
+            *(u16*)(e + 0xC) = p4;
+            *(u16*)(e + 0xE) = p5;
+            *(u16*)(e + 0x10) = 0;
+            *(u16*)(e + 0x12) = p6;
+        }
+    }
+}
+
 INCLUDE_ASM("asm/battle/nonmatchings/main74", func_800B026C);
 INCLUDE_ASM("asm/battle/nonmatchings/main74", func_800B0AB4);
 INCLUDE_ASM("asm/battle/nonmatchings/main74", func_800B0B14);

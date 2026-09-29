@@ -27,8 +27,67 @@ INCLUDE_ASM("asm/battle/nonmatchings/main51", func_8008FE18);
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_8009023C);
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80090310);
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_800904A0);
-INCLUDE_ASM("asm/battle/nonmatchings/main51", func_8009070C);
-INCLUDE_ASM("asm/battle/nonmatchings/main51", func_8009080C);
+extern u8 D_800D2CE0[];
+extern u8* func_8008AC00(s32 size);
+extern void bzero(void* p, s32 n);
+extern s32 D_800D329C;
+extern u8* GetStringEntry(s32 table, u8 id);
+extern s32 SystemRenderStringEntry(u8* str, u8* buf, s32 w, s32 flags);
+extern void func_800769E8(s16* rect, u8* buf);
+extern s32 D_800C3EA4;
+extern u8 D_800CCB34;
+extern void func_80076C78(u8* p, s32 x, s32 y, s32 a3, s32 a4, s32 n);
+extern u_int HeapFree(void* pMem);
+
+/* Render string D_800D2CE0[b * 2 + a] into a 0x39-wide buffer, upload it at
+ * (0x3C0, 0) and set up the text sprite. */
+void func_8009070C(u8 a, u8 b) {
+    s16 r[4];
+    u8 id = D_800D2CE0[b * 2 + a];
+    u8* buf = func_8008AC00(0x39);
+    s32 n;
+
+    bzero(buf, 0x618);
+    n = SystemRenderStringEntry(GetStringEntry(D_800D329C, id), buf, 0x39, 0);
+    r[0] = 0x3C0;
+    r[2] = 0x3C;
+    r[1] = 0;
+    r[3] = 0xD;
+    func_800769E8(r, buf);
+    func_80076C78(*(u8**)(D_800C3EA4 + 0xA230) + 0x280 + *(s32*)&D_800CCB34 * 40, 0x30, 0x42, 0, 0, n & 0xFF);
+    HeapFree(buf);
+}
+
+extern u8 D_800D2CE0[];
+extern u8 D_800C3D70[];
+extern s32 D_800C3EA4;
+extern u8 D_800CCB34;
+extern void func_80090310(u8 a, u8 b);
+extern void func_8009070C(u8 a, u8 b);
+extern void func_800904A0(u8 a, u8 b);
+
+/* Show text slot (a, b): its string id comes from D_800D2CE0 (mode 0) or
+ * D_800C3D70; mode 0 with a non-zero id also renders it and flags +0x66D. */
+void func_8009080C(u8 a, u8 b, u8 mode) {
+    u8 id;
+    u8* w;
+
+    if (mode == 0) {
+        id = D_800D2CE0[b * 2 + a];
+    } else {
+        id = D_800C3D70[b * 2 + a];
+    }
+    (*(u8**)(D_800C3EA4 + 0xA230))[0x66D] = 0;
+    func_80090310(a, b);
+    if (id != 0 && mode == 0) {
+        func_8009070C(a, b);
+        func_800904A0(a, b);
+        (*(u8**)(D_800C3EA4 + 0xA230))[0x66D] = 1;
+    }
+    (*(u8**)(D_800C3EA4 + 0xA230))[0x66A] = D_800CCB34;
+    (*(u8**)(D_800C3EA4 + 0xA230))[0x66B] = 1;
+}
+
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_8009093C);
 extern s32 func_80076A10(s32, s32, s16, s16);
 extern s32 D_800C3EA4;
@@ -110,9 +169,62 @@ void func_80094C78(void) {
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80094D24);
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80094EE4);
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80095690);
-INCLUDE_ASM("asm/battle/nonmatchings/main51", func_800957D8);
+extern u8 D_800CCD3E[];
+extern void func_8009AC48(u8 actor, s32 a1);
+extern u8* D_800C3E34;
+extern u8 D_800D2C88[];
+extern s32 D_800D2C54[];
+extern u16 D_800D2C9E;
+
+typedef struct {
+    u8 pad0[0x4E];
+    u16 unk4E;
+    u8 pad50[0x2C];
+    s16 unk7C;
+    s16 pad7E;
+    s16 unk80;
+    s16 pad82;
+    s16 unk84;
+    s16 pad86;
+    s16 unk88;
+    s16 pad8A;
+    s16 unk8C;
+} BattleActorC34;
+
+void func_800957D8(void) {
+    u8 i;
+
+    if (D_800CCD3E[D_800C3E50 * 0x170] == 2) {
+        func_8009AC48(D_800C3E50, 1);
+    }
+    ((BattleActorC34*)D_800C3E34)->unk7C = 0;
+    ((BattleActorC34*)D_800C3E34)->unk80 = 0;
+    ((BattleActorC34*)D_800C3E34)->unk84 = 0;
+    ((BattleActorC34*)D_800C3E34)->unk88 = 0;
+    ((BattleActorC34*)D_800C3E34)->unk8C = 0;
+    D_800D2C88[D_800C3E50] = 2;
+    i = D_800C3E50;
+    *(s32*)((u8*)D_800D2C54 + i * 4) = ((BattleActorC34*)D_800C3E34)->unk4E * ((u8*)D_800C3DFC)[0x11] / 10;
+    D_800D2C9E |= 1 << i;
+}
+
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_800958D8);
-INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80095A78);
+void func_80095A78(void) {
+    u8* act = D_800C3DFC;
+    s8 r = func_80097964(act[0x1C], act[0x1D], *(u16*)(act + 0x1E));
+
+    if (*(u16*)((u8*)D_800C3DFC + 0xA) & 0x4000) {
+        func_800995A0(D_800C3E50, ((u8*)D_800C3DFC)[0x1D], *(u16*)((u8*)D_800C3DFC + 0x1E), 5);
+    } else {
+        func_800995A0(D_800C3E50, ((u8*)D_800C3DFC)[0x1D], *(u16*)((u8*)D_800C3DFC + 0x1E), ((u8*)D_800C3DFC)[0x11]);
+        if (r != 1) {
+            u8* b = D_800C34B0;
+
+            (b + D_800C3E50)[0x5FA0] = 6;
+        }
+    }
+}
+
 
 #ifndef XENO_PC_PORT
 void func_80095B44(void) {

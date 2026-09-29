@@ -81,7 +81,25 @@ void func_80077074(void) {
 }
 #endif
 
-INCLUDE_ASM("asm/battle/nonmatchings/main6", func_80077364);
+void func_80077364(POLY_FT4* prims, u8 index) {
+    s32 i;
+    s32 off;
+
+    for (i = 0; i < 4; i++) {
+        POLY_FT4* p = &prims[i];
+
+        SetPolyFT4(p);
+        SetShadeTex(p, 1);
+        setRGB0(p, 0xFF, 0xFF, 0xFF);
+        off = index * 0x18;
+        p->tpage = GetTPage(*(s32*)(D_800C3EA4 + off + 0xA238), 0,
+                            *(s32*)(D_800C3EA4 + off + 0xA244),
+                            *(s32*)(D_800C3EA4 + off + 0xA248));
+        p->clut = GetClut(*(s32*)(D_800C3EA4 + off + 0xA23C),
+                          *(s32*)(D_800C3EA4 + off + 0xA240));
+    }
+}
+
 INCLUDE_ASM("asm/battle/nonmatchings/main6", func_80077454);
 #endif
 

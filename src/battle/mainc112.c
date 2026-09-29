@@ -3,8 +3,67 @@
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/battle/nonmatchings/mainc112", func_800BAF48);
-INCLUDE_ASM("asm/battle/nonmatchings/mainc112", func_800BB080);
-INCLUDE_ASM("asm/battle/nonmatchings/mainc112", func_800BB13C);
+extern void func_800B14CC(u32 skip);
+extern u8 D_800C3EB0[];
+
+/* The D_800C3EB0 block as seen here: three task slots at +0x8C8C and their
+ * flags at +0x8CB8. */
+typedef struct {
+    u8 pad[0x8C8C];
+    u8* tasks[11];
+    s32 flags[3];
+} BattleTaskTable;
+
+/* Free every task in the table except `skip` whose +0x48 is clear (owner
+ * +0x6C's +0xC callback), zeroing its slot and flag. */
+void func_800BB080(s32 skip) {
+    s32 i;
+    u8* t;
+
+    for (i = 0; i != 3; i++) {
+        if (i != skip) {
+            t = ((BattleTaskTable*)D_800C3EB0)->tasks[i];
+            if (t != NULL && *(s32*)(t + 0x48) == 0) {
+                u8* o = *(u8**)(t + 0x6C);
+                (*(void (**)(u8*))(o + 0xC))(o);
+                ((BattleTaskTable*)D_800C3EB0)->tasks[i] = NULL;
+                ((BattleTaskTable*)D_800C3EB0)->flags[i] = 0;
+            }
+        }
+    }
+    func_800B14CC(skip);
+}
+
+extern void AnimScriptTick(void* obj);
+extern void func_80022CDC(void* obj);
+extern u8* D_800D3368[];
+
+/* Tick the sprite's animation (twice when +0xAC bit 6 is set) while +0x64 is
+ * live, then copy its actor's (+0x5C/+0x60/+0x64) position as 16.16. */
+void func_800BB13C(u8* task) {
+    u8 pad[8];
+    u8* o = *(u8**)(task + 4);
+    u32 hi = *(u32*)(o + 0xA8) >> 30;
+    u8* actor = D_800D3368[((*(u32*)(o + 0xAC) & 3) << 2) | hi];
+
+    if (actor != NULL) {
+        if (*(s16*)(o + 0x9E) == 0) {
+            *(s32*)(o + 0x64) = 0;
+        }
+        if (*(s32*)(o + 0x64) != 0) {
+            AnimScriptTick(o);
+            func_80022CDC(o);
+            if ((*(u32*)(o + 0xAC) >> 6) & 1) {
+                AnimScriptTick(o);
+                func_80022CDC(o);
+            }
+        }
+        *(s32*)(o + 0) = *(s32*)(*(u8**)(actor + 4) + 0x5C) << 16;
+        *(s32*)(o + 4) = *(s32*)(*(u8**)(actor + 4) + 0x60) << 16;
+        *(s32*)(o + 8) = *(s32*)(*(u8**)(actor + 4) + 0x64) << 16;
+    }
+}
+
 INCLUDE_ASM("asm/battle/nonmatchings/mainc112", func_800BB248);
 extern void WorkListRemoveTask(void *pTask);
 extern void TimerWorkListRemoveTask(void *pTask);

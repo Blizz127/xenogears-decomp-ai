@@ -3,7 +3,19 @@
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/battle/nonmatchings/mainc84", func_800B572C);
-INCLUDE_ASM("asm/battle/nonmatchings/mainc84", func_800B57E4);
+#include "psyq/libgte.h"
+
+u32 func_800B57E4(u8* s) {
+    VECTOR d;
+    VECTOR sq;
+
+    d.vx = *(s16*)(s + 0xA0) - *(s16*)(s + 0x2);
+    d.vy = *(s16*)(s + 0xA2) - *(s16*)(s + 0x6);
+    d.vz = *(s16*)(s + 0xA4) - *(s16*)(s + 0xA);
+    Square0(&d, &sq);
+    return SquareRoot0(sq.vx + sq.vz + sq.vy);
+}
+
 #endif
 #ifdef XENO_PC_PORT
 /* Coexistence: decompiled and logic-faithful, but not byte-exact yet, so the
