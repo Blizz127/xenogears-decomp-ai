@@ -124,9 +124,13 @@ INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80093578);
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_8009382C);
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_800939CC);
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80093B08);
+#endif
+
 extern void func_8007FB70(s32);
+#ifndef XENO_PC_PORT
 extern u8 D_800D2D24[];
 extern u8* D_800D2D28;
+#endif
 
 void func_8009413C(u8 idx, u8 flag) {
     if (D_800D2D24[idx] == 4) {
@@ -138,6 +142,7 @@ void func_8009413C(u8 idx, u8 flag) {
     }
 }
 
+#ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_800941A4);
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_800946F4);
 typedef struct { u8 pad[0x15A]; u8 flags; u8 pad2[0x170 - 0x15B]; } Actor170;
