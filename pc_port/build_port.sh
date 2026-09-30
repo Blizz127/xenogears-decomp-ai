@@ -705,6 +705,10 @@ apply_psycross_patch "$ROOT/pc_port/patches/psycross_present_displayed_after_vra
 # F7, L3, R3, dev-menu, focus-lost); applied last, on top of the host keys.
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_speed_source.patch" "_xeno_speed_source"
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_log_append.patch" "_xeno_log_append"
+# libetc VSync(n) for n >= 2 returned immediately, so the world map's
+# VSync(2)-paced frame driver (retail 30 world frames/s) ran at the host's
+# present rate.  Wait as retail does (SLUS Vsync 0x8004B54C).
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_vsync_retail_n.patch" "_xeno_vsync_retail_n"
 # HD-2D enhancement lane hook points (pc_port/src/hd2d): HOOK 1 post-process
 # at both present sites, HOOK 3 textured-primitive override, and the
 # XENO_PRESENT_HASH_LOG per-present CRC. Weak symbols: with no hd2d
