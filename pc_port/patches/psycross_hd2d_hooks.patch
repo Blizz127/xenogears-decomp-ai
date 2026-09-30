@@ -10,7 +10,7 @@
  
 --- a/src/PsyX_main.cpp
 +++ b/src/PsyX_main.cpp
-@@ -955,6 +955,136 @@
+@@ -955,6 +955,138 @@
  	fclose(f);
  }
  
@@ -51,6 +51,7 @@
 +static int g_xenoPresentHashUntilFrame = 0;
 +extern "C" int PcPort_PadTestInputFrame(void) __attribute__((weak));
 +
++extern "C" void PcPort_LogFlush(void) __attribute__((weak)); /* port stderr mirror (port_log.c) */
 +static void PsyX_PresentHashExit(void)
 +{
 +	fclose(g_xenoPresentHashLog);
@@ -58,6 +59,7 @@
 +	fprintf(stderr, "[present-hash] %d presents logged; exiting\n", g_xenoPresentHashCount);
 +	fflush(stdout);
 +	fflush(stderr);
++	if (PcPort_LogFlush) PcPort_LogFlush(); /* _Exit skips atexit: drain the mirror first */
 +	_Exit(0);
 +}
 +
@@ -147,7 +149,7 @@
  /* _xeno_display_present */
  int PsyX_IsSceneOpen(void)
  {
-@@ -975,6 +1105,8 @@
+@@ -975,6 +1107,8 @@
  	GR_PresentVRAMDisplay(currentDispEnv.disp.x, currentDispEnv.disp.y,
  		currentDispEnv.disp.w, currentDispEnv.disp.h,
  		currentDispEnv.isrgb24, !g_GPUDisabledState);
@@ -156,7 +158,7 @@
  	PsyX_RecordPresentedFrame();
  	PsyX_HostToolbarDraw();
  	GR_SwapWindow();
-@@ -1021,6 +1153,8 @@
+@@ -1021,6 +1155,8 @@
  	}
  	g_xenoLastPresentFromVRAM = 0;
  

@@ -25,6 +25,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
@@ -107,6 +108,21 @@ static void log_shutdown(void)
     (void)dup2(s_realErr, 2);
     (void)pthread_join(s_teeThread, NULL);
     s_teeStarted = 0;
+}
+
+/* For paths that leave with _Exit (no atexit): push what is still in the
+ * stderr pipe out to the real stderr and the log before the process goes.
+ * Bounded (~0.5 s) so a stuck reader cannot hold an exit. */
+void PcPort_LogFlush(void)
+{
+    int pending = 0, i;
+    if (!s_teeStarted) return;
+    fflush(stderr);
+    for (i = 0; i < 50; i++) {
+        if (ioctl(s_pipeRead, FIONREAD, &pending) != 0 || pending <= 0) break;
+        usleep(10000);
+    }
+    usleep(20000);   /* the reader's last write after its final read */
 }
 
 void PcPort_LogInit(void)
