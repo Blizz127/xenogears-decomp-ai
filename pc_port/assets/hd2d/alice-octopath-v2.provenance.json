@@ -1,0 +1,14 @@
+{
+  "label": "fan-made, AI-generated replacement sprite art created for this project; not from the game; characters © Square Enix",
+  "source": "pc_port/enhancements/hd2d_octopath/assets/alice-octopath-v2.png",
+  "source_png_sha256": "1995799072b8bf6c31dffe084be64623f31b96285932dfb78a50f2154c3ae0b1",
+  "format": "tightly packed RGBA8",
+  "width": 1254,
+  "height": 1254,
+  "byte_count": 6290064,
+  "sha256": "b79d759d208795a2acd1888491ec41d38998520b6b7124dc3d3796a15e3181f5",
+  "conversion": "lossless PNG decode only; no raster edits",
+  "runtime_associations": [],
+  "status": "unmapped; runtime nearest sampling and alpha-cut compatibility pending verified mapping and footprint",
+  "authored_bounds": "pc_port/enhancements/hd2d_octopath/assets/alice-octopath-v2.cells.json"
+}

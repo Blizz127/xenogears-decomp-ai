@@ -1,0 +1,167 @@
+{
+  "status": "one observed frame; native strict footprint PASS; full field identity pending",
+  "label": "fan-made, AI-generated replacement sprite art created for this project; not from the game; characters \u00a9 Square Enix",
+  "source_png_sha256": "dd531d613ee7c854f70fe683c1e3d109132feeea6ef8ea1428ca26852d141a9e",
+  "raw_rgba_sha256": "988583de635568b36c47882d3873e8e84a37e8ec025eb02159738c2f5e21a56e",
+  "source_png": "pc_port/enhancements/hd2d_octopath/assets/fei-octopath-v2.png",
+  "authored_cell": {
+    "name": "front_idle",
+    "facing": "front",
+    "authored_phase": "idle",
+    "x": 81,
+    "y": 37,
+    "width": 181,
+    "height": 301
+  },
+  "trace": "/home/blizz/release-staging/xeno-work/hd2d/field-validation-2437d5ce/TRACE/probe.txt",
+  "trace_sha256": "3f9085d10bb6602f1ce582eb12e8faaa1513b629999f1ea7a24937ef0abf0249",
+  "observed_manifest_sha256": "52bfc94bd2e1283c619ed3722abcd307428cad9f15181a1182f559068620c7a2",
+  "sample_present": 840,
+  "screen_union": [
+    146,
+    85,
+    174,
+    135
+  ],
+  "rounding": "exact rational nearest integer, ties upward, shared boundaries identical",
+  "parts": [
+    {
+      "part": 0,
+      "retail_quad": [
+        160,
+        99,
+        172,
+        99,
+        160,
+        105,
+        172,
+        105
+      ],
+      "authored_rect": [
+        172,
+        121,
+        77,
+        36
+      ],
+      "trace_line": 3103
+    },
+    {
+      "part": 1,
+      "retail_quad": [
+        160,
+        93,
+        168,
+        93,
+        160,
+        99,
+        168,
+        99
+      ],
+      "authored_rect": [
+        172,
+        85,
+        51,
+        36
+      ],
+      "trace_line": 3105
+    },
+    {
+      "part": 2,
+      "retail_quad": [
+        160,
+        85,
+        168,
+        85,
+        160,
+        93,
+        168,
+        93
+      ],
+      "authored_rect": [
+        172,
+        37,
+        51,
+        48
+      ],
+      "trace_line": 3107
+    },
+    {
+      "part": 3,
+      "retail_quad": [
+        146,
+        105,
+        174,
+        105,
+        146,
+        118,
+        174,
+        118
+      ],
+      "authored_rect": [
+        81,
+        157,
+        181,
+        79
+      ],
+      "trace_line": 3109
+    },
+    {
+      "part": 4,
+      "retail_quad": [
+        150,
+        118,
+        170,
+        118,
+        150,
+        135,
+        170,
+        135
+      ],
+      "authored_rect": [
+        107,
+        236,
+        129,
+        102
+      ],
+      "trace_line": 3111
+    },
+    {
+      "part": 5,
+      "retail_quad": [
+        149,
+        85,
+        161,
+        85,
+        149,
+        105,
+        161,
+        105
+      ],
+      "authored_rect": [
+        0,
+        77,
+        200,
+        120
+      ],
+      "trace_line": 3113,
+      "calibration": "Original first-pose transparent left padding and lower face crop; test variant5; unchanged source pixels, quad and OT."
+    }
+  ],
+  "unmapped": "all other maps, actors, identities, frames and parts",
+  "geometry": "original retail quads, anchors and OT remain untouched",
+  "production_header_sha256": "1155999cb1a8ec74889b7519d59554f29ce81a6cd05bed3a3300003ac0dd535a",
+  "head_crop_trials": "private head-crop-trials-native/variants/variant-5; strict tol1 all measured edges0, four triples",
+  "production_validation": {
+    "private_directory": "~/release-staging/xeno-work/hd2d/footprint-production-selected-head",
+    "strict_tol_px": 1,
+    "checked_triples": 6,
+    "worst_part_horizontal_px": 0,
+    "worst_part_vertical_px": 0,
+    "worst_silhouette_horizontal_px": 0,
+    "worst_silhouette_vertical_px": 0,
+    "identical_occluded_rows": 55,
+    "gpu_acceptances": 288,
+    "changed_fei_pixels": 1112,
+    "crop_variant_wrapper": false
+  }
+}

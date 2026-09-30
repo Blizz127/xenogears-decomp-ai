@@ -44,6 +44,16 @@ if ! bash pc_port/tests/run_fei_hd2d_test.sh > "$OUTDIR/unit.txt" 2>&1; then
 fi
 say "unit: $(tail -1 "$OUTDIR/unit.txt")"
 
+# The opening enhancement has its own exact packet/texture transport. Its
+# fixture exercises the real production profile, records actual GPU sampling,
+# and uses this same strict analyzer. Keep the legacy test as the default.
+if [ "${XENO_HD2D_FOOTPRINT_LANE:-0}" = 1 ]; then
+    python3 pc_port/tests/hd2d_footprint_validation.py \
+        --checkpoint "$OUTDIR/quicksave.xgqs" --out "$OUTDIR/lane" \
+        --timeout "$TIMEOUT" | tee -a "$OUTDIR/summary.txt"
+    exit "${PIPESTATUS[0]}"
+fi
+
 attempt=1
 while :; do
     rm -rf "$OUTDIR/cap" "$OUTDIR/parts.log"
