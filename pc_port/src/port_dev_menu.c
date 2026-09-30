@@ -105,7 +105,7 @@ static void build_rows(void)
                 snprintf(label, sizeof label, "COMPLETE %s", g_PcPortDevFinishes[i].area);
                 add_row(1, ACT_FINISH, i, label, NULL);
             }
-        if (!s_rowCount) add_row(0, ACT_NONE, 0, "(NO VERIFIED STEPS YET)", NULL);
+        if (!s_rowCount) add_row(0, ACT_NONE, 0, "(NO VERIFIED AREAS YET)", NULL);
         break;
     case PAGE_CHEATS:
         add_row(1, ACT_GOD, 0, "GOD MODE", on_off(s_host ? s_host->god_on : NULL));

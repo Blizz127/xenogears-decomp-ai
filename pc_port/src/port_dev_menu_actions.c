@@ -2,6 +2,7 @@
  * the game thread.  Each writes only the game's own state, bounded by the
  * game's own limits, and only at a safe field frame (DEV_MENU_SPEC.md §8). */
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "common.h"
 #include "main/game.h"
