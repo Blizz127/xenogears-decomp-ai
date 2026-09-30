@@ -9,7 +9,8 @@ same pixels in tightly packed 8-bit RGBA order, converted without resampling:
 
     magick fei.png -depth 8 rgba:fei.rgba
 
-The runtime reads alpha bounds inside each of eight equal grid cells. Layout:
+The runtime reads alpha bounds (alpha >= 128) inside each of eight equal grid
+cells: that box is the cell's *art box*. Layout:
 
 | Row | Column 0 | Column 1 | Column 2 | Column 3 |
 | --- | --- | --- | --- | --- |
@@ -44,6 +45,37 @@ depth-of-field, or environment art pass.
 
 Only presentation packets change. The retail sprite animation interpreter,
 collision, movement, field scripts and combat state continue unchanged. Missing
-or invalid assets, insufficient packet space, or mixed-depth sprite parts retain
-the original primitives. The renderer inserts bind / RGBA quad / reset packets,
-so the texture override does not leak to subsequent scenery.
+or invalid assets, insufficient packet space, off-screen or degenerate parts, or
+a frame without an opaque texel retain the original primitives.
+
+## Footprint rule and mapping
+
+A replacement draws with exactly the retail sprite's footprint. Every retail
+part (the POLY_FT4 func_8001E3D8 builds, one per sprite tile, possibly at
+different OT depths) is replaced in place: the same four screen vertices
+(position, size, feet anchor), the same OT slot and link order, wrapped in its
+own bind / part / reset packets so the texture never leaks to scenery that shares
+the slot. More detail comes only from texel density inside those quads.
+
+Mapping, per drawn frame:
+
+1. *Retail silhouette box*: for each part, the opaque texels of its UV rect are
+   read from the CPU VRAM mirror through its tpage and CLUT (colour 0 is
+   transparent) and mapped through the part's quad to screen space; the union
+   over the parts is the retail frame's silhouette box, so part padding
+   (transparent tile margins) does not count.
+2. The cell's art box is mapped affinely onto that silhouette box. The cell
+   therefore takes the retail frame's aspect, with its padding aligned so that
+   head row, feet row and side edges coincide with the retail silhouette.
+3. Each part vertex gets the atlas texel under its own screen position. A part's
+   UV rect in the retail frame's space thus lands on the proportional sub-rect of
+   the art box, and neighbouring parts share their seam texels exactly.
+4. Each cell is uploaded as its own texture: the art box plus transparent padding
+   of half its size on every side, so part margins outside the silhouette sample
+   transparency rather than a neighbour cell. Alpha is made binary at 128, like
+   retail's 1-bit transparency, so the drawn silhouette is the aligned art box.
+
+Horizontal extents inside a part follow the generated art's own outline (it is
+not traced from the retail sprite). Rows, the feet anchor and occlusion by scenery
+follow retail exactly. `pc_port/tests/run_fei_hd2d_footprint_test.sh` measures
+all of this in-game, with Fei behind the easel in his house.
