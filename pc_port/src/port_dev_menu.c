@@ -200,6 +200,14 @@ void PcPort_DevMenuInit(void)
     s_replay = 0;
     if (on)
         fprintf(stderr, "[DEV_MENU] enabled: Select+Start on one pad or F8 opens it\n");
+    else
+        fprintf(stderr, "[DEV_MENU] disabled: F8 and Select+Start do nothing "
+                "(enable with XENO_DEV_MENU=1 or [cheats] dev_menu = on)\n");
+    /* One line with every host key, so a "the keys don't work" report can
+     * be read straight off the log (psycross_host_hotkeys / speed_source). */
+    fprintf(stderr, "[xeno-port] keys: F6 fast-forward, hold Backspace fast-forward, "
+            "F7 speed cycle%s, F9 record, F10 screenshot, F11 quick save, F12 quick load%s\n",
+            on ? "" : " (dev menu only)", on ? ", F8 dev menu" : "");
 }
 int PcPort_DevMenuEnabled(void) { return s_enabled; }
 /* 0 = game owns the pad, 1 = menu open (pad blocked), 2 = post-close drain
