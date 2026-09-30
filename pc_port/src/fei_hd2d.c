@@ -38,6 +38,18 @@ void PcPort_FeiHd2dToggle(void)
             enabled ? "enabled" : "disabled");
 }
 
+/* The dev menu offers the HD-2D toggle only when the atlas file exists. */
+int PcPort_FeiHd2dAssetPresent(void)
+{
+    const char *path = getenv("XENO_FEI_HD2D_ASSET");
+    FILE *f;
+    if (!path) path = "pc_port/assets/fei_hd2d/fei.rgba";
+    f = fopen(path, "rb");
+    if (!f) return 0;
+    fclose(f);
+    return 1;
+}
+
 static int LoadTexture(void)
 {
     const size_t bytes = (size_t)ATLAS_SIZE * ATLAS_SIZE * 4;

@@ -484,3 +484,19 @@ static u_short XenoPad_StickToDpad(int x, int y)
 	ret &= ~dir;
 	return ret;
 }
+
+/* L3 toggles fast-forward, R3 holds it (DEV_MENU_SPEC.md §0, like F6 /
+ * Backspace); suppressed while the dev menu owns the pad. */
+static int s_xenoL3Prev = 0;
+static int s_xenoR3Hold = 0;
+static void XenoPad_FastForwardKeys(SDL_GameController* gc, int suppressed)
+{
+	int l3 = gc && SDL_GameControllerGetButton(gc, SDL_CONTROLLER_BUTTON_LEFTSTICK);
+	int r3 = gc && !suppressed && SDL_GameControllerGetButton(gc, SDL_CONTROLLER_BUTTON_RIGHTSTICK);
+	if (l3 && !s_xenoL3Prev && !suppressed && PsyX_HostFastForwardToggle)
+		PsyX_HostFastForwardToggle();
+	s_xenoL3Prev = l3;
+	if (r3 != s_xenoR3Hold && PsyX_HostFastForwardPadHold)
+		PsyX_HostFastForwardPadHold(r3);
+	s_xenoR3Hold = r3;
+}

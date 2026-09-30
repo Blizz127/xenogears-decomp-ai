@@ -156,9 +156,16 @@ static void* stdin_reader(void* arg)
 void PcPort_CheatConsoleInit(void)
 {
     static int done;
+    const char* cheats = getenv("XENO_CHEATS");
     if (done)
         return;
     done = 1;
+    /* XENO_CHEATS=0 hard-disables the dev menu and every cheat: the frame
+     * hooks are not even subscribed (DEV_MENU_SPEC.md §2). */
+    if (cheats && strcmp(cheats, "0") == 0) {
+        fprintf(stderr, "[CHEATS] XENO_CHEATS=0: cheat console and frame hooks disabled\n");
+        return;
+    }
     xg_plat_mods_subscribe(XG_PLAT_EVENT_FRAME_TICK, tick_field_warp, NULL);
     xg_plat_mods_subscribe(XG_PLAT_EVENT_FRAME_TICK, tick_battle_warp, NULL);
     xg_plat_mods_subscribe(XG_PLAT_EVENT_FRAME_TICK, tick_console, NULL);

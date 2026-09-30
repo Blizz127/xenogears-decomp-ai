@@ -1,20 +1,106 @@
 #ifndef XENO_PORT_DEV_MENU_H
 #define XENO_PORT_DEV_MENU_H
+/* Opt-in port dev menu (~/release-staging/port-dev-menu/DEV_MENU_SPEC.md).
+ *
+ * port_dev_menu.c        menu model, navigation, pad combo, input capture
+ *                        (no game headers; unit-tested by
+ *                        pc_port/tests/run_dev_menu_test.sh)
+ * port_dev_menu_actions.c the game-state actions (heal, gold, items, warp),
+ *                        run from the cheat queue at a safe field frame
+ * psycross_port_dev_menu.inl  SDL keyboard events, overlay drawing, host hooks
+ *
+ * Opt-in: XENO_DEV_MENU=1 or config [cheats] dev_menu = on (default off).
+ * XENO_CHEATS=0 hard-disables the menu and every cheat. */
 #ifdef __cplusplus
 extern "C" {
 #endif
 enum PcPortDevKey { PC_DEV_OPEN, PC_DEV_UP, PC_DEV_DOWN, PC_DEV_ACCEPT, PC_DEV_BACK };
+
+/* Physical controller bits for PcPort_DevMenuPad (SDL GameController
+ * buttons of the active pad, independent of the PS1 mapping). */
+enum {
+    PC_DEV_PAD_UP = 1u << 0,    /* D-pad up or left stick up */
+    PC_DEV_PAD_DOWN = 1u << 1,  /* D-pad down or left stick down */
+    PC_DEV_PAD_A = 1u << 2,
+    PC_DEV_PAD_B = 1u << 3,
+    PC_DEV_PAD_BACK = 1u << 4,  /* Back / View / Select */
+    PC_DEV_PAD_START = 1u << 5
+};
+/* PcPort_DevMenuPad result flags. */
+enum {
+    PC_DEV_PASS = 0,
+    PC_DEV_BLOCK_ALL = 1u << 0,     /* game sees a neutral pad (and keyboard) */
+    PC_DEV_BLOCK_SELECT = 1u << 1,  /* hold Select back from the game */
+    PC_DEV_BLOCK_START = 1u << 2,
+    PC_DEV_FORCE_SELECT = 1u << 3,  /* replay a Select tap that was held back */
+    PC_DEV_FORCE_START = 1u << 4
+};
+
 void PcPort_DevMenuInit(void);
 int PcPort_DevMenuEnabled(void);
 int PcPort_DevMenuOpen(void);
 int PcPort_DevMenuKey(int key, int pressed);
-int PcPort_DevMenuFilterPad(unsigned held);
+/* Once per pad sample, from PsyX_pad.cpp.  `bits`: PC_DEV_PAD_* of the pad
+ * that feeds port 1 (0 when none); `instance`: its SDL instance id (-1 none);
+ * `held_any`: nonzero while any game button (pad or keyboard) is held;
+ * `now_ms`: a millisecond clock.  Returns PC_DEV_* flags. */
+unsigned PcPort_DevMenuPad(unsigned bits, int instance, int held_any, unsigned now_ms);
+
+/* Page model for the overlay. */
 int PcPort_DevMenuCursor(void);
 int PcPort_DevMenuRows(void);
 const char *PcPort_DevMenuTitle(void);
 const char *PcPort_DevMenuRow(int row);
+int PcPort_DevMenuRowSelectable(int row);
 const char *PcPort_DevMenuStatus(void);
+/* Nonzero while a cheat is on (persistent CHEATS marker). */
+int PcPort_DevMenuCheatsActive(void);
+
+/* Host functions the menu drives (installed by psycross_port_dev_menu.inl;
+ * NULL members are shown as unavailable). */
+typedef struct PcPortDevMenuHost {
+    int (*fast_forward_on)(void);
+    void (*fast_forward_toggle)(void);
+    int (*speed)(void);
+    void (*speed_cycle)(void);
+    int (*recording)(void);
+    void (*record_toggle)(void);
+    void (*screenshot)(void);        /* taken after the menu has closed */
+    int (*hd2d_available)(void);
+    int (*hd2d_on)(void);
+    void (*hd2d_toggle)(void);
+    int (*god_on)(void);
+    int (*random_battles_on)(void);
+} PcPortDevMenuHost;
+void PcPort_DevMenuSetHost(const PcPortDevMenuHost *host);
+
+/* Game-state actions (port_dev_menu_actions.c), reached through the cheat
+ * queue as "dev <command>".  Returns 1 done, -1 refused. */
 int PcPort_DevMenuAction(const char *command);
+
+/* Data-driven verified warp / area-finish tables (port_dev_menu_warps.inc).
+ * Only entries with a verification evidence path are listed; an area folder
+ * without verified spots is hidden. */
+typedef struct PcPortDevWarp {
+    int disc;
+    const char *chapter;
+    const char *area;            /* folder, player-facing name */
+    const char *spot;            /* named spot, player-facing name */
+    int map;                     /* destination field map */
+    int entrance;                /* destination entrance / door */
+    unsigned progression;        /* story value recorded on the route */
+    const char *evidence;        /* verification report path (required) */
+} PcPortDevWarp;
+typedef struct PcPortDevFinish {
+    int disc;
+    const char *chapter;
+    const char *area;
+    const char *evidence;
+} PcPortDevFinish;
+extern const PcPortDevWarp g_PcPortDevWarps[];
+extern const int g_PcPortDevWarpCount;
+extern const PcPortDevFinish g_PcPortDevFinishes[];
+extern const int g_PcPortDevFinishCount;
 #ifdef __cplusplus
 }
 #endif

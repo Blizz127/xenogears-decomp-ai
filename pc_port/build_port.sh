@@ -823,6 +823,8 @@ PORT_SOURCES=(
     pc_port/src/mod_events.c
     pc_port/src/cheat_console.c
     pc_port/src/port_dev_menu.c
+    pc_port/src/port_dev_menu_actions.c
+    pc_port/src/port_dev_menu_warps.c
     pc_port/src/krom_mapping.c
     pc_port/src/psx_memory.c
     pc_port/src/battle_mips_adapter.c

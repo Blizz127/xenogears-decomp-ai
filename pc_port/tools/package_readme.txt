@@ -49,7 +49,12 @@ CONTROLLERS
   names the chosen pad ("pad: port 1 uses ...") and, as "input:" lines,
   the keys, mouse and pad buttons that arrive (useful in bug reports).
   Host keys: F11 quick save, F12 quick load, F10 screenshot, F9 record,
-  hold Backspace or toggle F6 for fast-forward.
+  hold Backspace or toggle F6 for fast-forward (pad: L3 toggles, R3 holds).
+  Dev menu (opt-in: XENO_DEV_MENU=1 or [cheats] dev_menu = on): Select+Start
+  on one pad, or F8. D-pad/stick move, A picks, B goes back. Warp, Finish
+  Area, Cheats (god mode, random battles, refills), Options (fast-forward,
+  speed, record, screenshot, quick save/load, enhancements). The game keeps
+  running while it is open; a red CHEATS marker shows while a cheat is on.
 
 HOW FAR IT PLAYS (tested on the build machine)
   Boot, title screen, New Game, the opening, into Lahan (field map 2).
