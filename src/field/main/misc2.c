@@ -1197,8 +1197,8 @@ void FieldClearAndSwapOTagInternal(void) {
     g_FieldCurRenderContextIndex = (g_FieldCurRenderContextIndex + 1) % 2;
     g_FieldCurRenderContext = &g_FieldRenderContexts[g_FieldCurRenderContextIndex];
 #ifdef XENO_PC_PORT
-    FieldClearOTagR4((u8*)g_FieldCurRenderContext + 0x80D4, 0x8);
-    ClearOTagR(g_FieldCurRenderContext->ot3, 0x8);
+    /* The single retail ot3 (FIELD_CTX_OT3): 4-byte tags at +0x80D4. */
+    FieldClearOTagR4(FIELD_CTX_OT3(g_FieldCurRenderContext), 0x8);
 #else
     ClearOTagR(g_FieldCurRenderContext->ot3, 0x8);
 #endif
@@ -2386,7 +2386,7 @@ void func_80075910(void) {
     MoveImage(&rect, g_FieldCurRenderContextIndex << 8, 0);
     PutDispEnv((DISPENV*)((u8*)g_FieldCurRenderContext + 0xB8));
     PutDrawEnv((DRAWENV*)g_FieldCurRenderContext);
-    DrawOTag(g_FieldCurRenderContext->ot3 + 7);
+    DrawOTag(FIELD_CTX_OT3_HEAD(g_FieldCurRenderContext));
 }
 #endif /* XENO_PC_PORT */
 

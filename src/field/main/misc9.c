@@ -167,8 +167,8 @@ void func_800AAE4C(int index, int x, int y, int type) {
 
     D_800AFC68_PTR->sprites[index][g_FieldCurRenderContextIndex].x0 = x;
     D_800AFC68_PTR->sprites[index][g_FieldCurRenderContextIndex].y0 = y;
-    addPrim(g_FieldCurRenderContext->ot3, &D_800AFC68_PTR->sprites[index][g_FieldCurRenderContextIndex]);
-    addPrim(g_FieldCurRenderContext->ot3, &D_800AFC68_PTR->drModes[index][g_FieldCurRenderContextIndex]);
+    addPrim(FIELD_CTX_OT3(g_FieldCurRenderContext), &D_800AFC68_PTR->sprites[index][g_FieldCurRenderContextIndex]);
+    addPrim(FIELD_CTX_OT3(g_FieldCurRenderContext), &D_800AFC68_PTR->drModes[index][g_FieldCurRenderContextIndex]);
 }
 
 extern u32 D_800B1DF0;
@@ -277,14 +277,14 @@ void func_800AB378(s8 color) {
         D_800B1DF0_PTR->sprites[i][g_FieldCurRenderContextIndex].y0 = y + D_800AFE7C;
 
         setRGB0(&D_800B1DF0_PTR->sprites[i][g_FieldCurRenderContextIndex & 1], color, color, color);
-        addPrim(g_FieldCurRenderContext->ot3, &D_800B1DF0_PTR->sprites[i][g_FieldCurRenderContextIndex]);
-        addPrim(g_FieldCurRenderContext->ot3, &D_800B1DF0_PTR->drModes[i][g_FieldCurRenderContextIndex]);
+        addPrim(FIELD_CTX_OT3(g_FieldCurRenderContext), &D_800B1DF0_PTR->sprites[i][g_FieldCurRenderContextIndex]);
+        addPrim(FIELD_CTX_OT3(g_FieldCurRenderContext), &D_800B1DF0_PTR->drModes[i][g_FieldCurRenderContextIndex]);
     }
 
     for (i = 0; i < 3; i++) {
         setRGB0(&D_800C3A3C_PTR->polys[i][g_FieldCurRenderContextIndex & 1], color, color, color);
-        addPrim(g_FieldCurRenderContext->ot3, &D_800C3A3C_PTR->polys[i][g_FieldCurRenderContextIndex]);
-        addPrim(g_FieldCurRenderContext->ot3, &D_800C3A3C_PTR->drModes[i][g_FieldCurRenderContextIndex]);
+        addPrim(FIELD_CTX_OT3(g_FieldCurRenderContext), &D_800C3A3C_PTR->polys[i][g_FieldCurRenderContextIndex]);
+        addPrim(FIELD_CTX_OT3(g_FieldCurRenderContext), &D_800C3A3C_PTR->drModes[i][g_FieldCurRenderContextIndex]);
     }
 }
 
@@ -545,8 +545,8 @@ void func_800ABEC8(void) {
 
     if (D_800ADB54) {
         for (i = 0; i < 5; i++) {
-            addPrim(g_FieldCurRenderContext->ot3, &D_800B0188.sprites[i][g_FieldCurRenderContextIndex]);
-            addPrim(g_FieldCurRenderContext->ot3, &D_800B0188.drModes[i][g_FieldCurRenderContextIndex]);
+            addPrim(FIELD_CTX_OT3(g_FieldCurRenderContext), &D_800B0188.sprites[i][g_FieldCurRenderContextIndex]);
+            addPrim(FIELD_CTX_OT3(g_FieldCurRenderContext), &D_800B0188.drModes[i][g_FieldCurRenderContextIndex]);
         }
     }
 }

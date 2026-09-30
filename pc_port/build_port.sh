@@ -666,6 +666,29 @@ apply_psycross_patch "$ROOT/pc_port/patches/psycross_host_speed.patch" "_xeno_ho
 # The BIOS memory-card driver entry points (InitCARD/_card_info/...) are owned
 # by pc_port/src/memcard_port.c; drop PsyCross's silent `return 0` copies.
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_card_native_owner.patch" "_xeno_card_native_owner"
+# Diagnostic only: XENO_GPU_TRACE=a-b logs display/VRAM calls and each present
+# (scene vs VRAM path, DISPENV, mask) for presented-frame indices a..b. Off and
+# silent unless the variable is set.
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_gpu_trace.patch" "_xeno_gpu_trace"
+# activeDispEnv names the buffer PsyCross renders into; PutDispEnv guesses it
+# from the double-buffer flip.  When VRAM-path presents already left the
+# current DISPENV on the buffer the game re-puts, a display-sized draw clip can
+# end up wholly outside activeDispEnv and the frame is offset/scissored off
+# screen (field zoom-fade first frame: one black frame at the title).  Rebase
+# only in that no-overlap case.  Generated on top of psycross_gpu_trace.patch.
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_active_disp_draw_buffer.patch" "_xeno_active_disp_draw_buffer"
+# ClearImage must not mark CPU VRAM older than the last framebuffer capture:
+# the capture was mirrored when taken, so a later overlapping MoveImage would
+# splat stale pixels over newer CPU writes (the attract-return crossfade frame).
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_clear_keeps_vram_synced.patch" "_xeno_clear_keeps_vram_synced"
+# Track which VRAM clips the GL backbuffer holds since the last present, so the
+# field's port-only backdrop snapshot (func_800A476C) can tell when the
+# backbuffer is a different buffer than the (0,0) rect it is about to save.
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_rendered_clip_track.patch" "_xeno_rendered_clip_track"
+# A scene present shows the drawn buffer one vblank early; on the first scene
+# after VRAM-only presents that buffer may never be displayed on the PSX (the
+# attract-return fade-start frame).  Show the DISPENV area there instead.
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_present_displayed_after_vram.patch" "_xeno_present_displayed_after_vram"
 
 echo "==> [1/5] Building PsyCross (libpsycross.a) via CMake"
 # Drop a stale CMake cache generated under a different absolute path (e.g. from a
