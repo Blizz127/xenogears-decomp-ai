@@ -15,5 +15,8 @@ int PcPort_QuickCheckpointRequestWarp(int map, int entrance);
 int PcPort_QuickCheckpointPoll(void);
 void PcPort_QuickCheckpointCommitLoad(void);
 void PcPort_QuickCheckpointRestorePlayer(void);
+/* On-screen quick save notice: current text, or NULL once it has expired. */
+const char* PcPort_QuickCheckpointNotice(void);
+void PcPort_QuickCheckpointNoticeSet(const char* text);
 
 #endif

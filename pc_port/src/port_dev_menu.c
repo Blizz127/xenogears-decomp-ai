@@ -169,6 +169,14 @@ int PcPort_DevMenuEnabled(void) { return s_enabled; }
 int PcPort_DevMenuOpen(void) { return s_enabled && s_open; }
 int PcPort_DevMenuCursor(void) { return s_cursor; }
 const char *PcPort_DevMenuStatus(void) { return s_status; }
+/* The quick save the menu queued has an outcome (quick_checkpoint.c): show it
+ * on the status line instead of "QUICK SAVE REQUESTED".  Saves from F11 or
+ * the console leave the line alone. */
+void PcPort_DevMenuQuickSaveResult(const char *status)
+{
+    if (strcmp(s_status, "QUICK SAVE REQUESTED") == 0)
+        snprintf(s_status, sizeof s_status, "%s", status);
+}
 void PcPort_DevMenuSetHost(const PcPortDevMenuHost *host) { s_host = host; }
 int PcPort_DevMenuRows(void) { build_rows(); return s_rowCount; }
 const char *PcPort_DevMenuRow(int row) { build_rows(); return row >= 0 && row < s_rowCount ? s_rows[row].label : ""; }
