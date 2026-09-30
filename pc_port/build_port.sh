@@ -596,6 +596,7 @@ apply_psycross_patch "$ROOT/pc_port/patches/psycross_texcache_format_key.patch" 
 # (OpenEvent/EnableEvent/DisableEvent registry + 240Hz dispatch on the interrupt
 # thread). See OPEN_ISSUES.md "Sound cold-init" and pc_port/src/port_main.c.
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_sound_pump.patch" "_xeno_sound_pump"
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_present_vram_full_frame.patch" "_xeno_present_vram_full_frame"
 # Sound SDK Phase 2 (init-proof): wire the 5 init-reached SDK primitives against
 # the awake backend -- SpuSetReverbModeType/Depth + SpuSetReverbModeParam/Get
 # (shared reverb state + EFX preset table -> OpenAL reverb), SpuSetCommonAttr
@@ -1232,27 +1233,39 @@ echo "    ${#BATTLE_HOST_OBJS[@]} battle host units define the full allowlist"
 # changes nothing that runs. Anything an adopted leaf can reach is a different
 # matter -- redirecting that would silently change what the leaf calls -- so a
 # collision on those names is fatal and has to be resolved in the source.
-BATTLE_HOST_REFERENCES="$(python3 tools/scripts/battle_overlay_host_tus.py --referenced)"
 for o in "${GAME_OBJS[@]}"; do
     case " ${BATTLE_HOST_OBJS[*]} " in *" $o "*) continue ;; esac
     nm -g --defined-only "$o" 2>/dev/null | awk '{print $3}'
 done | sort -u > "$OUT/port_defined.txt"
-weakened=0
+# Weakening the battle copy was wrong whenever that battle function is itself
+# an adopted leaf (battle_overlay_host_leaves.inc): the bridge's
+# dlsym("func_<addr>") then returned the OTHER overlay's strong body and ran
+# e.g. world-map code inside a battle (func_800879A8: SIGSEGV on the first
+# on-foot Attack).  Give each colliding battle definition a battle_ prefix in
+# EVERY battle host object instead, so battle-internal native calls bind to the
+# battle copy, other overlays keep theirs, and battle_mips_runtime.c looks up
+# battle_func_<addr> first for overlay targets.
+collisions=()
 for bo in "${BATTLE_HOST_OBJS[@]}"; do
     while read -r sym; do
         [ -z "$sym" ] && continue
         grep -qx "$sym" "$OUT/port_defined.txt" || continue
-        if printf '%s\n' "$BATTLE_HOST_REFERENCES" | grep -qx "$sym"; then
-            echo "ERROR: $sym is defined by both $(basename "$bo") and another port module,"
-            echo "ERROR: and an adopted leaf can reach it. Resolve the ownership in source."
-            exit 1
-        fi
-        objcopy --weaken-symbol="$sym" "$bo"
-        weakened=$((weakened+1))
-        echo "    overlay name collision, weakened non-adopted $sym in $(basename "$bo")"
+        collisions+=("$sym")
     done < <(nm -g --defined-only "$bo" 2>/dev/null | awk '$2 ~ /^[TDBW]$/ {print $3}')
 done
-echo "    ${weakened} overlay name collision(s) resolved by weakening"
+renamed=0
+if [ "${#collisions[@]}" -gt 0 ]; then
+    redefs=()
+    for sym in $(printf '%s\n' "${collisions[@]}" | sort -u); do
+        redefs+=(--redefine-sym "$sym=battle_$sym")
+        renamed=$((renamed+1))
+        echo "    overlay name collision: battle copy of $sym linked as battle_$sym"
+    done
+    for bo in "${BATTLE_HOST_OBJS[@]}"; do
+        objcopy "${redefs[@]}" "$bo"
+    done
+fi
+echo "    ${renamed} overlay name collision(s) resolved by battle_ renaming"
 
 # Port fallbacks are deliberately strong. If a matching game TU later gains
 # one of these retail definitions, weaken that duplicate in the game object
