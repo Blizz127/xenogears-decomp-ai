@@ -210,8 +210,10 @@ s32 func_801C531C(s32 arg0) {
         screenResult = func_801D9808();
         break;
     case 8:
-        screenResult = func_801D9F98(1, 0);
-        if ((screenResult & 0xFF) != 0) {
+        /* Retail keeps $s0 (screenResult) at 1 here: only the return of
+         * func_801D9F98 decides whether Continue leaves the title, and the
+         * post-screen rebuild below always runs. */
+        if ((func_801D9F98(1, 0) & 0xFF) != 0) {
             D_800594D0 = 2;
             keepMainMenu = 0;
         }
@@ -734,24 +736,23 @@ void func_801C6400(void) {
     u8* buffer;
     u16 nameIndex;
 
-    /* Native SystemMenu is inflated; PSX +0x32C is g_Menu->unk32C. */
+    /* Native SystemMenu is inflated; PSX +0x32C is g_Menu->unk32C.  Card
+     * offsets >= 0xB94 go through MENU_CARD_OFF (the port once wrote them
+     * 0x10 bytes low on the host).  Retail has no NULL check here. */
     pData = (u8*)g_Menu->unk32C;
-    if (pData == NULL) {
-        return;
-    }
 
     for (i = 0; i < 2; i++) {
-        pData[i + 0x4F88] = 0;
-        pData[i + 0x4F8A] = 0;
-        pData[i + 0x4F8C] = 0xFF;
+        pData[MENU_CARD_OFF(0x4F88) + i] = 0;
+        pData[MENU_CARD_OFF(0x4F8A) + i] = 0;
+        pData[MENU_CARD_OFF(0x4F8C) + i] = 0xFF;
     }
 
-    pData[0x4FE6] = 0;
+    pData[MENU_CARD_OFF(0x4FE6)] = 0;
 
     j = 0;
     for (i = 0; i < 0x20; i++) {
         pData[j + 0x58] = 0;
-        pData[i + 0x4FAE] = 0xFF;
+        pData[MENU_CARD_OFF(0x4FAE) + i] = 0xFF;
         j += 0x5C;
     }
 
@@ -782,10 +783,10 @@ void func_801C6400(void) {
     }
 
     for (i = 0; i < 0x1E; i++) {
-        pData[i + 0x4FFC] = buffer[pos + i];
+        pData[MENU_CARD_OFF(0x4FFC) + i] = buffer[pos + i];
     }
-    pData[0x501A] = 0;
-    pData[0x501B] = 0;
+    pData[MENU_CARD_OFF(0x501A)] = 0;
+    pData[MENU_CARD_OFF(0x501B)] = 0;
 
     ArchiveSetIndex(0x10, 0);
     HeapFree(buffer);
@@ -2143,6 +2144,175 @@ void func_801C9270(u8 port) {
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C93A8);
+#else
+extern u8 D_801EA6F8;
+extern u8 D_801E9779;
+extern char D_801C50B8[]; /* "__tmp_file" */
+extern u32 D_801E981C[];
+extern u16 D_801E9894[];
+extern u16 D_801E9914[];
+extern void func_801D2F4C(u8);
+extern void func_801D9B08(void);
+extern void func_801E78C8(s32);
+
+#define CARD_BYTE(off) (((u8*)g_Menu->unk32C)[MENU_CARD_OFF(off)])
+
+/* Retail 0x801C93A8..0x801C9BC8 (retail C still asm): one card-screen scan
+ * pass, called once per frame by the Save/Load controller func_801D9F98 and
+ * once by func_801D9C84 on entry.
+ *
+ * With no card present (+0x4FE4 halfword 0) it shows message 0x23, waits 59
+ * vblanks and returns 1, which makes the controller leave the screen.  Else,
+ * for each port whose directory count (+0x4F8A) differs from the scanned
+ * count (+0x4F8C), it re-reads every directory entry (func_801C90B0 +
+ * func_801E78C8), stops early (without committing the count) if a card is
+ * pulled or its presence changes mid-scan, then clears the unused slot
+ * flags; afterwards it refreshes both ports' match tables (func_801C9270)
+ * and, while the pointer cursor is shown, moves its quad to the selected
+ * slot (D_801E981C[+0x4F7C] into the 4-byte-stride D_801E9894/D_801E9914
+ * position tables).  Returns 0 in all those cases.
+ *
+ * Retail's $s6 is set to 0 on entry and never changed, so its
+ * "pManager[0xB] = 1" arm is dead and not reproduced.  When the no-card path
+ * returns, retail tests an uninitialised $s3 (the caller's), but both
+ * outcomes reach the same tail with the same result, so the C does not model
+ * it. */
+s32 func_801C93A8(void) {
+    s32 noCard = 0;  /* retail $s4 */
+    s32 aborted = 0; /* retail $s3 */
+    s32 port;
+    s32 slot;
+    u8 present0;
+    u8 present1;
+    char path[0x40];
+
+    D_801EA6F8 = 0;
+    CARD_BYTE(0x4FE6) = 2;
+    func_801C7BF4();
+    if (*(u16*)&CARD_BYTE(0x4FE4) == 0) {
+        MENU_CALL_D32B4();
+        ((u8*)g_Menu->pManager)[0x33] = 0;
+        ((u8*)g_Menu->pManager)[0xB] = 0;
+        func_801C7BF4();
+        func_801D2F4C(0x23);
+        g_Menu->unk4CC[0xC] = 1;
+        ((u8*)g_Menu->pManager)[0x2F] = 0;
+        *(s32*)&CARD_BYTE(0x4F80) = 0xFF;
+        g_Menu->unk32C->unk4F7C = 0;
+        if (*(u16*)&CARD_BYTE(0x4FE4) == 0) {
+            s32 i;
+
+            CARD_BYTE(0x4F8D) = 0xFF;
+            CARD_BYTE(0x4F8C) = 0xFF;
+            func_801C7BF4();
+            for (i = 0x3B; i != 0; i--) {
+                Vsync(0);
+            }
+            noCard = 1;
+        }
+        if (!noCard) {
+            func_801D9B08();
+            CARD_BYTE(0x4FE9) = 0xFF;
+            CARD_BYTE(0x4FE8) = 0xFF;
+            CARD_BYTE(0x4F88) = 0;
+            CARD_BYTE(0x4F89) = 0;
+            g_Menu->unk326 = 0x3C;
+            func_801C7BF4();
+            D_801EA6F8 = 1;
+        }
+        MENU_CALL_D32B4();
+    }
+
+    D_801E9779 = 1;
+    present0 = CARD_BYTE(0x4FE4);
+    present1 = CARD_BYTE(0x4FE5);
+    if (noCard) {
+        goto end;
+    }
+
+    g_Menu->unk32A = 0;
+    for (port = 0; port < 2; port++) {
+        aborted = 0;
+        if (CARD_BYTE(0x4F8A + port) != CARD_BYTE(0x4F8C + port) &&
+            CARD_BYTE(0x4F8A + port) != 0) {
+            func_801D9B08();
+            for (slot = 0; slot < 0x10; slot++) {
+                CARD_BYTE(0x4FAE + port * 16 + slot) = 0xFF;
+            }
+            /* "bu00:" / "bu10:" (a word and a halfword) + "__tmp_file". */
+            if (port == 0) {
+                memcpy(path, D_801C50A8, 4);
+                memcpy(path + 4, &D_801C50AC, 2);
+            } else {
+                memcpy(path, D_801C50B0, 4);
+                memcpy(path + 4, &D_801C50B4, 2);
+            }
+            strcat(path, D_801C50B8);
+            erase(path);
+            *(s32*)&CARD_BYTE(0x4F84) = 0;
+            (&D_801EA900)[port] = 0;
+            for (slot = 0; slot < CARD_BYTE(0x4F8A + port); slot++) {
+                s32 index;
+
+                if (CARD_BYTE(0x4FE4 + port) == 0 ||
+                    present0 != CARD_BYTE(0x4FE4) ||
+                    present1 != CARD_BYTE(0x4FE5)) {
+                    aborted = 2;
+                    break;
+                }
+                func_801C90B0(port, slot);
+                index = port * 16 + slot;
+                func_801E78C8(index);
+                CARD_BYTE(index * 0x5C + 0x58) = 1;
+                func_801C7BF4();
+                if (CARD_BYTE(0x4F88 + port) == 0) {
+                    aborted = port + 1;
+                    break;
+                }
+            }
+            if (aborted) {
+                break;
+            }
+            for (; slot < 0x10; slot++) {
+                CARD_BYTE((port * 16 + slot) * 0x5C + 0x58) = 0;
+            }
+            CARD_BYTE(0x4F8C + port) = CARD_BYTE(0x4F8A + port);
+        }
+        if (CARD_BYTE(0x4F8A + port) == 0) {
+            for (slot = 0; slot < 0x10; slot++) {
+                CARD_BYTE((port * 16 + slot) * 0x5C + 0x58) = 0;
+            }
+            CARD_BYTE(0x4F8C + port) = 0xFF;
+        }
+    }
+    if (aborted) {
+        goto end;
+    }
+
+    func_801C9270(0);
+    func_801C9270(1);
+    if (((u8*)g_Menu->pManager)[0x2F] != 0 &&
+        g_Menu->pCursors->unk144[0] != 0) {
+        u32 selected = D_801E981C[g_Menu->unk32C->unk4F7C];
+        POLY_FT4* p = &g_Menu->pCursors->polysCursor[g_Menu->pCursors->renderContexts[0]];
+
+        p->x0 = D_801E9894[selected * 2] + 8;
+        p->y0 = D_801E9914[selected * 2] - 6;
+        p->x1 = D_801E9894[selected * 2] + 0x18;
+        p->y1 = D_801E9914[selected * 2] - 6;
+        p->x2 = D_801E9894[selected * 2] + 8;
+        p->y2 = D_801E9914[selected * 2] + 0xA;
+        p->x3 = D_801E9894[selected * 2] + 0x18;
+        p->y3 = D_801E9914[selected * 2] + 0xA;
+    }
+
+end:
+    g_Menu->unk32A = 1;
+    D_801E9779 = 0x1E;
+    return noCard;
+}
+
+#undef CARD_BYTE
 #endif
 
 extern u32 D_801E981C[];
@@ -2801,24 +2971,26 @@ s32 func_801CD710(u8 arg0) {
     func_801D22F4(0);
     pMenu = g_Menu;
     ((u8*)g_Menu->pManager)[0x2F] = 0;
+    /* Retail reads g_Menu+0x338 (menu2Choice) and stores g_Menu+0x334
+     * (unk334).  The port once used those raw byte offsets, which on the
+     * pointer-inflated host SystemMenu read and wrote unrelated fields. */
     {
-        u8 state = *(u8*)((u8*)g_Menu + 0x338);
-        u8* pData = (u8*)g_Menu;
+        u8 state = g_Menu->menu2Choice;
         switch (state) {
             case 0:
-                *(u8*)(pData + 0x334) = 7; /* retail: 7 */
+                g_Menu->unk334 = 7; /* retail: 7 */
                 func_801CD2AC();
                 break;
             case 1:
-                *(u8*)(pData + 0x334) = 6;
+                g_Menu->unk334 = 6;
                 func_801CC6D8();
                 break;
             case 2:
                 if (D_80059460 == 2) {
-                    *(u8*)(pData + 0x334) = 2;
+                    g_Menu->unk334 = 2;
                     func_801CB304();
                 } else {
-                    *(u8*)(pData + 0x334) = 3;
+                    g_Menu->unk334 = 3;
                     func_801CBD90(arg0);
                 }
                 break;
@@ -3354,9 +3526,15 @@ static u32* MenuPsxPointerSlot(u32 retailOffset) {
     case 0x44C:
         return (u32*)&g_Menu->unk44C[0];
     default:
-        if (retailOffset >= 0x3A8 && retailOffset < 0x3C8 &&
+        if (retailOffset >= 0x3A8 && retailOffset < 0x428 &&
             ((retailOffset - 0x3A8) & 3) == 0) {
-            /* Title string slots: retail unk39C + 0xC + i*4. */
+            /* Card-screen save-slot work buffers: 32 PSX-width pointers at
+             * retail 0x3A8..0x424 (unk39C + 0xC + i*4), allocated by
+             * func_801E5ACC and freed by func_801E5B3C.  The port once
+             * mapped only the first 8 (0x3A8..0x3C4); slots 8..31 fell
+             * through to raw host offsets inside the pointer-inflated
+             * SystemMenu (host unk39C is at 0x498), where their stores hit
+             * unrelated menu pointers. */
             return (u32*)&g_Menu->unk39C[0xC + (retailOffset - 0x3A8)];
         }
         return (u32*)((u8*)g_Menu + retailOffset);
@@ -3385,34 +3563,57 @@ static u8* MenuTitleSlot(s32 index) {
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CF37C);
 #else
+/* Retail 0x801CF37C (retail C still asm): while the card screen is in its
+ * "select" state (g_Menu+0x4D8 == 2), draw the pulsing grey highlight (the
+ * semi-transparent POLY_F4 at +0xB0 of each slot buffer, brightness = low
+ * byte of g_Menu+0x4D4) over every slot whose group byte (+0x4FAE+i) equals
+ * the selected entry's (D_801E981C[+0x4F7C]); for an empty group (0xFF) only
+ * the selected slot itself.  The wanted group is read once, before the loop,
+ * as retail does.  Offsets: g_Menu+0x4CC..0x4DB is unk4CC on the host; card
+ * buffer offsets >= 0xB94 go through MENU_CARD_OFF. */
 void func_801CF37C(void) {
-    u8* data = (u8*)g_Menu->unk32C;
+    u8* data;
+    u8 wanted;
     s32 i;
-    if (data == NULL || ((u8*)g_Menu)[0x4D8] != 2) return;
-    for (i = 0; i < 32; i++) {
-        s32 selected = *(s32*)(data + 0x4F7C);
-        u8 wanted = data[D_801E981C[selected] + 0x4FAE];
-        u8 current = data[0x4FAE + i];
-        if (current != wanted) continue;
-        if (current == 0xFF && i != D_801E981C[selected]) continue;
-        {
-            u8* slot = MenuTitleSlot(i);
-            if (slot == NULL) continue;
-            u8* line = slot + 0xB0 + g_Menu->renderContext * 24;
-            long p;
-            long flag;
-            line[4] = ((u8*)g_Menu)[0x4D4];
-            line[5] = ((u8*)g_Menu)[0x4D4];
-            line[6] = ((u8*)g_Menu)[0x4D4];
-            RotTransPers4((SVECTOR*)(slot + 0xE0), (SVECTOR*)(slot + 0xE8),
-                          (SVECTOR*)(slot + 0xF0), (SVECTOR*)(slot + 0xF8),
-                          (long*)(line + 0x08), (long*)(line + 0x0C),
-                          (long*)(line + 0x10), (long*)(line + 0x14),
-                          &p, &flag);
-            AddPrim(&g_Menu->pGfxEnv->ot[4], line);
-            AddPrim(&g_Menu->pGfxEnv->ot[4],
-                    slot + 0x140 + g_Menu->renderContext * 12);
+
+    if (g_Menu->unk4CC[0xC] != 2) {
+        return;
+    }
+    data = (u8*)g_Menu->unk32C;
+    wanted = data[MENU_CARD_OFF(0x4FAE) +
+                  D_801E981C[*(s32*)(data + MENU_CARD_OFF(0x4F7C))]];
+    for (i = 0; i < 0x20; i++) {
+        s32 draw;
+        u8* slot;
+        u8* line;
+        long p;
+        long flag;
+
+        data = (u8*)g_Menu->unk32C;
+        if (wanted != data[MENU_CARD_OFF(0x4FAE) + i]) {
+            continue;
         }
+        draw = 1;
+        if (wanted == 0xFF) {
+            draw = (u32)i ==
+                   D_801E981C[*(s32*)(data + MENU_CARD_OFF(0x4F7C))];
+        }
+        if (!draw) {
+            continue;
+        }
+        slot = MenuTitleSlot(i);
+        line = slot + 0xB0 + g_Menu->renderContext * 0x18;
+        line[4] = (u8)*(s32*)&g_Menu->unk4CC[8];
+        line[5] = (u8)*(s32*)&g_Menu->unk4CC[8];
+        line[6] = (u8)*(s32*)&g_Menu->unk4CC[8];
+        RotTransPers4((SVECTOR*)(slot + 0xE0), (SVECTOR*)(slot + 0xE8),
+                      (SVECTOR*)(slot + 0xF0), (SVECTOR*)(slot + 0xF8),
+                      (long*)(line + 0x08), (long*)(line + 0x0C),
+                      (long*)(line + 0x10), (long*)(line + 0x14),
+                      &p, &flag);
+        AddPrim(&g_Menu->pGfxEnv->ot[4], line);
+        AddPrim(&g_Menu->pGfxEnv->ot[4],
+                slot + 0x140 + g_Menu->renderContext * 0xC);
     }
 }
 #endif
@@ -3420,29 +3621,43 @@ void func_801CF37C(void) {
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CF5E4);
 #else
+/* Retail 0x801CF5E4 (retail C still asm): draw the save icons of directory
+ * entries [first, limit).  Each valid entry (+0x58 of its 0x5C record) owns
+ * as many consecutive slot buffers (from slotIndex on) as its block count
+ * (header byte +0xB97 of its 0x200 block); each slot's POLY_FT4 for the
+ * current render context gets u = entry*16 (+0x10), v = the entry's
+ * animation word for frame g_Menu+0x4CC (low byte, +0x10), the CLUT at
+ * (entry*16, entry/16 + 0x1C1), and is drawn via func_801CE198 with the
+ * vertex quad at +0xE0.  Offsets: g_Menu+0x4CC is unk4CC[0] on the host;
+ * the block-count byte goes through MENU_CARD_OFF. */
 void func_801CF5E4(s32 first, s32 slotIndex, s32 limit) {
-    u8* data = (u8*)g_Menu->unk32C;
     s32 i;
     s32 slot = slotIndex;
+
     for (i = first; i < limit; i++) {
-        u8* entry = data + i * 0x5C;
-        s32 s3;
-        if (entry[0x58] == 0) continue;
-        for (s3 = 0; s3 < data[i * 0x200 + 0xB97]; s3++, slot++) {
+        u8* entry = (u8*)g_Menu->unk32C + i * 0x5C;
+        s32 n;
+
+        if (entry[0x58] == 0) {
+            continue;
+        }
+        for (n = 0; n < ((u8*)g_Menu->unk32C)[MENU_CARD_OFF(0xB97) + i * 0x200];
+             n++, slot++) {
             u8* dst = MenuTitleSlot(slot);
-            u8* poly = dst + g_Menu->renderContext * 40;
-            s32 value = i * 0x10;
-            u8 source = entry[(*(s32*)((u8*)g_Menu + 0x4CC)) * 4];
-            poly[0x0C] = (u8)value;
+            u8* poly = dst + g_Menu->renderContext * 0x28;
+            u8 source = entry[*(s32*)&g_Menu->unk4CC[0] * 4];
+
+            poly[0x0C] = (u8)(i * 0x10);
             poly[0x0D] = source;
-            poly[0x14] = (u8)(value + 0x10);
+            poly[0x14] = (u8)(i * 0x10 + 0x10);
             poly[0x15] = source;
-            poly[0x1C] = (u8)value;
+            poly[0x1C] = (u8)(i * 0x10);
             poly[0x1D] = (u8)(source + 0x10);
-            poly[0x24] = (u8)(value + 0x10);
+            poly[0x24] = (u8)(i * 0x10 + 0x10);
             poly[0x25] = (u8)(source + 0x10);
-            *(u16*)(poly + 0x0E) = GetClut(value, (i >> 4) + 0x1C1);
-            func_801CE198(1, (SVECTOR*)(dst + 0xE0), dst, g_Menu->renderContext);
+            *(u16*)(poly + 0x0E) = GetClut(i * 0x10, i / 16 + 0x1C1);
+            func_801CE198(1, (SVECTOR*)(dst + 0xE0), (POLY_FT4*)dst,
+                          g_Menu->renderContext);
         }
     }
 }
@@ -3451,33 +3666,65 @@ void func_801CF5E4(s32 first, s32 slotIndex, s32 limit) {
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CF8D8);
 #else
+/* Retail 0x801CF8D8 (retail C still asm): the two card-port header plates of
+ * the Save/Load screen.  While g_Menu+0x4D8 (unk4CC[0xC]) is nonzero, for
+ * each port i present (card +0x4FE4 + i) and while pManager+0x68 is set, it
+ * builds the plate glyph at card +0x4D94 + i*0xF0 (0x122 for the port that
+ * holds the selected slot while the pointer cursor is up, pManager+0x2F;
+ * 0x115 otherwise, including whenever the cursor is down) at x 0x1E + i*0x90,
+ * then the "Slot 1/2" label (0x162 + i) at +0x50, x 0x1B + i*0x90, both at
+ * y 0x36, and adds the label's prims and the plate to OT slot 4.
+ *
+ * Retail keeps the label count in $s5 across iterations and only draws the
+ * ports it built this call (sp+0x20 flags), so a skipped port draws nothing.
+ * The port once used the wrong glyph when the cursor was down, grouped by
+ * +0x4F7C >> 4 instead of D_801E981C[+0x4F7C] >> 4, read the card buffer
+ * through raw retail offsets (wrong past +0xB94 on the host) and g_Menu+0x4D8
+ * through a raw host offset, and added a NULL guard retail does not have. */
 void func_801CF8D8(void) {
-    u8* data = (u8*)g_Menu->unk32C;
+    u8 built[2];
+    s32 count = 0; /* retail $s5: only read after a build in the same pass */
     s32 i;
-    if (data == NULL || ((u8*)g_Menu)[0x4D8] == 0) return;
+
+    built[1] = 0;
+    built[0] = 0;
+    if (g_Menu->unk4CC[0xC] == 0) {
+        return;
+    }
     for (i = 0; i < 2; i++) {
-        s32 selected = *(s32*)(data + 0x4F7C);
-        s32 group = selected < 0 ? (selected + 15) >> 4 : selected >> 4;
-        if (!data[0x4FE4 + i] || ((u8*)g_Menu->pManager)[0x68] == 0) continue;
-        {
-            s32 glyph = (((u8*)g_Menu->pManager)[0x2F] && i != group)
-                            ? 0x115 : 0x122;
-            s32 count = func_8002675C(g_Menu->unk2DC, glyph,
-                                      data + 0x4D94 + i * 0xF0,
-                                      g_Menu->renderContext, 0x1E + i * 0x90, 0x36, 0x1000);
-            count = func_8002675C(g_Menu->unk2DC, i + 0x162,
-                      data + 0x4DE4 + i * 0xF0, g_Menu->renderContext,
-                      0x1B + i * 0x90, 0x36, 0x1000);
-            {
-                s32 j;
-                for (j = 0; j < count; j++) {
-                    AddPrim(&g_Menu->pGfxEnv->ot[4],
-                            data + 0x4D94 + i * 0xF0 + 0x50 +
-                            (g_Menu->renderContext + j * 2) * 40);
+        u8* data = (u8*)g_Menu->unk32C;
+        s32 plate = MENU_CARD_OFF(0x4D94) + i * 0xF0;
+
+        if (data[MENU_CARD_OFF(0x4FE4) + i] != 0 &&
+            ((u8*)g_Menu->pManager)[0x68] != 0) {
+            s32 other = 1;
+
+            if (((u8*)g_Menu->pManager)[0x2F] != 0) {
+                s32 selected = *(s32*)(data + MENU_CARD_OFF(0x4F7C));
+
+                if (i == (s32)D_801E981C[selected] / 16) {
+                    other = 0;
                 }
-                AddPrim(&g_Menu->pGfxEnv->ot[4],
-                        data + 0x4D94 + i * 0xF0 + g_Menu->renderContext * 40);
             }
+            func_8002675C(g_Menu->unk2DC, other ? 0x115 : 0x122,
+                          (u8*)g_Menu->unk32C + plate,
+                          g_Menu->renderContext, 0x1E + i * 0x90, 0x36, 0x1000);
+            count = func_8002675C(g_Menu->unk2DC, i + 0x162,
+                                  (u8*)g_Menu->unk32C + plate + 0x50,
+                                  g_Menu->renderContext, 0x1B + i * 0x90, 0x36,
+                                  0x1000);
+            built[i] = 1;
+        }
+        if (built[i] != 0) {
+            s32 j;
+
+            for (j = 0; j < count; j++) {
+                AddPrim(&g_Menu->pGfxEnv->ot[4],
+                        (u8*)g_Menu->unk32C + plate + 0x50 +
+                            (j * 2 + g_Menu->renderContext) * 0x28);
+            }
+            AddPrim(&g_Menu->pGfxEnv->ot[4],
+                    (u8*)g_Menu->unk32C + plate + g_Menu->renderContext * 0x28);
         }
     }
 }
@@ -3486,50 +3733,90 @@ void func_801CF8D8(void) {
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CFB48);
 #else
+/* Retail 0x801CFB48 (retail C still asm): the corner brackets of the card
+ * slots.  While g_Menu+0x4D8 (unk4CC[0xC]) is nonzero, every slot i of a
+ * present port (card +0x4FE4 + i/16), except the 16th of each port (i == 15,
+ * 31), gets its two LINE_F3 brackets (slot buffer +0x50 / +0x80, 0x18 per
+ * render context) projected (RotTransPers3 of the vertex sets at +0x100 /
+ * +0x120) and added to OT slot 4.  They are red (0xFF,0,0) when the slot's
+ * +0x4FAE entry equals the selected one's, the screen state is 2 and either
+ * that entry is used or this is the selected slot itself; green (0,0xFF,0)
+ * otherwise.  The selected entry is read once, before the loop.
+ *
+ * The port once skipped every slot whose entry differed from the selected
+ * one (retail draws them green), coloured a matching used entry green
+ * (retail: red), read the card buffer through raw retail offsets and
+ * g_Menu+0x4D8 through a raw host offset, and added a NULL guard retail does
+ * not have. */
 void func_801CFB48(void) {
-    u8* data = (u8*)g_Menu->unk32C;
+    u8 wanted;
     s32 i;
-    if (data == NULL || !((u8*)g_Menu)[0x4D8]) return;
+
+    if (g_Menu->unk4CC[0xC] == 0) {
+        return;
+    }
     {
-        u8 menuState = ((u8*)g_Menu)[0x4D8];
-    for (i = 0; i < 32; i++) {
+        u8* data = (u8*)g_Menu->unk32C;
+
+        wanted = data[MENU_CARD_OFF(0x4FAE) +
+                      D_801E981C[*(s32*)(data + MENU_CARD_OFF(0x4F7C))]];
+    }
+    for (i = 0; i < 0x20; i++) {
         u8* slot = MenuTitleSlot(i);
-        s32 group = i >> 4;
-        if (!data[0x4FE4 + group] || (group << 4) == i - 15) continue;
-        if (data[0x4FAE + i] != data[D_801E981C[*(s32*)(data + 0x4F7C)] + 0x4FAE]) continue;
-        {
-            u8* firstPoly = slot + 0x50 + g_Menu->renderContext * 24;
-            u8* secondPoly = slot + 0x80 + g_Menu->renderContext * 24;
-            s32 special = menuState == 2 && data[0x4FAE + i] == 0xFF &&
-                          D_801E981C[*(s32*)(data + 0x4F7C)] == i;
-            firstPoly[4] = special ? 0xFF : 0;
-            firstPoly[5] = special ? 0 : 0xFF;
-            firstPoly[6] = 0;
-            secondPoly[4] = firstPoly[4];
-            secondPoly[5] = firstPoly[5];
-            secondPoly[6] = 0;
+        u8* data = (u8*)g_Menu->unk32C;
+        s32 group = i / 16;
+        s32 rc;
+        s32 special = 0;
+        long p;
+        long flag;
+
+        if (data[MENU_CARD_OFF(0x4FE4) + group] == 0) {
+            continue;
         }
-        {
-            long p;
-            long flag;
+        if (group * 16 == i - 15) {
+            continue;
+        }
+        if (wanted == data[MENU_CARD_OFF(0x4FAE) + i] &&
+            g_Menu->unk4CC[0xC] == 2) {
+            if (wanted != 0xFF) {
+                special = 1;
+            } else {
+                special = (u32)i == D_801E981C[*(s32*)(data + MENU_CARD_OFF(0x4F7C))];
+            }
+        }
+
+        rc = g_Menu->renderContext;
+        if (special & 0xFF) {
+            slot[0x54 + rc * 0x18] = 0xFF;
+            slot[0x55 + rc * 0x18] = 0;
+            slot[0x56 + rc * 0x18] = 0;
+            slot[0x84 + rc * 0x18] = 0xFF;
+            slot[0x85 + rc * 0x18] = 0;
+        } else {
+            slot[0x54 + rc * 0x18] = 0;
+            slot[0x55 + rc * 0x18] = 0xFF;
+            slot[0x56 + rc * 0x18] = 0;
+            slot[0x84 + rc * 0x18] = 0;
+            slot[0x85 + rc * 0x18] = 0xFF;
+        }
+        slot[0x86 + g_Menu->renderContext * 0x18] = 0;
+
         RotTransPers3((SVECTOR*)(slot + 0x100), (SVECTOR*)(slot + 0x108),
                       (SVECTOR*)(slot + 0x118),
-                      (long*)(slot + 0x58 + g_Menu->renderContext * 24),
-                      (long*)(slot + 0x5C + g_Menu->renderContext * 24),
-                      (long*)(slot + 0x60 + g_Menu->renderContext * 24), &p, &flag);
-        }
-        AddPrim(&g_Menu->pGfxEnv->ot[4], slot + 0x50 + g_Menu->renderContext * 24);
-        {
-            long p;
-            long flag;
+                      (long*)(slot + 0x58 + g_Menu->renderContext * 0x18),
+                      (long*)(slot + 0x5C + g_Menu->renderContext * 0x18),
+                      (long*)(slot + 0x60 + g_Menu->renderContext * 0x18),
+                      &p, &flag);
+        AddPrim(&g_Menu->pGfxEnv->ot[4],
+                slot + 0x50 + g_Menu->renderContext * 0x18);
         RotTransPers3((SVECTOR*)(slot + 0x120), (SVECTOR*)(slot + 0x130),
                       (SVECTOR*)(slot + 0x138),
-                      (long*)(slot + 0x88 + g_Menu->renderContext * 24),
-                      (long*)(slot + 0x8C + g_Menu->renderContext * 24),
-                      (long*)(slot + 0x90 + g_Menu->renderContext * 24), &p, &flag);
-        }
-        AddPrim(&g_Menu->pGfxEnv->ot[4], slot + 0x80 + g_Menu->renderContext * 24);
-    }
+                      (long*)(slot + 0x88 + g_Menu->renderContext * 0x18),
+                      (long*)(slot + 0x8C + g_Menu->renderContext * 0x18),
+                      (long*)(slot + 0x90 + g_Menu->renderContext * 0x18),
+                      &p, &flag);
+        AddPrim(&g_Menu->pGfxEnv->ot[4],
+                slot + 0x80 + g_Menu->renderContext * 0x18);
     }
 }
 #endif
@@ -3573,6 +3860,18 @@ extern void func_801CF5E4(s32, s32, s32);
 extern void func_801CFB48(void);
 extern void func_801CF8D8(void);
 
+/* g_Menu+0x4CC..0x4DB (SystemMenu.unk4CC): the card-screen animation words
+ * (s32 frame 0x4CC, s32 tick 0x4D0, s32 pulse 0x4D4) and state bytes (0x4D8,
+ * 0x4D9).  This shared body addresses them by retail byte offset; the host
+ * SystemMenu is pointer-inflated, so the port maps them onto unk4CC (raw host
+ * g_Menu+0x4CC..0x4D9 lies inside unk39C, on the card-screen slot pointers
+ * 10..13).  The PSX expansion is the retail expression itself. */
+#ifdef XENO_PC_PORT
+#define MENU_4CC(p, off) ((u8*)((SystemMenu*)(p))->unk4CC + ((off) - 0x4CC))
+#else
+#define MENU_4CC(p, off) ((u8*)(p) + (off))
+#endif
+
 void func_801D01D0(void) {
     void* pMenu;
     func_801CF37C();
@@ -3583,36 +3882,36 @@ void func_801D01D0(void) {
     func_801CFF64();
     pMenu = g_Menu;
     {
-        s32 val = *(s32*)((u8*)pMenu + 0x4D0) + 1;
-        *(s32*)((u8*)pMenu + 0x4D0) = val;
+        s32 val = *(s32*)MENU_4CC(pMenu, 0x4D0) + 1;
+        *(s32*)MENU_4CC(pMenu, 0x4D0) = val;
         if (val == 0xF) {
-            *(s32*)((u8*)pMenu + 0x4D0) = 0;
+            *(s32*)MENU_4CC(pMenu, 0x4D0) = 0;
             {
-                s32 val2 = *(s32*)((u8*)pMenu + 0x4CC) + 1;
-                *(s32*)((u8*)pMenu + 0x4CC) = val2;
+                s32 val2 = *(s32*)MENU_4CC(pMenu, 0x4CC) + 1;
+                *(s32*)MENU_4CC(pMenu, 0x4CC) = val2;
                 if (val2 == 6) {
-                    *(s32*)((u8*)pMenu + 0x4CC) = 0;
+                    *(s32*)MENU_4CC(pMenu, 0x4CC) = 0;
                 }
             }
         }
     }
     {
         void* pMenu2 = g_Menu;
-        if (*(u8*)((u8*)pMenu2 + 0x4D9) == 0) {
-            s32 val = *(s32*)((u8*)pMenu2 + 0x4D4) + 4;
-            *(s32*)((u8*)pMenu2 + 0x4D4) = val;
+        if (*(u8*)MENU_4CC(pMenu2, 0x4D9) == 0) {
+            s32 val = *(s32*)MENU_4CC(pMenu2, 0x4D4) + 4;
+            *(s32*)MENU_4CC(pMenu2, 0x4D4) = val;
             if (val >= 0x81) {
-                *(u8*)((u8*)pMenu2 + 0x4D9) = 1;
+                *(u8*)MENU_4CC(pMenu2, 0x4D9) = 1;
                 pMenu2 = g_Menu;
-                *(s32*)((u8*)pMenu2 + 0x4D4) = 0x7C;
+                *(s32*)MENU_4CC(pMenu2, 0x4D4) = 0x7C;
             }
         } else {
-            s32 val = *(s32*)((u8*)pMenu2 + 0x4D4) - 4;
-            *(s32*)((u8*)pMenu2 + 0x4D4) = val;
+            s32 val = *(s32*)MENU_4CC(pMenu2, 0x4D4) - 4;
+            *(s32*)MENU_4CC(pMenu2, 0x4D4) = val;
             if (val < 0) {
-                *(u8*)((u8*)pMenu2 + 0x4D9) = 0;
+                *(u8*)MENU_4CC(pMenu2, 0x4D9) = 0;
                 pMenu2 = g_Menu;
-                *(s32*)((u8*)pMenu2 + 0x4D4) = 4;
+                *(s32*)MENU_4CC(pMenu2, 0x4D4) = 4;
             }
         }
     }
@@ -6753,6 +7052,172 @@ void func_801D9F34(void) {
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D9F98);
+#else
+extern u8 D_801E9778;
+extern u8 D_801E9784;
+extern u8 D_80059171;
+extern u8 D_801E9EA0[];
+extern s32 func_801C93A8(void);
+extern s32 func_801CD710(u8);
+extern void func_801C8960(void);
+extern void func_801D1E80(void);
+extern void func_801D22C4(void);
+extern void func_801D2F4C(u8);
+extern void func_801E5ACC(void);
+extern void func_801E6450(void);
+extern void func_801E86C8(s32);
+extern void func_801E8B4C(s32);
+
+/* Retail 0x801D9F98..0x801DA474 (retail C still asm): the Save/Load card
+ * screen controller.  func_801C531C entry 1 (field menu Save) calls it with
+ * (0, D_801E96A4) and entry 8 (title Continue) with (1, 0).
+ *
+ * The first pass builds the screen: func_801E6450 (panel, g_Menu+0x34C) and
+ * func_801E5ACC (the 32 slot buffers, g_Menu+0x3A8..0x424) -- the blocks the
+ * shared teardown func_801E3088 -> func_801D9E3C frees afterwards -- and
+ * enters the card layer (func_801D9C84, which returns nonzero when the scan
+ * reports no card; the screen then closes at once).  Each later pass scans
+ * the cards (func_801C93A8, nonzero = leave), redraws the file list when
+ * g_Menu+0x338 moves, and reads g_Menu->input: 3/1 move the cursor with wrap
+ * at g_Menu+0x33A, 4 runs the slot action (func_801CD710), 5 backs out.
+ * Returns 0 when the caller must not continue the Save/Load flow (backed out
+ * of Continue, the title with no card, ...), else 1.
+ *
+ * The port once had no body here: the generated stub returned 0 without
+ * building the screen, but func_801C531C still ran the retail teardown, so
+ * func_801E5B3C freed 32 never-allocated (NULL) slot pointers and HeapFree
+ * stopped the game in GameHandleError(0x83).  Selecting Continue on the title
+ * screen always hung. */
+/* Port diagnostics (not retail): entry/exit markers and a live flag for the
+ * card-screen test tooling (pc_port/src/psyq_compat.c,
+ * XENO_CARD_SCREEN_TEST). */
+int g_XenoCardScreenActive = 0;
+int g_XenoCardScreenEntries = 0;
+
+s32 func_801D9F98(s32 mode, s32 slotArg) {
+    s32 running = 1; /* retail $s0 */
+    s32 building = 1; /* retail $s4 */
+    s32 result = 1;  /* retail $s1 */
+    s32 title = 0;   /* retail $s3 */
+
+    g_XenoCardScreenActive = 1;
+    g_XenoCardScreenEntries++;
+    printf("[xeno-port][menu] card screen enter mode=%d D_80059460=%d\n",
+           (int)(mode & 0xFF), (int)D_80059460);
+    fflush(stdout);
+
+    D_801E9784 = 0;
+    g_Menu->menu2Choice = 2;
+    if (D_80059460 == 0 && D_80059171 == 0) {
+        g_Menu->menu2Choice = 1;
+    }
+    g_Menu->unk339 = 0xFF;
+    func_801D9F34();
+    func_801C7BF4();
+    while (running & 0xFF) {
+        ((u8*)g_Menu->pManager)[0xB] = 0;
+        g_Menu->unk4CC[0xC] = 1;
+        if (building & 0xFF) {
+            func_801E6450();
+            func_801E5ACC();
+            ((u8*)g_Menu->unk32C)[MENU_CARD_OFF(0x4FE4)] = 1;
+            ((u8*)g_Menu->unk32C)[MENU_CARD_OFF(0x4FE5)] = 1;
+            func_801D1E80();
+            if (D_80059460 == 2) {
+                title = 7;
+            } else if (D_80059460 == 0) {
+                func_801D29A8(0, 0);
+                if (D_80059171 == 0) {
+                    title = 9;
+                }
+            }
+            func_801E86C8(title);
+            ((u8*)g_Menu->pManager)[0x6] = 0;
+            ((u8*)g_Menu->pManager)[0x21] = 0;
+            building = 0;
+            if (func_801D9C84() & 0xFF) {
+                if (D_80059460 != 0) {
+                    result = 0;
+                }
+                break;
+            }
+            ((u8*)g_Menu->pManager)[0x68] = 1;
+        }
+
+        if (D_801E9778) {
+            func_801D2F4C(0x20);
+        }
+        if (func_801C93A8() & 0xFF) {
+            running = 0;
+        }
+        if (D_801E9778) {
+            MENU_CALL_D32B4();
+            D_801E9778 = 0;
+        }
+        if (!(running & 0xFF)) {
+            break;
+        }
+
+        if (g_Menu->menu2Choice != g_Menu->unk339) {
+            func_801E8070(6, g_Menu->unkDE0, D_801EA542, D_801E9EA0,
+                          g_Menu->pManager->unk1A, g_Menu->menu2Choice, 7, 0);
+            func_801E8B4C(D_80059460 == 2 ? 7 : 0);
+            g_Menu->unk339 = g_Menu->menu2Choice;
+        }
+
+        switch (g_Menu->input) {
+        case MENU_INPUT_UP:
+            g_Menu->menu2Choice++;
+            if (g_Menu->menu2Choice >= g_Menu->unk33A) {
+                g_Menu->menu2Choice = 0;
+            }
+            break;
+        case MENU_INPUT_DOWN:
+            if (g_Menu->menu2Choice != 0) {
+                g_Menu->menu2Choice--;
+            } else {
+                g_Menu->menu2Choice = g_Menu->unk33A - 1;
+            }
+            break;
+        case MENU_INPUT_CONFIRM:
+            func_801D22C4();
+            func_801E8044(6, g_Menu->pManager->unk1A);
+            running = func_801CD710(slotArg & 0xFF);
+            g_Menu->unk339 = 0xFF;
+            func_801D9F34();
+            if (D_80059460 == 2) {
+                break;
+            }
+            /* Save from the field: the action always ends the screen. */
+            running = 0;
+            if (mode & 0xFF) {
+                result = 0;
+            }
+            break;
+        case MENU_INPUT_BACK:
+            running = 0;
+            if (mode & 0xFF) {
+                result = 0;
+            }
+            break;
+        }
+    }
+
+    if (*(u16*)&((u8*)g_Menu->unk32C)[MENU_CARD_OFF(0x4FE4)] == 0 &&
+        D_80059460 != 0) {
+        result = 0;
+    }
+    ((u8*)g_Menu->pManager)[0x68] = 0;
+    ((u8*)g_Menu->pManager)[0xB] = 0;
+    ((u8*)g_Menu->pManager)[0x4] = 0;
+    ((u8*)g_Menu->pManager)[0x3] = 0;
+    func_801E8044(6, g_Menu->pManager->unk1A);
+    func_801C8960();
+    g_XenoCardScreenActive = 0;
+    printf("[xeno-port][menu] card screen exit result=%d\n", (int)result);
+    fflush(stdout);
+    return result;
+}
 #endif
 
 extern u8 D_801EA548[];
@@ -10515,6 +10980,64 @@ void func_801E53CC(u8 windowIndex) {
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM(MENU_ASM, func_801E56E8);
+#else
+extern u16 D_801E9894[];
+extern u16 D_801E9914[];
+extern void func_801E927C(POLY_FT4* p);
+extern void func_801C851C(SVECTOR* verts, s32 x, s32 y, s32 w, s32 h);
+
+/* Retail 0x801E56E8: build the icon prims of card-screen slot `slotIdx` in
+ * its 0x158-byte work buffer (g_Menu+0x3A8+slot*4): per render context a
+ * 16x16 POLY_FT4 at +0x00/+0x28 (tpage 0x140,0x80, 4-bit) and a grey
+ * (0x80) semi-transparent POLY_F4 at +0xB0/+0xC8 over the same square, the
+ * shared vertex quad at +0xE0, then two DR_MODEs (+0x140/+0x14C, tpage
+ * abr 2 at 0x140,0x80, texture window {0,0,0x100,0x100}).  Position from
+ * the 4-byte-stride tables D_801E9894 (x) / D_801E9914 (y).  With
+ * USE_EXTENDED_PRIM_POINTERS=0 the host prim sizes equal retail (FT4 0x28,
+ * F4 0x18, DR_MODE 0xC), so the retail byte offsets are used as-is. */
+void func_801E56E8(s32 slotIdx) {
+    u16* pX = &D_801E9894[slotIdx * 2];
+    u16* pY = &D_801E9914[slotIdx * 2];
+    u8* pBuf = MENU_RAW(0x3A8 + slotIdx * 4);
+    RECT tw;
+    s32 i;
+
+    for (i = 0; i < 2; i++) {
+        POLY_FT4* ft4 = (POLY_FT4*)(pBuf + i * 0x28);
+        POLY_F4* f4 = (POLY_F4*)(pBuf + 0xB0 + i * 0x18);
+
+        func_801E927C(ft4);
+        ft4->x0 = *pX;
+        ft4->y0 = *pY;
+        ft4->x1 = *pX + 0x10;
+        ft4->y1 = *pY;
+        ft4->x2 = *pX;
+        ft4->y2 = *pY + 0x10;
+        ft4->x3 = *pX + 0x10;
+        ft4->y3 = *pY + 0x10;
+        ft4->tpage = GetTPage(0, 0, 0x140, 0x80);
+        SetPolyF4(f4);
+        f4->r0 = 0x80;
+        f4->g0 = 0x80;
+        f4->b0 = 0x80;
+        SetSemiTrans(f4, 1);
+        f4->x0 = *pX;
+        f4->y0 = *pY;
+        f4->x1 = *pX + 0x10;
+        f4->y1 = *pY;
+        f4->x2 = *pX;
+        f4->y2 = *pY + 0x10;
+        f4->x3 = *pX + 0x10;
+        f4->y3 = *pY + 0x10;
+        func_801C851C((SVECTOR*)(pBuf + 0xE0), *pX, *pY, 0x10, 0x10);
+    }
+    tw.y = 0;
+    tw.x = 0;
+    tw.h = 0x100;
+    tw.w = 0x100;
+    SetDrawMode((DR_MODE*)(pBuf + 0x140), 0, 0, GetTPage(0, 2, 0x140, 0x80), &tw);
+    SetDrawMode((DR_MODE*)(pBuf + 0x14C), 0, 0, GetTPage(0, 2, 0x140, 0x80), &tw);
+}
 #endif
 
 extern u16 D_801E9894[];
@@ -10592,6 +11115,109 @@ void func_801E5B3C(void) {
 #ifndef XENO_PC_PORT
 INCLUDE_ASM(MENU_ASM, func_801E5B88);
 INCLUDE_ASM(MENU_ASM, func_801E5E4C);
+#else
+extern u16 D_801E9994[]; /* slot icon x, 4-byte stride, 21 columns */
+extern u16 D_801E99E8[]; /* slot icon y, 4-byte stride, per 21-slot column */
+extern u16 D_801E99F0[]; /* card-panel quad x (first entry only) */
+extern u16 D_801E99F8[]; /* card-panel quad y (first entry only) */
+extern void func_801E927C(POLY_FT4*);
+
+/* Retail 0x801E5B88..0x801E5E48 (retail C still asm): the 32 save-slot icon
+ * quads of the card panel (g_Menu+0x34C), two buffered POLY_FT4 per slot at
+ * +slot*0x50 (+0x00..+0x9FF).  Slot s sits at column s/21, row s%21:
+ * x = D_801E9994[s%21] + (s/21)*8, y = D_801E99E8[s/21], 12x16 pixels.  The
+ * texture cell is ((s%16)*16, (s/16)*16 - 0x20) in tpage (0x140, 0x80) with
+ * the CLUT at (0, 0x1C0).  With USE_EXTENDED_PRIM_POINTERS=0 the host
+ * POLY_FT4 is the retail 0x28 bytes, so the typed prims land on the same
+ * byte offsets the other readers of this buffer use. */
+void func_801E5B88(void) {
+    s32 slot;
+    s32 half;
+
+    for (slot = 0; slot < 0x20; slot++) {
+        for (half = 0; half < 2; half++) {
+            POLY_FT4* p;
+            s32 column = slot / 21;
+            u16* pX = &D_801E9994[(slot - column * 21) * 2];
+            u16* pY = &D_801E99E8[column * 2];
+            s32 page = (slot / 16) * 16;
+            s32 u = (slot - page) * 16;
+
+            func_801E927C((POLY_FT4*)(MenuRawPointer(0x34C) + (slot * 2 + half) * 0x28));
+            p = (POLY_FT4*)(MenuRawPointer(0x34C) + (slot * 2 + half) * 0x28);
+            p->x0 = *pX + column * 8;
+            p->y0 = *pY;
+            p->x1 = *pX + column * 8 + 0xC;
+            p->y1 = *pY;
+            p->x2 = *pX + column * 8;
+            p->y2 = *pY + 0x10;
+            p->x3 = *pX + column * 8 + 0xC;
+            p->y3 = *pY + 0x10;
+            p->u0 = u;
+            p->v0 = page - 0x20;
+            p->u1 = u + 0xC;
+            p->v1 = page - 0x20;
+            p->u2 = u;
+            p->v2 = page - 0x11;
+            p->u3 = u + 0xC;
+            p->v3 = page - 0x11;
+            p->tpage = GetTPage(0, 0, 0x140, 0x80);
+            p->clut = GetClut(0, 0x1C0);
+        }
+    }
+}
+
+/* Retail 0x801E5E4C..0x801E6094 (retail C still asm): the card panel's two
+ * buffered backdrops -- a 32x32 textured quad at +0xA00 (+i*0x28), placed at
+ * the FIRST entries of D_801E99F0 / D_801E99F8 for both buffers (retail never
+ * advances those table pointers), tpage (0x140, 0x80) and no CLUT write; and a
+ * gouraud band at +0xA50 (+i*0x24) spanning (0,0x4A)-(0x140,0x8A), purple
+ * (0x80,0,0x80) top-left, blue (0,0,0x80) top-right, dark (0x10,0,0x10)
+ * bottom-left, (0,0,0x10) bottom-right.  The host POLY_G4 is the retail 0x24
+ * bytes with USE_EXTENDED_PRIM_POINTERS=0. */
+void func_801E5E4C(void) {
+    s32 i;
+
+    for (i = 0; i < 2; i++) {
+        POLY_FT4* ft4;
+        POLY_G4* g4;
+
+        func_801E927C((POLY_FT4*)(MenuRawPointer(0x34C) + 0xA00 + i * 0x28));
+        ft4 = (POLY_FT4*)(MenuRawPointer(0x34C) + 0xA00 + i * 0x28);
+        ft4->x0 = D_801E99F0[0];
+        ft4->y0 = D_801E99F8[0];
+        ft4->x1 = D_801E99F0[0] + 0x20;
+        ft4->y1 = D_801E99F8[0];
+        ft4->x2 = D_801E99F0[0];
+        ft4->y2 = D_801E99F8[0] + 0x20;
+        ft4->x3 = D_801E99F0[0] + 0x20;
+        ft4->y3 = D_801E99F8[0] + 0x20;
+        ft4->tpage = GetTPage(0, 0, 0x140, 0x80);
+
+        SetPolyG4((POLY_G4*)(MenuRawPointer(0x34C) + 0xA50 + i * 0x24));
+        g4 = (POLY_G4*)(MenuRawPointer(0x34C) + 0xA50 + i * 0x24);
+        g4->r0 = 0x80;
+        g4->g0 = 0;
+        g4->b0 = 0x80;
+        g4->r1 = 0;
+        g4->g1 = 0;
+        g4->b1 = 0x80;
+        g4->r2 = 0x10;
+        g4->g2 = 0;
+        g4->b2 = 0x10;
+        g4->r3 = 0;
+        g4->g3 = 0;
+        g4->b3 = 0x10;
+        g4->x0 = 0;
+        g4->y0 = 0x4A;
+        g4->x1 = 0x140;
+        g4->y1 = 0x4A;
+        g4->x2 = 0;
+        g4->y2 = 0x8A;
+        g4->x3 = 0x140;
+        g4->y3 = 0x8A;
+    }
+}
 #endif
 
 #ifndef XENO_PC_PORT
@@ -11190,6 +11816,92 @@ void func_801E781C(s32 screenId, u8 animFlag) {
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM(MENU_ASM, func_801E78C8);
+#else
+extern u8 D_801EA8C4[];  /* 0x20-byte CLUT staging buffer */
+extern RECT D_801EA8E4;  /* icon image rect (y written per frame) */
+extern RECT D_801EA8EC;  /* icon CLUT rect */
+extern s32 D_801EA900;   /* per-port block totals, s32[2] */
+
+/* Retail 0x801E78C8: upload the save icon of card directory entry `index`
+ * (port = index / 16) from its 0x200-byte header block at card buffer
+ * +0xB94 + index*0x200: the 16-colour CLUT (+0x60, staged through
+ * D_801EA8C4) to VRAM (index*16, port + 0x1C1), then the three 16x16 4-bit
+ * icon frames (+0x80/+0x100/+0x180) to x = index*4 - port*64 + 0x140,
+ * y = port*16 + 0x80 + frame*32.  Then by the icon flag byte (+0xB96:
+ * 0x11 one frame, 0x12 two, 0x13 three) fills the entry's six animation
+ * words (card buffer +index*0x5C) with the frame y bases; any other value
+ * clears the entry's +0x58 "valid" byte.  Always adds the block count byte
+ * (+0xB97) to D_801EA900[port]. */
+void func_801E78C8(s32 index) {
+    s32 port = index / 16;
+    s32 block = index * 0x200 + 0xB94;
+    s32 invalid = 1;
+    s32 frame;
+    s32 base;
+    s32 y0;
+    u8* pCard;
+    u32* pAnim;
+
+    D_801EA8E4.x = index * 4 - (port * 64 - 0x140);
+    D_801EA8E4.w = 4;
+    D_801EA8E4.h = 0x10;
+    D_801EA8EC.x = index * 16;
+    D_801EA8EC.y = port + 0x1C1;
+    D_801EA8EC.w = 0x10;
+    D_801EA8EC.h = 1;
+    memmove(D_801EA8C4,
+            (u8*)g_Menu->unk32C + MENU_CARD_OFF(block + 0x60), 0x20);
+    LoadImage(&D_801EA8EC, (u_long*)D_801EA8C4);
+    DrawSync(0);
+
+    for (frame = 0; frame < 3; frame++) {
+        base = port * 16;
+        y0 = base + 0x80;
+        D_801EA8E4.y = frame * 32 + y0;
+        LoadImage(&D_801EA8E4,
+                  (u_long*)((u8*)g_Menu->unk32C +
+                            MENU_CARD_OFF(block + 0x80 + frame * 0x80)));
+        DrawSync(0);
+    }
+
+    pCard = (u8*)g_Menu->unk32C;
+    pAnim = (u32*)(pCard + MENU_CARD_OFF(index * 0x5C));
+    switch (pCard[MENU_CARD_OFF(index * 0x200 + 0xB96)]) {
+    case 0x11:
+        pAnim[0] = y0;
+        pAnim[1] = y0;
+        pAnim[2] = y0;
+        pAnim[3] = y0;
+        pAnim[4] = y0;
+        invalid = 0;
+        pAnim[5] = y0;
+        break;
+    case 0x12:
+        pAnim[0] = y0;
+        pAnim[1] = base + 0xA0;
+        pAnim[2] = y0;
+        pAnim[3] = base + 0xA0;
+        pAnim[4] = y0;
+        invalid = 0;
+        pAnim[5] = base + 0xA0;
+        break;
+    case 0x13:
+        pAnim[0] = y0;
+        pAnim[1] = base + 0xA0;
+        pAnim[2] = base + 0xC0;
+        pAnim[3] = y0;
+        pAnim[4] = base + 0xA0;
+        invalid = 0;
+        pAnim[5] = base + 0xC0;
+        break;
+    }
+
+    (&D_801EA900)[port] +=
+        ((u8*)g_Menu->unk32C)[MENU_CARD_OFF(index * 0x200 + 0xB97)];
+    if (invalid & 0xFF) {
+        ((u8*)g_Menu->unk32C)[MENU_CARD_OFF(index * 0x5C + 0x58)] = 0;
+    }
+}
 #endif
 
 #ifndef XENO_PC_PORT
@@ -11390,10 +12102,12 @@ void func_801E8070(s32 count, void* pStrings, void* pIdTable, void* pOffTable,
 
     pStr = &((MenuString*)pStrings)[sel];
     p = &pStr->polys[rc];
-    x = *(u16*)(D_801E9A00 + sel * 4);
-    y = *(u16*)(D_801E9A2C + sel * 4);
+    /* Retail indexes the position tables by arg6 + selected (the card
+     * screen passes arg6 = 7; the title and root menu pass 0).  The port once
+     * dropped arg6, which only the card screen exposes. */
+    x = *(u16*)(D_801E9A00 + ((arg6 & 0xFF) + sel) * 4);
+    y = *(u16*)(D_801E9A2C + ((arg6 & 0xFF) + sel) * 4);
     xo = *(u16*)((u8*)pOffTable + sel * 4);
-    (void)arg6;
 
     p->x0 = (s16)(x + xo + 0x16);
     p->y0 = (s16)(y - 0x22);
@@ -11468,6 +12182,75 @@ void func_801E8474(s32 count, void* pTable) {
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM(MENU_ASM, func_801E86C8);
+#else
+/* D_801EA1EC: u32 descriptor-id pairs {text id, highlight/label id}, 4 pairs
+ * (8 words) per row; row = menu kind (arg) + menu1Choice.  D_801EA1F0 is the
+ * second word of each pair (D_801EA1EC + 4). */
+extern u32 D_801EA1EC[];
+extern s32 func_8002675C(u8*, s32, void*, s32, s32, s32, s32);
+extern void func_801C7BF4(void);
+
+/* Retail 0x801E86C8 (retail C still asm): build the Save/Load header labels
+ * into the MenuUnk5 sprite lists with a staged reveal.  For n = 1..4 it
+ * rebuilds the first n entries of row (kind + menu1Choice): list 0
+ * (unk354+0x0, count +0x1400) from the pair's first id, counting the built
+ * entries into g_Menu+0x33A, then list 1 (unk354+0x500, count +0x1404) from
+ * the second id; entries whose first id is 0xFFFF are skipped.  Each list is
+ * followed by two menu frames until the first 0xFFFF entry is met (retail $s2
+ * latches to 0 and stays 0).  Entries are 0x50 apart (two render-context
+ * POLY_FT4s, func_8002675C's layout). */
+void func_801E86C8(s32 kind) {
+    s32 reveal = 1; /* retail $s2 */
+    s32 count;      /* retail $s1 */
+    s32 i;          /* retail $s0 */
+    s32 row = kind & 0xFF;
+
+    g_Menu->unk354->unk1400 = 0;
+    g_Menu->unk354->unk1404 = 0;
+    ((u8*)g_Menu->pManager)[0xA] = 1;
+    for (count = 1; count < 5; count++) {
+        g_Menu->unk354->unk1400 = 0;
+        g_Menu->unk33A = 0;
+        for (i = 0; i < count; i++) {
+            u32* pair = &D_801EA1EC[(row + g_Menu->menu1Choice) * 8 + i * 2];
+
+            if (pair[0] == 0xFFFF) {
+                reveal = 0;
+            } else {
+                g_Menu->unk354->unk1400 += func_8002675C(
+                    g_Menu->unk2DC, pair[0],
+                    (u8*)g_Menu->unk354 + g_Menu->unk354->unk1400 * 0x50,
+                    g_Menu->renderContext, 0xA0, 0x96, 0x1000);
+                g_Menu->unk33A++;
+            }
+        }
+        g_Menu->unk354->unk1408 = (u8)g_Menu->renderContext;
+        if (reveal) {
+            for (i = 0; i < 2; i++) {
+                func_801C7BF4();
+            }
+        }
+
+        g_Menu->unk354->unk1404 = 0;
+        for (i = 0; i < count; i++) {
+            u32* pair = &D_801EA1EC[(row + g_Menu->menu1Choice) * 8 + i * 2];
+
+            if (pair[0] != 0xFFFF) {
+                g_Menu->unk354->unk1404 += func_8002675C(
+                    g_Menu->unk2DC, pair[1],
+                    (u8*)g_Menu->unk354 + 0x500 +
+                        g_Menu->unk354->unk1404 * 0x50,
+                    g_Menu->renderContext, 0xA0, 0x96, 0x1000);
+            }
+        }
+        g_Menu->unk354->unk1409 = (u8)g_Menu->renderContext;
+        if (reveal) {
+            for (i = 0; i < 2; i++) {
+                func_801C7BF4();
+            }
+        }
+    }
+}
 #endif
 
 #ifndef XENO_PC_PORT
@@ -11509,6 +12292,47 @@ void func_801E8978(s32 count, s32 selected, void* pTable) {
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM(MENU_ASM, func_801E8B4C);
+#else
+extern u32 D_801EA1EC[];
+extern u32 D_801EA1F0[];
+extern s32 func_8002675C(u8*, s32, void*, s32, s32, s32, s32);
+extern void func_801D1EE0(s32 selected, s32 buildBar);
+
+/* Retail 0x801E8B4C (retail C still asm): rebuild the Save/Load header
+ * labels for the current cursor.  For each of the g_Menu+0x33A entries of row
+ * (kind + menu1Choice) it builds list 0 from the pair's first id (+0xD, the
+ * bright variant, for the entry at g_Menu+0x338) and list 1 from the second
+ * id, stamps both render contexts, positions the selection bar at row
+ * menu2Choice + 7 (func_801D1EE0) and arms the pointer (pManager+0x4). */
+void func_801E8B4C(s32 kind) {
+    s32 row = kind & 0xFF;
+    s32 i;
+
+    g_Menu->unk354->unk1400 = 0;
+    g_Menu->unk354->unk1404 = 0;
+    for (i = 0; i < g_Menu->unk33A; i++) {
+        s32 id;
+
+        if (i == g_Menu->menu2Choice) {
+            id = D_801EA1EC[(row + g_Menu->menu1Choice) * 8 + i * 2] + 0xD;
+        } else {
+            id = D_801EA1EC[(row + g_Menu->menu1Choice) * 8 + i * 2];
+        }
+        g_Menu->unk354->unk1400 += func_8002675C(
+            g_Menu->unk2DC, id,
+            (u8*)g_Menu->unk354 + g_Menu->unk354->unk1400 * 0x50,
+            g_Menu->renderContext, 0xA0, 0x96, 0x1000);
+        g_Menu->unk354->unk1404 += func_8002675C(
+            g_Menu->unk2DC,
+            D_801EA1F0[(row + g_Menu->menu1Choice) * 8 + i * 2],
+            (u8*)g_Menu->unk354 + 0x500 + g_Menu->unk354->unk1404 * 0x50,
+            g_Menu->renderContext, 0xA0, 0x96, 0x1000);
+    }
+    g_Menu->unk354->unk1408 = (u8)g_Menu->renderContext;
+    g_Menu->unk354->unk1409 = (u8)g_Menu->renderContext;
+    func_801D1EE0(g_Menu->menu2Choice + 7, 1);
+    ((u8*)g_Menu->pManager)[0x4] = 1;
+}
 #endif
 
 extern s32 SystemRenderStringEntry(void* pString, void* pWork, s32 height, s32 flag);
