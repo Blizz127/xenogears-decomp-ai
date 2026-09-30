@@ -166,6 +166,15 @@ LD_LIBRARY_PATH="$PKG/lib" ldd "$PKG/bin/xeno-port" > "$OUTDIR/$NAME.ldd.txt"
     exit 1
 }
 
+# The executable itself: tables written as structured C initialisers escape
+# the source scan above but compile to the retail bytes.
+(cd "$ROOT" && python3 tools/analysis/retail_binary_guard.py "$PKG/bin/xeno-port") \
+    > "$OUTDIR/$NAME.binaryscan.txt" 2>&1 || {
+    echo "retail binary guard flagged the packaged executable:" >&2
+    cat "$OUTDIR/$NAME.binaryscan.txt" >&2
+    exit 1
+}
+
 (cd "$PKG" && find . -type f ! -name MANIFEST -print0 | sort -z | xargs -0 sha256sum > MANIFEST)
 (cd "$PKG" && find . -type f ! -name MANIFEST ! -name MANIFEST.sizes.tsv -print0 | sort -z |
     while IFS= read -r -d '' file; do
