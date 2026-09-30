@@ -41,7 +41,6 @@ int __wrap_PcPort_Hd2dSpriteDraw(const PcPortHd2dSpriteInfo *i,int part,const Pc
     int exact=!memcmp(&before,q->poly,sizeof before);
     FILE *f=log_output(); if(f) {
         fprintf(f,"draw present=%u actor=%d fnv=%08x frame=%d part=%d production_accepted=%d trace=%d packet_exact=%d\n",g_PcPortPresentedFrames+1,i->actor,i->identity,i->frame,part,r,trace_mode(),exact);
-        fflush(f);
     }
     if(trace_mode() && (r || !exact)) {
         fprintf(stderr,"HD2D TRACE failed: declined production profile changed or accepted packet\n");
@@ -59,6 +58,6 @@ int __wrap_PcPort_FeiHd2dCapture(PcPortFeiHd2dBatch *b,void *poly,void *ot) {
         fprintf(f,"part present=%u map=%d actor=%d player=%d fnv=%08x frame=%d part=%d ot=%lx quad=%d,%d,%d,%d,%d,%d,%d,%d uv=%u,%u,%u,%u,%u,%u,%u,%u tpage=%u clut=%u accepted=%d packet_exact=%d\n",
             g_PcPortPresentedFrames+1,PcPort_Hd2dCurrentMap(),b->info.actor,g_PlayerActorIndex,b->info.identity,b->info.frame,part,(unsigned long)ot,
             before.x0,before.y0,before.x1,before.y1,before.x2,before.y2,before.x3,before.y3,
-            before.u0,before.v0,before.u1,before.v1,before.u2,before.v2,before.u3,before.v3,before.tpage,before.clut,r,!memcmp(&before,&after,sizeof before)); fflush(f);
+            before.u0,before.v0,before.u1,before.v1,before.u2,before.v2,before.u3,before.v3,before.tpage,before.clut,r,!memcmp(&before,&after,sizeof before));
     } return r;
 }
