@@ -877,6 +877,7 @@ PORT_SOURCES=(
     pc_port/src/mod_events.c
     pc_port/src/cheat_console.c
     pc_port/src/port_log.c
+    pc_port/src/game_error_report.c
     pc_port/src/port_dev_menu.c
     pc_port/src/port_dev_menu_actions.c
     pc_port/src/port_dev_menu_warps.c
