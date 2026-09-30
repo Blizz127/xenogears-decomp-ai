@@ -1,0 +1,91 @@
+Owner task 8773eca33b9e: renderer proposal (not integrated)
+
+Files
+  include/xg_plat/hd2d.h: C ABI configuration, frame inputs, support plan
+  src/hd2d/hd2d_policy.c: no-GL scope/capability policy
+  src/hd2d/hd2d_gl.cpp: desktop GL 3.3 presentation backend
+  shaders/hd2d.frag.inc: GLSL 330 source embedded at compile time
+  patches/psycross_hd2d_present.patch.PROPOSAL: INERT review artifact
+  tests/run_hd2d_test.sh: actual SDL offscreen OpenGL regression
+
+Integration sequence requiring coordinator agreement
+  Compile the policy as C, backend as C++, link existing libGL. The backend
+  uses desktop GL extension prototypes, not PsyCross's internal GL loader.
+  Add the proposed weak PcPort_Hd2dBeforePresent(width,height) hook immediately
+  before BOTH PsyX_RecordPresentedFrame calls. This is after GR_EndScene,
+  GR_StoreFrameBuffer and any corrective GR_PresentVRAMDisplay operation.
+  Never put effects before GR_StoreFrameBuffer: that would contaminate retail
+  VRAM contents, feedback copies, and future frames. Shutdown before context
+  destruction. The proposal is based on the inspected main-port vendor source;
+  final replay must verify against the complete target patch stack, including
+  psycross_present_displayed_after_vram.patch.
+
+  Port bridge owns ONE XgHd2dConfig and uses its enabled flag for BOTH atlas
+  replacement and postprocess. XgHd2d_DefaultConfig is master OFF, every
+  effect OFF, intensity 0.25, EMPTY map allowlist. Populate only approved
+  exact IDs; do not infer all of Lahan's interiors from a numeric range.
+  Exact opening IDs need integrator confirmation. A previously reported
+  opening-harness reference is not present in this target worktree; do not
+  treat its reported Map 2 / Map 4 labels as verified profile approval.
+  Pass field_active only for a real drawable opening field. Suppress while
+  display disabled, movie/title/battle/menu overlays are active, and while
+  presentation does not correspond to current scene metadata.
+  The viewport must describe game content in drawable framebuffer pixels,
+  excluding toolbar and letterboxing. Verify logical-vs-drawable size on HiDPI.
+  Supply GL_BACK content; initial backend is not GLES or a single-buffer API.
+  No glGetError polling: preserve caller error queue; LastError reports own
+  input/shader errors. Each successful Present restores all states it changes.
+  Private resources remain allocated while OFF until explicit context teardown;
+  OFF does not issue render, query, allocation, or deletion calls.
+
+Available now
+  Grade, vignette, warm ambient and projected radial lights can operate on the
+  existing color presentation. They do not resample or soften sprite edges.
+  Every effect has an independent enable/intensity in [0,1] (invalid values
+  disable; finite values over 1 clamp). No output work if all effects bypass.
+  Lighting is a stylized projected falloff accent, not world-space lighting.
+
+Required inputs for remaining effects
+  Bloom and ground-contact shadows require a verified, current R8 protection
+  mask for ALL visible sprites AND in-game UI. The mask is 1 on protected pixels,
+  0 on environment pixels. Rendering keeps protected RGBA pixels exactly intact,
+  and blur/glow taps exclude them. Fei's bounding box alone is not sufficient:
+  it overprotects scenery and leaves NPCs/text unprotected. Shadow ellipses are
+  supplied from actual projected feet/ground contacts, not inferred screen Y.
+
+  DOF (including tilted focal plane), fog and particles ALSO require an R32F
+  texture with positive linear view-distance values, 0 for invalid/unknown.
+  Format, dimensions and explicit semantic validity are checked. Missing or
+  malformed depth disables these effects. There is no screen-Y depth fallback.
+  The shader uses tilt only to tilt the focal plane in true depth units.
+  Particles are explicitly supplied projected scene particles with real depth;
+  they are culled against scene depth and never overlay protected pixels.
+
+Minimal renderer work to unlock depth/mask (separate scoped integration)
+  Current inspected PsyCross blit/offscreen FBOs attach depth texture 0. Its
+  optional PGXP depth test alone does not prove usable camera-depth data for
+  this non-PGXP port. A new depth attachment filled with default z is insufficient.
+  Introduce current-frame, viewport-sized R8 coverage and R32F distance targets,
+  allocated ONLY while master is ON and the approved field is active.
+  Emit matching auxiliary draws in retail raster/order-table order: sprite/UI
+  alpha-surviving pixels write coverage=1, environment pixels overwrite coverage
+  to 0 where they obscure sprites. Use the same clipping and discard semantics.
+  Preserve sprite/UI fragments behind later environment geometry correctly.
+  Derive linear depth from verified GTE camera-space per-vertex metadata carried
+  to renderer vertices, not ordering-table bucket index or window-space y.
+  Define transparency policy before marking coverage/depth complete. Unknown
+  world/background or partially covered fragments must use depth=0; unknown
+  coverage means do not mark protection_verified for that frame.
+  Cached VRAM image presents cannot inherit live scene attachments. Store matching
+  auxiliary data with that specific image or explicitly invalidate it.
+  Emit explicit status showing effect unavailable until this producer is wired.
+
+Verification performed
+  tests/run_hd2d_test.sh builds with -Wall -Wextra -Werror and runs desktop
+  OpenGL through SDL offscreen. Checks pre-context OFF/no-map/unknown-map gates;
+  full OFF byte-identical output; independent DOF/bloom changes; all-effect
+  protected pixels byte-identical; true horizontal depth fog; wrong texture
+  format fail-closed; and caller GL state restoration including separate FBOs,
+  VAO, textures, sampler bindings, viewport, masks, polygon mode, capabilities.
+  This is renderer-level evidence, NOT an opening-scene visual acceptance or
+  proof that the game currently produces valid depth/coverage.
