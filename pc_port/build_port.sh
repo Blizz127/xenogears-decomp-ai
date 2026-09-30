@@ -704,6 +704,7 @@ apply_psycross_patch "$ROOT/pc_port/patches/psycross_present_displayed_after_vra
 # Every speed / fast-forward change is logged with its source (F6, Backspace,
 # F7, L3, R3, dev-menu, focus-lost); applied last, on top of the host keys.
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_speed_source.patch" "_xeno_speed_source"
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_log_append.patch" "_xeno_log_append"
 
 echo "==> [1/5] Building PsyCross (libpsycross.a) via CMake"
 # Drop a stale CMake cache generated under a different absolute path (e.g. from a
@@ -848,6 +849,7 @@ PORT_SOURCES=(
     pc_port/src/plat/xg_plat_mods.c
     pc_port/src/mod_events.c
     pc_port/src/cheat_console.c
+    pc_port/src/port_log.c
     pc_port/src/port_dev_menu.c
     pc_port/src/port_dev_menu_actions.c
     pc_port/src/port_dev_menu_warps.c

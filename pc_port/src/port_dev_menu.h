@@ -38,6 +38,8 @@ enum {
 
 void PcPort_DevMenuInit(void);
 int PcPort_DevMenuEnabled(void);
+int PcPort_DevMenuInputState(unsigned *ms);   /* 0 game, 1 menu open, 2 drain */
+void PcPort_DevMenuSetStatus(const char *text);
 int PcPort_DevMenuOpen(void);
 int PcPort_DevMenuKey(int key, int pressed);
 /* Once per pad sample, from PsyX_pad.cpp.  `bits`: PC_DEV_PAD_* of the pad

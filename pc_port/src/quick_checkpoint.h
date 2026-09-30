@@ -9,6 +9,8 @@ int PcPort_QuickCheckpointGetUiState(void);
 void PcPort_QuickCheckpointSetFieldActive(int active);
 int PcPort_QuickCheckpointFieldIsActive(void); /* TEST TOOLING: see .c */
 int PcPort_QuickCheckpointFieldIsSafe(void);
+unsigned PcPort_FieldLoopCount(void);               /* FieldMain loop passes */
+int PcPort_QuickCheckpointPlayerPosition(int out[3]); /* whole units; 0 = no player */
 /* The safety gate's inputs, for a rejected dev-menu action's log line. */
 void PcPort_QuickCheckpointSafetyDescribe(char* out, size_t n);
 int PcPort_QuickCheckpointRequestWarp(int map, int entrance);

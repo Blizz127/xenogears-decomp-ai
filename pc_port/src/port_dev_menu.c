@@ -29,7 +29,7 @@ static unsigned s_comboStart, s_comboSeen;
 /* The post-close drain is bounded: a pad whose mapping reports a bit that
  * never releases must not lock the game's input (looks like a freeze). */
 #define DRAIN_MAX_MS 1000u
-static unsigned s_drainStart;
+static unsigned s_drainStart, s_drainLastMs;
 static int s_drainArmed;
 static int s_replay;
 static unsigned s_replayBits;
@@ -106,16 +106,17 @@ static void build_rows(void)
         add_row(1, ACT_GOD, 0, "GOD MODE", on_off(s_host ? s_host->god_on : NULL));
         add_row(1, ACT_BATTLES, 0, "RANDOM BATTLES", s_host && s_host->random_battles_on
                 ? (s_host->random_battles_on() ? "ON" : "OFF") : "ON");
-        /* Refill / gold / items are listed only when verified (DEV_MENU_SPEC
-         * §8): the owner's playtest froze after Refill (r6.3), and their
-         * game-state tests went away with the draft.  Hidden until they go
-         * through the game's own routines and pass a field+menu test.
-         * XENO_DEV_MENU_UNVERIFIED=1 shows them for testing. */
-        if (getenv("XENO_DEV_MENU_UNVERIFIED") && getenv("XENO_DEV_MENU_UNVERIFIED")[0] == '1') {
-            add_row(1, ACT_HEAL, 0, "REFILL PARTY HP AND EP", NULL);
-            add_row(1, ACT_GOLD, 0, "ADD 10000 GOLD", NULL);
+        /* Verified by pc_port/tests/run_dev_menu_cheats_state_test.sh: they
+         * call the game's own recovery routines / write what its gold and
+         * shop code writes (port_dev_menu_actions.c) and refuse off a free
+         * field frame. */
+        add_row(1, ACT_HEAL, 0, "REFILL PARTY HP AND EP", NULL);
+        add_row(1, ACT_GOLD, 0, "ADD 10000 GOLD", NULL);
+        /* Items stays hidden: the field overlay has no item-type table, so
+         * the top-up also raises owned key-item stacks, which retail never
+         * does.  XENO_DEV_MENU_UNVERIFIED=1 shows it for testing. */
+        if (getenv("XENO_DEV_MENU_UNVERIFIED") && getenv("XENO_DEV_MENU_UNVERIFIED")[0] == '1')
             add_row(1, ACT_ITEMS, 0, "TOP UP OWNED ITEMS", NULL);
-        }
         break;
     case PAGE_OPTIONS:
         add_row(1, ACT_FF, 0, "FAST-FORWARD", on_off(s_host ? s_host->fast_forward_on : NULL));
@@ -166,6 +167,20 @@ void PcPort_DevMenuInit(void)
         fprintf(stderr, "[DEV_MENU] enabled: Select+Start on one pad or F8 opens it\n");
 }
 int PcPort_DevMenuEnabled(void) { return s_enabled; }
+/* 0 = game owns the pad, 1 = menu open (pad blocked), 2 = post-close drain
+ * (pad blocked until released or DRAIN_MAX_MS).  *ms is the drain age. */
+int PcPort_DevMenuInputState(unsigned *ms)
+{
+    if (ms) *ms = 0;
+    if (!s_enabled) return 0;
+    if (s_open) return 1;
+    if (s_drain) {
+        if (ms && s_drainArmed) *ms = s_drainLastMs - s_drainStart;
+        return 2;
+    }
+    return 0;
+}
+void PcPort_DevMenuSetStatus(const char *text) { snprintf(s_status, sizeof s_status, "%s", text); }
 int PcPort_DevMenuOpen(void) { return s_enabled && s_open; }
 int PcPort_DevMenuCursor(void) { return s_cursor; }
 const char *PcPort_DevMenuStatus(void) { return s_status; }
@@ -400,6 +415,7 @@ unsigned PcPort_DevMenuPad(unsigned bits, int instance, int held_any, unsigned n
         /* After closing: the game sees a neutral pad until every button
          * (pad and keyboard) has been released. */
         if (!s_drainArmed) { s_drainArmed = 1; s_drainStart = now_ms; }
+        s_drainLastMs = now_ms;
         if (!bits && !held_any) s_drain = 0;
         else if (now_ms - s_drainStart >= DRAIN_MAX_MS) {
             s_drain = 0;
