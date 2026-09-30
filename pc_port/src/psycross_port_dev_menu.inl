@@ -10,12 +10,16 @@ void PsyX_TakeScreenshot();
 void PsyX_TakeScreenshotPath(const char* path);
 extern "C" int PsyX_HostFastForwardEnabled(void);
 extern "C" void PsyX_HostFastForwardToggle(void);
+extern "C" void PsyX_HostFastForwardToggleFrom(const char* source);
+extern "C" int PcPort_PadConfirmCircle(void);
+extern "C" void PcPort_PadConfirmToggle(void);
 extern "C" int PcPort_FeiHd2dAssetPresent(void) __attribute__((weak));
 
 static int s_xenoDevMenuShotPending = 0;
 
 static int PsyX_DevHostSpeed(void) { return PsyX_GetSpeedMultiplier(); }
-static void PsyX_DevHostSpeedCycle(void) { PsyX_SetSpeedMultiplier(PsyX_GetSpeedMultiplier() % 5 + 1); }
+static void PsyX_DevHostSpeedCycle(void) { PsyX_SetSpeedMultiplierFrom(PsyX_GetSpeedMultiplier() % 5 + 1, "dev-menu"); }
+static void PsyX_DevHostFastForwardToggle(void) { PsyX_HostFastForwardToggleFrom("dev-menu"); }
 static int PsyX_DevHostRecording(void) { return PsyX_IsRecording(); }
 static void PsyX_DevHostRecordToggle(void) { PsyX_ToggleRecording(); }
 /* Taken from the draw hook two presents later, once the menu is gone. */
@@ -33,12 +37,13 @@ static int PsyX_DevHostBattles(void) { return PcPort_RandomBattlesEnabled ? PcPo
 static void PsyX_PortDevMenuInstallHost()
 {
 	static const PcPortDevMenuHost host = {
-		PsyX_HostFastForwardEnabled, PsyX_HostFastForwardToggle,
+		PsyX_HostFastForwardEnabled, PsyX_DevHostFastForwardToggle,
 		PsyX_DevHostSpeed, PsyX_DevHostSpeedCycle,
 		PsyX_DevHostRecording, PsyX_DevHostRecordToggle,
 		PsyX_DevHostScreenshot,
 		PsyX_DevHostHd2dAvailable, PsyX_DevHostHd2dOn, PsyX_DevHostHd2dToggle,
 		PsyX_DevHostGod, PsyX_DevHostBattles,
+		PcPort_PadConfirmCircle, PcPort_PadConfirmToggle,
 	};
 	static int installed;
 	if (!installed) { PcPort_DevMenuSetHost(&host); installed = 1; }

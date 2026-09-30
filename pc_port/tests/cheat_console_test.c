@@ -24,6 +24,7 @@ void PcPort_FieldWarpArm(int m, int x, int z) { char b[32]; snprintf(b, sizeof b
 void PcPort_DebugBattleWarp(void) { trace("b"); }
 void PcPort_DebugBattleWarpQueue(int id) { char b[16]; snprintf(b, sizeof b, "B%d", id); trace(b); }
 void xg_plat_timing_set_speed(int m) { s_speed = m; }
+void xg_plat_timing_set_speed_from(int m, const char* s) { (void)s; s_speed = m; }
 void xg_plat_timing_set_fast_forward_speed(int m) { (void)m; }
 int xg_plat_audio_set_user_volume(int p) { (void)p; return 0; }
 static const char* const s_btn[XG_PLAT_BTN_COUNT] = {

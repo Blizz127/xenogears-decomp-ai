@@ -88,7 +88,7 @@ int PcPort_CheatExec(const char* line)
     } else if (!strcmp(argv[0], "battle") && argc == 2) {
         PcPort_DebugBattleWarpQueue(atoi(argv[1]));
     } else if (!strcmp(argv[0], "speed") && argc == 2) {
-        xg_plat_timing_set_speed(atoi(argv[1]));
+        xg_plat_timing_set_speed_from(atoi(argv[1]), "console");
     } else if (!strcmp(argv[0], "bind") && (argc == 1 || argc == 3)) {
         int b;
         if (argc == 3) {

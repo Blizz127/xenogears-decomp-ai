@@ -130,16 +130,21 @@ int xg_plat_timing_speed(void)
 
 void xg_plat_timing_set_speed(int multiplier)
 {
+    xg_plat_timing_set_speed_from(multiplier, "api");
+}
+
+void xg_plat_timing_set_speed_from(int multiplier, const char* source)
+{
     if (multiplier < XG_PLAT_SPEED_MIN)
         multiplier = XG_PLAT_SPEED_MIN;
     if (multiplier > XG_PLAT_SPEED_MAX)
         multiplier = XG_PLAT_SPEED_MAX;
-    PsyX_SetSpeedMultiplier(multiplier);
+    PsyX_SetSpeedMultiplierFrom(multiplier, source);
 }
 
 void xg_plat_timing_fast_forward(int held)
 {
-    PsyX_SetFastForwardHeld(held);
+    PsyX_SetFastForwardHeldFrom(held, "api");
 }
 
 void xg_plat_timing_set_fast_forward_speed(int multiplier)

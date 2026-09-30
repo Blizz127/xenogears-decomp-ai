@@ -14,6 +14,9 @@
  *   - hotplug: removal by instance id, fallback, Steam-virtual-only, a silent
  *     physical pad next to an active Steam pad, idle hand-over between pads;
  *   - the keyboard keeps working with and without a pad.
+ *   - pad fast-forward (input.pad_fast_forward, default off): a device where A
+ *     also asserts RIGHTSTICK must not change the game speed; with the option
+ *     on, only a lone L3 / R3 does.
  * Run: pc_port/tests/run_pad_select_test.sh (inside xenogears-dev). */
 #include <SDL.h>
 #include <stdio.h>
@@ -41,6 +44,24 @@ SDL_JoystickID PsyX_Pad_HostActiveInstance();
 const char* PsyX_Pad_SourceName(int source);
 /* pc_port/src/plat/xg_plat_psycross.c */
 void xg_plat_input_set_pad_face_swap(int swapped);
+
+/* Stand-ins for the host speed controls (PsyX_main.cpp hotkeys + host speed):
+ * fast-forward = L3 toggle or R3 hold -> 5x, else 1x; each change is logged
+ * with its source like the real "speed:" line. */
+static int s_ffEnabled = 0, s_ffToggle = 0, s_ffHold = 0, s_speedChanges = 0;
+static int ff_speed(void) { return (s_ffToggle || s_ffHold) ? 5 : 1; }
+static void ff_update(const char* source)
+{
+    static int last = 1;
+    if (ff_speed() != last) {
+        last = ff_speed();
+        s_speedChanges++;
+        printf("  speed: %dx (source: %s)\n", last, source);
+    }
+}
+int PcPort_PadFastForwardEnabled(void) { return s_ffEnabled; }
+void PsyX_HostFastForwardToggleFrom(const char* source) { s_ffToggle ^= 1; ff_update(source); }
+void PsyX_HostFastForwardPadHoldFrom(int held, const char* source) { s_ffHold = held != 0; ff_update(source); }
 
 /* Symbols PsyX_pad.cpp takes from the rest of PsyCross. */
 int g_padCommEnable = 1;
@@ -361,6 +382,63 @@ int main(void)
     CHECK(tap(&xbox, SDL_CONTROLLER_BUTTON_X) == PS_SQUARE, "circle scheme: X unchanged -> Square");
     xg_plat_input_set_pad_face_swap(0);
     CHECK(tap(&xbox, SDL_CONTROLLER_BUTTON_A) == PS_CROSS, "cross scheme restored: A -> Cross");
+
+
+    printf("-- 3d. pad fast-forward is opt-in; a device where A also asserts RIGHTSTICK must not change speed\n");
+    {
+        s_speedChanges = 0;
+        /* default config: off.  A with RIGHTSTICK (the owner's SteamOS Handheld Controller). */
+        button(&xbox, SDL_CONTROLLER_BUTTON_A, 1);
+        button(&xbox, SDL_CONTROLLER_BUTTON_RIGHTSTICK, 1);
+        for (int i = 0; i < 6; i++) frame();
+        CHECK(ff_speed() == 1 && s_speedChanges == 0, "default (off): A + R3 -> speed unchanged");
+        release_all(&xbox); frame();
+        button(&xbox, SDL_CONTROLLER_BUTTON_RIGHTSTICK, 1);
+        for (int i = 0; i < 6; i++) frame();
+        CHECK(ff_speed() == 1 && s_speedChanges == 0, "default (off): a lone R3 -> speed unchanged");
+        release_all(&xbox); frame();
+        button(&xbox, SDL_CONTROLLER_BUTTON_LEFTSTICK, 1);
+        for (int i = 0; i < 6; i++) frame();
+        release_all(&xbox); frame();
+        CHECK(ff_speed() == 1 && s_speedChanges == 0, "default (off): a lone L3 -> no toggle");
+
+        s_ffEnabled = 1;
+        button(&xbox, SDL_CONTROLLER_BUTTON_A, 1);
+        button(&xbox, SDL_CONTROLLER_BUTTON_RIGHTSTICK, 1);
+        for (int i = 0; i < 6; i++) frame();
+        CHECK(ff_speed() == 1 && s_speedChanges == 0, "on: A + R3 together -> speed unchanged");
+        release_all(&xbox); frame();
+        button(&xbox, SDL_CONTROLLER_BUTTON_RIGHTSTICK, 1); frame();
+        button(&xbox, SDL_CONTROLLER_BUTTON_A, 1);
+        for (int i = 0; i < 6; i++) frame();
+        CHECK(ff_speed() == 1 && s_speedChanges == 0, "on: R3 one frame ahead of A (skewed report) -> unchanged");
+        release_all(&xbox); frame();
+        button(&xbox, SDL_CONTROLLER_BUTTON_DPAD_UP, 1);
+        button(&xbox, SDL_CONTROLLER_BUTTON_LEFTSTICK, 1);
+        for (int i = 0; i < 6; i++) frame();
+        release_all(&xbox); frame();
+        CHECK(ff_speed() == 1 && s_speedChanges == 0, "on: D-pad + L3 -> no toggle");
+        button(&xbox, SDL_CONTROLLER_BUTTON_LEFTSTICK, 1);
+        button(&xbox, SDL_CONTROLLER_BUTTON_RIGHTSTICK, 1);
+        for (int i = 0; i < 6; i++) frame();
+        release_all(&xbox); frame();
+        CHECK(ff_speed() == 1 && s_speedChanges == 0, "on: L3 + R3 together -> unchanged");
+
+        button(&xbox, SDL_CONTROLLER_BUTTON_RIGHTSTICK, 1);
+        for (int i = 0; i < 6; i++) frame();
+        CHECK(ff_speed() == 5 && s_speedChanges == 1, "on: a lone R3 held -> fast-forward (5x)");
+        release_all(&xbox); frame();
+        CHECK(ff_speed() == 1 && s_speedChanges == 2, "on: R3 released -> 1x");
+        button(&xbox, SDL_CONTROLLER_BUTTON_LEFTSTICK, 1);
+        for (int i = 0; i < 6; i++) frame();
+        release_all(&xbox); frame();
+        CHECK(ff_speed() == 5 && s_speedChanges == 3, "on: a lone L3 click -> toggle on (exactly once)");
+        button(&xbox, SDL_CONTROLLER_BUTTON_LEFTSTICK, 1);
+        for (int i = 0; i < 6; i++) frame();
+        release_all(&xbox); frame();
+        CHECK(ff_speed() == 1 && s_speedChanges == 4, "on: second lone L3 click -> toggle off");
+        s_ffEnabled = 0;
+    }
 
     printf("-- no double input from the Steam virtual pad\n");
     CHECK(tap(&steam, SDL_CONTROLLER_BUTTON_B) == 0 && PsyX_Pad_HostActiveInstance() == xbox.id,

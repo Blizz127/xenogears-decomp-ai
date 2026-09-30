@@ -65,9 +65,12 @@ static int h_hd2d_on(void) { return s_hd2d; }
 static void h_hd2d_toggle(void) { s_hostCalls++; s_hd2d ^= 1; }
 static int h_god(void) { return s_god; }
 static int h_battles(void) { return 1; }
+static int s_confirmCircle = 0;
+static int h_confirm(void) { return s_confirmCircle; }
+static void h_confirm_toggle(void) { s_hostCalls++; s_confirmCircle ^= 1; }
 static const PcPortDevMenuHost s_host = {
     h_ff_on, h_ff_toggle, h_speed, h_speed_cycle, h_rec, h_rec_toggle, h_shot,
-    h_hd2d_avail, h_hd2d_on, h_hd2d_toggle, h_god, h_battles,
+    h_hd2d_avail, h_hd2d_on, h_hd2d_toggle, h_god, h_battles, h_confirm, h_confirm_toggle,
 };
 
 enum { PS_SELECT = 0x1, PS_START = 0x8, PS_UP = 0x10, PS_DOWN = 0x40, PS_CROSS = 0x4000, PS_CIRCLE = 0x2000 };
@@ -226,8 +229,17 @@ int main(void)
     CHECK(!strcmp(PcPort_DevMenuTitle(), "OPTIONS") && !strcmp(row(0), "FAST-FORWARD: OFF") &&
           !strcmp(row(1), "GAME SPEED: 1X") && !strcmp(row(2), "RECORD VIDEO: OFF") &&
           !strcmp(row(3), "SCREENSHOT") && !strcmp(row(4), "QUICK SAVE") &&
-          !strcmp(row(5), "QUICK LOAD") && !strcmp(row(6), "ENHANCEMENTS >"), "OPTIONS page rows");
+          !strcmp(row(5), "QUICK LOAD") && !strcmp(row(6), "CONFIRM BUTTON: CROSS (US)") &&
+          !strcmp(row(7), "ENHANCEMENTS >"), "OPTIONS page rows (incl. CONFIRM BUTTON)");
     tap(&pad, SDL_CONTROLLER_BUTTON_DPAD_UP); /* wraps to ENHANCEMENTS */
+    tap(&pad, SDL_CONTROLLER_BUTTON_DPAD_UP); /* CONFIRM BUTTON */
+    tap(&pad, SDL_CONTROLLER_BUTTON_A);
+    CHECK(s_confirmCircle == 1 && !strcmp(row(6), "CONFIRM BUTTON: CIRCLE (JP)") && PcPort_DevMenuOpen(),
+          "OPTIONS > CONFIRM BUTTON + A: host toggled, row reads CIRCLE (JP), menu stays open");
+    tap(&pad, SDL_CONTROLLER_BUTTON_A);
+    CHECK(s_confirmCircle == 0 && !strcmp(row(6), "CONFIRM BUTTON: CROSS (US)"), "A again: back to CROSS (US)");
+    s_hostCalls -= 2; /* the identity check below counts only its own host actions */
+    tap(&pad, SDL_CONTROLLER_BUTTON_DPAD_DOWN); /* ENHANCEMENTS */
     tap(&pad, SDL_CONTROLLER_BUTTON_A);
     CHECK(!strcmp(PcPort_DevMenuTitle(), "ENHANCEMENTS") && !strcmp(row(0), "HD-2D FEI: ON"),
           "ENHANCEMENTS: HD-2D Fei (atlas present)");

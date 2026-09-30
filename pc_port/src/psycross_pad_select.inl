@@ -485,18 +485,52 @@ static u_short XenoPad_StickToDpad(int x, int y)
 	return ret;
 }
 
-/* L3 toggles fast-forward, R3 holds it (DEV_MENU_SPEC.md §0, like F6 /
- * Backspace); suppressed while the dev menu owns the pad. */
-static int s_xenoL3Prev = 0;
+/* Pad fast-forward (opt-in: input.pad_fast_forward = on; default OFF).
+ * L3 toggles fast-forward, R3 holds it (like F6 / Backspace); both are
+ * suppressed while the dev menu owns the pad.  They count only when the
+ * stick click is pressed ALONE (no face button or D-pad held), sampled on
+ * XENO_PAD_FF_STABLE consecutive frames: a mis-mapped device (the Legion Go's
+ * "SteamOS Handheld Controller" 28de:12fb reported RIGHTSTICK with every A
+ * press) asserts the click together with a face button, and must not change
+ * the game speed.  PcPort_PadFastForwardEnabled comes from port_main.c. */
+extern "C" int PcPort_PadFastForwardEnabled(void) __attribute__((weak));
+extern "C" void PsyX_HostFastForwardToggleFrom(const char* source) __attribute__((weak));
+extern "C" void PsyX_HostFastForwardPadHoldFrom(int held, const char* source) __attribute__((weak));
+#define XENO_PAD_FF_STABLE 2
+static int s_xenoL3Stable = 0;
+static int s_xenoR3Stable = 0;
 static int s_xenoR3Hold = 0;
+static int s_xenoFfWarned = 0;
 static void XenoPad_FastForwardKeys(SDL_GameController* gc, int suppressed)
 {
-	int l3 = gc && SDL_GameControllerGetButton(gc, SDL_CONTROLLER_BUTTON_LEFTSTICK);
-	int r3 = gc && !suppressed && SDL_GameControllerGetButton(gc, SDL_CONTROLLER_BUTTON_RIGHTSTICK);
-	if (l3 && !s_xenoL3Prev && !suppressed && PsyX_HostFastForwardToggle)
-		PsyX_HostFastForwardToggle();
-	s_xenoL3Prev = l3;
-	if (r3 != s_xenoR3Hold && PsyX_HostFastForwardPadHold)
-		PsyX_HostFastForwardPadHold(r3);
+	int enabled = PcPort_PadFastForwardEnabled && PcPort_PadFastForwardEnabled();
+	int l3 = 0, r3 = 0, other = 0, r3Alone, l3Alone;
+	if (gc && enabled && !suppressed)
+	{
+		static const SDL_GameControllerButton guard[] = {
+			SDL_CONTROLLER_BUTTON_A, SDL_CONTROLLER_BUTTON_B, SDL_CONTROLLER_BUTTON_X,
+			SDL_CONTROLLER_BUTTON_Y, SDL_CONTROLLER_BUTTON_DPAD_UP, SDL_CONTROLLER_BUTTON_DPAD_DOWN,
+			SDL_CONTROLLER_BUTTON_DPAD_LEFT, SDL_CONTROLLER_BUTTON_DPAD_RIGHT };
+		l3 = SDL_GameControllerGetButton(gc, SDL_CONTROLLER_BUTTON_LEFTSTICK);
+		r3 = SDL_GameControllerGetButton(gc, SDL_CONTROLLER_BUTTON_RIGHTSTICK);
+		for (size_t i = 0; i < sizeof guard / sizeof guard[0]; i++)
+			if (SDL_GameControllerGetButton(gc, guard[i]))
+				other = 1;
+	}
+	l3Alone = l3 && !r3 && !other;
+	r3Alone = r3 && !l3 && !other;
+	if ((l3 || r3) && (other || (l3 && r3)) && !s_xenoFfWarned)
+	{
+		s_xenoFfWarned = 1;
+		eprintwarn("pad: L3/R3 pressed together with a face button, D-pad or each other: "
+			"not a fast-forward request (mis-mapped device?)\n");
+	}
+	s_xenoL3Stable = l3Alone ? s_xenoL3Stable + 1 : 0;
+	s_xenoR3Stable = r3Alone ? s_xenoR3Stable + 1 : 0;
+	if (s_xenoL3Stable == XENO_PAD_FF_STABLE && PsyX_HostFastForwardToggleFrom)
+		PsyX_HostFastForwardToggleFrom("L3");
+	r3 = s_xenoR3Stable >= XENO_PAD_FF_STABLE;
+	if (r3 != s_xenoR3Hold && PsyX_HostFastForwardPadHoldFrom)
+		PsyX_HostFastForwardPadHoldFrom(r3, "R3");
 	s_xenoR3Hold = r3;
 }

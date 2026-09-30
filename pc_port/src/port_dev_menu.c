@@ -40,7 +40,7 @@ typedef struct { char label[48]; int selectable; int action; int arg; } Row;
 enum {
     ACT_NONE, ACT_PAGE, ACT_AREA, ACT_WARP, ACT_FINISH,
     ACT_GOD, ACT_BATTLES, ACT_HEAL, ACT_GOLD, ACT_ITEMS,
-    ACT_FF, ACT_SPEED, ACT_RECORD, ACT_SHOT, ACT_QSAVE, ACT_QLOAD, ACT_HD2D
+    ACT_FF, ACT_SPEED, ACT_RECORD, ACT_SHOT, ACT_QSAVE, ACT_QLOAD, ACT_HD2D, ACT_CONFIRM
 };
 static Row s_rows[MAX_ROWS];
 static int s_rowCount;
@@ -125,6 +125,9 @@ static void build_rows(void)
         add_row(1, ACT_SHOT, 0, "SCREENSHOT", NULL);
         add_row(1, ACT_QSAVE, 0, "QUICK SAVE", NULL);
         add_row(1, ACT_QLOAD, 0, "QUICK LOAD", NULL);
+        if (s_host && s_host->confirm_circle && s_host->confirm_toggle)
+            add_row(1, ACT_CONFIRM, 0, "CONFIRM BUTTON",
+                    s_host->confirm_circle() ? "CIRCLE (JP)" : "CROSS (US)");
         add_row(1, ACT_PAGE, PAGE_ENHANCE, "ENHANCEMENTS >", NULL);
         break;
     case PAGE_ENHANCE:
@@ -294,6 +297,11 @@ static void activate(void)
     case ACT_SHOT:
         close_menu("screenshot");
         if (s_host && s_host->screenshot) s_host->screenshot();
+        break;
+    case ACT_CONFIRM:
+        if (s_host && s_host->confirm_toggle) s_host->confirm_toggle();
+        snprintf(s_status, sizeof s_status, "CONFIRM BUTTON CHANGED");
+        fprintf(stderr, "[DEV_MENU] confirm button toggled\n");
         break;
     case ACT_HD2D:
         if (s_host && s_host->hd2d_toggle) s_host->hd2d_toggle();
