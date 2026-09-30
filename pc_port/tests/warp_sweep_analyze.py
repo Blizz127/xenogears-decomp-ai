@@ -65,7 +65,7 @@ def analyze(d):
     target = int(t['map'])
     # (a) arrival
     start = idx.get('TARGET mode', len(L))
-    accepted = any(('warpx requested' in l or 'step finished' in l) for l in L[start:])
+    accepted = any(('warpx requested' in l or 'warp requested' in l or 'step finished' in l) for l in L[start:])
     # the destination FieldLoad logs the raw g_GameSceneMapNum
     loads = [(i, int(m.group(1))) for i, l in enumerate(L[start:], start)
              for m in [re.search(r'FieldLoad begin field=(\d+)', l)] if m]
