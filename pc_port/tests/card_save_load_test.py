@@ -103,6 +103,7 @@ def no_errors(port, tag):
 
 
 def save_run(binary, root, out, ckpt, cards):
+    os.makedirs(out, exist_ok=True)
     qs = os.path.join(out, 'quick.xgqs')
     shutil.copy(ckpt, qs)
     port = Port(binary, root, out, {'XENO_QUICKSAVE_PATH': qs, 'XENO_FIELD_POS_DIAG': '30',
@@ -157,8 +158,8 @@ def save_run(binary, root, out, ckpt, cards):
         s = port.n()
         port.wait_for('func_801C55A0 cancel/close', 30, s, every=3.0, action=lambda: port.pad(CROSS))
         check('save.field.resumes', port.wait_for('POSDIAG', 60, port.n()) is not None)
-        no_errors(port, 'save')
     finally:
+        no_errors(port, 'save')
         port.stop()
     return saved
 
@@ -174,15 +175,19 @@ def load_run(binary, root, out, cards, saved):
         if not check('load.title.menu', i is not None and 'choice=1' in port.lines[i],
                      port.lines[i] if i is not None else 'no title loop'):
             return
+        # The Circle pulses that opened the title may already have confirmed
+        # Continue (and Load): look from the title-loop line, press only
+        # when the next step has not happened yet.
+        s = i
         time.sleep(3)
-        s = port.n()
-        port.pad(CIRCLE)
+        if port.find('card screen enter mode=1', s) is None:
+            port.pad(CIRCLE)
         i = port.wait_for('card screen enter mode=1', 30, s)
         if not check('load.continue.opens.card.screen', i is not None):
             return
         time.sleep(3)
-        s = port.n()
-        port.pad(CIRCLE)
+        if port.find('card action begin choice=', s) is None:
+            port.pad(CIRCLE)
         i = port.wait_for('card action begin choice=', 20, s)
         if not check('load.action.is.load', i is not None and 'choice=2' in port.lines[i]
                      and 'D_80059460=2' in port.lines[i],
@@ -217,8 +222,8 @@ def load_run(binary, root, out, cards, saved):
             d = max(abs(int(m1.group(k)) - int(m0.group(k))) for k in (2, 3, 4))
             check('load.position.matches', d <= POS_TOL, 'max delta %d' % d)
         check('load.partyhp.matches', hp0 is not None and hp0 == hp1)
-        no_errors(port, 'load')
     finally:
+        no_errors(port, 'load')
         port.stop()
 
 
