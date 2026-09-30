@@ -1,5 +1,6 @@
 **[Xenogears](Home)**
 
+* [Milestones](Milestones)
 * [Decompile status](Decompile-Status)
 * [Port status](Port-Status)
 * [Current status](Current-Status)
