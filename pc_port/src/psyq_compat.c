@@ -879,6 +879,13 @@ static unsigned short PcPort_PadTestGameToPhysical(unsigned short game)
     return physical;
 }
 
+/* Runtime-held buttons (game CTRL_BTN_* bits), set by the harness command
+ * `dev pad <hex>` (port_dev_menu_actions.c) so a test can press a button from
+ * the moment a quick-load finishes instead of guessing a Vsync frame.  Applied
+ * only while XENO_PAD_TEST_INPUT is active, like the schedule itself. */
+static volatile unsigned short s_padTestRuntimeHeld;
+void PcPort_PadTestInputHold(unsigned held) { s_padTestRuntimeHeld = (unsigned short)held; }
+
 /* Must run AFTER PsyX_UpdateInput() refreshes g_C1Buffer from SDL and BEFORE
  * ControllerPoll() derives the edge state from it. */
 static void PcPort_PadTestInputInject(void)
@@ -927,6 +934,8 @@ static void PcPort_PadTestInputInject(void)
            s_padTestFrame >= s_padTestSteps[s_padTestCurrentStep + 1].frame)
         s_padTestCurrentStep++;
     value = s_padTestSuppress ? 0 : s_padTestSteps[s_padTestCurrentStep].value;
+
+    value |= s_padTestRuntimeHeld;
 
 #if defined(XENO_PAD_TEST_INPUT_MUTANT_NO_INJECT)
     /* Deliberate mutant control: parse and log the schedule but never touch

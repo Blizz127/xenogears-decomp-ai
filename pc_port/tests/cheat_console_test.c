@@ -23,6 +23,7 @@ void PcPort_FieldWarpDiag(void) { trace("w"); }
 void PcPort_FieldWarpArm(int m, int x, int z) { char b[32]; snprintf(b, sizeof b, "W%d,%d,%d", m, x, z); trace(b); }
 void PcPort_DebugBattleWarp(void) { trace("b"); }
 void PcPort_DebugBattleWarpQueue(int id) { char b[16]; snprintf(b, sizeof b, "B%d", id); trace(b); }
+int PcPort_DevMenuAction(const char *c) { (void)c; trace("D"); return 1; }
 void xg_plat_timing_set_speed(int m) { s_speed = m; }
 void xg_plat_timing_set_fast_forward_speed(int m) { (void)m; }
 int xg_plat_audio_set_user_volume(int p) { (void)p; return 0; }

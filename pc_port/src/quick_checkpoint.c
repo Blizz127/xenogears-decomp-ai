@@ -158,11 +158,28 @@ static int capture_checkpoint(PcPortQuickCheckpoint* checkpoint)
     return 0;
 }
 
+/* Field main-loop iterations (Poll runs once per FieldMain loop pass), for
+ * the heartbeat and the cheat-state tests: it stops advancing exactly when
+ * the field loop stalls, unlike the presented-frame count. */
+static volatile unsigned s_fieldLoopCount;
+unsigned PcPort_FieldLoopCount(void) { return s_fieldLoopCount; }
+
+int PcPort_QuickCheckpointPlayerPosition(int out[3])
+{
+    ActorData* actor = s_fieldActive ? player_actor(NULL) : NULL;
+    if (!actor) return 0;
+    out[0] = actor->position.vx >> 16;
+    out[1] = actor->position.vy >> 16;
+    out[2] = actor->position.vz >> 16;
+    return 1;
+}
+
 int PcPort_QuickCheckpointPoll(void)
 {
     PcPortQuickCheckpoint checkpoint;
     const char* path;
     PcPortQuickRequestAction request;
+    s_fieldLoopCount++;
     /* A title-menu poll can prepare the load; keep the result available for
      * FieldMain's next poll after the menu's own cleanup has finished. */
     if (s_warpReady && PcPort_QuickCheckpointFieldIsSafe()) {

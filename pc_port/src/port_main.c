@@ -1214,6 +1214,7 @@ static void PcPort_LoadSystemTextData(void) {
 }
 
 int main(int argc, char** argv) {
+    { extern void PcPort_LogInit(void); PcPort_LogInit(); }
     /* --config FILE / --set key=value / --help (xg_plat/config.h). */
     switch (xg_plat_config_cli(argc, argv)) {
     case 1: return EXIT_SUCCESS;
@@ -1310,6 +1311,7 @@ int main(int argc, char** argv) {
      * warp, queued commands) must run before any mod hook, in the order the
      * VSync shim used to call them. */
     PcPort_CheatConsoleInit();
+    { extern void PcPort_HeartbeatInit(void); PcPort_HeartbeatInit(); }
     /* Mods: scan mods/ (manifests, plugins, asset replacements). */
     (void)xg_plat_mods_init();
     {   /* game-side event sources (room_enter, ...) */
