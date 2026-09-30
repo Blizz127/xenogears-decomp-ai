@@ -92,6 +92,7 @@ case "$MODE" in
     step|cont) say "dev stepraw $1 $2 $3"; TOKEN="step finished" ;;
     tablewarp) say "dev warp $1"; TOKEN="warp requested" ;;       # the real table row (menu path)
     tablestep) say "dev step"; TOKEN="step finished" ;;           # detect predicate + table row
+    tablestepx) say "dev stepx $1"; TOKEN="step finished" ;;       # table row by index (start state differs from its detect)
     *) echo "[sweep] FAIL bad mode $MODE" >>"$LOG"; kill $PID; exit 2 ;;
 esac
 echo "[sweep] TARGET mode=$MODE args=$*" >>"$LOG"
@@ -117,7 +118,7 @@ for m in 0x1000 0x2000 0x4000 0x8000; do
     waitpos 5 90 || true
     echo "[sweep] WALK_END $m" >>"$LOG"
 done
-if [ "$MODE" = cont ] || [ "$MODE" = tablestep ]; then
+if [ "$MODE" = cont ] || [ "$MODE" = tablestep ] || [ "$MODE" = tablestepx ]; then
     # continuation: after the step, keep playing (Circle taps and direction holds)
     # until the game itself produces the expected next event (route.jsonl line
     # matching SWEEP_CONT_REGEX) or the iteration budget is spent.

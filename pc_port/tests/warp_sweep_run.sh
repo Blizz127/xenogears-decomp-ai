@@ -29,10 +29,10 @@ one() {
         bash "$HERE/warp_sweep_one.sh" "$BIN" "$d" "$CKPT" warp "$map" "$ent" "${scen:--1}"
     elif [ "$kind" = tablewarp ]; then
         bash "$HERE/warp_sweep_one.sh" "$BIN" "$d" "$CKPT" tablewarp "$scen"
-    elif [ "$kind" = tablestep ]; then
+    elif [ "$kind" = tablestep ] || [ "$kind" = tablestepx ]; then
         SWEEP_CONT_REGEX=$(python3 -c 'import sys
 print(".*".join("\"%s\":%s" % (k, v if v.lstrip("-").isdigit() else "\"%s\"" % v) for k, _, v in (p.partition("=") for p in sys.argv[1].split(","))) if sys.argv[1] else "")' "${cont:-}") \
-            bash "$HERE/warp_sweep_one.sh" "$BIN" "$d" "$CKPT" tablestep
+            bash "$HERE/warp_sweep_one.sh" "$BIN" "$d" "$CKPT" "$kind" "$scen"
     else
         # continuation "ev=var,addr=0,new=8" -> regex over the route.jsonl line
         SWEEP_CONT_REGEX=$(python3 -c 'import sys
