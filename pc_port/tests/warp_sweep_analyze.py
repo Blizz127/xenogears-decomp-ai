@@ -61,7 +61,7 @@ def analyze(d):
         m = re.search(r'EXIT rc=(\d+)', L[idx['EXIT rc']])
         rc = int(m.group(1)) if m else None
     res['exit_rc'] = rc
-    clean = not fatal and rc in (0, 124, 143)
+    clean = not fatal and rc in (0, 124, 130, 143)
     target = int(t['map'])
     # (a) arrival
     start = idx.get('TARGET mode', len(L))
