@@ -381,12 +381,12 @@ void func_801C57A4(void) {
     D_80059171 = 1;
     D_801E977A = 0;
     func_801D1E80();
-    {
-        void* pMenu = g_Menu;
-        if (*(u8*)((u8*)pMenu + 0x329) != 0) {
-            while (*(u8*)((u8*)g_Menu + 0x329) != 0) {
-                func_801C7BF4();
-            }
+    /* Retail waits on g_Menu+0x329 (transitionEffectState).  The port once
+     * read that raw byte offset, which on the pointer-inflated host
+     * SystemMenu is an unrelated byte. */
+    if (g_Menu->transitionEffectState != 0) {
+        while (g_Menu->transitionEffectState != 0) {
+            func_801C7BF4();
         }
     }
     func_801D22F4(0);
