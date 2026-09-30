@@ -37,6 +37,8 @@ int main(void)
 {
     assert(registered==9);
     assert(!PcPort_Hd2dEnabled());
+    assert(PcPort_Hd2dConfiguration()->map_count==1 &&
+        PcPort_Hd2dConfiguration()->maps[0]==14);
     PcPort_Hd2dPostProcess(0,640,480);
     assert(!field_calls && !gl_calls && !producer_calls && !present_calls);
     assert(!PcPort_Hd2dSetIntensity(-1,0.5f));
@@ -48,7 +50,7 @@ int main(void)
     assert(!PcPort_Hd2dSetOpeningMaps(invalid,1));
     PcPort_Hd2dSetEnabled(1);
     PcPort_Hd2dPostProcess(0,640,480);
-    assert(!gl_calls && !present_calls); /* empty allowlist */
+    assert(!gl_calls && !present_calls); /* unapproved map */
     assert(PcPort_Hd2dSetOpeningMaps(maps,2));
     g_GameSceneMapNum=12; PcPort_Hd2dPostProcess(0,640,480);
     assert(!gl_calls && !present_calls);

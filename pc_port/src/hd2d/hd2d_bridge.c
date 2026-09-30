@@ -19,6 +19,8 @@ static void initialize(void)
     if (initialized) return;
     initialized=1;
     XgHd2d_DefaultConfig(&config);
+    /* Integrator field-14 checkpoint verifies Fei's starting house. */
+    config.maps[0]=14; config.map_count=1;
     for (int e=0;e<XG_HD2D_EFFECT_COUNT;++e) config.effect[e].enabled=1;
     /* Private diagnostic override; production opening maps need approval. */
     const char *maps=getenv("XENO_HD2D_OPENING_MAPS");
