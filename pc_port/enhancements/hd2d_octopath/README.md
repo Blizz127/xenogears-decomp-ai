@@ -34,4 +34,6 @@ python3 pc_port/tests/test_describe_hd2d_cells.py
 
 The Python PNG authoring tests require Pillow. Runtime C does not. Tests cover Off identity, exact-frame fallback, metadata validation, protected-pixel identity, true-depth behavior, fail-closed attachments and GL state restoration.
 
+`bash pc_port/tests/run_hd2d_benchmark.sh 1280 720 120` records the actual GL vendor/renderer and Off/all-effects median and 95th-percentile wall time, with warm-up, swap interval disabled and completion synchronized. Repeat at `1920 1080 120` on the approved hardware runner. It inherits the runner's GPU selection, uses a synthetic scene with depth/protection and sixteen lights/shadows/particles, and does not establish in-game frame rate. An integrated opening-scene performance comparison is still required.
+
 Private baseline builds, captures, guard evidence and review packages belong in `~/release-staging/xeno-work/hd2d/`. Opening before/after comparison and a Legion-class GPU performance run remain release requirements. Standalone success does not satisfy those in-game gates. Nothing is pushed or published.
