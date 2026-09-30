@@ -701,6 +701,10 @@ apply_psycross_patch "$ROOT/pc_port/patches/psycross_rendered_clip_track.patch" 
 # after VRAM-only presents that buffer may never be displayed on the PSX (the
 # attract-return fade-start frame).  Show the DISPENV area there instead.
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_present_displayed_after_vram.patch" "_xeno_present_displayed_after_vram"
+# libetc VSync(n) for n >= 2 returned immediately, so the world map's
+# VSync(2)-paced frame driver (retail 30 world frames/s) ran at the host's
+# present rate.  Wait as retail does (SLUS Vsync 0x8004B54C).
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_vsync_retail_n.patch" "_xeno_vsync_retail_n"
 
 echo "==> [1/5] Building PsyCross (libpsycross.a) via CMake"
 # Drop a stale CMake cache generated under a different absolute path (e.g. from a
