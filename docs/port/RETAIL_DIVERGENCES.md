@@ -210,7 +210,24 @@ Port-only additions, not game changes:
   entry without walking to a save point. Nothing in the game calls it.
 
 Acceptance (`pc_port/tests/card_save_load_test.py`: field Save, new process,
-title Continue, Load, saved field): ACCEPTANCE_RESULT_PENDING
+title Continue, Load, saved field): PASS on the blizzpc runner (job
+20260930-124541-xeno-cardsave-t5, 0afb2ad6). The save flag was forced by test
+tooling; the menu, card screen, card I/O and load are retail code. On a
+Continue load retail spawns the player at the entrance in script var 0x54
+(`func_800799D4`, 0x80079F88..0x80079F90), not at the saved x/z. The test
+compares the loaded position with a warp to that entrance (delta 0).
+
+Still open (card screen):
+
+- Copy and Delete are checked against the asm but not run in the game.
+- The save-point prompt path (field opcode FEDA -> MenuExecute slot 6 ->
+  `func_801C57A4`) is checked against the asm but not run: no save point has
+  been reached headlessly yet (map 15 actor 60 runs FE99 at load).
+- After any field menu closes (with or without a save), the test diagnostic
+  POSDIAG stops printing while the field loop keeps running. It isn't known
+  yet whether that is only the diagnostic's gate or whether field input is
+  affected. It was seen in a control run with no card action, so it is not
+  caused by the card code.
 
 ## World map 1:1 pass (2026-09-30, r6.5)
 
