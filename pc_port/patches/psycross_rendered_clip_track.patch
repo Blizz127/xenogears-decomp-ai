@@ -1,3 +1,4 @@
+diff --git a/src/gpu/PsyX_GPU.cpp b/src/gpu/PsyX_GPU.cpp
 --- a/src/gpu/PsyX_GPU.cpp
 +++ b/src/gpu/PsyX_GPU.cpp
 @@ -819,6 +819,44 @@
@@ -57,11 +58,12 @@
  
  	if (g_vertexIndex != 0)
  		g_xeno_vram_snapshot_dirty = 1;
+diff --git a/src/PsyX_main.cpp b/src/PsyX_main.cpp
 --- a/src/PsyX_main.cpp
 +++ b/src/PsyX_main.cpp
-@@ -892,6 +892,9 @@
- /* _xeno_host_toolbar */
+@@ -926,6 +926,9 @@
  #include "../../../src/psycross_host_toolbar.inl"
+ #include "../../../src/psycross_input_trace.inl"
  
 +/* _xeno_rendered_clip_track */
 +extern "C" void PsyX_XenoRenderedClipReset(void);
@@ -69,7 +71,7 @@
  /* _xeno_gpu_trace */
  extern "C" int PsyX_GpuTraceOn(void);
  extern int g_xeno_swap_index;
-@@ -963,6 +966,7 @@
+@@ -997,6 +1000,7 @@
  	PsyX_RecordPresentedFrame();
  	PsyX_HostToolbarDraw();
  	GR_SwapWindow();
