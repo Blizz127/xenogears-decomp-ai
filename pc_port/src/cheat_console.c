@@ -39,6 +39,7 @@ extern void PcPort_FieldWarpDiag(void);
 extern void PcPort_FieldWarpArm(int map, int x, int z);
 extern void PcPort_DebugBattleWarp(void);
 extern void PcPort_DebugBattleWarpQueue(int id);
+extern void PcPort_FieldTestInputHold(unsigned value, unsigned frames);
 
 #define QUEUE_MAX 16
 static char s_queue[QUEUE_MAX][128];
@@ -167,7 +168,6 @@ static void* stdin_reader(void* arg)
 }
 
 extern void PcPort_RouteLogInit(void);
-extern void PcPort_FieldTestInputHold(unsigned value, unsigned frames);
 
 void PcPort_CheatConsoleInit(void)
 {
