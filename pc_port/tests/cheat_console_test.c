@@ -24,6 +24,8 @@ void PcPort_FieldWarpArm(int m, int x, int z) { char b[32]; snprintf(b, sizeof b
 void PcPort_DebugBattleWarp(void) { trace("b"); }
 int PcPort_DevMenuAction(const char* c) { (void)c; trace("D"); return 1; }
 void PcPort_PadConsoleHold(unsigned short m, int f) { char b[24]; snprintf(b, sizeof b, "P%x,%d", m, f); trace(b); }
+void PcPort_FieldTestInputHold(unsigned v, unsigned f) { char b[24]; snprintf(b, sizeof b, "H%x,%u", v, f); trace(b); }
+void PcPort_RouteLogInit(void) {}
 void PcPort_DebugBattleWarpQueue(int id) { char b[16]; snprintf(b, sizeof b, "B%d", id); trace(b); }
 void xg_plat_timing_set_speed(int m) { s_speed = m; }
 void xg_plat_timing_set_speed_from(int m, const char* s) { (void)s; s_speed = m; }
