@@ -152,12 +152,15 @@ echo "== mutants (each must be rejected) =="
 MUTANTS=(dialog-inline dispatch-skipped oom-frees failure-leaks title-drift)
 for mutant in "${MUTANTS[@]}"; do
     set +e
-    build_and_run "$mutant" gcc "$OUT/$mutant.c" -O0 -w > "$OUT/$mutant.log" 2>&1
+    # build_and_run writes the binary's output to $OUT/$mutant.log itself;
+    # the build output goes elsewhere (redirecting it onto the same file
+    # made cat refuse it and overwrite the FAIL line with that error).
+    build_and_run "$mutant" gcc "$OUT/$mutant.c" -O0 -w > "$OUT/$mutant.build.log" 2>&1
     rc=$?
     set -e
     if [ "$rc" -eq 0 ] || ! grep -q '^FILE MENU NOTICE FAIL ' "$OUT/$mutant.log"; then
         echo "FILE MENU NOTICE MUTANT NOT DETECTED: $mutant rc=$rc" >&2
-        cat "$OUT/$mutant.log" >&2
+        cat "$OUT/$mutant.build.log" "$OUT/$mutant.log" >&2
         exit 1
     fi
     printf 'FILE MENU NOTICE mutant rejected: %s\n' "$mutant"
