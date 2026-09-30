@@ -886,6 +886,36 @@ static unsigned short PcPort_PadTestGameToPhysical(unsigned short game)
 static volatile unsigned short s_padTestRuntimeHeld;
 void PcPort_PadTestInputHold(unsigned held) { s_padTestRuntimeHeld = (unsigned short)held; }
 
+/* TEST TOOLING: the cheat console's `pad <mask> [frames]` (headless drivers,
+ * pc_port/tests/*_easel_*). Holds GAME buttons (same CTRL_BTN_* space and
+ * physical remap as XENO_PAD_TEST_INPUT) for that many Vsync-shim frames.
+ * Inert unless the console queues a hold. */
+static volatile unsigned short s_padConsoleMask;
+static volatile int s_padConsoleFrames;
+
+void PcPort_PadConsoleHold(unsigned short gameMask, int frames)
+{
+    s_padConsoleMask = gameMask;
+    s_padConsoleFrames = frames > 0 ? frames : 0;
+}
+
+static void PcPort_PadConsoleInject(void)
+{
+    extern unsigned char g_C1Buffer[];
+    unsigned short value;
+
+    if (s_padConsoleFrames <= 0)
+        return;
+    value = PcPort_PadTestGameToPhysical(s_padConsoleMask);
+    g_C1Buffer[0x2] &= (unsigned char)~(unsigned char)(value >> 8);
+    g_C1Buffer[0x3] &= (unsigned char)~(unsigned char)(value & 0xFF);
+    if (--s_padConsoleFrames == 0) {
+        printf("[xeno-port][test] console pad 0x%04x released\n",
+               (unsigned)s_padConsoleMask);
+        fflush(stdout);
+    }
+}
+
 /* Must run AFTER PsyX_UpdateInput() refreshes g_C1Buffer from SDL and BEFORE
  * ControllerPoll() derives the edge state from it. */
 static void PcPort_PadTestInputInject(void)
@@ -894,6 +924,7 @@ static void PcPort_PadTestInputInject(void)
     unsigned short value;
     int previousStep;
 
+    PcPort_PadConsoleInject();
     if (s_padTestState < 0)
         PcPort_PadTestInputInit();
     if (s_padTestState != 1)
