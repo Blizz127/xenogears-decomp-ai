@@ -115,6 +115,15 @@ void PcPort_FieldCaptureOnVsync(void)
     g_PcPortPresentedFrames = s_frames;
     if (!s_dir || !s_dir[0])
         return;
+    /* TEST TOOLING: presents the Fei HD-2D footprint test asks for
+     * (fei_hd2d.c, XENO_FEI_HD2D_TEST_CAPTURES), independent of EVERY. */
+    {
+        extern int PcPort_FeiHd2dTestCaptureWanted(unsigned present) __attribute__((weak));
+        if (PcPort_FeiHd2dTestCaptureWanted && PcPort_FeiHd2dTestCaptureWanted(s_frames)) {
+            snprintf(path, sizeof(path), "%s/fei-frame-%06u.png", s_dir, s_frames);
+            PsyX_TakeScreenshotPath(path);
+        }
+    }
     if (s_frames < s_from || s_frames > s_to)
         return;
     if ((s_frames % (unsigned)s_every) != 0)

@@ -705,6 +705,29 @@ apply_psycross_patch "$ROOT/pc_port/patches/psycross_present_displayed_after_vra
 # F7, L3, R3, dev-menu, focus-lost); applied last, on top of the host keys.
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_speed_source.patch" "_xeno_speed_source"
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_log_append.patch" "_xeno_log_append"
+# HD-2D enhancement lane hook points (pc_port/src/hd2d): HOOK 1 post-process
+# at both present sites, HOOK 3 textured-primitive override, and the
+# XENO_PRESENT_HASH_LOG per-present CRC. Weak symbols: with no hd2d
+# definition linked, retail rendering is unchanged. Keep this after every
+# other PsyCross patch; generated against the tree they produce.
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_hd2d_hooks.patch" "_xeno_hd2d_hooks"
+# HD-2D lane PsyCross patches: every pc_port/patches/hd2d/*.patch, in
+# byte-sorted order, after all patches above. A patch is skipped when its
+# own sentinel -- the literal comment `/* _hd2d_<basename> */` (basename
+# without .patch) in one of its added lines -- is already in the tree, or
+# when it reverse-applies (already applied). Make each with diff -u against
+# the tree the earlier patches produce.
+if [ -d "$ROOT/pc_port/patches/hd2d" ]; then
+    while IFS= read -r hd2d_patch; do
+        hd2d_base="$(basename "$hd2d_patch" .patch)"
+        if grep -RqsF --exclude-dir=.git -- "/* _hd2d_${hd2d_base} */" "$PSX"; then
+            continue
+        fi
+        # The literal sentinel was checked above; this marker never matches,
+        # so apply_psycross_patch falls through to its reverse-check/apply.
+        apply_psycross_patch "$hd2d_patch" "_hd2d_sentinel_checked_above_$$_${RANDOM}"
+    done < <(find "$ROOT/pc_port/patches/hd2d" -maxdepth 1 -type f -name '*.patch' | LC_ALL=C sort)
+fi
 
 echo "==> [1/5] Building PsyCross (libpsycross.a) via CMake"
 # Drop a stale CMake cache generated under a different absolute path (e.g. from a
@@ -1111,6 +1134,13 @@ PORT_SOURCES=(
     pc_port/src/world_map_func_94a5c.c
     pc_port/src/world_map_func_95414.c
 )
+# HD-2D enhancement lane: every pc_port/src/hd2d/*.c is a port source by
+# glob (sorted), so that lane adds files without editing this list. Its
+# objects are named hd2d__<basename>.o so they cannot collide with the
+# flat pc_port/src basenames. pc_port/assets/hd2d/ is reserved for its assets.
+while IFS= read -r hd2d_src; do
+    PORT_SOURCES+=("$hd2d_src")
+done < <(find pc_port/src/hd2d -maxdepth 1 -type f -name '*.c' 2>/dev/null | LC_ALL=C sort)
 
 # Port-side sources that are deliberately NOT part of the runtime link: each is
 # a verification fixture that its own pc_port/tests/run_*.sh compiles directly,
@@ -1208,6 +1238,7 @@ for pf in "${PORT_SOURCES[@]}"; do
         exit 1
     fi
     o="$OBJ/$(basename "$pf").o"
+    case "$pf" in pc_port/src/hd2d/*) o="$OBJ/hd2d__$(basename "$pf").o" ;; esac
     compile_err="$OUT/$(echo "$pf" | tr '/' '_').err"
     rm -f "$o" "$compile_err"
     if ! gcc -c "$pf" $GFLAGS -Ipc_port/src $INC -o "$o" 2>"$compile_err"; then
@@ -1539,6 +1570,12 @@ fi
 
 echo "==> [5/5] Final link"
 LINK_MAP="$OUT/xeno-port.map"
+# Record the final link inputs and the port-source compile flags so a test
+# can relink this exact build with one extra pc_port/src/hd2d-style object
+# (pc_port/tests/run_hd2d_off_identity_test.sh) instead of rebuilding.
+printf '%s\n' -m64 $NOPIE $TSAN_FLAGS "$PORT_MAIN_OBJECT" "${GAME_OBJS[@]}" "$OBJ/stubs.o" \
+    ${COV_OBJ:+"$COV_OBJ"} "$PSYLIB" $LIBS $XG_PLAT_WRAPS > "$OUT/xeno-port.link-args"
+printf '%s\n' "$GFLAGS -Ipc_port/src $INC" > "$OUT/port-source.cflags"
 gcc -m64 $NOPIE $TSAN_FLAGS "$PORT_MAIN_OBJECT" "${GAME_OBJS[@]}" "$OBJ/stubs.o" ${COV_OBJ:+"$COV_OBJ"} "$PSYLIB" $LIBS \
     $XG_PLAT_WRAPS -Wl,-Map="$LINK_MAP" -o "$OUT/xeno-port" 2> "$OUT/link2.err"
 if [ -f "$OUT/xeno-port" ] && [ ! -s "$OUT/link2.err" ]; then
