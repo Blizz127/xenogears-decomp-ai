@@ -20,8 +20,11 @@
  * line.  The analyzer (tools/analysis/route_steps.py) turns the lines into
  * steps.  REMOVAL: delete this file, its PORT_SOURCES row and the four
  * `#ifdef XENO_PC_PORT` hook calls. */
+#include <execinfo.h>
+#include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -218,9 +221,24 @@ static void tick(const XgPlatModEventData* e, void* u)
     tail();
 }
 
+/* Harness only: a crash under XENO_ROUTE_LOG leaves a backtrace in the log. */
+static void crash_handler(int sig)
+{
+    void* frames[48];
+    int n = backtrace(frames, 48);
+    static const char msg[] = "\n[ROUTE] CRASH: fatal signal, backtrace follows\n";
+    (void)!write(2, msg, sizeof msg - 1);
+    backtrace_symbols_fd(frames, n, 2);
+    signal(sig, SIG_DFL);
+    raise(sig);
+}
+
 void PcPort_RouteLogInit(void)
 {
     if (!PcPort_RouteLogOn()) return;
+    signal(SIGSEGV, crash_handler);
+    signal(SIGBUS, crash_handler);
+    signal(SIGABRT, crash_handler);
     xg_plat_mods_subscribe(XG_PLAT_EVENT_FRAME_TICK, tick, NULL);
     fprintf(stderr, "[ROUTE] recording progression state to XENO_ROUTE_LOG\n");
 }
