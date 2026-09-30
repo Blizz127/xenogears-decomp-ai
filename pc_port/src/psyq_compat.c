@@ -1753,7 +1753,16 @@ int Vsync(int mode)
          * area from the VRAM mirror instead (patches/psycross_display_present). */
         extern int PsyX_IsSceneOpen(void);
         extern int PsyX_PresentDisplayFromVRAM(void);
+        extern int PsyX_GpuTraceOn(void);
+        extern int g_xeno_swap_index;
         int sceneOpen = PsyX_IsSceneOpen();
+
+        /* Diagnostic (XENO_GPU_TRACE, psycross_gpu_trace.patch). */
+        if (PsyX_GpuTraceOn()) {
+            printf("[gputrace] s=%d Vsync(%d) scene=%d\n", g_xeno_swap_index,
+                   mode, sceneOpen);
+            fflush(stdout);
+        }
 
         DrawAllSplits();
 

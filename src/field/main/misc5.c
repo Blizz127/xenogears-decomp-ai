@@ -542,6 +542,16 @@ void FieldZoomFadeEffectUpdate(void) {
     int i;
 
     RotMatrix(&D_800B00B8, &matrix);
+    /* Retail zeroes the translation (sw $zero to sp+0x3C/0x40/0x44 =
+     * matrix.t[0..2], 800A6480-800A6488) before SetTransMatrix.  The quads
+     * sit at vz=0, so with TR=0 RotAverage4's divide overflows and maps them
+     * at exactly 2x onto the 320x224 screen.  Left uninitialised, TRY was
+     * stack garbage on the port and every zoom frame projected the crossfade
+     * overlay to y=1023 (off screen), so the title/attract crossfades showed
+     * black instead of the previous picture. */
+    matrix.t[0] = 0;
+    matrix.t[1] = 0;
+    matrix.t[2] = 0;
     scale.vx = D_800C2684;
     scale.vy = D_800C2684;
     scale.vz = D_800C2684;
@@ -562,8 +572,8 @@ void FieldZoomFadeEffectUpdate(void) {
             );
         }
 
-        addPrim(g_FieldCurRenderContext->ot3, poly);
-        addPrim(g_FieldCurRenderContext->ot3, drMode);
+        addPrim(FIELD_CTX_OT3(g_FieldCurRenderContext), poly);
+        addPrim(FIELD_CTX_OT3(g_FieldCurRenderContext), drMode);
     }
 }
 #endif /* XENO_PC_PORT */
@@ -647,7 +657,7 @@ void FieldDisplay(void) {
     ClearImage(&g_FieldCurRenderContext->drawEnvs[0].clip, 0x0, 0x0, 0x0);
     PutDrawEnv(&g_FieldCurRenderContext->drawEnvs[0]);
     PutDispEnv(&g_FieldCurRenderContext->dispEnv);
-    DrawOTag(g_FieldCurRenderContext->ot3 + 7);
+    DrawOTag(FIELD_CTX_OT3_HEAD(g_FieldCurRenderContext));
 }
 
 /* Fade one corner of a starfield quad by its distance from screen centre.
@@ -766,11 +776,11 @@ void func_800A6C40(void) {
             func_800A6998(poly, 1, D_800C3A40, STAR_FADE(0x73F0, row, col));
             func_800A6998(poly, 2, D_800C3A40, STAR_FADE(0x7620, row, col));
             func_800A6998(poly, 3, D_800C3A40, STAR_FADE(0x7850, row, col));
-            addPrim(g_FieldCurRenderContext->ot3, STAR_POLY(row, col));
+            addPrim(FIELD_CTX_OT3(g_FieldCurRenderContext), STAR_POLY(row, col));
         }
     }
 
-    addPrim(g_FieldCurRenderContext->ot3, &D_800B1E24[g_FieldCurRenderContextIndex * 0xC0]);
+    addPrim(FIELD_CTX_OT3(g_FieldCurRenderContext), &D_800B1E24[g_FieldCurRenderContextIndex * 0xC0]);
 }
 
 extern void* D_800B00C4;
@@ -1212,7 +1222,7 @@ void func_800A7948(void) {
         ClearImage((RECT*)g_FieldCurRenderContext, 0, 0, 0);
         PutDispEnv(&g_FieldCurRenderContext->dispEnv);
         PutDrawEnv(&g_FieldCurRenderContext->drawEnvs[0]);
-        DrawOTag(&g_FieldCurRenderContext->ot3[7]);
+        DrawOTag(FIELD_CTX_OT3_HEAD(g_FieldCurRenderContext));
         func_800ACCF4();
         func_800A732C(5);
     }

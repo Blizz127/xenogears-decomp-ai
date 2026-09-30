@@ -1306,10 +1306,18 @@ void func_800A476C(int x, int y) {
 #ifdef XENO_PC_PORT
     /* PsyCross DrawOTag writes the GL backbuffer; retail GPU already has
      * those pixels in VRAM at (0,0). Pull them into CPU vram[] before the
-     * offscreen snapshot (title/menu backdrop at 704,256). */
+     * offscreen snapshot (title/menu backdrop at 704,256).  Skip it when the
+     * scene rendered since the last present never touched this rect: the
+     * backbuffer then holds another VRAM buffer (after the title attract
+     * the field's first returning frame is drawn at (0,256) while (0,0)
+     * holds the converted last movie frame), and copying it here replaced
+     * the frame retail crossfades from with black. */
     {
         extern void GR_StoreFrameBufferImmediate(int x, int y, int w, int h);
-        GR_StoreFrameBufferImmediate(rect.x, rect.y, rect.w, rect.h);
+        extern int PsyX_XenoRenderedClipMisses(int x, int y, int w, int h);
+        if (!PsyX_XenoRenderedClipMisses(rect.x, rect.y, rect.w, rect.h)) {
+            GR_StoreFrameBufferImmediate(rect.x, rect.y, rect.w, rect.h);
+        }
     }
 #endif
     MoveImage(&rect, x, y);
