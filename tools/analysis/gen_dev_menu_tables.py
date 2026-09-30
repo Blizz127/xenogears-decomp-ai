@@ -84,7 +84,7 @@ so.append('')
 so.append('const PcPortDevStep g_PcPortDevSteps[] = {')
 for s in steps:
     dv = s.get('detect_var') or [None, None]
-    so.append('    { %s, %d, %s, %s, %s, %d, %d, %s, %s, %s, %d, %d, %d, %s },' % (
+    so.append('    { %s, %d, %s, %s, %s, %d, %d, %s, %s, %s, %d, %d, %d, %d, %s },' % (
         cstr(s['id']), s['disc'], cstr(s['chapter']), cstr(s['area']), cstr(s['name']), s['detect_scen'],
         -1 if s.get('detect_map') is None else s['detect_map'],
         'PC_DEV_NO_VALUE' if dv[0] is None else '0x%x' % dv[0], '0' if dv[1] is None else str(dv[1]),

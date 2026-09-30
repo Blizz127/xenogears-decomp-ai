@@ -38,7 +38,25 @@ def load(paths):
     return ev
 
 
+def external_scenario_writes(ev):
+    """Indices of scenario-word writes that were NOT made by the game's own script flow:
+    the dev-menu/harness warp writes the word then field-loads with no CHANGE_FIELD op in between."""
+    out = set()
+    for i, e in enumerate(ev):
+        if e['ev'] == 'var' and e['addr'] == 0:
+            for f in ev[i + 1:]:
+                if f['ev'] == 'change':
+                    break
+                if f['ev'] == 'fieldload':
+                    # the harness writes, then the warp path field-loads within a few frames
+                    if f['src'] == e['src'] and 0 <= f['tick'] - e['tick'] <= 60:
+                        out.add(i)
+                    break
+    return out
+
+
 def analyze(ev):
+    ext = external_scenario_writes(ev)
     writes = Counter(e['addr'] for e in ev if e['ev'] == 'var')
     noise = {a for a, n in writes.items() if n > NOISE_MAX} | SYSTEM_SLOTS
     noise.discard(0)  # the scenario word is the spine, never noise
@@ -47,7 +65,7 @@ def analyze(ev):
     timeline = []
     prev_items = prev_party = None
     prev_scen = None
-    for e in ev:
+    for idx, e in enumerate(ev):
         k = e['ev']
         if k == 'trigger':
             last_trigger = e
@@ -65,11 +83,16 @@ def analyze(ev):
             timeline.append({'what': 'change_field', 'from': e['from'], 'to': e['to'], 'to_ent': e['to_ent'],
                              'scen': e['scen'], 'actor': e.get('actor'), 'n': e['n']})
         if k == 'fieldload':
+            if e['to'] == 490:
+                cur = None   # a new session starts at the title: never carry a span across recordings
             timeline.append({'what': 'fieldload', 'map': e['to'], 'ent': e['ent'], 'scen': e['scen'],
                              'party': e.get('party'), 'gold': e.get('gold'), 'n': e['n']})
         if k == 'var':
             a = e['addr']
-            if a == 0:
+            if a == 0 and idx in ext:
+                timeline.append({'what': 'scenario(harness write, not a game step)', 'from': e['old'], 'to': e['new'],
+                                 'map': e['map'], 'n': e['n']})
+            elif a == 0:
                 step = {'scen_from': e['old'], 'scen_to': e['new'], 'map': e['map'], 'ent': e['ent'],
                         'writer_actor': e['actor'], 'writer_ip': e['ip'], 'n': e['n'],
                         'trigger': {kk: last_trigger[kk] for kk in ('kind', 'actor', 'actor_xz', 'map')}
@@ -80,7 +103,7 @@ def analyze(ev):
                 timeline.append({'what': 'scenario', 'from': e['old'], 'to': e['new'], 'map': e['map'],
                                  'actor': e['actor'], 'ip': e['ip'], 'n': e['n']})
             elif a < PERSIST_LIMIT and a not in noise:
-                if cur is not None:
+                if cur is not None and e['ip'] >= 0:   # ip -1 = written outside the script VM (start-up / port code)
                     cur['writes'][a] = e['new']
                 timeline.append({'what': 'var', 'addr': a, 'old': e['old'], 'new': e['new'], 'map': e['map'],
                                  'actor': e['actor'], 'ip': e['ip'], 'scen': e['scen'], 'n': e['n']})

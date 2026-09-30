@@ -18,7 +18,7 @@ one() {
     IFS=$'\t' read -r id kind map ent scen walk name cont <<<"$1"
     local d="$OUTROOT/$id"
     mkdir -p "$d"
-    if [ "$kind" = warp ]; then
+    if [ "$kind" = warp ] || [ "$kind" = tablewarp ]; then
         printf '{"id":"%s","kind":"warp","map":%s,"entrance":%s,"scenario":%s,"walk":%s,"name":"%s"}\n' \
             "$id" "$map" "$ent" "${scen:--1}" "$walk" "$name" >"$d/target.json"
     else
@@ -27,6 +27,12 @@ one() {
     fi
     if [ "$kind" = warp ]; then
         bash "$HERE/warp_sweep_one.sh" "$BIN" "$d" "$CKPT" warp "$map" "$ent" "${scen:--1}"
+    elif [ "$kind" = tablewarp ]; then
+        bash "$HERE/warp_sweep_one.sh" "$BIN" "$d" "$CKPT" tablewarp "$scen"
+    elif [ "$kind" = tablestep ]; then
+        SWEEP_CONT_REGEX=$(python3 -c 'import sys
+print(".*".join("\"%s\":%s" % (k, v if v.lstrip("-").isdigit() else "\"%s\"" % v) for k, _, v in (p.partition("=") for p in sys.argv[1].split(","))) if sys.argv[1] else "")' "${cont:-}") \
+            bash "$HERE/warp_sweep_one.sh" "$BIN" "$d" "$CKPT" tablestep
     else
         # continuation "ev=var,addr=0,new=8" -> regex over the route.jsonl line
         SWEEP_CONT_REGEX=$(python3 -c 'import sys
