@@ -25,3 +25,9 @@ sed -i -e 's/g_Menu->unk334 = /*(u8*)((u8*)g_Menu + 0x334) = /' \
 "${CC:-gcc}" "${BASE[@]}" -O0 pc_port/tests/menu_card_state_pins_test.c -o "$OUT/raw-offsets"
 if timeout 30s "$OUT/raw-offsets" >/dev/null 2>&1; then echo "FAIL mutant raw-offsets accepted"; exit 1; fi
 echo "REJECTED raw-offsets"
+cp "$OUT/good.inc" "$OUT/state.inc"
+sed -i 's/if (state <= 2 \&\& handled) {/if (0) {/' "$OUT/state.inc"
+! cmp -s "$OUT/good.inc" "$OUT/state.inc"
+"${CC:-gcc}" "${BASE[@]}" -O0 pc_port/tests/menu_card_state_pins_test.c -o "$OUT/ignores-handler"
+if timeout 30s "$OUT/ignores-handler" >/dev/null 2>&1; then echo "FAIL mutant ignores-handler accepted"; exit 1; fi
+echo "REJECTED ignores-handler"
