@@ -2745,6 +2745,14 @@ s32 func_801CA750(s32 direction, s32 unused, s32 limit) {
         data = (u8*)g_Menu->unk32C;
         *(s32*)(data + MENU_CARD_OFF(0x4F80)) = *(s32*)(data + MENU_CARD_OFF(0x4F7C));
     }
+#ifdef XENO_PC_PORT
+    /* Port diagnostics (not retail): the card save/load tests key on it. */
+    if (result != 0) {
+        printf("[xeno-port][menu] card pick result=%d selection=%d\n",
+               (int)result, (int)*(s32*)(data + MENU_CARD_OFF(0x4F7C)));
+        fflush(stdout);
+    }
+#endif
     return result;
 }
 
@@ -2854,6 +2862,13 @@ extern s32 func_801D32B4(s32);
 
 u8 func_801CACF8(u8 arg0, u8 arg1, u8 arg2) {
     u8 result;
+#ifdef XENO_PC_PORT
+    /* Port diagnostics (not retail): the card save/load tests answer the
+     * yes/no prompts by message id. */
+    printf("[xeno-port][menu] prompt msg=0x%02x interactive=%d\n",
+           (int)arg0, (int)arg2);
+    fflush(stdout);
+#endif
     func_801D2F4C(arg0);
     g_Menu->pCursors->shouldRender[3] = 1;
     result = func_801CAA38(arg2);
@@ -3042,7 +3057,8 @@ extern char D_801C50B4;
  * register holding the descriptor was cleared by the failure), so a retry
  * never succeeds; the port's card layer rejects fd 0 with -1 like any unknown
  * descriptor.  func_801CA750's second and third arguments are left unset by
- * retail; the port passes 0 (its body does not use them). */
+ * retail; the port passes 0: func_801CA750 forwards limit only to
+ * func_801CA480/5F0, which ignore it. */
 u8 func_801CB304(void) {
     u8 result = 1;    /* retail sp+0x58 */
     s32 first = 1;    /* retail sp+0x50 */
@@ -3294,7 +3310,8 @@ extern int ArchiveGetDiscNumber(void);
 void func_801CBA4C(u8* buf, s32 unusedPort, u8 saveNum) {
     u8* gs = (u8*)&g_GameState;
     u8 src[0x18];
-    u8 enc[0x18];
+    u16 encWords[0xC];
+    u8* enc = (u8*)encWords;
     s32 i;
     s32 j;
 
@@ -3333,7 +3350,7 @@ void func_801CBA4C(u8* buf, s32 unusedPort, u8 saveNum) {
             src[j] = entry[j];
             enc[j] = 0;
         }
-        func_80033C20(src, (u16*)enc);
+        func_80033C20(src, encWords);
         for (j = 0; j < 0x14; j++) {
             entry[j] = enc[j];
         }
@@ -4215,7 +4232,7 @@ s32 func_801CD2AC(void) {
                     memcpy(path + 4, &D_801C50B4, 2);
                 }
                 card = (u8*)g_Menu->unk32C;
-                strcat(path, (char*)(card +
+                strcat(path, (char*)card + MENU_CARD_OFF(
                     card[MENU_CARD_OFF(0x4FAE) +
                          D_801E981C[g_Menu->unk32C->unk4F7C]] * 0x5C + 0x18));
                 erase(path);
@@ -4281,6 +4298,10 @@ s32 func_801CD710(u8 arg0) {
      * and always returned 1. */
     {
         u8 state = g_Menu->menu2Choice;
+        /* Port diagnostics (not retail): the card-screen tests key on it. */
+        printf("[xeno-port][menu] card action begin choice=%d D_80059460=%d\n",
+               (int)state, (int)D_80059460);
+        fflush(stdout);
         switch (state) {
             case 0:
                 g_Menu->unk334 = 7; /* retail: 7 */
