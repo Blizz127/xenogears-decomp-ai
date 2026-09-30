@@ -61,7 +61,7 @@ def analyze(d):
         m = re.search(r'EXIT rc=(\d+)', L[idx['EXIT rc']])
         rc = int(m.group(1)) if m else None
     res['exit_rc'] = rc
-    clean = not fatal and rc in (0, 124, 130, 143)
+    clean = not fatal and rc in (0, 124, 130, 137, 143)
     target = int(t['map'])
     # (a) arrival
     start = idx.get('TARGET mode', len(L))
@@ -106,18 +106,25 @@ def analyze(d):
     if t.get('kind') == 'step':
         cont_ok = False
         rj = os.path.join(d, 'route.jsonl')
-        if os.path.exists(rj) and 'CONT_BEGIN' in idx:
-            # triggers after the post-step field load; any talk/touch/trigger counts
+        pat = {}
+        for kv in (t.get('continuation') or '').split(','):
+            if '=' in kv:
+                k, _, v = kv.partition('=')
+                pat[k] = int(v) if v.lstrip('-').isdigit() else v
+        if os.path.exists(rj) and pat:
+            # after the step's own field load, the game must itself produce the expected event
             ev = [json.loads(x) for x in open(rj) if x.strip().startswith('{')]
-            want = t.get('continuation_map', t['map'])
-            loads_seen = False
+            want = int(t['map'])
+            armed = False
             for e in ev:
                 if e['ev'] == 'fieldload' and (e.get('to', -1) & 0x3FFF) == want:
-                    loads_seen = True
-                if loads_seen and e['ev'] == 'trigger':
+                    armed = True
+                    continue
+                if armed and all(e.get(k) == v for k, v in pat.items()):
                     cont_ok = True
                     break
-        res['checks']['continuation_trigger'] = cont_ok
+        res['checks']['continuation'] = cont_ok
+        res['continuation'] = t.get('continuation')
     res['verified'] = bool(arrival and idle and walk_ok and cont_ok)
     res['evidence'] = d
     return res

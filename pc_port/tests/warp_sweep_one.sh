@@ -7,8 +7,8 @@
 #     OUTDIR per-target output (run.log, route.jsonl, frame.bmp, target.json)
 #     CKPT   post-battle checkpoint (.xgqs); copied, never modified
 #     MODE   warp  <map> <entrance> <scenario|-1>
-#            step  <index>            (stepx: apply step <index> recorded delta)
-#            cont  <index>            (step, then the continuation probe)
+#            step  <next_map> <next_ent> <addr:val,...>   (stepraw: the step delta)
+#            cont  <next_map> <next_ent> <addr:val,...>   (step, then the continuation probe)
 #   Env: XENO_DATA_DIR (disc files), SWEEP_ROOT (cwd for the binary),
 #        SWEEP_IDLE (Vsync presents to idle, default 600), SWEEP_WALK (field
 #        frames to hold a direction, default 240).
@@ -64,7 +64,13 @@ waitpos() { # n timeout_s
     done
     return 1
 }
-stop() { kill -INT $PID 2>/dev/null; wait $PID 2>/dev/null; }
+stop() {
+    kill -INT $PID 2>/dev/null
+    local end=$((SECONDS + 40))
+    while kill -0 $PID 2>/dev/null && [ $SECONDS -lt $end ]; do sleep 0.5; done
+    kill -0 $PID 2>/dev/null && { echo "[sweep] note: game ignored SIGINT for 40 s; sending SIGTERM" >>"$LOG"; kill -TERM $PID 2>/dev/null; }
+    wait $PID 2>/dev/null
+}
 
 waitfor "console reading commands" 120 || { echo "[sweep] FAIL no console" >>"$LOG"; kill $PID; exit 1; }
 # Title map is loaded; the quick load is accepted from the title.
@@ -79,15 +85,15 @@ say "encounters off"
 waitfor "POSDIAG" 60 || true
 sleep 3
 L=$(lines)
+L0=$L
 case "$MODE" in
     warp) say "dev warpx $1 $2 $3"; TOKEN="warpx requested" ;;
-    step|cont) say "dev stepx $1"; TOKEN="step finished" ;;
+    step|cont) say "dev stepraw $1 $2 $3"; TOKEN="step finished" ;;
     *) echo "[sweep] FAIL bad mode $MODE" >>"$LOG"; kill $PID; exit 2 ;;
 esac
 echo "[sweep] TARGET mode=$MODE args=$*" >>"$LOG"
 waitfor "$TOKEN" 120 "$L" || { echo "[sweep] FAIL action not accepted" >>"$LOG"; }
-L=$(lines)
-waitfor "FieldLoad begin" 90 "$L" || echo "[sweep] FAIL no field load after the action" >>"$LOG"
+waitfor "FieldLoad begin" 90 "$L0" || echo "[sweep] FAIL no field load after the action" >>"$LOG"
 echo "[sweep] ARRIVAL_WINDOW" >>"$LOG"
 waitpos 6 ${SWEEP_ARRIVE:-150} || echo "[sweep] FAIL arrival: field ticks never reached 6 POSDIAG lines" >>"$LOG"
 if [ "${SWEEP_PROBE:-0}" = 1 ]; then
@@ -109,9 +115,19 @@ for m in 0x1000 0x2000 0x4000 0x8000; do
     echo "[sweep] WALK_END $m" >>"$LOG"
 done
 if [ "$MODE" = cont ]; then
-    # continuation: the next talk / event trigger must fire (Circle presses)
+    # continuation: after the step, keep playing (Circle taps and direction holds)
+    # until the game itself produces the expected next event (route.jsonl line
+    # matching SWEEP_CONT_REGEX) or the iteration budget is spent.
     echo "[sweep] CONT_BEGIN" >>"$LOG"
-    for _ in 1 2 3 4 5 6; do say "hold 0x20 4"; waitpos 2 60 || true; done
+    masks=(0x20 0x20 0x1000 0x20 0x2000 0x20 0x4000 0x20 0x8000)
+    for i in $(seq 1 ${SWEEP_CONT_ITER:-160}); do
+        m=${masks[$((i % 9))]}
+        if [ "$m" = 0x20 ]; then say "hold 0x20 4"; else say "hold $m 30"; fi
+        waitpos 1 40 || break
+        if [ -n "${SWEEP_CONT_REGEX:-}" ] && grep -aqE -- "$SWEEP_CONT_REGEX" "$OUT/route.jsonl" 2>/dev/null; then
+            echo "[sweep] CONT_HIT after $i taps" >>"$LOG"; break
+        fi
+    done
     echo "[sweep] CONT_END" >>"$LOG"
 fi
 sleep 1

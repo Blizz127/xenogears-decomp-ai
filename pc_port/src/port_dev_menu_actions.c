@@ -123,6 +123,26 @@ int PcPort_DevMenuAction(const char *command)
         if (warp_with(command, map, entrance, NULL, 0, scen) != 0)
             return refuse(command, "a room change or checkpoint is already pending");
         fprintf(stderr, "[CHEATS] warpx requested: map %d entrance %d scenario %d\n", map, entrance, scen);
+    } else if (!strncmp(command, "stepraw ", 8)) {
+        /* Sweep harness only: one step delta given inline as
+         * `stepraw <next_map> <next_entrance> <addr:value,addr:value,...>`;
+         * the same apply path as a table row (finish_step). */
+        const char *u = getenv("XENO_DEV_MENU_UNVERIFIED");
+        PcPortDevStepWrite w[16];
+        int nw = 0;
+        char list[96];
+        char *tok, *save = NULL;
+        if (!u || u[0] != '1') return refuse(command, "stepraw needs XENO_DEV_MENU_UNVERIFIED=1");
+        if (sscanf(command, "stepraw %d %d %95s", &map, &entrance, list) != 3)
+            return refuse(command, "usage: stepraw <map> <entrance> <addr:value,...>");
+        for (tok = strtok_r(list, ",", &save); tok && nw < 16; tok = strtok_r(NULL, ",", &save)) {
+            unsigned a, v;
+            if (sscanf(tok, "%u:%u", &a, &v) == 2) { w[nw].addr = (unsigned short)a; w[nw].value = (unsigned short)v; nw++; }
+        }
+        if (warp_with(command, map, entrance, w, nw, -1) != 0)
+            return refuse(command, "a room change or checkpoint is already pending");
+        fprintf(stderr, "[DEV_MENU] step finished: stepraw (%d writes) -> map %d entrance %d\n", nw, map, entrance);
+        return 1;
     } else if (!strcmp(command, "step")) {
         index = find_step();
         if (index < 0) return refuse(command, "no verified step matches the current story state");
