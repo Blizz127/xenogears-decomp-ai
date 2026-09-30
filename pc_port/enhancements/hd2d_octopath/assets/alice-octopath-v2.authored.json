@@ -1,0 +1,95 @@
+{
+  "asset": "alice-octopath-v2.png",
+  "character": "Alice",
+  "status": "unmapped-artwork-candidate-runtime-compatibility-pending",
+  "attribution": "fan-made, AI-generated replacement sprite art created for this project; not from the game; characters © Square Enix",
+  "authoring": {
+    "tool": "built-in image_gen.imagegen",
+    "mode": "built-in image edit of original AI-generated project Alice v1; no retail image input",
+    "date": "2026-09-30",
+    "prompt_file": "alice-octopath-v2.prompt.txt",
+    "transparent_background_requested": true,
+    "image_inputs": [
+      "alice-octopath-v1.png"
+    ],
+    "postprocessing": "none; source PNG copied byte-for-byte",
+    "source_generated_path": "/home/blizz/.codex/generated_images/01a0f203-5994-7983-9f42-d599d0ce600b/exec-84bc195f-c66b-4da9-be91-a9dd3b7af0d6.png",
+    "targeted_revision": "Simplify to consistent hard stair-step native pixel clusters and binary alpha; preserve 16 poses."
+  },
+  "visual_knowledge": [
+    {
+      "source": "authorized private PORT capture atlas/atlas-maps11-19.png",
+      "purpose": "Viewed only: Alice identified by wedding-dress dialogue; broad dark hair and blue/pale outfit cues. Not supplied to generator, copied, transformed, or shipped."
+    },
+    {
+      "source": "fei-octopath-v2.png",
+      "purpose": "Viewed existing original fan-made project asset for general palette/proportions context; not supplied to generator."
+    },
+    {
+      "source": "https://medium.com/@dumarcm/a-look-at-hd-2d-and-2-5d-video-games-3f67a7897de0",
+      "purpose": "Requested HD-2D style context; accessible."
+    }
+  ],
+  "intended_layout": {
+    "rows": [
+      "front",
+      "back",
+      "left",
+      "right"
+    ],
+    "columns": [
+      "idle",
+      "walk-left-foot-forward",
+      "walk-passing",
+      "walk-right-foot-forward"
+    ],
+    "pose_count": 16,
+    "logical_atlas_pixels": [
+      256,
+      256
+    ],
+    "logical_cell_pixels": [
+      64,
+      64
+    ],
+    "requested_display_scale": 4,
+    "verified_runtime_frame_mapping": false
+  },
+  "runtime_associations": [],
+  "validation": {
+    "png_decode": "pass",
+    "mode": "RGBA",
+    "size": [
+      1254,
+      1254
+    ],
+    "sha256": "1995799072b8bf6c31dffe084be64623f31b96285932dfb78a50f2154c3ae0b1",
+    "source_copy_sha256_equal": true,
+    "transparent_pixels": 1044313,
+    "opaque_pixels": 2433,
+    "partial_alpha_pixels": 525770,
+    "alpha_level_count": 256,
+    "visual_pose_count": 16,
+    "visual_directions": "front/back/left/right present",
+    "strict_native_pixel_grid": "Not achieved: 256 alpha levels and 1254-pixel width not divisible by four. Diagnostic only; explicit content bounds avoid a uniform grid assumption.",
+    "pose_semantics": "Intended authoring layout only; exact walk leg phases and equal tile crop coordinates require review.",
+    "production_ready": false,
+    "visual_quality": "Visually simplified flat pixel clusters and stepped silhouettes; runtime nearest sampling plus alpha-cut compatibility pending mapping and footprint verification.",
+    "content_bounds": "PASS: 16 alpha>=128 connected-component rectangles, expanded by one pixel; no overlaps.",
+    "content_bounds_file": "alice-octopath-v2.cells.json",
+    "lossless_rgba_export": {
+      "path": "pc_port/assets/hd2d/alice-octopath-v2.rgba",
+      "bytes": 6290064,
+      "sha256": "b79d759d208795a2acd1888491ec41d38998520b6b7124dc3d3796a15e3181f5",
+      "decoded_pixel_roundtrip_equal": true,
+      "png_unchanged": true
+    }
+  },
+  "scope_constraints": [
+    "No runtime mappings added.",
+    "No retail textures or captures shipped.",
+    "No decompilation or cleanroom directories read.",
+    "No backend, production profile, main, fei_hd2d.c or LEDGER edits.",
+    "No full builds, GPU jobs, commits, pushes or deployment."
+  ]
+}

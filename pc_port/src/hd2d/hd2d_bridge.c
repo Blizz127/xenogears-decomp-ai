@@ -9,6 +9,9 @@
 #include <string.h>
 
 extern int g_GameSceneMapNum;
+/* Proposed numeric-menu ABI: weak until the owner implementation lands. */
+extern void PcPort_DevMenuRegisterEnhancementValue(const char*,int(*)(void),
+    void(*)(int),int,int,int,const char*) __attribute__((weak));
 #pragma weak PcPort_Hd2dSceneInputs
 extern void PcPort_Hd2dSpritePresentDone(void) __attribute__((weak));
 extern void PcPort_Hd2dSpriteReset(void) __attribute__((weak));
@@ -20,8 +23,8 @@ static void initialize(void)
     if (initialized) return;
     initialized=1;
     XgHd2d_DefaultConfig(&config);
-    /* Integrator field-14 checkpoint verifies Fei's starting house. */
-    config.maps[0]=14; config.map_count=1;
+    /* Verified private checkpoints: Fei's house and Lahan village. */
+    config.maps[0]=14; config.maps[1]=1; config.map_count=2;
     for (int e=0;e<XG_HD2D_EFFECT_COUNT;++e) config.effect[e].enabled=1;
     /* Private diagnostic override; production opening maps need approval. */
     const char *maps=getenv("XENO_HD2D_OPENING_MAPS");
@@ -75,7 +78,9 @@ int PcPort_Hd2dOpeningActive(void)
 static void toggle_master(void) { PcPort_Hd2dSetEnabled(!PcPort_Hd2dEnabled()); }
 #define CONTROL(NAME,INDEX) \
     static int get_##NAME(void) { initialize(); return config.effect[INDEX].enabled; } \
-    static void toggle_##NAME(void) { initialize(); config.effect[INDEX].enabled^=1; }
+    static void toggle_##NAME(void) { initialize(); config.effect[INDEX].enabled^=1; } \
+    static int get_##NAME##_percent(void) { initialize(); return (int)(config.effect[INDEX].intensity*100.0f+0.5f); } \
+    static void set_##NAME##_percent(int value) { if(value>=0 && value<=100) PcPort_Hd2dSetIntensity(INDEX,value/100.0f); }
 CONTROL(dof,XG_HD2D_DOF)
 CONTROL(bloom,XG_HD2D_BLOOM)
 CONTROL(light,XG_HD2D_LIGHT)
@@ -96,6 +101,18 @@ __attribute__((constructor)) static void register_menu(void)
     PcPort_DevMenuRegisterEnhancement("Fog",get_fog,toggle_fog);
     PcPort_DevMenuRegisterEnhancement("Particles",get_particles,toggle_particles);
     PcPort_DevMenuRegisterEnhancement("Colour grading",get_grade,toggle_grade);
+    if(PcPort_DevMenuRegisterEnhancementValue) {
+#define VALUE(LABEL,NAME) PcPort_DevMenuRegisterEnhancementValue(LABEL,get_##NAME##_percent,set_##NAME##_percent,0,100,5,"%")
+        VALUE("Depth of field intensity",dof);
+        VALUE("Bloom intensity",bloom);
+        VALUE("Warm lighting intensity",light);
+        VALUE("Sprite shadow intensity",shadow);
+        VALUE("Vignette intensity",vignette);
+        VALUE("Fog intensity",fog);
+        VALUE("Particle intensity",particles);
+        VALUE("Colour grading intensity",grade);
+#undef VALUE
+    }
 }
 void PcPort_Hd2dPostProcess(int path,int width,int height)
 {

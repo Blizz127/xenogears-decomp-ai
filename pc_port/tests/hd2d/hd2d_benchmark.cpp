@@ -8,6 +8,7 @@
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <vector>
 
 static int number(const char *text, int low, int high) {
@@ -17,8 +18,10 @@ static int number(const char *text, int low, int high) {
 }
 int main(int argc, char **argv) {
     int width=1280, height=720, samples=120;
-    if (argc!=1 && argc!=4) return 2;
-    if (argc==4) {
+    if (argc!=1 && argc!=4 && argc!=5) return 2;
+    const bool ordered=argc==5;
+    if(ordered && std::strcmp(argv[4],"ot")) return 2;
+    if (argc>=4) {
         width=number(argv[1],64,4096); height=number(argv[2],64,4096);
         samples=number(argv[3],3,1000);
         if (!width || !height || !samples) return 2;
@@ -42,15 +45,25 @@ int main(int argc, char **argv) {
         SDL_GL_DeleteContext(context); SDL_DestroyWindow(window); SDL_Quit(); return 1;
     }
     std::vector<float> depth(width*height);
-    std::vector<unsigned char> protection(width*height,0);
+    std::vector<unsigned char> protection(width*height,ordered ? 2 : 0);
+    std::vector<unsigned short> order(ordered ? width*height : 0);
     for (int y=0;y<height;++y) for(int x=0;x<width;++x) {
         depth[y*width+x]=10.0f+float(x)*200.0f/width;
-        if (x>width/3 && x<width*2/3 && y>height/3 && y<height*2/3)
-            protection[y*width+x]=255;
+        if(ordered) order[y*width+x]=y==0 ? 0 :
+            static_cast<unsigned short>(1+(width-1-x)*4094/(width-1));
+        if (x>width/3 && x<width*2/3 && y>height/3 && y<height*2/3) {
+            if(ordered) {
+                const unsigned char coverage[]={1,4,8};
+                protection[y*width+x]=coverage[(x-width/3)*3/(width/3+1)];
+            } else protection[y*width+x]=255;
+        }
     }
     GLuint textures[2]; glGenTextures(2,textures);
     glBindTexture(GL_TEXTURE_2D,textures[0]);
-    glTexImage2D(GL_TEXTURE_2D,0,GL_R32F,width,height,0,GL_RED,GL_FLOAT,depth.data());
+    if(ordered) {
+        glPixelStorei(GL_UNPACK_ALIGNMENT,1);
+        glTexImage2D(GL_TEXTURE_2D,0,GL_R16,width,height,0,GL_RED,GL_UNSIGNED_SHORT,order.data());
+    } else glTexImage2D(GL_TEXTURE_2D,0,GL_R32F,width,height,0,GL_RED,GL_FLOAT,depth.data());
     glBindTexture(GL_TEXTURE_2D,textures[1]);
     glPixelStorei(GL_UNPACK_ALIGNMENT,1);
     glTexImage2D(GL_TEXTURE_2D,0,GL_R8,width,height,0,GL_RED,GL_UNSIGNED_BYTE,protection.data());
@@ -63,12 +76,30 @@ int main(int argc, char **argv) {
     frame.width=width; frame.height=height;
     frame.linear_depth_texture=textures[0]; frame.protection_texture=textures[1];
     frame.linear_depth_verified=frame.protection_verified=1;
+    if(ordered) {
+        frame.depth_mode=XG_HD2D_DEPTH_OT_ORDER;
+        frame.protection_mode=XG_HD2D_PROTECTION_COVERAGE_BITS;
+        frame.order_scale=65535.0f/4095.0f;
+        frame.auxiliary_width=width;frame.auxiliary_height=height;
+        std::puts("mode=ot_order raw_R16_slots=0..4095 zero_background larger_nearer physical_particles=disabled");
+        std::puts("scope=synthetic_composition_only not_in_game_or_whole_gpu_performance");
+    }
     frame.light_count=frame.shadow_count=frame.particle_count=XG_HD2D_MAX_ITEMS;
     for (int i=0;i<XG_HD2D_MAX_ITEMS;++i) {
         float x=float(i+1)/(XG_HD2D_MAX_ITEMS+1);
         frame.lights[i]={x,0.4f,0.1f,0.8f};
         frame.shadows[i]={x,0.3f,0.025f,0.012f};
         frame.particles[i]={x,0.7f,15.0f,0.003f};
+    }
+    if(ordered) {
+        config.enabled=1;
+        const unsigned expected=((1u<<XG_HD2D_EFFECT_COUNT)-1u)&~(1u<<XG_HD2D_PARTICLES);
+        if(XgHd2d_Plan(&config,&frame).active!=expected) {
+            std::fputs("OT fixture did not enable exactly the supported effects\n",stderr);
+            glDeleteTextures(2,textures);SDL_GL_DeleteContext(context);
+            SDL_DestroyWindow(window);SDL_Quit();return 1;
+        }
+        config.enabled=0;
     }
     std::printf("scenario,width,height,samples,median_ms,p95_ms\n");
     int result=0;
@@ -88,7 +119,7 @@ int main(int argc, char **argv) {
         }
         if (!result) {
             std::sort(times.begin(),times.end());
-            std::printf("%s,%d,%d,%d,%.6f,%.6f\n",enabled ? "all_effects" : "off",
+            std::printf("%s,%d,%d,%d,%.6f,%.6f\n",enabled ? (ordered ? "ot_order_supported_effects" : "all_effects") : "off",
                 width,height,samples,times[samples/2],times[(samples*95-1)/100]);
         }
     }

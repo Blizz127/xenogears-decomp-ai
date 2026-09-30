@@ -1,6 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include "hd2d_sprite_parts.h"
 #include "hd2d_head_crop_variants.h"
+#include "hd2d_map1_head_crop_variants.h"
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
@@ -39,6 +40,17 @@ int main(void)
     PcPort_Hd2dHeadCropGpuObserved(q.poly,1,0);
     PcPort_Hd2dHeadCropGpuObserved(q.poly,1,18); /* exact head consumed */
     PcPort_Hd2dHeadCropGpuObserved(q.poly,1,18); /* duplicate does not recount */
+    m.map=1;
+    for(unsigned i=0;i<8;i++) for(int part=2;part<=5;part+=3) {
+        const unsigned short *rect=part==2 ? hd2d_map1_head_variants[i].p2 : hd2d_map1_head_variants[i].p5;
+        m.part=part; original=m;
+        g_PcPortPresentedFrames=i*24+7;
+        assert(__wrap_PcPort_Hd2dSpriteSubmitPart(&p,&m,&q));
+        assert(received.x==rect[0] && received.y==rect[1] && received.width==rect[2] && received.height==rect[3]);
+        assert(rect[0]+rect[2]<=313 && rect[1]+rect[3]<=348);
+        assert(!memcmp(&m,&original,sizeof m) && !memcmp(&q,&original_quad,sizeof q));
+    }
+    m.part=3;assert(__wrap_PcPort_Hd2dSpriteSubmitPart(&p,&m,&q));assert(!memcmp(&received,&m,sizeof m));
     m.frame=191;assert(__wrap_PcPort_Hd2dSpriteSubmitPart(&p,&m,&q));assert(!memcmp(&received,&m,sizeof m));
     return 0;
 }

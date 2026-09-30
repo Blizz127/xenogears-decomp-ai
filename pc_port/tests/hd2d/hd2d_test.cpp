@@ -35,9 +35,10 @@ int main() {
     f.field_id=2; f.field_active=0; assert(XgHd2d_Present(&c,&f)==0);
     f.field_active=1;
     XgHd2dPlan p=XgHd2d_Plan(&c,&f);
-    assert(p.active==(bit(XG_HD2D_GRADE)|bit(XG_HD2D_VIGNETTE)|bit(XG_HD2D_LIGHT)));
+    assert(p.active==0); // every effect requires certified sprite/UI coverage
     assert(p.missing_depth & bit(XG_HD2D_DOF));
     assert(p.missing_protection & bit(XG_HD2D_BLOOM));
+    f.protection_texture=1; f.protection_verified=1; // policy-only token, no GL inspection yet
     c.effect[XG_HD2D_GRADE].intensity=NAN;
     assert(!(XgHd2d_Plan(&c,&f).active&bit(XG_HD2D_GRADE)));
     c.effect[XG_HD2D_GRADE].intensity=4;
@@ -52,6 +53,8 @@ int main() {
     SDL_GLContext context=SDL_GL_CreateContext(window); assert(context);
     glReadBuffer(GL_BACK); glDrawBuffer(GL_BACK);
     gray(); const auto baseline=pixels();
+    std::vector<unsigned char> initialCoverage(W*H,0);
+    f.protection_texture=texture(GL_R8,GL_UNSIGNED_BYTE,initialCoverage.data());
     c.enabled=0; assert(XgHd2d_Present(&c,&f)==0); assert(pixels()==baseline);
     c.enabled=1;
     for(int e=0;e<XG_HD2D_EFFECT_COUNT;++e) c.effect[e].enabled=0;
@@ -132,6 +135,49 @@ int main() {
     // Declared-but-wrong depth format must fail closed after real GL inspection.
     f.linear_depth_texture=f.protection_texture; gray();
     assert(XgHd2d_Present(&c,&f)==0); assert(pixels()==baseline);
+    // Explicit OT proxy mode retains the linear fixtures above unchanged.
+    f.depth_mode=XG_HD2D_DEPTH_OT_ORDER; f.protection_mode=XG_HD2D_PROTECTION_COVERAGE_BITS;
+    f.order_scale=65535.0f/4095.0f;
+    std::vector<unsigned short> order(W*H,4095);
+    f.linear_depth_texture=texture(GL_R16,GL_UNSIGNED_SHORT,order.data());
+    std::fill(protection.begin(),protection.end(),2); // map coverage stays editable
+    const unsigned char kinds[]={1,4,8,13};
+    for(int k=0;k<4;++k) protection[(6+k)*W+14]=kinds[k];
+    glBindTexture(GL_TEXTURE_2D,f.protection_texture);
+    glTexSubImage2D(GL_TEXTURE_2D,0,0,0,W,H,GL_RED,GL_UNSIGNED_BYTE,protection.data());
+    // All effects preserve sparse low-bit sprite/UI/override coverage exactly.
+    for(int e=0;e<XG_HD2D_EFFECT_COUNT;++e) c.effect[e]={1,.7f};
+    c.order_focus=.8f; c.order_range=.2f;
+    gray();assert(XgHd2d_Present(&c,&f)==1);rendered=pixels();
+    for(int k=0;k<4;++k) assert(!std::memcmp(&rendered[((6+k)*W+14)*4],&baseline[((6+k)*W+14)*4],4));
+    assert(rendered!=baseline && !(XgHd2d_Plan(&c,&f).active&bit(XG_HD2D_PARTICLES)));
+    // Larger raw OT slots are nearer: zero ordered distance is valid, zero
+    // source slot is invalid; fog is ordinal and independent of image y.
+    for(int e=0;e<XG_HD2D_EFFECT_COUNT;++e)c.effect[e].enabled=0;
+    c.effect[XG_HD2D_FOG]={1,1};c.order_fog_start=.2f;c.order_fog_end=.8f;
+    for(int y=0;y<H;++y)for(int x=0;x<W;++x)order[y*W+x]=x<8?4095:(x<16?1:0);
+    glBindTexture(GL_TEXTURE_2D,f.linear_depth_texture);
+    glTexSubImage2D(GL_TEXTURE_2D,0,0,0,W,H,GL_RED,GL_UNSIGNED_SHORT,order.data());
+    gray();assert(XgHd2d_Present(&c,&f)==1);rendered=pixels();
+    assert(!std::memcmp(&rendered[(2*W+2)*4],&baseline[(2*W+2)*4],4)); // nearest distance0
+    assert(std::memcmp(&rendered[(2*W+10)*4],&baseline[(2*W+10)*4],4)); // far ordinal
+    assert(!std::memcmp(&rendered[(2*W+20)*4],&baseline[(2*W+20)*4],4)); // invalid slot0
+    // Full drawable attachments sampled at exact viewport offset, not local0.
+    f.x=4;f.y=3;f.width=16;f.height=12;f.auxiliary_width=W;f.auxiliary_height=H;
+    for(int e=0;e<XG_HD2D_EFFECT_COUNT;++e)c.effect[e].enabled=0;
+    c.effect[XG_HD2D_GRADE]={1,1};
+    std::fill(protection.begin(),protection.end(),2);protection[9*W+10]=1;
+    glBindTexture(GL_TEXTURE_2D,f.protection_texture);
+    glTexSubImage2D(GL_TEXTURE_2D,0,0,0,W,H,GL_RED,GL_UNSIGNED_BYTE,protection.data());
+    gray();assert(XgHd2d_Present(&c,&f)==1);rendered=pixels();
+    assert(!std::memcmp(&rendered[(9*W+10)*4],&baseline[(9*W+10)*4],4));
+    assert(std::memcmp(&rendered[(9*W+11)*4],&baseline[(9*W+11)*4],4));
+    assert(!std::memcmp(&rendered[0],&baseline[0],4)); // outside viewport untouched
+    f.protection_mode=static_cast<XgHd2dProtectionMode>(99);
+    gray();assert(XgHd2d_Present(&c,&f)==0);assert(pixels()==baseline);
+    f.protection_mode=XG_HD2D_PROTECTION_COVERAGE_BITS;
+    f.auxiliary_width=10;assert(XgHd2d_Present(&c,&f)==0);f.auxiliary_width=W;
+    assert(glGetError()==GL_NO_ERROR);
     c.enabled=0; gray(); assert(XgHd2d_Present(&c,&f)==0); assert(pixels()==baseline);
     XgHd2d_Shutdown(); assert(glGetError()==GL_NO_ERROR);
     SDL_GL_DeleteContext(context); SDL_DestroyWindow(window); SDL_Quit();

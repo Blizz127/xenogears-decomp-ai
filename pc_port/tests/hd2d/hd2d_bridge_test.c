@@ -8,7 +8,10 @@
 int g_GameSceneMapNum=2;
 static int field_calls,gl_calls,producer_calls,present_calls,registered,producer_mode;
 static XgHd2dFrame last;
-static int reset_calls;
+static int reset_calls,values;
+#ifndef HD2D_TEST_NO_VALUE_API
+static struct { const char *label; int (*get)(void); void (*set)(int); } controls[XG_HD2D_EFFECT_COUNT];
+#endif
 void PcPort_Hd2dSpriteReset(void) { ++reset_calls; }
 void PcPort_DevMenuRegisterEnhancement(const char *label,int (*get)(void),void (*toggle)(void))
 {
@@ -16,6 +19,17 @@ void PcPort_DevMenuRegisterEnhancement(const char *label,int (*get)(void),void (
     if (!registered) assert(!strcmp(label,"HD-2D (Octopath style)"));
     ++registered;
 }
+#ifndef HD2D_TEST_NO_VALUE_API
+void PcPort_DevMenuRegisterEnhancementValue(const char *label,int(*get)(void),
+    void(*set)(int),int min,int max,int step,const char *unit)
+{
+    assert(label && get && set && values<XG_HD2D_EFFECT_COUNT);
+    assert(min==0 && max==100 && step==5 && !strcmp(unit,"%"));
+    for(int i=0;i<values;++i) assert(strcmp(label,controls[i].label));
+    controls[values].label=label;controls[values].get=get;controls[values++].set=set;
+    registered++;
+}
+#endif
 int PcPort_QuickCheckpointFieldIsActive(void) { ++field_calls; return 1; }
 void glGetIntegerv(GLenum key,GLint *out)
 {
@@ -37,10 +51,35 @@ int PcPort_Hd2dSceneInputs(int path,int width,int height,XgHd2dFrame *out)
 }
 int main(void)
 {
-    assert(registered==9);
+#ifdef HD2D_TEST_NO_VALUE_API
+    assert(registered==9 && !values);
+#else
+    assert(registered==17 && values==8);
+    // Numeric changes neither toggle effects nor enable the master, and only
+    // touch their own intensity. Percent rounding supports all integer inputs.
+    for(int effect=0;effect<XG_HD2D_EFFECT_COUNT;++effect) {
+        assert(controls[effect].get()==25);
+        for(int pct=0;pct<=100;++pct) {
+            XgHd2dConfig before=*PcPort_Hd2dConfiguration();
+            controls[effect].set(pct);
+            assert(controls[effect].get()==pct);
+            const XgHd2dConfig *after=PcPort_Hd2dConfiguration();
+            assert(!after->enabled);
+            for(int other=0;other<XG_HD2D_EFFECT_COUNT;++other) {
+                assert(after->effect[other].enabled==before.effect[other].enabled);
+                if(other!=effect) assert(after->effect[other].intensity==before.effect[other].intensity);
+            }
+        }
+        XgHd2dConfig before=*PcPort_Hd2dConfiguration();
+        controls[effect].set(-1);controls[effect].set(101);
+        assert(!memcmp(&before,PcPort_Hd2dConfiguration(),sizeof before));
+        controls[effect].set(25);
+    }
+#endif
     assert(!PcPort_Hd2dEnabled());
-    assert(PcPort_Hd2dConfiguration()->map_count==1 &&
-        PcPort_Hd2dConfiguration()->maps[0]==14);
+    assert(PcPort_Hd2dConfiguration()->map_count==2 &&
+        PcPort_Hd2dConfiguration()->maps[0]==14 &&
+        PcPort_Hd2dConfiguration()->maps[1]==1);
     PcPort_Hd2dPostProcess(0,640,480);
     assert(!field_calls && !gl_calls && !producer_calls && !present_calls);
     assert(!PcPort_Hd2dSetIntensity(-1,0.5f));

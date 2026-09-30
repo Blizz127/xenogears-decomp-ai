@@ -21,8 +21,19 @@ static struct PendingPart {
     PcPortHd2dPartMapping mapping;
 } pending[MAX_PENDING_PARTS];
 static size_t pending_count;
-static GLuint atlas_texture;
-static const PcPortHd2dPartProfile *uploaded_profile;
+#define MAX_CACHED_ATLASES 8
+/* Immutable stable profiles own distinct textures for the context lifetime.
+ * Never overwrite/delete a cached texture that queued GPU splits may use. */
+static struct { const PcPortHd2dPartProfile *profile; GLuint texture; }
+    atlas_cache[MAX_CACHED_ATLASES];
+static size_t atlas_count;
+static GLuint FindTexture(const PcPortHd2dPartProfile *profile)
+{
+    size_t i;
+    for(i=0;i<atlas_count;++i)
+        if(atlas_cache[i].profile==profile) return atlas_cache[i].texture;
+    return 0;
+}
 
 static PcPortHd2dSpriteDiagnostics diagnostics;
 static int diagnostic_requested = -1;
@@ -107,16 +118,16 @@ static int PacketMatchesQuad(const POLY_FT4 *p, const PcPortHd2dRetailQuad *q)
         !memcmp(x,q->x,sizeof x) && !memcmp(y,q->y,sizeof y) &&
         !memcmp(u,q->u,sizeof u) && !memcmp(v,q->v,sizeof v);
 }
-static int LoadTexture(const PcPortHd2dPartProfile *p)
+static GLuint LoadTexture(const PcPortHd2dPartProfile *p)
 {
     FILE *file;
     unsigned char *pixels;
     size_t bytes;
     GLint binding, unpack_buffer, alignment, row_length, skip_rows, skip_pixels, width=0, height=0;
     GLuint texture=0;
-    if (uploaded_profile == p && atlas_texture) return 1;
-    /* Profiles are immutable; hot swapping requires an explicit renderer reset. */
-    if (uploaded_profile || !PcPort_Hd2dPartProfileValidate(p)) return 0;
+    texture=FindTexture(p);
+    if(texture) return texture;
+    if(atlas_count==MAX_CACHED_ATLASES || !PcPort_Hd2dPartProfileValidate(p)) return 0;
     bytes = (size_t)p->width * p->height * 4;
     file = fopen(p->rgba_path,"rb");
     if (!file) return 0;
@@ -159,8 +170,9 @@ static int LoadTexture(const PcPortHd2dPartProfile *p)
         if (texture) glDeleteTextures(1,&texture);
         return 0;
     }
-    uploaded_profile=p; atlas_texture=texture;
-    return 1;
+    atlas_cache[atlas_count].profile=p;
+    atlas_cache[atlas_count++].texture=texture;
+    return texture;
 }
 int PcPort_Hd2dSpriteSubmitPart(const PcPortHd2dPartProfile *p,
     const PcPortHd2dPartMapping *m, const PcPortHd2dRetailQuad *q)
@@ -203,18 +215,21 @@ int PcPort_Hd2dSpriteTextureOverride(const void *packet, int tpage, int clut,
         if (diag) diagnostics.no_scope++;
         return 0;
     }
-    if (!atlas_texture) { if (diag) diagnostics.no_texture++; return 0; }
+    if (!atlas_count) { if (diag) diagnostics.no_texture++; return 0; }
     for (i=0;i<pending_count;++i) {
         struct PendingPart *e = pending+i;
         const PcPortHd2dPartMapping *m = &e->mapping;
         int j, min_u=255, min_v=255, max_u=0, max_v=0;
+        GLuint selected_texture;
         if (e->packet != packet) continue;
         e->seen=1;
         if (memcmp(packet,&e->snapshot,sizeof e->snapshot)) {
             if (diag) diagnostics.snapshot_miss++;
             return 0;
         }
-        if (tpage != m->tpage || clut != m->clut || m->map != PcPort_Hd2dCurrentMap() || uploaded_profile != e->profile) {
+        selected_texture=FindTexture(e->profile);
+        if(!selected_texture) { if(diag) diagnostics.no_texture++; return 0; }
+        if (tpage != m->tpage || clut != m->clut || m->map != PcPort_Hd2dCurrentMap()) {
             if (diag) diagnostics.metadata_miss++;
             return 0;
         }
@@ -233,9 +248,9 @@ int PcPort_Hd2dSpriteTextureOverride(const void *packet, int tpage, int clut,
             diagnostics.accepted++;
             if (diagnostics.accepted==1)
                 fprintf(stderr,"[hd2d-sprite-gpu] first_consumed texture=%u map=%d actor=%d frame=%d part=%d pending=%u\n",
-                    atlas_texture,m->map,m->actor,m->frame,m->part,(unsigned)pending_count);
+                    selected_texture,m->map,m->actor,m->frame,m->part,(unsigned)pending_count);
         }
-        *texture=atlas_texture;
+        *texture=selected_texture;
         uv[0]=(m->x+.5f)/e->profile->width;
         uv[1]=(m->y+.5f)/e->profile->height;
         uv[2]=(m->x+m->width-.5f)/e->profile->width;

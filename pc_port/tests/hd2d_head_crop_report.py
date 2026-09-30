@@ -40,6 +40,7 @@ def main():
     env=dict(os.environ,FEI_FOOTPRINT_STRICT_HORIZONTAL='1')
     lane=(run/'lane-parts.log').read_text().splitlines()
     reports=[]
+    from PIL import Image
     for index,chosen in sorted(partition.items()):
         dest=out/f'variant-{index}';cap=dest/'cap';cap.mkdir(parents=True)
         for c in sorted(chosen):
@@ -50,8 +51,17 @@ def main():
         gpu=sum('gpu_accepted=1' in line and int(kv(line)['present']) in measured for line in lane)
         rows=[kv(line) for line in variants if int(kv(line)['present']) in measured and 'rect=' in line]
         head_gpu=sum('gpu_consumed=1' in line and int(kv(line)['present']) in measured for line in variants)
+        rects={row.get('part','5'):row['rect'] for row in rows}
+        gpu_parts={part:sum('gpu_consumed=1' in line and kv(line).get('part','5')==part and int(kv(line)['present']) in measured for line in variants) for part in rects}
+        changed=0
+        if all((dest/f'full_{name}.png').exists() for name in ('retail','hd2d','hidden')):
+            images=[Image.open(dest/f'full_{name}.png').convert('RGB') for name in ('retail','hd2d','hidden')]
+            changed=sum(r!=h and (r!=x or h!=x) for r,h,x in zip(*(image.getdata() for image in images)))
+        analysis=(dest/'analysis.txt').read_text()
+        per_part=all(f'p{i}:' in analysis for i in range(6))
+        evidence_pass=result.returncode==0 and bool(rects) and all(gpu_parts.values()) and changed>0 and per_part
         reports.append(dict(variant=index,name=rows[0]['name'] if rows else None,
-            rect=rows[0]['rect'] if rows else None,captures=sorted(chosen),gpu_acceptances=gpu,head_part_gpu_consumptions=head_gpu,
+            rect=rows[0]['rect'] if rows else None,rects_by_part=rects,gpu_by_part=gpu_parts,changed_sprite_pixels=changed,per_part_measured=per_part,evidence_pass=evidence_pass,captures=sorted(chosen),gpu_acceptances=gpu,head_part_gpu_consumptions=head_gpu,
             strict_analyzer='PASS' if result.returncode==0 else 'FAIL',
             status='candidate requiring unwrapped native production rebuild and rerun'))
     report=dict(test_only=True,all_eight_variants_measured=set(partition)==set(range(8)),variants=reports)

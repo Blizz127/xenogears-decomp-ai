@@ -17,9 +17,11 @@ static FILE *log_output(void) {
     if (!logfile) { const char *p=getenv("XENO_HD2D_FIELD_PROBE"); if(p) logfile=fopen(p,"w"); }
     return logfile;
 }
+extern void PcPort_Hd2dCaptureWarpTick(void) __attribute__((weak));
 extern void __real_PcPort_Hd2dPostProcess(int,int,int);
 void __wrap_PcPort_Hd2dPostProcess(int p,int w,int h) {
     __real_PcPort_Hd2dPostProcess(p,w,h);
+    if(PcPort_Hd2dCaptureWarpTick) PcPort_Hd2dCaptureWarpTick();
     FILE *f=log_output(); if(f) { fprintf(f,"post present=%u map=%d enabled=%d active=%d\n",g_PcPortPresentedFrames+1,PcPort_Hd2dCurrentMap(),PcPort_Hd2dEnabled(),PcPort_Hd2dOpeningActive()); fflush(f); }
 }
 extern int __real_PcPort_Hd2dSpriteBegin(const PcPortHd2dSpriteInfo*);

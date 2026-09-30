@@ -129,9 +129,12 @@ int XgHd2d_Present(const XgHd2dConfig *config,const XgHd2dFrame *frame) {
     if(frame->width>maxTexture || frame->height>maxTexture) { fail("viewport exceeds texture limit"); return -1; }
     State saved; int result=0; saveState(&saved);
     XgHd2dFrame supported=*frame;
-    if(!frame->linear_depth_verified || !textureValid(frame->linear_depth_texture,GL_R32F,frame->width,frame->height))
+    int auxiliaryWidth=frame->auxiliary_width ? frame->auxiliary_width : frame->width;
+    int auxiliaryHeight=frame->auxiliary_height ? frame->auxiliary_height : frame->height;
+    GLint depthFormat=frame->depth_mode==XG_HD2D_DEPTH_OT_ORDER ? GL_R16 : GL_R32F;
+    if(!frame->linear_depth_verified || !textureValid(frame->linear_depth_texture,depthFormat,auxiliaryWidth,auxiliaryHeight))
         supported.linear_depth_verified=0;
-    if(!frame->protection_verified || !textureValid(frame->protection_texture,GL_R8,frame->width,frame->height))
+    if(!frame->protection_verified || !textureValid(frame->protection_texture,GL_R8,auxiliaryWidth,auxiliaryHeight))
         supported.protection_verified=0;
     plan=XgHd2d_Plan(config,&supported);
     if(!plan.active) { fail("requested effects unavailable: missing depth or sprite/UI protection"); goto done; }
@@ -151,12 +154,20 @@ int XgHd2d_Present(const XgHd2dConfig *config,const XgHd2dFrame *frame) {
     glUseProgram(program); glBindVertexArray(vao);
     scalar("sceneColor",0); scalar("sceneDepth",1); scalar("protection",2);
     scalar("hasDepth",supported.linear_depth_verified); scalar("hasProtection",supported.protection_verified);
+    scalar("depthMode",frame->depth_mode); scalar("protectionMode",frame->protection_mode);
+    glUniform1f(glGetUniformLocation(program,"orderScale"),frame->order_scale);
+    glUniform2i(glGetUniformLocation(program,"auxOrigin"),frame->auxiliary_width?frame->x:0,frame->auxiliary_height?frame->y:0);
     glUniform2f(glGetUniformLocation(program,"origin"),(float)frame->x,(float)frame->y);
     glUniform1fv(glGetUniformLocation(program,"amount"),XG_HD2D_EFFECT_COUNT,plan.intensity);
-    if(plan.intensity[XG_HD2D_DOF]>0)
-        glUniform4f(glGetUniformLocation(program,"focus"),config->focus_depth,config->focus_range,config->focus_tilt,0);
+    if(plan.intensity[XG_HD2D_DOF]>0) {
+        if(frame->depth_mode==XG_HD2D_DEPTH_OT_ORDER)
+            glUniform4f(glGetUniformLocation(program,"focus"),config->order_focus,config->order_range,config->order_tilt,0);
+        else glUniform4f(glGetUniformLocation(program,"focus"),config->focus_depth,config->focus_range,config->focus_tilt,0);
+    }
     else glUniform4f(glGetUniformLocation(program,"focus"),1,1,0,0);
-    glUniform2f(glGetUniformLocation(program,"fogRange"),config->fog_start,config->fog_end);
+    glUniform2f(glGetUniformLocation(program,"fogRange"),
+        frame->depth_mode==XG_HD2D_DEPTH_OT_ORDER?config->order_fog_start:config->fog_start,
+        frame->depth_mode==XG_HD2D_DEPTH_OT_ORDER?config->order_fog_end:config->fog_end);
     items("lights","lightCount",frame->lights,frame->light_count);
     items("shadows","shadowCount",frame->shadows,frame->shadow_count);
     items("particles","particleCount",frame->particles,frame->particle_count);

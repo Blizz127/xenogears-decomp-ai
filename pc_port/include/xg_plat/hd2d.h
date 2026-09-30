@@ -12,6 +12,14 @@ typedef enum XgHd2dEffect {
     XG_HD2D_VIGNETTE, XG_HD2D_FOG, XG_HD2D_PARTICLES, XG_HD2D_GRADE,
     XG_HD2D_EFFECT_COUNT
 } XgHd2dEffect;
+typedef enum XgHd2dDepthMode {
+    XG_HD2D_DEPTH_LINEAR = 0, /* GL_R32F, positive linear view distance */
+    XG_HD2D_DEPTH_OT_ORDER = 1 /* GL_R16, normalized order, larger is nearer */
+} XgHd2dDepthMode;
+typedef enum XgHd2dProtectionMode {
+    XG_HD2D_PROTECTION_BINARY = 0,
+    XG_HD2D_PROTECTION_COVERAGE_BITS = 1 /* R8 byte: sprite1/map2/UI4/override8 */
+} XgHd2dProtectionMode;
 typedef struct XgHd2dControl { int enabled; float intensity; } XgHd2dControl;
 typedef struct XgHd2dConfig {
     int enabled; /* zero means no GL calls, queries, or allocations */
@@ -21,6 +29,9 @@ typedef struct XgHd2dConfig {
     float focus_depth, focus_range, fog_start, fog_end;
     /* DOF focal-plane slope in depth units, NOT a substitute for depth. */
     float focus_tilt;
+    /* OT proxy distance = 1-normalized_order; no physical units implied.
+     * Independent parameters never reinterpret the positive-linear defaults. */
+    float order_focus, order_range, order_tilt, order_fog_start, order_fog_end;
 } XgHd2dConfig;
 /* All positions: normalized game viewport coordinates, origin lower left.
  * Point light: x,y,radius,strength. Shadow: foot x,y,radius x,radius y.
@@ -29,8 +40,10 @@ typedef struct XgHd2dConfig {
 typedef struct XgHd2dItem { float x, y, z, w; } XgHd2dItem;
 typedef struct XgHd2dFrame {
     int field_active, field_id, x, y, width, height;
-    /* Exact current viewport-size GL_TEXTURE_2D textures (not multisampled).
-     * Depth must be GL_R32F, positive linear view distance (0 = invalid).
+    /* Exact current GL_TEXTURE_2D attachments (not multisampled), legacy
+     * viewport-sized or explicit full-drawable auxiliary dimensions below.
+     * Legacy depth is GL_R32F positive view distance (0 = invalid); explicit
+     * OT mode is GL_R16 ordinal order (0 invalid/background, larger is nearer).
      * Protection must be GL_R8: 1 for ALL visible sprites/UI, 0 environment.
      * Caller certifies same frame/camera/viewport; never reuse across maps. */
     unsigned linear_depth_texture, protection_texture;
@@ -39,6 +52,14 @@ typedef struct XgHd2dFrame {
     XgHd2dItem lights[XG_HD2D_MAX_ITEMS];
     XgHd2dItem shadows[XG_HD2D_MAX_ITEMS];
     XgHd2dItem particles[XG_HD2D_MAX_ITEMS];
+    XgHd2dDepthMode depth_mode;
+    XgHd2dProtectionMode protection_mode;
+    /* Both zero: legacy viewport-size attachments. Both positive: shared
+     * full drawable attachment size, sampled at viewport x/y plus local pixel. */
+    int auxiliary_width, auxiliary_height;
+    /* OT raw normalized texel multiplied by this positive scale then clamped
+     * to [0,1]. Use 1 for full-range encoding, 65535/ot_max for raw slot codes. */
+    float order_scale;
 } XgHd2dFrame;
 typedef struct XgHd2dPlan {
     uint32_t active, missing_depth, missing_protection;

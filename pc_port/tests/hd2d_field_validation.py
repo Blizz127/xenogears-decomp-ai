@@ -23,18 +23,19 @@ def run(cmd, **kw):
     return subprocess.run(cmd, check=True, cwd=ROOT, **kw)
 
 
-def drive(binary, qs, out, enabled, timeout, trace=False, settle=480):
+def drive(binary, qs, out, enabled, timeout, trace=False, settle=480, ready_marker='player position restored', readiness_kind='checkpoint restore', capture_every=8, capture_count=24, test_input=None):
     out.mkdir()
     cap = out / 'cap'
     cap.mkdir()
     env = {k:v for k,v in os.environ.items() if not k.startswith(('XENO_', 'DISPLAY', 'WAYLAND_DISPLAY', 'XAUTHORITY'))}
     env.update(SDL_VIDEODRIVER='offscreen', SDL_AUDIODRIVER='dummy', ALSOFT_DRIVERS='null',
                XENO_CHEATS_CONSOLE='1', XENO_QUICKSAVE_PATH=str(qs),
-               XENO_FIELD_CAPTURE_DIR=str(cap), XENO_FIELD_CAPTURE_EVERY='8',
+               XENO_FIELD_CAPTURE_DIR=str(cap), XENO_FIELD_CAPTURE_EVERY=str(capture_every),
                XENO_HD2D_FIELD_TRANSFORM_FIXTURE=os.environ.get('XENO_HD2D_FIELD_TRANSFORM_FIXTURE','0'),
                XENO_HD2D_FIELD_POSE_FIXTURE=os.environ.get('XENO_HD2D_FIELD_POSE_FIXTURE','0'), XENO_HD2D_SPRITE_DIAG='1', XENO_HD2D_BATCH_STATS='1', XENO_HD2D_TRACE_PARTS=str(int(trace)), XENO_HD2D_OCTOPATH=str(enabled), XENO_HD2D_OPENING_MAPS='14',
                XENO_FEI_HD2D='0', XENO_PRESENT_HASH_LOG=str(out/'hash.txt'),
                XENO_HD2D_FIELD_PROBE=str(out/'probe.txt'))
+    if test_input is not None: env['XENO_FIELD_TEST_INPUT']=test_input
     lines=[]
     with (out/'run.log').open('w') as log:
         proc=subprocess.Popen([str(binary)], cwd=ROOT, env=env, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -46,7 +47,7 @@ def drive(binary, qs, out, enabled, timeout, trace=False, settle=480):
         try:
             while time.monotonic()-start < timeout and proc.poll() is None:
                 text=''.join(lines)
-                if restored is None and 'player position restored' in text:
+                if restored is None and ready_marker in text:
                     restored=time.monotonic()
                     # Field captures can pause throughout a transition. An
                     # existing filename may precede restoration by hundreds of
@@ -60,8 +61,8 @@ def drive(binary, qs, out, enabled, timeout, trace=False, settle=480):
                 if restore_present is not None:
                     eligible=[p for p in sorted(cap.glob('field-frame-*.png'))
                               if int(p.stem.rsplit('-',1)[1]) >= restore_present+settle]
-                    if len(eligible)>=24:
-                        selected=eligible[:24]
+                    if len(eligible)>=capture_count:
+                        selected=eligible[:capture_count]
                         last=int(selected[-1].stem.rsplit('-',1)[1])-1
                         # Hash FILE is buffered. Continue presenting until the
                         # entire fixed measurement window is on disk.
@@ -72,16 +73,20 @@ def drive(binary, qs, out, enabled, timeout, trace=False, settle=480):
                             break
                 time.sleep(.25)
             else:
-                raise RuntimeError(f'{out.name}: checkpoint capture timeout/exit')
+                raise RuntimeError(f'{out.name}: readiness/capture failed elapsed={time.monotonic()-start:.1f}s process_rc={proc.poll()} marker={ready_marker!r}')
         finally:
+            exited_before_stop=proc.poll()
+            (out/'process.json').write_text(json.dumps({'elapsed_seconds':time.monotonic()-start,
+                'returncode_before_stop':exited_before_stop,'readiness_seen':restored is not None,
+                'ready_marker':ready_marker},indent=2))
             proc.terminate()
             try: proc.wait(10)
             except subprocess.TimeoutExpired: proc.kill(); proc.wait()
             thread.join()
     # Fixed count-based window, chosen before any pixel/hash comparison.
-    (out/'window.json').write_text(json.dumps({'restore_present_upper_bound':restore_present,
-        'settle_presents':settle,'capture_count':24,'capture_stride':8},indent=2))
-    if len(selected)<24: raise RuntimeError('insufficient field captures')
+    (out/'window.json').write_text(json.dumps({'restore_present_upper_bound':restore_present,'readiness_kind':readiness_kind,'ready_marker':ready_marker,
+        'settle_presents':settle,'capture_count':capture_count,'capture_stride':capture_every},indent=2))
+    if len(selected)<capture_count: raise RuntimeError('insufficient field captures')
     manifest={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in selected}
     (out/'captures.json').write_text(json.dumps(manifest,indent=2))
     lo=int(selected[0].stem.rsplit('-',1)[1]); hi=int(selected[-1].stem.rsplit('-',1)[1])
