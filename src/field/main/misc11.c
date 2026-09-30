@@ -813,6 +813,10 @@ void func_800932D0(void) {
     if (D_800ADBEC != 0) {
         entranceArg = FieldScriptVMGetArgument(3);
         mapArg = FieldScriptVMGetArgument(1);
+#ifdef XENO_PC_PORT
+        { extern void PcPort_RouteLogChangeField(int, int);
+          PcPort_RouteLogChangeField(mapArg, entranceArg); } /* inert unless XENO_ROUTE_LOG */
+#endif
         func_80092F44();
         D_800ADBEC = 0;
         FieldScriptMemoryWriteU16(2, entranceArg);
@@ -849,6 +853,10 @@ void func_800933F8(void) {
         s32 mapNum = FieldScriptVMGetArgument(5);
         if (mapNum != 0x7FFF) {
             s32 entrance = FieldScriptVMGetArgument(7);
+#ifdef XENO_PC_PORT
+            { extern void PcPort_RouteLogChangeField(int, int);
+              PcPort_RouteLogChangeField(mapNum, entrance); } /* inert unless XENO_ROUTE_LOG */
+#endif
             func_80092F44();
             FieldScriptMemoryWriteU16(2, entrance);
             g_GameSceneMapNum = mapNum;

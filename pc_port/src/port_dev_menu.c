@@ -38,7 +38,7 @@ static unsigned s_replayBits;
 #define MAX_ROWS 24
 typedef struct { char label[48]; int selectable; int action; int arg; } Row;
 enum {
-    ACT_NONE, ACT_PAGE, ACT_AREA, ACT_WARP, ACT_FINISH,
+    ACT_NONE, ACT_PAGE, ACT_AREA, ACT_WARP, ACT_FINISH, ACT_STEP,
     ACT_GOD, ACT_BATTLES, ACT_HEAL, ACT_GOLD, ACT_ITEMS,
     ACT_FF, ACT_SPEED, ACT_RECORD, ACT_SHOT, ACT_QSAVE, ACT_QLOAD, ACT_HD2D, ACT_CONFIRM,
     ACT_ENHANCEMENT
@@ -122,6 +122,11 @@ static void build_rows(void)
                 add_row(1, ACT_WARP, i, g_PcPortDevWarps[i].spot, NULL);
         break;
     case PAGE_FINISH:
+        for (i = 0; i < g_PcPortDevStepCount; i++)
+            if (g_PcPortDevSteps[i].evidence) {
+                add_row(1, ACT_STEP, 0, "FINISH CURRENT STEP", NULL);
+                break;
+            }
         for (i = 0; i < g_PcPortDevFinishCount; i++)
             if (g_PcPortDevFinishes[i].evidence) {
                 char label[48];
@@ -214,6 +219,7 @@ void PcPort_DevMenuSetStatus(const char *text) { snprintf(s_status, sizeof s_sta
 int PcPort_DevMenuOpen(void) { return s_enabled && s_open; }
 int PcPort_DevMenuCursor(void) { return s_cursor; }
 const char *PcPort_DevMenuStatus(void) { return s_status; }
+void PcPort_DevMenuSetStatus(const char *text) { snprintf(s_status, sizeof s_status, "%s", text); }
 void PcPort_DevMenuSetHost(const PcPortDevMenuHost *host) { s_host = host; }
 int PcPort_DevMenuRows(void) { build_rows(); return s_rowCount; }
 const char *PcPort_DevMenuRow(int row) { build_rows(); return row >= 0 && row < s_rowCount ? s_rows[row].label : ""; }
@@ -319,6 +325,10 @@ static void activate(void)
         snprintf(cmd, sizeof cmd, "dev finish %d", r.arg);
         queue(cmd, "AREA FINISH REQUESTED");
         close_menu("finish area");
+        break;
+    case ACT_STEP:
+        queue("dev step", "STEP FINISH REQUESTED");
+        close_menu("finish current step");
         break;
     case ACT_GOD: queue("god", "GOD MODE TOGGLED"); break;
     case ACT_BATTLES: queue("encounters", "RANDOM BATTLES TOGGLED"); break;

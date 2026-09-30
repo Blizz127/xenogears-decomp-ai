@@ -2,6 +2,7 @@
  * the game thread.  Each writes only the game's own state, bounded by the
  * game's own limits, and only at a safe field frame (DEV_MENU_SPEC.md §8). */
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "common.h"
 #include "main/game.h"
@@ -52,9 +53,65 @@ static void print_state(void)
     fprintf(stderr, " gold=%u itemSlots=%u itemTotal=%u\n", (unsigned)g_pGameState->gold, slots, total);
 }
 
+extern void* g_FieldScriptMemory;
+extern int g_GameSceneMapNum;
+extern void FieldScriptMemoryWriteU16(int index, int value);
+extern void func_800A30FC(void); /* the game's own script-memory -> g_GameState flush */
+
+static unsigned scenario_now(void) { return ((unsigned short*)&g_FieldScriptMemory)[0]; }
+static unsigned var_now(unsigned addr) { return ((unsigned short*)&g_FieldScriptMemory)[(addr >> 1) & 0x3FF]; }
+
+/* Field-change request through the quick-checkpoint teardown path, then the
+ * recorded script-variable values through the game's own writer and its own
+ * flush (func_800A30FC) so the checkpoint copy of g_GameState carries them. */
+static int warp_with(const char *command, int map, int entrance, const PcPortDevStepWrite *w, int nw, int scen)
+{
+    int i;
+    if (!PcPort_QuickCheckpointRequestWarp(map, entrance))
+        return -1;
+    if (scen >= 0) FieldScriptMemoryWriteU16(0, scen);
+    for (i = 0; i < nw; i++) FieldScriptMemoryWriteU16(w[i].addr, w[i].value);
+    if (scen >= 0 || nw > 0) func_800A30FC();
+    (void)command;
+    return 0;
+}
+
+static int step_matches(const PcPortDevStep *st)
+{
+    if (!st->evidence) return 0;
+    if (scenario_now() != st->detect_scen) return 0;
+    if (st->detect_map >= 0 && (g_GameSceneMapNum & 0x3FFF) != st->detect_map) return 0;
+    if (st->detect_var_addr != PC_DEV_NO_VALUE && var_now(st->detect_var_addr) != st->detect_var_value) return 0;
+    return 1;
+}
+
+static int find_step(void)
+{
+    int i;
+    for (i = 0; i < g_PcPortDevStepCount; i++)
+        if (step_matches(&g_PcPortDevSteps[i])) return i;
+    return -1;
+}
+
+/* Apply step `index` (detect already checked by the caller when needed). */
+static int finish_step(const char *command, int index)
+{
+    const PcPortDevStep *st = &g_PcPortDevSteps[index];
+    char toast[96];
+    int i;
+    if (warp_with(command, st->next_map, st->next_entrance, st->writes, st->nwrites, -1) != 0)
+        return refuse(command, "a room change or checkpoint is already pending");
+    fprintf(stderr, "[DEV_MENU] step finished: %s '%s' (area %s), %d writes:", st->id, st->name, st->area, st->nwrites);
+    for (i = 0; i < st->nwrites; i++) fprintf(stderr, " var[0x%x]=%u", st->writes[i].addr, st->writes[i].value);
+    fprintf(stderr, " -> map %d entrance %d\n", st->next_map, st->next_entrance);
+    snprintf(toast, sizeof toast, "DONE %.40s", st->name);
+    PcPort_DevMenuSetStatus(toast);
+    return 1;
+}
+
 int PcPort_DevMenuAction(const char *command)
 {
-    int i, index;
+    int i, index, map, entrance, scen;
     unsigned hold;
     if (!PcPort_DevMenuEnabled()) return refuse(command, "dev menu is off");
     /* Read-only / harness commands: no field gate. */
@@ -161,10 +218,48 @@ int PcPort_DevMenuAction(const char *command)
         if (index < 0 || index >= g_PcPortDevWarpCount || !g_PcPortDevWarps[index].evidence)
             return refuse(command, "not a verified warp");
         w = &g_PcPortDevWarps[index];
-        if (!PcPort_QuickCheckpointRequestWarp(w->map, w->entrance))
+        if (warp_with(command, w->map, w->entrance, NULL, 0,
+                      w->progression == PC_DEV_NO_SCENARIO ? -1 : (int)w->progression) != 0)
             return refuse(command, "a room change or checkpoint is already pending");
-        fprintf(stderr, "[CHEATS] warp requested: %s / %s (map %d entrance %d)\n",
-                w->area, w->spot, w->map, w->entrance);
+        fprintf(stderr, "[CHEATS] warp requested: %s / %s (map %d entrance %d scenario %d)\n",
+                w->area, w->spot, w->map, w->entrance,
+                w->progression == PC_DEV_NO_SCENARIO ? -1 : (int)w->progression);
+    } else if (sscanf(command, "warpx %d %d %d", &map, &entrance, &scen) == 3) {
+        /* Sweep harness only: an arbitrary candidate, never in the menu. */
+        const char *u = getenv("XENO_DEV_MENU_UNVERIFIED");
+        if (!u || u[0] != '1') return refuse(command, "warpx needs XENO_DEV_MENU_UNVERIFIED=1");
+        if (warp_with(command, map, entrance, NULL, 0, scen) != 0)
+            return refuse(command, "a room change or checkpoint is already pending");
+        fprintf(stderr, "[CHEATS] warpx requested: map %d entrance %d scenario %d\n", map, entrance, scen);
+    } else if (!strncmp(command, "stepraw ", 8)) {
+        /* Sweep harness only: one step delta given inline as
+         * `stepraw <next_map> <next_entrance> <addr:value,addr:value,...>`;
+         * the same apply path as a table row (finish_step). */
+        const char *u = getenv("XENO_DEV_MENU_UNVERIFIED");
+        PcPortDevStepWrite w[16];
+        int nw = 0;
+        char list[96];
+        char *tok, *save = NULL;
+        if (!u || u[0] != '1') return refuse(command, "stepraw needs XENO_DEV_MENU_UNVERIFIED=1");
+        if (sscanf(command, "stepraw %d %d %95s", &map, &entrance, list) != 3)
+            return refuse(command, "usage: stepraw <map> <entrance> <addr:value,...>");
+        for (tok = strtok_r(list, ",", &save); tok && nw < 16; tok = strtok_r(NULL, ",", &save)) {
+            unsigned a, v;
+            if (sscanf(tok, "%u:%u", &a, &v) == 2) { w[nw].addr = (unsigned short)a; w[nw].value = (unsigned short)v; nw++; }
+        }
+        if (warp_with(command, map, entrance, w, nw, -1) != 0)
+            return refuse(command, "a room change or checkpoint is already pending");
+        fprintf(stderr, "[DEV_MENU] step finished: stepraw (%d writes) -> map %d entrance %d\n", nw, map, entrance);
+        return 1;
+    } else if (!strcmp(command, "step")) {
+        index = find_step();
+        if (index < 0) return refuse(command, "no verified step matches the current story state");
+        return finish_step(command, index);
+    } else if (sscanf(command, "stepx %d", &index) == 1) {
+        const char *u = getenv("XENO_DEV_MENU_UNVERIFIED");
+        if (!u || u[0] != '1') return refuse(command, "stepx needs XENO_DEV_MENU_UNVERIFIED=1");
+        if (index < 0 || index >= g_PcPortDevStepCount) return refuse(command, "no such step");
+        return finish_step(command, index);
     } else if (sscanf(command, "finish %d", &index) == 1) {
         return refuse(command, "no verified area finish");
     } else {

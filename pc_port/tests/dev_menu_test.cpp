@@ -224,18 +224,45 @@ int main(void)
     tap(&pad, SDL_CONTROLLER_BUTTON_DPAD_UP);
     CHECK(PcPort_DevMenuCursor() == 0, "D-pad up: WARP");
     tap(&pad, SDL_CONTROLLER_BUTTON_A);
-    CHECK(!strcmp(PcPort_DevMenuTitle(), "WARP") && PcPort_DevMenuRows() == 1 &&
-          !strcmp(row(0), "(NO VERIFIED WARPS YET)") && !PcPort_DevMenuRowSelectable(0) &&
-          PcPort_DevMenuCursor() == -1,
-          "A opens WARP: one dimmed '(NO VERIFIED WARPS YET)', nothing selectable");
-    tap(&pad, SDL_CONTROLLER_BUTTON_DPAD_DOWN); tap(&pad, SDL_CONTROLLER_BUTTON_A);
-    CHECK(!strcmp(PcPort_DevMenuTitle(), "WARP") && PcPort_DevMenuCursor() == -1,
-          "empty group: down / A do nothing");
+    if (g_PcPortDevWarpCount == 0) {
+        CHECK(!strcmp(PcPort_DevMenuTitle(), "WARP") && PcPort_DevMenuRows() == 1 &&
+              !strcmp(row(0), "(NO VERIFIED WARPS YET)") && !PcPort_DevMenuRowSelectable(0) &&
+              PcPort_DevMenuCursor() == -1,
+              "A opens WARP: one dimmed '(NO VERIFIED WARPS YET)', nothing selectable");
+    } else {
+        /* Filled table: every row is an area folder ("<area> >"), none is a
+         * placeholder, and A opens the folder that lists named spots. */
+        int folders = 1, r;
+        CHECK(!strcmp(PcPort_DevMenuTitle(), "WARP") && PcPort_DevMenuRows() >= 1 &&
+              PcPort_DevMenuRowSelectable(0) && PcPort_DevMenuCursor() == 0 &&
+              row(0)[strlen(row(0)) - 1] == '>',
+              "A opens WARP: area folders (%s ...), %d rows", row(0), PcPort_DevMenuRows());
+        for (r = 0; r < PcPort_DevMenuRows(); r++)
+            if (!PcPort_DevMenuRowSelectable(r) || row(r)[strlen(row(r)) - 1] != '>') folders = 0;
+        CHECK(folders, "WARP root lists only selectable folders");
+        tap(&pad, SDL_CONTROLLER_BUTTON_A);
+        CHECK(PcPort_DevMenuRows() >= 1 && PcPort_DevMenuRowSelectable(0) &&
+              strcmp(PcPort_DevMenuTitle(), "WARP") != 0, "A opens the first folder: '%s' with %d spots",
+              PcPort_DevMenuTitle(), PcPort_DevMenuRows());
+        tap(&pad, SDL_CONTROLLER_BUTTON_B);
+        CHECK(!strcmp(PcPort_DevMenuTitle(), "WARP"), "B from a folder returns to WARP");
+    }
+    if (g_PcPortDevWarpCount == 0) {
+        tap(&pad, SDL_CONTROLLER_BUTTON_DPAD_DOWN); tap(&pad, SDL_CONTROLLER_BUTTON_A);
+        CHECK(!strcmp(PcPort_DevMenuTitle(), "WARP") && PcPort_DevMenuCursor() == -1,
+              "empty group: down / A do nothing");
+    }
     tap(&pad, SDL_CONTROLLER_BUTTON_B);
     CHECK(!strcmp(PcPort_DevMenuTitle(), "DEV MENU") && PcPort_DevMenuCursor() == 0, "B: back to root, cursor kept");
     tap(&pad, SDL_CONTROLLER_BUTTON_DPAD_DOWN); tap(&pad, SDL_CONTROLLER_BUTTON_A);
-    CHECK(!strcmp(PcPort_DevMenuTitle(), "FINISH AREA") && !strcmp(row(0), "(NO VERIFIED AREAS YET)") &&
-          !PcPort_DevMenuRowSelectable(0), "FINISH AREA: empty group");
+    if (g_PcPortDevStepCount == 0 && g_PcPortDevFinishCount == 0) {
+        CHECK(!strcmp(PcPort_DevMenuTitle(), "FINISH AREA") && !strcmp(row(0), "(NO VERIFIED AREAS YET)") &&
+              !PcPort_DevMenuRowSelectable(0), "FINISH AREA: empty group");
+    } else {
+        CHECK(!strcmp(PcPort_DevMenuTitle(), "FINISH AREA") && !strcmp(row(0), "FINISH CURRENT STEP") &&
+              PcPort_DevMenuRowSelectable(0), "FINISH AREA: FINISH CURRENT STEP first (%s), %d rows",
+              row(0), PcPort_DevMenuRows());
+    }
     tap(&pad, SDL_CONTROLLER_BUTTON_B);
     tap(&pad, SDL_CONTROLLER_BUTTON_DPAD_DOWN); tap(&pad, SDL_CONTROLLER_BUTTON_A);
     CHECK(!strcmp(PcPort_DevMenuTitle(), "CHEATS") && !strcmp(row(0), "GOD MODE: OFF") &&

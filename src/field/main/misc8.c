@@ -2092,6 +2092,10 @@ enqueue:
                     u32 word = *(u32*)(slotBase + 0x90);
                     if (((word >> 18) & 0xF) == 0xF && ((word >> 22) & 1) == 0) {
                         u16 ip = FieldScriptGetBytecodeOffset(i, scriptId);
+#ifdef XENO_PC_PORT
+                        { extern void PcPort_RouteLogTrigger(int, int, int);
+                          PcPort_RouteLogTrigger(i, scriptId, scriptRoutine); } /* inert unless XENO_ROUTE_LOG */
+#endif
                         *(u16*)(slotBase + 0x8C) = ip;
                         *(u8*)(slotBase + 0x8F) = scriptId;
                         *(u32*)(slotBase + 0x90) =

@@ -112,6 +112,35 @@ typedef struct PcPortDevFinish {
     const char *area;
     const char *evidence;
 } PcPortDevFinish;
+
+/* Finish Current Step (DEV_MENU_SPEC.md 7a): a data-driven walkthrough step.
+ * `detect_*` is the live-state predicate (scenario word, map, and optionally
+ * one script variable); `writes` are script-variable values observed in the
+ * real route, applied through FieldScriptMemoryWriteU16; `next_*` is where the
+ * following step happens, reached through the quick-checkpoint warp path.
+ * Only steps with an evidence path (a passing sweep) are listed. */
+#define PC_DEV_NO_VALUE 0xFFFFu
+#define PC_DEV_NO_SCENARIO 0xFFFFFFFFu /* warp: leave the scenario word alone */
+typedef struct PcPortDevStepWrite { unsigned short addr; unsigned short value; } PcPortDevStepWrite;
+typedef struct PcPortDevStep {
+    const char *id;              /* stable id, also the sweep target name */
+    int disc;
+    const char *chapter;
+    const char *area;            /* Finish Area folder */
+    const char *name;            /* own-words step name */
+    unsigned short detect_scen;  /* scenario word while this step is current */
+    int detect_map;              /* -1 = any map */
+    unsigned short detect_var_addr, detect_var_value; /* PC_DEV_NO_VALUE addr = unused */
+    const PcPortDevStepWrite *writes;
+    int nwrites;
+    int next_map, next_entrance; /* where the next step happens */
+    int area_last;               /* 1: completing this step completes the area */
+    const char *evidence;
+} PcPortDevStep;
+extern const PcPortDevStep g_PcPortDevSteps[];
+extern const int g_PcPortDevStepCount;
+/* Status toast for actions that run on the game thread. */
+void PcPort_DevMenuSetStatus(const char *text);
 extern const PcPortDevWarp g_PcPortDevWarps[];
 extern const int g_PcPortDevWarpCount;
 extern const PcPortDevFinish g_PcPortDevFinishes[];

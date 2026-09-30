@@ -175,6 +175,17 @@ int PcPort_FieldTestInputInit(void)
 /* DIAGNOSTIC / TEST TOOLING.  Held bits come straight from the schedule;
  * pressed/released edges are derived from schedule transitions so scripts that
  * gate on OP31 (held) and on the released accumulator both see the input. */
+/* HARNESS: console `hold <mask> <frames>` (cheat_console.c) holds a button
+ * mask for N field frames on top of any schedule.  Inert until called. */
+static uint16_t s_hold_value, s_hold_previous;
+static uint32_t s_hold_frames;
+
+void PcPort_FieldTestInputHold(unsigned value, unsigned frames)
+{
+    s_hold_value = (uint16_t)value;
+    s_hold_frames = frames;
+}
+
 void PcPort_FieldTestInputMerge(u16 *held_buttons, u16 *pressed_edges,
                                 u16 *released_edges)
 {
@@ -183,6 +194,15 @@ void PcPort_FieldTestInputMerge(u16 *held_buttons, u16 *pressed_edges,
     uint16_t falling;
     size_t previous_step;
 
+    if (s_hold_frames != 0u || s_hold_previous != 0u) {
+        uint16_t v = s_hold_frames != 0u ? s_hold_value : (uint16_t)0;
+        *held_buttons = (u16)(*held_buttons | v);
+        *pressed_edges = (u16)(*pressed_edges | (uint16_t)(v & (uint16_t)~s_hold_previous));
+        *released_edges = (u16)(*released_edges | (uint16_t)(s_hold_previous & (uint16_t)~v));
+        s_hold_previous = v;
+        if (s_hold_frames != 0u)
+            s_hold_frames--;
+    }
     if (s_field_enabled == 0)
         return;
 
