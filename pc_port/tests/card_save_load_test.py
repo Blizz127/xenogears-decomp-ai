@@ -19,13 +19,22 @@ Continue returns D_800594D0=2 and the field loads the saved map.
 
 PASS needs: the card image holds exactly one retail-format save file; the
 load run leaves the title with D_800594D0=2 and loads the saved field; the
-loaded POSDIAG matches the saved one (map, scenario flag, party HP; player
-position within POS_TOL); no GameHandleError and no [stub] in either run.
+loaded POSDIAG matches the saved map, scenario flag and party HP; no
+GameHandleError and no [stub] in either run.
+
+Where the player stands after the load: retail does not restore the saved
+x/z.  On a Continue load func_800799D4 sets the spawn entrance
+g_GameState+0x2320 from script var 0x54 (g_GameState+0x1984; retail
+0x80079F88..0x80079F90), which a real save point's script sets to its own
+entrance.  So run 3 (reference) warps a fresh process to that entrance of the
+saved map with the dev menu (`dev warpx MAP ENTRANCE -1`) and the loaded
+position must match it within POS_TOL.
 Only the save flag is forced; menus, card I/O and the load are retail code.
 """
 import os
 import re
 import shutil
+import struct
 import sys
 import time
 
@@ -157,7 +166,12 @@ def save_run(binary, root, out, ckpt, cards):
         check('save.card.screen.exit', i is not None)
         s = port.n()
         port.wait_for('func_801C55A0 cancel/close', 30, s, every=3.0, action=lambda: port.pad(CROSS))
-        check('save.field.resumes', port.wait_for('POSDIAG', 60, port.n()) is not None)
+        s = port.n()
+        time.sleep(25)
+        loops = [int(x) for x in re.findall(r'fieldLoop=(\d+)', '\n'.join(port.lines[s:]))]
+        check('save.field.loop.runs.after.menu', len(loops) >= 2 and loops[-1] > loops[0],
+              'fieldLoop %s' % loops[-3:])
+        check('save.field.not.stalled', port.find('GameHandleError', s) is None)
     finally:
         no_errors(port, 'save')
         port.stop()
@@ -219,12 +233,49 @@ def load_run(binary, root, out, cards, saved):
         if check('load.posdiag.present', m1 is not None and m0 is not None):
             check('load.map.matches', m1.group(1) == m0.group(1))
             check('load.scenario.matches', m1.group(5) == m0.group(5))
-            d = max(abs(int(m1.group(k)) - int(m0.group(k))) for k in (2, 3, 4))
-            check('load.position.matches', d <= POS_TOL, 'max delta %d' % d)
         check('load.partyhp.matches', hp0 is not None and hp0 == hp1)
+        return m1
     finally:
         no_errors(port, 'load')
         port.stop()
+
+
+def entrance_run(binary, root, out, ckpt, field, entrance):
+    """Where the retail map places the player for this entrance."""
+    os.makedirs(out, exist_ok=True)
+    qs = os.path.join(out, 'quick.xgqs')
+    shutil.copy(ckpt, qs)
+    port = Port(binary, root, out, {'XENO_QUICKSAVE_PATH': qs, 'XENO_FIELD_POS_DIAG': '30',
+                                    'XENO_DEV_MENU': '1', 'XENO_DEV_MENU_UNVERIFIED': '1',
+                                    'XENO_MEMCARD_DIR': os.path.join(out, 'memcards')})
+    try:
+        if port.load_checkpoint() is None:
+            return None
+        time.sleep(4)
+        s = port.n()
+        port.con('dev warpx %d %d -1' % (field, entrance))
+        if port.wait_for('FieldLoad begin field=%d' % field, 90, s) is None:
+            return None
+        s2 = port.n()
+        port.wait_for('POSDIAG', 60, s2)
+        time.sleep(8)
+        m, line = last_match(port, POSDIAG, s2)
+        print('entrance %d of field %d: %s' % (entrance, field, line), flush=True)
+        return m
+    finally:
+        port.stop()
+
+
+def saved_entrance(cards):
+    """Script var 0x54 (g_GameState+0x1984) from the save payload: the payload
+    at file +0x100 holds g_GameState+0x1920.. at +0x1124 (func_801E4A28)."""
+    for f in sorted(os.listdir(cards)):
+        if f.endswith('.mcd'):
+            errs, got = psx_card_image.read_card(os.path.join(cards, f))
+            if got:
+                d = got[0].data
+                return struct.unpack_from('<H', d, 0x100 + 0x1124 + 0x1984 - 0x1920)[0]
+    return None
 
 
 def main():
@@ -246,7 +297,15 @@ def main():
     print('card files: %s' % files, flush=True)
     check('card.holds.one.save', len(files) == 1, str(files))
     if saved is not None and files:
-        load_run(binary, root, os.path.join(out, 'load'), cards, saved)
+        m1 = load_run(binary, root, os.path.join(out, 'load'), cards, saved)
+        entrance = saved_entrance(cards)
+        if m1 is not None and entrance is not None:
+            field = int(m1.group(1))
+            ref = entrance_run(binary, root, os.path.join(out, 'entrance'), ckpt, field, entrance)
+            if check('entrance.reference', ref is not None, 'field %d entrance %d' % (field, entrance)):
+                d = max(abs(int(m1.group(k)) - int(ref.group(k))) for k in (2, 3, 4))
+                check('load.spawns.at.saved.entrance', d <= POS_TOL,
+                      'entrance %d, max delta %d' % (entrance, d))
     ok = results and all(results)
     print('CARD SAVE/LOAD overall=%s' % ('PASS' if ok else 'FAIL'), flush=True)
     sys.exit(0 if ok else 1)
