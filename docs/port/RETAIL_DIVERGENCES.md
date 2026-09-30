@@ -140,3 +140,14 @@ Seen while recording the r6.3 gameplay video.
 | Bug | Effect | Cause | Fix / verification |
 | --- | --- | --- | --- |
 | VRAM garbage when a menu closes | About 6 frames of texture pages on screen whenever `func_800799D4` returned from MenuMain: every field-menu close, and the title menu's New Game, just before the opening FMV | The close path's first MoveImage (retail 80079FCC, `a1 = 0x140`) copies the menu's last frame (0,0xE0) to (0x140,0). The port copied it to (0,0), so the next two copies (0x140,0) -> (0,0) and (0,0x100) spread the texture pages at (0x140,0) over both frame buffers | `src/field/main/misc4.c` copies to (0x140,0) as retail: the screen holds the menu's last frame, then goes black. `run_field_menu_open_799d4_retail_test.sh` (close-copy mutant rejected); `run_menu_close_present_test.sh` (every presented frame between MenuMain's return and the FE60 STR, via `XENO_PRESENT_LOG`) |
+
+Investigated and found to match retail:
+
+- Fei's easel close-up (field 14, actor 11) "never leaves on Z/C". The easel
+  handler waits at script ip 2601 on opcode 0x31 (`func_800961A0`) for the
+  held confirm bit 0x0020 and tests nothing else, so only confirm (keyboard
+  Z, physical Cross on the USA layout) leaves it, on retail as in the port.
+  The r6.3 video run's input log shows the close-up was open while the
+  driver pressed Left/Down/Right, X, V, Return and Down, and the first Z
+  after them closed it. `run_easel_closeup_test.sh` (needs a field-14 quick
+  checkpoint) checks that cancel does not leave it and confirm does.
