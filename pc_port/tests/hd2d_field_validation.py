@@ -17,13 +17,13 @@ import threading
 import time
 
 ROOT = Path(__file__).resolve().parents[2]
-HOOKS = ['PcPort_Hd2dPostProcess', 'PcPort_Hd2dSpriteBegin', 'PcPort_FeiHd2dCapture', 'PcPort_Hd2dSpriteDraw']
+HOOKS = ['PcPort_Hd2dPostProcess', 'PcPort_Hd2dSpriteBegin', 'PcPort_FeiHd2dCapture', 'PcPort_Hd2dSpriteDraw', 'PcPort_Hd2dSpriteTextureOverride']
 
 def run(cmd, **kw):
     return subprocess.run(cmd, check=True, cwd=ROOT, **kw)
 
 
-def drive(binary, qs, out, enabled, timeout, trace=False):
+def drive(binary, qs, out, enabled, timeout, trace=False, settle=480):
     out.mkdir()
     cap = out / 'cap'
     cap.mkdir()
@@ -31,7 +31,8 @@ def drive(binary, qs, out, enabled, timeout, trace=False):
     env.update(SDL_VIDEODRIVER='offscreen', SDL_AUDIODRIVER='dummy', ALSOFT_DRIVERS='null',
                XENO_CHEATS_CONSOLE='1', XENO_QUICKSAVE_PATH=str(qs),
                XENO_FIELD_CAPTURE_DIR=str(cap), XENO_FIELD_CAPTURE_EVERY='8',
-               XENO_HD2D_BATCH_STATS='1', XENO_HD2D_TRACE_PARTS=str(int(trace)), XENO_HD2D_OCTOPATH=str(enabled), XENO_HD2D_OPENING_MAPS='14',
+               XENO_HD2D_FIELD_TRANSFORM_FIXTURE=os.environ.get('XENO_HD2D_FIELD_TRANSFORM_FIXTURE','0'),
+               XENO_HD2D_FIELD_POSE_FIXTURE=os.environ.get('XENO_HD2D_FIELD_POSE_FIXTURE','0'), XENO_HD2D_SPRITE_DIAG='1', XENO_HD2D_BATCH_STATS='1', XENO_HD2D_TRACE_PARTS=str(int(trace)), XENO_HD2D_OCTOPATH=str(enabled), XENO_HD2D_OPENING_MAPS='14',
                XENO_FEI_HD2D='0', XENO_PRESENT_HASH_LOG=str(out/'hash.txt'),
                XENO_HD2D_FIELD_PROBE=str(out/'probe.txt'))
     lines=[]
@@ -41,21 +42,24 @@ def drive(binary, qs, out, enabled, timeout, trace=False):
             for raw in proc.stdout:
                 line=raw.decode('latin1'); lines.append(line); log.write(line); log.flush()
         thread=threading.Thread(target=reader); thread.start()
-        start=time.monotonic(); sent=0; restored=None; restore_present=None; selected=[]
+        start=time.monotonic(); sent=0; restored=None; restore_present=None; restore_existing=set(); selected=[]
         try:
             while time.monotonic()-start < timeout and proc.poll() is None:
                 text=''.join(lines)
                 if restored is None and 'player position restored' in text:
                     restored=time.monotonic()
-                    # The first capture boundary following observed restoration
-                    # bounds the restore present conservatively by <=8 frames.
-                    existing=sorted(cap.glob('field-frame-*.png'))
-                    restore_present=int(existing[-1].stem.rsplit('-',1)[1])+8 if existing else 8
-                if restored is None and 'console reading commands' in text and 'FieldLoad begin' in text and time.monotonic()-sent>3:
+                    # Field captures can pause throughout a transition. An
+                    # existing filename may precede restoration by hundreds of
+                    # presents; wait for a NEW capture to bound it from above.
+                    restore_existing=set(cap.glob('field-frame-*.png'))
+                if restored and restore_present is None:
+                    newer=sorted(set(cap.glob('field-frame-*.png'))-restore_existing)
+                    if newer: restore_present=int(newer[0].stem.rsplit('-',1)[1])
+                if restored is None and '[xeno-port][quick] loading' not in text and 'console reading commands' in text and 'FieldLoad begin' in text and time.monotonic()-sent>3:
                     proc.stdin.write(b'load\n'); proc.stdin.flush(); sent=time.monotonic()
-                if restored:
+                if restore_present is not None:
                     eligible=[p for p in sorted(cap.glob('field-frame-*.png'))
-                              if int(p.stem.rsplit('-',1)[1]) >= restore_present+120]
+                              if int(p.stem.rsplit('-',1)[1]) >= restore_present+settle]
                     if len(eligible)>=24:
                         selected=eligible[:24]
                         last=int(selected[-1].stem.rsplit('-',1)[1])-1
@@ -76,7 +80,7 @@ def drive(binary, qs, out, enabled, timeout, trace=False):
             thread.join()
     # Fixed count-based window, chosen before any pixel/hash comparison.
     (out/'window.json').write_text(json.dumps({'restore_present_upper_bound':restore_present,
-        'settle_presents':120,'capture_count':24,'capture_stride':8},indent=2))
+        'settle_presents':settle,'capture_count':24,'capture_stride':8},indent=2))
     if len(selected)<24: raise RuntimeError('insufficient field captures')
     manifest={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in selected}
     (out/'captures.json').write_text(json.dumps(manifest,indent=2))
@@ -92,22 +96,53 @@ def main():
     p.add_argument('--out', type=Path, required=True)
     p.add_argument('--checkpoint', type=Path, default=Path.home()/'release-staging/xeno-work/r6-nogamedata/field14.xgqs')
     p.add_argument('--timeout',type=float,default=420)
-    a=p.parse_args(); a.out=a.out.resolve(); a.out.mkdir(parents=True,exist_ok=False)
+    p.add_argument('--settle',type=int,default=480,help='fixed presents after checkpoint restore before measurement')
+    p.add_argument('--pose-fixture',action='store_true',help='same observed actor10 pose in both binaries; separately labelled from organic gameplay')
+    p.add_argument('--transform-fixture',action='store_true',help='same verified render inputs in both binaries; requires pose fixture')
+    p.add_argument('--skip-trace',action='store_true',help='use accepted production ON records; diagnostic TRACE rejects active profiles')
+    a=p.parse_args()
+    if a.transform_fixture and not a.pose_fixture: p.error('transform fixture requires pose fixture')
+    if a.settle<120 or a.settle>3600: p.error('settle must be between120 and3600 presents')
+    a.out=a.out.resolve(); a.out.mkdir(parents=True,exist_ok=False)
     build=ROOT/'pc_port/build_native'
     args=(build/'xeno-port.link-args').read_text().splitlines()
     flags=shlex.split((build/'port-source.cflags').read_text())
     run(['gcc','-c','pc_port/tests/hd2d_field_probe.c',*flags,'-o',str(a.out/'probe.o')])
     baseline=a.out/'no-lane'; lane=a.out/'lane'
-    run(['gcc',*[x for x in args if '/obj/hd2d__' not in x],'-o',str(baseline)])
-    run(['gcc',str(a.out/'probe.o'),*args,*['-Wl,--wrap='+h for h in HOOKS],'-o',str(lane)])
+    shared=[]
+    if a.pose_fixture:
+        os.environ['XENO_HD2D_FIELD_POSE_FIXTURE']='1'
+        run(['gcc','-c','pc_port/tests/hd2d_field_pose_fixture.c',*flags,'-o',str(a.out/'pose.o')])
+        run(['gcc','-c','pc_port/tests/hd2d_field_pose_observer.c',*flags,'-o',str(a.out/'pose-observer.o')])
+        shared=[str(a.out/'pose.o'),str(a.out/'pose-observer.o'),'-Wl,--wrap=func_8001D2B0','-Wl,--wrap=func_8001DAE8','-Wl,--wrap=PcPort_FeiHd2dBegin']
+    if a.transform_fixture:
+        os.environ['XENO_HD2D_FIELD_TRANSFORM_FIXTURE']='1'
+        run(['gcc','-c','pc_port/tests/hd2d_field_transform_fixture.c',*flags,'-o',str(a.out/'transform.o')])
+        shared.extend([str(a.out/'transform.o'),'-Wl,--wrap=func_8001E298'])
+    run(['gcc',*shared,*[x for x in args if '/obj/hd2d__' not in x],'-o',str(baseline)])
+    run(['gcc',*shared,str(a.out/'probe.o'),*args,*['-Wl,--wrap='+h for h in HOOKS],'-o',str(lane)])
     for binary, expected in ((baseline,False),(lane,True)):
         symbols=run(['nm','--defined-only',str(binary)],capture_output=True,text=True).stdout
         for hook in HOOKS[:2]:
             strong=any(line.split()[-2:]==['T',hook] for line in symbols.splitlines())
             if strong!=expected: raise RuntimeError(f'wrong strong hook linkage: {binary} {hook}')
     manifests={}
-    for name,binary,on in [('A',baseline,0),('B',lane,0),('ON',lane,1),('TRACE',lane,1)]:
-        manifests[name]=drive(binary,a.checkpoint.resolve(),a.out/name,on,a.timeout,trace=name=='TRACE')
+    runs=[('A',baseline,0),('B',lane,0),('ON',lane,1)]
+    if not a.skip_trace: runs.append(('TRACE',lane,1))
+    for name,binary,on in runs:
+        manifests[name]=drive(binary,a.checkpoint.resolve(),a.out/name,on,a.timeout,trace=name=='TRACE',settle=a.settle)
+        if a.transform_fixture:
+            text=(a.out/name/'run.log').read_text()
+            lo=min(int(k.rsplit('-',1)[1].split('.')[0]) for k in manifests[name])
+            hi=max(int(k.rsplit('-',1)[1].split('.')[0]) for k in manifests[name])
+            applied=set()
+            for line in text.splitlines():
+                if not line.startswith('[hd2d-transform-fixture] '): continue
+                present=int(line.split('present=')[1].split()[0])
+                if lo<=present<=hi:
+                    if ' unapplied ' in line: raise RuntimeError('transform fixture declined inside measured window')
+                    if ' applied ' in line: applied.add(present)
+            if not set(range(lo,hi+1)).issubset(applied): raise RuntimeError('transform fixture missing inside measured window')
     result=subprocess.run(['python3','pc_port/tests/hd2d_field_sequence_compare.py',str(a.out/'A'),str(a.out/'B')],cwd=ROOT,capture_output=True,text=True)
     (a.out/'off-sequence.json').write_text(result.stdout)
     pairs=[(x,y) for x,h in manifests['A'].items() for y,k in manifests['B'].items() if h==k]
@@ -116,18 +151,23 @@ def main():
     (a.out/'paired-captures.json').write_text(json.dumps(pairs,indent=2))
     on=(a.out/'ON/probe.txt').read_text().splitlines()
     facts={}
-    trace=(a.out/'TRACE/probe.txt').read_text().splitlines()
+    source='ON' if a.skip_trace else 'TRACE'
+    trace=(a.out/source/'probe.txt').read_text().splitlines()
     for line in trace:
         if not line.startswith('part '): continue
         row=dict(item.split('=',1) for item in line.split()[1:])
-        if row['map']!='14' or row['actor']!=row['player']: continue
+        if row['map']!='14' or row['actor']!=row['player'] or (a.skip_trace and row['accepted']!='1'): continue
         key=tuple(row[k] for k in ('map','actor','fnv','frame','part','uv','tpage','clut'))
-        facts[key]={'source_run':'TRACE', **{k:row[k] for k in ('map','actor','player','fnv','frame','part','uv','tpage','clut','quad','ot')}}
+        facts[key]={'source_run':source, **{k:row[k] for k in ('map','actor','player','fnv','frame','part','uv','tpage','clut','quad','ot')}}
     (a.out/'observed-player-parts.json').write_text(json.dumps(list(facts.values()),indent=2))
     parts=[line for line in on if line.startswith('part ') and 'accepted=1' in line]
     if any('packet_exact=0' in line for line in parts): raise RuntimeError('ON changed retail packet geometry/UV/colour')
-    verdict='BLOCKED: no production sprite parts accepted' if not parts else 'INCOMPLETE: accepted exact packets; OT/occlusion visual review still required'
-    report={'off':'PASS' if off_ok else 'FAIL','off_hash':result.stdout,'paired_screenshots':len(pairs),'on':verdict,'accepted_parts':len(parts),'checkpoint_sha256':hashlib.sha256(a.checkpoint.read_bytes()).hexdigest()}
+    gpu=[line for line in on if line.startswith('gpu ') and 'accepted=1' in line]
+    verdict=('BLOCKED: no production sprite parts accepted' if not parts else
+             'BLOCKED: registered parts were not consumed as replacement textures' if not gpu else
+             'INCOMPLETE: GPU consumed exact packets; footprint/occlusion review still required')
+    scope='fixed-render-input replay' if a.transform_fixture else 'same-pose fixture' if a.pose_fixture else 'organic gameplay'
+    report={'identity_scope':scope, 'gpu_accepted_parts':len(gpu), 'off':'PASS' if off_ok else 'FAIL','off_hash':result.stdout,'paired_screenshots':len(pairs),'on':verdict,'accepted_parts':len(parts),'checkpoint_sha256':hashlib.sha256(a.checkpoint.read_bytes()).hexdigest()}
     (a.out/'summary.json').write_text(json.dumps(report,indent=2)); print(json.dumps(report,indent=2))
     return 2 if off_ok else 1
 

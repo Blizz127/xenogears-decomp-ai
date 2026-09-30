@@ -61,3 +61,11 @@ int __wrap_PcPort_FeiHd2dCapture(PcPortFeiHd2dBatch *b,void *poly,void *ot) {
             before.u0,before.v0,before.u1,before.v1,before.u2,before.v2,before.u3,before.v3,before.tpage,before.clut,r,!memcmp(&before,&after,sizeof before));
     } return r;
 }
+
+extern int __real_PcPort_Hd2dSpriteTextureOverride(const void*,int,int,int,int,int,int,unsigned*,float*);
+int __wrap_PcPort_Hd2dSpriteTextureOverride(const void *packet,int tp,int cl,int u0,int v0,int u1,int v1,unsigned *tex,float *uv) {
+    int r=__real_PcPort_Hd2dSpriteTextureOverride(packet,tp,cl,u0,v0,u1,v1,tex,uv);
+    FILE *f=log_output();
+    if(f && r) fprintf(f,"gpu present=%u map=%d accepted=1 texture=%u\n",g_PcPortPresentedFrames+1,PcPort_Hd2dCurrentMap(),*tex);
+    return r;
+}

@@ -1,0 +1,177 @@
+{
+  "schema": 1,
+  "label": "fan-made, AI-generated replacement sprite art created for this project; not from the game; characters \u00a9 Square Enix",
+  "width": 1254,
+  "height": 1254,
+  "rgba_path": "pc_port/assets/hd2d/fei-octopath-v2.rgba",
+  "parts": [
+    {
+      "identity": 3682402565,
+      "map": 14,
+      "actor": 1,
+      "frame": 190,
+      "part": 0,
+      "tpage": 26,
+      "clut": 14353,
+      "u": [
+        4,
+        15,
+        4,
+        15
+      ],
+      "v": [
+        55,
+        55,
+        60,
+        60
+      ],
+      "rect": [
+        172,
+        121,
+        77,
+        36
+      ],
+      "trace": "/home/blizz/release-staging/xeno-work/hd2d/field-validation-2437d5ce/TRACE/probe.txt:3103; present840; provisional front_idle association"
+    },
+    {
+      "identity": 3682402565,
+      "map": 14,
+      "actor": 1,
+      "frame": 190,
+      "part": 1,
+      "tpage": 26,
+      "clut": 14353,
+      "u": [
+        20,
+        27,
+        20,
+        27
+      ],
+      "v": [
+        43,
+        43,
+        48,
+        48
+      ],
+      "rect": [
+        172,
+        85,
+        51,
+        36
+      ],
+      "trace": "/home/blizz/release-staging/xeno-work/hd2d/field-validation-2437d5ce/TRACE/probe.txt:3105; present840; provisional front_idle association"
+    },
+    {
+      "identity": 3682402565,
+      "map": 14,
+      "actor": 1,
+      "frame": 190,
+      "part": 2,
+      "tpage": 26,
+      "clut": 14353,
+      "u": [
+        20,
+        27,
+        20,
+        27
+      ],
+      "v": [
+        34,
+        34,
+        41,
+        41
+      ],
+      "rect": [
+        172,
+        37,
+        51,
+        48
+      ],
+      "trace": "/home/blizz/release-staging/xeno-work/hd2d/field-validation-2437d5ce/TRACE/probe.txt:3107; present840; provisional front_idle association"
+    },
+    {
+      "identity": 3682402565,
+      "map": 14,
+      "actor": 1,
+      "frame": 190,
+      "part": 3,
+      "tpage": 26,
+      "clut": 14353,
+      "u": [
+        4,
+        31,
+        4,
+        31
+      ],
+      "v": [
+        1,
+        1,
+        13,
+        13
+      ],
+      "rect": [
+        81,
+        157,
+        181,
+        79
+      ],
+      "trace": "/home/blizz/release-staging/xeno-work/hd2d/field-validation-2437d5ce/TRACE/probe.txt:3109; present840; provisional front_idle association"
+    },
+    {
+      "identity": 3682402565,
+      "map": 14,
+      "actor": 1,
+      "frame": 190,
+      "part": 4,
+      "tpage": 26,
+      "clut": 14353,
+      "u": [
+        4,
+        23,
+        4,
+        23
+      ],
+      "v": [
+        15,
+        15,
+        32,
+        32
+      ],
+      "rect": [
+        107,
+        236,
+        129,
+        102
+      ],
+      "trace": "/home/blizz/release-staging/xeno-work/hd2d/field-validation-2437d5ce/TRACE/probe.txt:3111; present840; provisional front_idle association"
+    },
+    {
+      "identity": 3682402565,
+      "map": 14,
+      "actor": 1,
+      "frame": 190,
+      "part": 5,
+      "tpage": 26,
+      "clut": 14353,
+      "u": [
+        4,
+        15,
+        4,
+        15
+      ],
+      "v": [
+        34,
+        34,
+        53,
+        53
+      ],
+      "rect": [
+        0,
+        77,
+        200,
+        120
+      ],
+      "trace": "/home/blizz/release-staging/xeno-work/hd2d/field-validation-2437d5ce/TRACE/probe.txt:3113; present840; provisional front_idle association; original-atlas UV calibration trial5 strict horizontal 0px; source pixels unchanged"
+    }
+  ]
+}

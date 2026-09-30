@@ -32,7 +32,9 @@ int PcPort_Hd2dSpriteSubmitPart(const PcPortHd2dPartProfile *profile,
     const PcPortHd2dPartMapping *mapping, const PcPortHd2dRetailQuad *quad);
 int PcPort_Hd2dSpriteTextureOverride(const void *packet, int tpage, int clut,
     int u0, int v0, int u1, int v1, unsigned *texture, float uv[4]);
-/* AFTER GPU consumption, before guest work buffers can be reused. */
+/* Presentation retires consumed entries only; preserves next-frame packets
+ * built before the previous frame was presented. GPU OT-walk end retires seen
+ * entries; hd2d_sprite_diagnostics.h exposes explicit enable-transition reset. */
 void PcPort_Hd2dSpritePresentDone(void);
 #ifdef __cplusplus
 }

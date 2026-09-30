@@ -7,6 +7,7 @@
 #include "guest_prim_link.h"
 #include "hd2d_sprite_parts.h"
 #include "hd2d_integration.h"
+#include "hd2d_sprite_diagnostics.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,6 +15,7 @@
 #define MAX_PENDING_PARTS 16384
 static struct PendingPart {
     const POLY_FT4 *packet;
+    int seen, consumed;
     POLY_FT4 snapshot;
     const PcPortHd2dPartProfile *profile;
     PcPortHd2dPartMapping mapping;
@@ -22,8 +24,80 @@ static size_t pending_count;
 static GLuint atlas_texture;
 static const PcPortHd2dPartProfile *uploaded_profile;
 
-/* Called only after all queued GPU packets have been consumed. */
-void PcPort_Hd2dSpritePresentDone(void) { pending_count = 0; }
+static PcPortHd2dSpriteDiagnostics diagnostics;
+static int diagnostic_requested = -1;
+static void DiagnosticSummary(void)
+{
+    if (!PcPort_Hd2dEnabled() || diagnostic_requested != 1) return;
+    fprintf(stderr,"[hd2d-sprite-gpu] registered=%llu queries=%llu accepted=%llu no_scope=%llu no_texture=%llu no_identity=%llu snapshot_miss=%llu metadata_miss=%llu uv_miss=%llu premature_presents=%llu gpu_walks=%llu expired_unconsumed=%llu pending=%u\n",
+        (unsigned long long)diagnostics.registered,(unsigned long long)diagnostics.queries,
+        (unsigned long long)diagnostics.accepted,(unsigned long long)diagnostics.no_scope,
+        (unsigned long long)diagnostics.no_texture,(unsigned long long)diagnostics.no_identity,
+        (unsigned long long)diagnostics.snapshot_miss,(unsigned long long)diagnostics.metadata_miss,
+        (unsigned long long)diagnostics.uv_miss,(unsigned long long)diagnostics.premature_presents,
+        (unsigned long long)diagnostics.gpu_walks,(unsigned long long)diagnostics.expired_unconsumed,(unsigned)pending_count);
+}
+static int DiagnosticEnabled(void)
+{
+    if (diagnostic_requested < 0) {
+        const char *value=getenv("XENO_HD2D_SPRITE_DIAG");
+        diagnostic_requested=value && !strcmp(value,"1");
+        if (diagnostic_requested && atexit(DiagnosticSummary)) diagnostic_requested=0;
+    }
+    return diagnostic_requested;
+}
+int PcPort_Hd2dSpriteDiagnosticsGet(PcPortHd2dSpriteDiagnostics *out)
+{
+    if (!PcPort_Hd2dEnabled()) return 0;
+    if (!DiagnosticEnabled() || !out) return 0;
+    *out=diagnostics; out->pending=(unsigned)pending_count;
+    return 1;
+}
+void PcPort_Hd2dSpriteReset(void) { pending_count=0; }
+/* Field builds the NEXT OT before Vsync presents the PREVIOUS one. Therefore
+ * presentation is not a packet lifetime boundary. Retire only consumed entries. */
+void PcPort_Hd2dSpritePresentDone(void)
+{
+    size_t i, remaining=0;
+    if (!PcPort_Hd2dEnabled()) return;
+    for (i=0;i<pending_count;++i)
+        if (!pending[i].consumed) pending[remaining++]=pending[i];
+    pending_count=remaining;
+    if (DiagnosticEnabled()) {
+        static uint64_t reported_registered, reported_accepted;
+        if (remaining) diagnostics.premature_presents++;
+        if (diagnostics.registered!=reported_registered || diagnostics.accepted!=reported_accepted) {
+            DiagnosticSummary();
+            reported_registered=diagnostics.registered;
+            reported_accepted=diagnostics.accepted;
+        }
+    }
+}
+/* Exact-address CPU observation happens before the renderer's DR-bound skip.
+ * No packet dereference, texture lookup or output mutation is performed. */
+void PcPort_Hd2dSpritePacketSeen(const void *packet)
+{
+    size_t i;
+    if (!PcPort_Hd2dEnabled()) return;
+    for (i=0;i<pending_count;++i)
+        if (pending[i].packet == packet) pending[i].seen=1;
+}
+/* Retire only exact registered packet addresses encountered in this OT walk.
+ * Unrelated independently queued OTs never invalidate unseen registrations. */
+void PcPort_Hd2dSpriteGpuWalkDone(void)
+{
+    size_t i, remaining=0;
+    int diag;
+    if (!PcPort_Hd2dEnabled()) return;
+    diag=DiagnosticEnabled();
+    if (diag) diagnostics.gpu_walks++;
+    for (i=0;i<pending_count;++i) {
+        if (pending[i].seen) {
+            if (diag && !pending[i].consumed) diagnostics.expired_unconsumed++;
+        } else pending[remaining++]=pending[i];
+    }
+    pending_count=remaining;
+}
 
 static int PacketMatchesQuad(const POLY_FT4 *p, const PcPortHd2dRetailQuad *q)
 {
@@ -96,9 +170,21 @@ int PcPort_Hd2dSpriteSubmitPart(const PcPortHd2dPartProfile *p,
     if (!PcPort_Hd2dEnabled()) return 0;
     if (!PcPort_Hd2dOpeningActive() || !p || !m || !q || !q->poly || !q->ot ||
         pending_count == MAX_PENDING_PARTS || !PacketMatchesQuad(q->poly,q) || !LoadTexture(p)) return 0;
-    for (i=0;i<pending_count;++i) if (pending[i].packet == q->poly) return 0;
+    for (i=0;i<pending_count;++i) if (pending[i].packet == q->poly) {
+        if (!memcmp(q->poly,&pending[i].snapshot,sizeof pending[i].snapshot)) {
+            /* Ambiguous duplicate linkage/reuse fails closed and removes the
+             * old token so the retail fallback cannot gain stale replacement. */
+            pending[i]=pending[--pending_count];
+            return 0;
+        }
+        /* The new producer matched a verified profile before reaching this API.
+         * Changed bytes prove reuse; overwrite its old registration safely. */
+        pending[i]=pending[--pending_count];
+        break;
+    }
     entry = pending + pending_count++;
-    entry->packet = q->poly; entry->profile=p; entry->mapping=*m;
+    entry->packet = q->poly; entry->seen=entry->consumed=0; entry->profile=p; entry->mapping=*m;
+    if (DiagnosticEnabled()) diagnostics.registered++;
     PcPort_AddPrimDomainAware(q->ot,q->poly);
     /* Snapshot after linkage, including domain-aware packet tag. */
     memcpy(&entry->snapshot,q->poly,sizeof entry->snapshot);
@@ -109,20 +195,46 @@ int PcPort_Hd2dSpriteTextureOverride(const void *packet, int tpage, int clut,
 {
     size_t i;
     if (!PcPort_Hd2dEnabled()) return 0;
-    if (!PcPort_Hd2dOpeningActive() || !packet || !texture || !uv || !atlas_texture) return 0;
+    int diag=DiagnosticEnabled();
+    if (diag) diagnostics.queries++;
+    for (i=0;i<pending_count;++i)
+        if (pending[i].packet == packet) pending[i].seen=1;
+    if (!PcPort_Hd2dOpeningActive() || !packet || !texture || !uv) {
+        if (diag) diagnostics.no_scope++;
+        return 0;
+    }
+    if (!atlas_texture) { if (diag) diagnostics.no_texture++; return 0; }
     for (i=0;i<pending_count;++i) {
-        const struct PendingPart *e = pending+i;
+        struct PendingPart *e = pending+i;
         const PcPortHd2dPartMapping *m = &e->mapping;
         int j, min_u=255, min_v=255, max_u=0, max_v=0;
-        if (e->packet != packet || memcmp(packet,&e->snapshot,sizeof e->snapshot) ||
-            tpage != m->tpage || clut != m->clut || m->map != PcPort_Hd2dCurrentMap() || uploaded_profile != e->profile) continue;
+        if (e->packet != packet) continue;
+        e->seen=1;
+        if (memcmp(packet,&e->snapshot,sizeof e->snapshot)) {
+            if (diag) diagnostics.snapshot_miss++;
+            return 0;
+        }
+        if (tpage != m->tpage || clut != m->clut || m->map != PcPort_Hd2dCurrentMap() || uploaded_profile != e->profile) {
+            if (diag) diagnostics.metadata_miss++;
+            return 0;
+        }
         for (j=0;j<4;++j) {
             if (m->u[j]<min_u) min_u=m->u[j];
             if (m->u[j]>max_u) max_u=m->u[j];
             if (m->v[j]<min_v) min_v=m->v[j];
             if (m->v[j]>max_v) max_v=m->v[j];
         }
-        if (u0 != min_u || v0 != min_v || u1 != max_u || v1 != max_v || u0 == u1 || v0 == v1) return 0;
+        if (u0 != min_u || v0 != min_v || u1 != max_u || v1 != max_v || u0 == u1 || v0 == v1) {
+            if (diag) diagnostics.uv_miss++;
+            return 0;
+        }
+        e->consumed=1;
+        if (diag) {
+            diagnostics.accepted++;
+            if (diagnostics.accepted==1)
+                fprintf(stderr,"[hd2d-sprite-gpu] first_consumed texture=%u map=%d actor=%d frame=%d part=%d pending=%u\n",
+                    atlas_texture,m->map,m->actor,m->frame,m->part,(unsigned)pending_count);
+        }
         *texture=atlas_texture;
         uv[0]=(m->x+.5f)/e->profile->width;
         uv[1]=(m->y+.5f)/e->profile->height;
@@ -130,5 +242,6 @@ int PcPort_Hd2dSpriteTextureOverride(const void *packet, int tpage, int clut,
         uv[3]=(m->y+m->height-.5f)/e->profile->height;
         return 1;
     }
+    if (diag) diagnostics.no_identity++;
     return 0;
 }

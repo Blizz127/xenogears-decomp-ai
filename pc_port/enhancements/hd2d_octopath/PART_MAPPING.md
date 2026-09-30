@@ -30,9 +30,12 @@ retail. Registration uses the packet pointer plus a complete post-link snapshot,
 so another packet with identical UVs does not gain the replacement. Unmapped,
 changed, exhausted, missing-file and invalid-profile paths render retail.
 
-The owner must call `PcPort_Hd2dSpritePresentDone` after GPU consumption at both
-present paths, and on enable-state transitions, before queued packet memory can
-be reused. It clears CPU registration only. Texture upload restores current-unit
+The owner calls `PcPort_Hd2dSpritePresentDone` at both present paths; it retires
+consumed entries only because field constructs the next OT before presenting the
+previous frame. `PcPort_Hd2dSpriteGpuWalkDone`, supplied by the packet lifetime
+patch, retires entries seen during the actual completed OT traversal. Unrelated
+OT walks preserve unseen entries. Enable-state transitions explicitly call
+`PcPort_Hd2dSpriteReset`, which clears all CPU registrations without GL calls. Texture upload restores current-unit
 texture binding, unpack-buffer binding, alignment, row length and skip state;
 uses nearest/clamp without mipmaps; and preserves the existing Hook3 shader's
 alpha-under-0.5 discard and retail modulation/ABR behavior. The area texture hook

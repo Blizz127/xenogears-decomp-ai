@@ -8,6 +8,8 @@
 int g_GameSceneMapNum=2;
 static int field_calls,gl_calls,producer_calls,present_calls,registered,producer_mode;
 static XgHd2dFrame last;
+static int reset_calls;
+void PcPort_Hd2dSpriteReset(void) { ++reset_calls; }
 void PcPort_DevMenuRegisterEnhancement(const char *label,int (*get)(void),void (*toggle)(void))
 {
     assert(label && get && toggle);
@@ -49,6 +51,8 @@ int main(void)
     assert(!PcPort_Hd2dSetOpeningMaps(duplicates,2));
     assert(!PcPort_Hd2dSetOpeningMaps(invalid,1));
     PcPort_Hd2dSetEnabled(1);
+    assert(reset_calls==1);
+    PcPort_Hd2dSetEnabled(1); assert(reset_calls==1);
     PcPort_Hd2dPostProcess(0,640,480);
     assert(!gl_calls && !present_calls); /* unapproved map */
     assert(PcPort_Hd2dSetOpeningMaps(maps,2));
@@ -62,7 +66,7 @@ int main(void)
     assert(!last.linear_depth_verified && !last.protection_verified);
     producer_mode=2; PcPort_Hd2dPostProcess(0,640,480);
     assert(!last.linear_depth_verified && !last.protection_verified); /* wrong map */
-    int calls=gl_calls; PcPort_Hd2dSetEnabled(0);
+    int calls=gl_calls; PcPort_Hd2dSetEnabled(0); assert(reset_calls==2);
     PcPort_Hd2dPostProcess(0,640,480); assert(gl_calls==calls);
     unsigned texture=99; float uv[]={1,2,3,4};
     assert(!PcPort_Hd2dTextureOverride(1,2,3,4,5,6,&texture,uv));

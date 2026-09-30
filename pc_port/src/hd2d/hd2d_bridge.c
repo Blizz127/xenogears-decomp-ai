@@ -11,6 +11,7 @@
 extern int g_GameSceneMapNum;
 #pragma weak PcPort_Hd2dSceneInputs
 extern void PcPort_Hd2dSpritePresentDone(void) __attribute__((weak));
+extern void PcPort_Hd2dSpriteReset(void) __attribute__((weak));
 static XgHd2dConfig config;
 static int initialized;
 
@@ -41,8 +42,8 @@ int PcPort_Hd2dEnabled(void) { initialize(); return config.enabled; }
 void PcPort_Hd2dSetEnabled(int enabled)
 {
     initialize(); enabled=!!enabled;
-    if (config.enabled!=enabled && PcPort_Hd2dSpritePresentDone)
-        PcPort_Hd2dSpritePresentDone(); /* CPU-only packet lifetime invalidation. */
+    if (config.enabled!=enabled && PcPort_Hd2dSpriteReset)
+        PcPort_Hd2dSpriteReset(); /* CPU-only packet lifetime invalidation. */
     config.enabled=enabled;
 }
 const XgHd2dConfig *PcPort_Hd2dConfiguration(void) { initialize(); return &config; }

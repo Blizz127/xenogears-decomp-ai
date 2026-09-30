@@ -1,7 +1,7 @@
 /* Mock GL verifies upload state restoration and packet identity without a GPU. */
 #include "../src/hd2d/hd2d_sprite_transport.c"
 #include <assert.h>
-static int enabled, calls, links;
+static int enabled, calls, links, opening=1;
 static void *linked_ot;
 static GLint state[6]={17,19,8,11,13,15}, saved[6], tw, th;
 static int Index(GLenum name) {
@@ -13,7 +13,7 @@ static int Index(GLenum name) {
     }
 }
 int PcPort_Hd2dEnabled(void) { return enabled; }
-int PcPort_Hd2dOpeningActive(void) { assert(enabled); return 1; }
+int PcPort_Hd2dOpeningActive(void) { assert(enabled); return opening; }
 int PcPort_Hd2dCurrentMap(void) { return 7; }
 void PcPort_AddPrimDomainAware(void *ot, void *prim) { links++; linked_ot=ot; ((P_TAG *)prim)->addr=42; }
 void glGetIntegerv(GLenum n, GLint *v) { calls++; *v=state[Index(n)]; }
@@ -54,10 +54,36 @@ int main(void)
     assert(!memcmp(state,saved,sizeof state));
     /* Only linkage may differ; all retail geometry, colour and blend remain exact. */
     ((P_TAG *)&before)->addr=42;assert(!memcmp(&before,&packet,sizeof packet));
+    /* Presenting the prior frame and walking an unrelated OT must preserve
+     * the newly built sprite's registration until its own GPU query. */
+    PcPort_Hd2dSpritePresentDone();
+    PcPort_Hd2dSpriteGpuWalkDone();
     assert(PcPort_Hd2dSpriteTextureOverride(&packet,9,8,1,3,2,4,&tex,uv));
     assert(tex==43 && uv[0]==.5f/64 && uv[2]==15.5f/64);
     other=packet;assert(!PcPort_Hd2dSpriteTextureOverride(&other,9,8,1,3,2,4,&tex,uv));
     packet.r0++;assert(!PcPort_Hd2dSpriteTextureOverride(&packet,9,8,1,3,2,4,&tex,uv));packet.r0--;
-    PcPort_Hd2dSpritePresentDone();assert(!PcPort_Hd2dSpriteTextureOverride(&packet,9,8,1,3,2,4,&tex,uv));
+    PcPort_Hd2dSpriteGpuWalkDone();assert(!PcPort_Hd2dSpriteTextureOverride(&packet,9,8,1,3,2,4,&tex,uv));
+    assert(PcPort_Hd2dSpriteSubmitPart(&p,&m,&q));
+    opening=0;assert(!PcPort_Hd2dSpriteTextureOverride(&packet,9,8,1,3,2,4,&tex,uv));
+    PcPort_Hd2dSpriteGpuWalkDone();opening=1;
+    /* Simulate a registered FT4 encountered with a DR texture bound: the
+     * renderer records its address, deliberately skips TextureOverride, then
+     * the completed walk retires it without accepting the replacement. */
+    assert(PcPort_Hd2dSpriteSubmitPart(&p,&m,&q));
+    enabled=0;PcPort_Hd2dSpritePacketSeen(q.poly);enabled=1;
+    PcPort_Hd2dSpriteGpuWalkDone(); /* OFF observation did not mark it seen */
+    PcPortHd2dSpriteDiagnostics pending_stats;
+    assert(PcPort_Hd2dSpriteDiagnosticsGet(&pending_stats) && pending_stats.pending==1);
+    PcPort_Hd2dSpritePacketSeen(NULL);
+    PcPort_Hd2dSpritePacketSeen(q.poly);
+    PcPort_Hd2dSpriteGpuWalkDone();
+    {
+        PcPortHd2dSpriteDiagnostics stats;
+        assert(PcPort_Hd2dSpriteDiagnosticsGet(&stats));
+        assert(stats.registered==3 && stats.accepted==1 && stats.queries==5 &&
+            stats.snapshot_miss==1 && stats.no_identity==2 && stats.premature_presents==1 &&
+            stats.gpu_walks==5 && stats.no_scope==1 && stats.expired_unconsumed==2 && !stats.pending);
+        enabled=0;assert(!PcPort_Hd2dSpriteDiagnosticsGet((void *)1));
+    }
     return 0;
 }
