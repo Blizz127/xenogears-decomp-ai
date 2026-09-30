@@ -124,6 +124,14 @@ static int PsyX_HostToolbarWarpY(int gameY)
 		? gameY + PC_PORT_HOST_TOOLBAR_HEIGHT : gameY;
 }
 
+/* Pixels above the game content that the toolbar owns (0 when disabled);
+ * the VRAM present path (psycross_present_vram_full_frame.patch) blits the
+ * game image below them. */
+extern "C" int PsyX_HostToolbarReservedHeight(void)
+{
+	return g_xenoHostToolbarActive ? PC_PORT_HOST_TOOLBAR_HEIGHT : 0;
+}
+
 static void PsyX_HostToolbarInitialise()
 {
 	const char* enabled = getenv("XENO_HOST_TOOLBAR");
