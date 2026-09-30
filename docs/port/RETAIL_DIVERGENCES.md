@@ -132,3 +132,11 @@ Functional breaks in port-owned code, more severe than a behaviour mismatch.
 | exit() on a second world-map session in one visit | Revisiting the world map inside one visit (a mode change that keeps the map) killed the process | The pool stage refused the pointer the previous session left set (retail func_8009766C allocates unconditionally), and a dozen setup stages refused a second run | 592fdef3: retail allocation, stage guards reset per session. `run_world_map_second_session_test.sh` |
 | World-map exits could start the field at a stale destination | Ten mode teardowns wrote map/entrance/heading (D_8006F94E/F954/F950) to guest RAM only; FieldMain reads the host g_GameState | Two copies of g_GameState (guest image vs host blob) | fa79d217: one store for both copies (`world_map_gamestate.h`). `run_world_map_gamestate_sync_test.sh` |
 | World position missing from saves | func_8008E034 / func_8008DFF4 kept the world position (g_GameState+0x182C..) in the guest copy only | as above | fa79d217 |
+
+## Port correctness bugs found and fixed (2026-09-30, r6.6)
+
+Seen while recording the r6.3 gameplay video.
+
+| Bug | Effect | Cause | Fix / verification |
+| --- | --- | --- | --- |
+| VRAM garbage when a menu closes | About 6 frames of texture pages on screen whenever `func_800799D4` returned from MenuMain: every field-menu close, and the title menu's New Game, just before the opening FMV | The close path's first MoveImage (retail 80079FCC, `a1 = 0x140`) copies the menu's last frame (0,0xE0) to (0x140,0). The port copied it to (0,0), so the next two copies (0x140,0) -> (0,0) and (0,0x100) spread the texture pages at (0x140,0) over both frame buffers | `src/field/main/misc4.c` copies to (0x140,0) as retail: the screen holds the menu's last frame, then goes black. `run_field_menu_open_799d4_retail_test.sh` (close-copy mutant rejected); `run_menu_close_present_test.sh` (every presented frame between MenuMain's return and the FE60 STR, via `XENO_PRESENT_LOG`) |

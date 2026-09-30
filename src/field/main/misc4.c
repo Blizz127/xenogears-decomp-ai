@@ -925,13 +925,23 @@ void func_800799D4(void) {
         }
     }
 
-    /* Restore the fade rects and back up the two menu screen halves. */
+    /* Copy the menu's last frame (0,0xE0) to (0x140,0), then from there
+     * into both field frame buffers (0,0) and (0,0x100).  Retail 80079FCC
+     * passes a1=0x140 (ori a1,zero,0x140 at 80079FA8): the first copy lands
+     * at x=0x140, not x=0.  With dest (0,0) the next two copies spread the
+     * texture pages at (0x140,0) over both frame buffers, which showed as a
+     * few frames of VRAM garbage on every menu close (and so right before
+     * the New Game FMV). */
     FieldRenderSync();
     D_800AFE4C.x = 0;
     D_800AFE4C.y = 0xE0;
     D_800AFE4C.w = 0x140;
     D_800AFE4C.h = 0xE0;
+#ifdef FIELD_799D4_MUTANT_CLOSE_COPY_TO_ORIGIN
     MoveImage(&D_800AFE4C, 0, 0);
+#else
+    MoveImage(&D_800AFE4C, 0x140, 0);
+#endif
     FieldRenderSync();
     D_800AFE4C.x = 0x140;
     D_800AFE4C.y = 0;
