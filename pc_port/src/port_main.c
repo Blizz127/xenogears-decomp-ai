@@ -17,6 +17,7 @@
 #include "../include/xg_plat/input.h"
 #include "../include/xg_plat/mods.h"
 #include "cheat_console.h"
+#include "port_pad_confirm.h"
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -1283,29 +1284,7 @@ int main(int argc, char** argv) {
     }
     /* Config file / XENO_* overrides: game.speed, input.* bindings, ... */
     xg_plat_config_apply_runtime();
-    {
-        /* input.pad_confirm = cross|circle: which physical controller face
-         * button carries the game's confirm.  Unset keeps the retail layout
-         * (USA: Cross; XENO_BUTTON_LAYOUT=jp: Circle).  Only the host
-         * controller mapping (SDL A/B -> PS Cross/Circle) is exchanged; the
-         * game's remap table and the keyboard bindings are untouched. */
-        const char* confirm = xg_plat_config_get("input.pad_confirm");
-        int layoutCircle = PortButtonLayoutJp();
-        int wantCircle = layoutCircle;
-        if (confirm != NULL && strcmp(confirm, "circle") == 0) {
-            wantCircle = 1;
-        } else if (confirm != NULL && strcmp(confirm, "cross") == 0) {
-            wantCircle = 0;
-        } else if (confirm != NULL) {
-            fprintf(stderr, "[xg_plat] config: input.pad_confirm = '%s': expected cross or "
-                            "circle; keeping the retail layout\n", confirm);
-        }
-        xg_plat_input_set_pad_face_swap(wantCircle != layoutCircle);
-        printf("[xeno-port] controller confirm: physical %s (%s)\n",
-               wantCircle ? "Circle (east)" : "Cross (south)",
-               wantCircle != layoutCircle ? "input.pad_confirm, Cross/Circle exchanged"
-                                          : "retail layout");
-    }
+    PcPort_PadConfirmInit(PortButtonLayoutJp());
     /* Cheat console first: its frame_tick subscribers (field warp, battle
      * warp, queued commands) must run before any mod hook, in the order the
      * VSync shim used to call them. */

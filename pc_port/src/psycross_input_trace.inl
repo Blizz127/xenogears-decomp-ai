@@ -8,10 +8,12 @@
  * a player's terminal log.  Observation only: every event continues to its
  * normal handler.
  *
- * Budget: the first XENO_TRACE_BURST events, then at most one per second
- * (the suppressed count is reported).  Always logged regardless of budget:
- * window focus changes, joystick attach/detach, and the first press of each
- * distinct (device, button). */
+ * Button events are NEVER throttled: every key, mouse, game-controller and
+ * joystick button / hat down and up is logged in full (a rate limit once hid
+ * the very lines that explained a pad changing the game speed).  Only axis
+ * motion and the mouse wheel share a budget: the first XENO_TRACE_BURST, then
+ * at most one per second (the suppressed count is reported).  Window focus
+ * changes and joystick attach/detach are always logged too. */
 
 #define XENO_TRACE_BURST       200
 #define XENO_TRACE_AXIS_ON     16000
@@ -119,14 +121,15 @@ static void PsyX_InputTrace(const SDL_Event* e)
 			eprintinfo("input: window focus lost\n");
 		break;
 	case SDL_KEYDOWN:
-		if (e->key.repeat == 0 && XenoTrace_Budget())
-			eprintinfo("input: key down scancode=%d '%s' mod=0x%04x\n", (int)e->key.keysym.scancode,
+	case SDL_KEYUP:
+		if (e->key.repeat == 0)
+			eprintinfo("input: key %s scancode=%d '%s' mod=0x%04x\n",
+				e->type == SDL_KEYDOWN ? "down" : "up", (int)e->key.keysym.scancode,
 				SDL_GetScancodeName(e->key.keysym.scancode), (unsigned)e->key.keysym.mod);
 		break;
 	case SDL_MOUSEBUTTONDOWN:
 	case SDL_MOUSEBUTTONUP:
-		if (XenoTrace_Budget())
-			eprintinfo("input: mouse button %d %s at %d,%d mouse=%u%s\n", (int)e->button.button,
+		eprintinfo("input: mouse button %d %s at %d,%d mouse=%u%s\n", (int)e->button.button,
 				e->type == SDL_MOUSEBUTTONDOWN ? "down" : "up", e->button.x, e->button.y,
 				(unsigned)e->button.which, e->button.which == SDL_TOUCH_MOUSEID ? " (touch)" : "");
 		break;
@@ -139,7 +142,6 @@ static void PsyX_InputTrace(const SDL_Event* e)
 	{
 		int down = e->type == SDL_CONTROLLERBUTTONDOWN;
 		int first = down && XenoTrace_FirstPress(e->cbutton.which, 0, e->cbutton.button);
-		if (first || XenoTrace_Budget())
 		{
 			XenoTrace_Device(e->cbutton.which, dev, sizeof(dev));
 			eprintinfo("input: %spad button %s (%d) %s %s\n", first ? "first " : "",
@@ -183,7 +185,6 @@ static void PsyX_InputTrace(const SDL_Event* e)
 	{
 		int down = e->type == SDL_JOYBUTTONDOWN;
 		int first = down && XenoTrace_FirstPress(e->jbutton.which, 1, e->jbutton.button);
-		if (first || XenoTrace_Budget())
 		{
 			XenoTrace_Device(e->jbutton.which, dev, sizeof(dev));
 			eprintinfo("input: %sjoystick button %d %s %s\n", first ? "first " : "",
@@ -192,7 +193,6 @@ static void PsyX_InputTrace(const SDL_Event* e)
 		break;
 	}
 	case SDL_JOYHATMOTION:
-		if (XenoTrace_Budget())
 		{
 			XenoTrace_Device(e->jhat.which, dev, sizeof(dev));
 			eprintinfo("input: joystick hat %d = 0x%x %s\n", (int)e->jhat.hat, (unsigned)e->jhat.value, dev);

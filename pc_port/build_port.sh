@@ -701,6 +701,9 @@ apply_psycross_patch "$ROOT/pc_port/patches/psycross_rendered_clip_track.patch" 
 # after VRAM-only presents that buffer may never be displayed on the PSX (the
 # attract-return fade-start frame).  Show the DISPENV area there instead.
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_present_displayed_after_vram.patch" "_xeno_present_displayed_after_vram"
+# Every speed / fast-forward change is logged with its source (F6, Backspace,
+# F7, L3, R3, dev-menu, focus-lost); applied last, on top of the host keys.
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_speed_source.patch" "_xeno_speed_source"
 
 echo "==> [1/5] Building PsyCross (libpsycross.a) via CMake"
 # Drop a stale CMake cache generated under a different absolute path (e.g. from a
@@ -848,6 +851,7 @@ PORT_SOURCES=(
     pc_port/src/port_dev_menu.c
     pc_port/src/port_dev_menu_actions.c
     pc_port/src/port_dev_menu_warps.c
+    pc_port/src/port_pad_confirm.c
     pc_port/src/krom_mapping.c
     pc_port/src/psx_memory.c
     pc_port/src/battle_mips_adapter.c

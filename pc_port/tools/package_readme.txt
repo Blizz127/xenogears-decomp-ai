@@ -41,7 +41,12 @@ CONTROLLERS
   Return Start, Space Select (rebind under [input] in config.ini). A game controller works at
   the same time: bottom face button (Xbox A / PlayStation Cross) confirms,
   as on the US PlayStation; input.pad_confirm = circle swaps it with the
-  right button. The left stick also moves like the D-pad.
+  right button. To set it without the dev menu, add
+      [input]
+      pad_confirm = circle
+  to ~/.config/xenogears-port/config.ini (or $XDG_CONFIG_HOME/xenogears-port/,
+  or the file named by XENO_CONFIG); "cross" is the US default. With the dev
+  menu on, Options > CONFIRM BUTTON toggles it immediately and saves that line. The left stick also moves like the D-pad.
   Steam Input is not needed. On handhelds (Steam Deck, Legion Go with
   InputPlumber) the built-in pad is used directly even when Steam's
   environment hides it; with several pads one drives the game, and Steam's
@@ -49,11 +54,14 @@ CONTROLLERS
   names the chosen pad ("pad: port 1 uses ...") and, as "input:" lines,
   the keys, mouse and pad buttons that arrive (useful in bug reports).
   Host keys: F11 quick save, F12 quick load, F10 screenshot, F9 record,
-  hold Backspace or toggle F6 for fast-forward (pad: L3 toggles, R3 holds).
+  hold Backspace or toggle F6 for fast-forward. Pad fast-forward is off by
+  default; input.pad_fast_forward = on makes L3 toggle and R3 hold it (each
+  pressed alone, with no face button or D-pad held). Every speed change is
+  logged as "speed: ... (source: ...)".
   Dev menu (opt-in: XENO_DEV_MENU=1 or [cheats] dev_menu = on): Select+Start
   on one pad, or F8. D-pad/stick move, A picks, B goes back. Warp, Finish
   Area, Cheats (god mode, random battles, refills), Options (fast-forward,
-  speed, record, screenshot, quick save/load, enhancements). The game keeps
+  speed, record, screenshot, confirm button, quick save/load, enhancements). The game keeps
   running while it is open; a red CHEATS marker shows while a cheat is on.
 
 HOW FAR IT PLAYS (tested on the build machine)

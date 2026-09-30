@@ -71,6 +71,8 @@ typedef struct PcPortDevMenuHost {
     void (*hd2d_toggle)(void);
     int (*god_on)(void);
     int (*random_battles_on)(void);
+    int (*confirm_circle)(void);     /* 1: physical Circle confirms (input.pad_confirm) */
+    void (*confirm_toggle)(void);    /* applies now and saves the config */
 } PcPortDevMenuHost;
 void PcPort_DevMenuSetHost(const PcPortDevMenuHost *host);
 
