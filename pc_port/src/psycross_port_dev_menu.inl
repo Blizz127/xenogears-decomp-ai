@@ -12,7 +12,7 @@ static int PsyX_PortDevMenuHandleEvent(SDL_Event *event)
         int key = event->key.keysym.scancode;
         if (pressed && event->key.repeat) return open;
         /* The key left of 1: unused by the game's keyboard map and by every
-         * PsyCross/host hotkey (F7/F8 stay quick save/load). */
+         * PsyCross/host hotkey (F11/F12 are quick save/load). */
         if (key == SDL_SCANCODE_GRAVE)
             return PcPort_DevMenuKey(PC_DEV_OPEN, pressed);
         if (!open) return 0;

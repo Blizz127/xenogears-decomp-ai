@@ -31,7 +31,7 @@ RUNNING
   ./xenogears.sh                      later runs
   XENOGEARS_WINDOWED=1 ./xenogears.sh windowed instead of fullscreen
   Settings: copy config.example.ini to ~/.config/xenogears-port/config.ini.
-  Saves, memory cards (memcards/card1.mcd) and the F7/F8 quick checkpoint
+  Saves, memory cards (memcards/card1.mcd) and the F11/F12 quick checkpoint
   are kept in ~/.local/share/xenogears-port/.
   Gamescope / Steam: add xenogears.sh as a non-Steam game, or point a
   launcher (Banshee) at it with the folder as its argument.
@@ -46,7 +46,10 @@ CONTROLLERS
   InputPlumber) the built-in pad is used directly even when Steam's
   environment hides it; with several pads one drives the game, and Steam's
   virtual pad is used only when nothing else answers. The terminal output
-  names the chosen pad ("pad: port 1 uses ...").
+  names the chosen pad ("pad: port 1 uses ...") and, as "input:" lines,
+  the keys, mouse and pad buttons that arrive (useful in bug reports).
+  Host keys: F11 quick save, F12 quick load, F10 screenshot, F9 record,
+  hold Backspace or toggle F6 for fast-forward.
 
 HOW FAR IT PLAYS (tested on the build machine)
   Boot, title screen, New Game, the opening, into Lahan (field map 2).
@@ -69,5 +72,5 @@ KNOWN ISSUES
 REPORTING BUGS
   Say what you did and what happened, and include version.txt, the last
   lines of the terminal output (run xenogears.sh from a terminal to see it),
-  and, if you can, the quick checkpoint (F7 saves it) from
+  and, if you can, the quick checkpoint (F11 saves it) from
   ~/.local/share/xenogears-port/quicksaves/quick.xgqs.

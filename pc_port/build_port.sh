@@ -673,6 +673,11 @@ apply_psycross_patch "$ROOT/pc_port/patches/psycross_card_native_owner.patch" "_
 # id, and let the left stick drive the digital pad's D-pad.  Generated on top
 # of every PsyX_pad.cpp patch above (pad include, tap latch, dev menu input).
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_pad_select.patch" "_xeno_pad_select"
+# Host keys (owner spec): Backspace hold / F6 toggle fast-forward, F9 record,
+# F10 screenshot, F11 quick save, F12 quick load, F7 speed cycle only with the
+# dev-menu opt-in; no other host key actions.  Always-on, rate-limited input
+# trace (pc_port/src/psycross_input_trace.inl) and background joystick events.
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_host_hotkeys.patch" "_xeno_host_hotkeys"
 
 echo "==> [1/5] Building PsyCross (libpsycross.a) via CMake"
 # Drop a stale CMake cache generated under a different absolute path (e.g. from a

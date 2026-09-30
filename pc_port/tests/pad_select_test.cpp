@@ -217,7 +217,7 @@ static const char* OWNER_IGNORE =
 static const char* OWNER_IGNORE_SANITISED =
     "0x28de/0x1002,0x28de/0x1003,0x28de/0x1071,0x28de/0x1052,0x28de/0x1042,"
     "0x28de/0x1203,0x28de/0x1204,0x28de/0x1302,"
-    "0x28de/0x1303,0x28de/0x1304,0x28de/0x1305,0x28de/0x12ff";
+    "0x28de/0x1303,0x28de/0x1304,0x28de/0x1305";
 
 static void test_sanitiser(void)
 {
@@ -226,8 +226,8 @@ static void test_sanitiser(void)
 
     printf("-- 6. SDL_GAMECONTROLLER_IGNORE_DEVICES sanitiser\n");
     n = PsyX_Pad_SanitizeIgnoreDevices(OWNER_IGNORE, out, sizeof out, removed, sizeof removed);
-    CHECK(n == 2, "owner's value: %d entries removed (want 2)", n);
-    CHECK(strcmp(removed, "0x28de/0x1205,0x28de/0x1206") == 0, "removed = %s", removed);
+    CHECK(n == 3, "owner's value: %d entries removed (want 3)", n);
+    CHECK(strcmp(removed, "0x28de/0x1205,0x28de/0x1206,0x28de/0x12ff") == 0, "removed = %s", removed);
     CHECK(strcmp(out, OWNER_IGNORE_SANITISED) == 0, "kept    = %s", out);
 
     /* Legion entries of any product, other vendors kept, whitespace, odd
@@ -237,6 +237,14 @@ static void test_sanitiser(void)
         out, sizeof out, removed, sizeof removed);
     CHECK(n == 3, "mixed list: %d entries removed (want 3: two 17ef, one 28de/1205)", n);
     CHECK(strcmp(out, "0x045e/0x028e,0x054c/0x0ce6,bogus,0x28de/0x11ff") == 0, "mixed kept = %s", out);
+    /* Legion Go 2 under InputPlumber: 28de:12fb, and Steam lists the whole
+     * InputPlumber range 28de:12f0-12ff; 28de:12ef/1300 stay ignored. */
+    n = PsyX_Pad_SanitizeIgnoreDevices(
+        "0x28de/0x12ef,0x28de/0x12f0,0x28de/0x12fb,0x28de/0x12ff,0x28de/0x1300,0x28de/0x11ff",
+        out, sizeof out, removed, sizeof removed);
+    CHECK(n == 3 && strcmp(removed, "0x28de/0x12f0,0x28de/0x12fb,0x28de/0x12ff") == 0,
+          "InputPlumber range 28de:12f0-12ff removed (Legion Go 2 = 12fb): %s", removed);
+    CHECK(strcmp(out, "0x28de/0x12ef,0x28de/0x1300,0x28de/0x11ff") == 0, "range edges kept: %s", out);
     n = PsyX_Pad_SanitizeIgnoreDevices("", out, sizeof out, removed, sizeof removed);
     CHECK(n == 0 && out[0] == '\0', "empty list stays empty");
     n = PsyX_Pad_SanitizeIgnoreDevices(OWNER_IGNORE, out, 16, NULL, 0);
@@ -253,7 +261,7 @@ int main(void)
     test_sanitiser();
 
     /* The environment a Steam shortcut hands the game (owner's session). */
-    snprintf(envIgnore, sizeof envIgnore, "%s,0x17ef/0x6182,0x17ef/0x61eb", OWNER_IGNORE);
+    snprintf(envIgnore, sizeof envIgnore, "%s,0x28de/0x12fb,0x28de/0x12f0,0x17ef/0x6182,0x17ef/0x61eb", OWNER_IGNORE);
     setenv("SDL_GAMECONTROLLER_IGNORE_DEVICES", envIgnore, 1);
     setenv("SDL_GAMECONTROLLER_ALLOW_STEAM_VIRTUAL_GAMEPAD", "1", 1);
     unsetenv("SDL_JOYSTICK_HIDAPI_STEAMDECK");

@@ -151,7 +151,7 @@ static void PsyX_HostToolbarInitialise()
 	 * resize event is normalized by PsyX_HostToolbarHandleEvent. */
 	g_windowWidth = width;
 	g_windowHeight = height;
-	eprintinfo("Host toolbar enabled: Quick Save | Quick Load | Record | Speed (F11 cycles, Shift+F11 resets; hold Backspace for 5x)\n");
+	eprintinfo("Host toolbar enabled: Quick Save | Quick Load | Record | Speed (hold Backspace or toggle F6 for fast-forward; F7 cycles with the dev menu on)\n");
 }
 
 static void PsyX_HostToolbarDispatch(PcPortHostToolbarAction action)
@@ -207,31 +207,8 @@ static int PsyX_HostToolbarHandleEvent(SDL_Event* event)
 			PsyX_HostToolbarContentHeight(event->window.data2);
 		return 0;
 	}
-	/* F10 is the keyboard half of the random-battle switch.  It lives here
-	 * rather than in PsyX_main.cpp because pc_port/extern is git-ignored, and
-	 * this handler sees every event first and can consume it. */
-	if (event->type == SDL_KEYDOWN && event->key.repeat == 0 &&
-		event->key.keysym.scancode == SDL_SCANCODE_F10) {
-#if defined(__GNUC__)
-		if (PcPort_RandomBattlesToggle != NULL || PcPort_CheatQueue != NULL) {
-			PsyX_HostCheat("encounters", PcPort_RandomBattlesToggle);
-			return 1;
-		}
-#endif
-	}
-	/* F12 is the keyboard half of the GOD switch, for the same reason F10 is
-	 * the keyboard half of the battle switch: the toolbar's mouse path does
-	 * not reach a headless or scripted session, so a driver had no way to turn
-	 * party protection on before walking into a fight it cannot survive. */
-	if (event->type == SDL_KEYDOWN && event->key.repeat == 0 &&
-		event->key.keysym.scancode == SDL_SCANCODE_F12) {
-#if defined(__GNUC__)
-		if (PcPort_GodModeToggle != NULL || PcPort_CheatQueue != NULL) {
-			PsyX_HostCheat("god", PcPort_GodModeToggle);
-			return 1;
-		}
-#endif
-	}
+	/* Random battles and GOD have no keyboard binding (toolbar and dev menu
+	 * only); F10/F12 are the screenshot and quick-load keys. */
 	if (event->type == SDL_MOUSEMOTION) {
 		action = PcPort_HostToolbarHitTest(event->motion.x, event->motion.y);
 		g_xenoHostToolbarHover = action;

@@ -80,6 +80,8 @@ static int XenoPad_IsHandheldEntry(unsigned vendor, unsigned product)
 		return 1;	/* Lenovo Legion Go / Go S pads */
 	if (vendor == 0x28de && (product == 0x1205 || product == 0x1206))
 		return 1;	/* Steam Deck, InputPlumber Deck-style targets */
+	if (vendor == 0x28de && product >= 0x12f0 && product <= 0x12ff)
+		return 1;	/* InputPlumber virtual range (Legion Go 2 = 28de:12fb) */
 	return 0;
 }
 

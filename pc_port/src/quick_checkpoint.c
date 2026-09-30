@@ -80,7 +80,7 @@ void PcPort_QuickCheckpointRequestSave(void)
     if (!PcPort_QuickRequestQueue(&s_request, PC_PORT_QUICK_REQUEST_SAVE,
                                   s_fieldActive &&
                                   (g_GameSceneMapNum & 0x3FFF) != 490)) {
-        fprintf(stderr, "[xeno-port][quick] F7 ignored: not in a gameplay field\n");
+        fprintf(stderr, "[xeno-port][quick] quick save (F11) ignored: not in a gameplay field\n");
         return;
     }
     fprintf(stderr, "[xeno-port][quick] save queued\n");
@@ -112,7 +112,7 @@ void PcPort_QuickCheckpointRequestLoad(void)
 {
     if (!PcPort_QuickRequestQueue(&s_request, PC_PORT_QUICK_REQUEST_LOAD,
                                   s_fieldActive)) {
-        fprintf(stderr, "[xeno-port][quick] F8 ignored: not in a field\n");
+        fprintf(stderr, "[xeno-port][quick] quick load (F12) ignored: not in a field\n");
         return;
     }
     fprintf(stderr, "[xeno-port][quick] load queued\n");
