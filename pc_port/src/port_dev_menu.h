@@ -55,6 +55,7 @@ const char *PcPort_DevMenuTitle(void);
 const char *PcPort_DevMenuRow(int row);
 int PcPort_DevMenuRowSelectable(int row);
 const char *PcPort_DevMenuStatus(void);
+void PcPort_DevMenuQuickSaveResult(const char *status);
 /* Nonzero while a cheat is on (persistent CHEATS marker). */
 int PcPort_DevMenuCheatsActive(void);
 

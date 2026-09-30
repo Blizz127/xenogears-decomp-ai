@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <time.h>
 
 #include "common.h"
 #include "field/actor.h"
@@ -24,9 +25,24 @@ extern s32 D_800ADB64;
 extern s32 D_800ADB68;
 extern u8 D_800B21D0;
 extern s32 D_800ADBFC;   /* live field actor count */
+extern void* g_FieldScriptMemory;
+extern void func_800A30FC(void);
+/* Dev-menu status line (port_dev_menu.c); weak so standalone tests link. */
+extern void PcPort_DevMenuQuickSaveResult(const char* status) __attribute__((weak));
+
+/* func_800A30FC writes only the saved half of g_FieldScriptMemory (0x200
+ * u16 words) besides g_GameState. */
+#define PC_PORT_QUICK_SCRIPT_MEMORY_BYTES 0x400u
+#define PC_PORT_QUICK_SCENE_NOTICE "CAN'T QUICKSAVE DURING A SCENE"
 
 static int s_fieldActive;
+/* The event lock (see scene_lock_held) as it was at the previous FieldMain
+ * poll: a scene that released control during the frame that just ran is
+ * still closing (the frame's start-of-frame state sync predates it). */
+static int s_sceneAtPrevPoll;
 static PcPortQuickRequestState s_request;
+static char s_notice[64];
+static struct timespec s_noticeAt;
 static int s_loadReady;
 static int s_restoreReady;
 static PcPortQuickCheckpoint s_loaded;
@@ -73,6 +89,38 @@ static int checkpoint_is_safe(void)
         D_800ADB64 != 0xFF || D_800B21D0 != 0)
         return 0;
     return ((*(u32*)actor & 0x1800u) == 0);
+}
+
+/* A field script event holds control: the event lock D_800B21D0 that the
+ * script lock opcode sets (func_80093B10: D_800B21D0 = 1, encounters off)
+ * and the unlock opcode clears (func_80093AC8), or the player actor's own
+ * script control lock (flags & 0x1800).  This is the game's state, not a
+ * per-map rule. */
+static int scene_lock_held(void)
+{
+    ActorData* actor = player_actor(NULL);
+    return D_800B21D0 != 0 || (actor && (*(u32*)actor & 0x1800u) != 0);
+}
+
+void PcPort_QuickCheckpointNoticeSet(const char* text)
+{
+    snprintf(s_notice, sizeof s_notice, "%s", text);
+    clock_gettime(CLOCK_MONOTONIC, &s_noticeAt);
+    fprintf(stderr, "[xeno-port][quick] notice: %s\n", text);
+}
+
+/* The on-screen quick save/load notice (drawn by the host overlay in
+ * psycross_port_dev_menu.inl): the last message, for three seconds. */
+const char* PcPort_QuickCheckpointNotice(void)
+{
+    struct timespec now;
+    long ms;
+    if (!s_notice[0])
+        return NULL;
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    ms = (long)(now.tv_sec - s_noticeAt.tv_sec) * 1000 +
+         (now.tv_nsec - s_noticeAt.tv_nsec) / 1000000;
+    return ms < 3000 ? s_notice : NULL;
 }
 
 void PcPort_QuickCheckpointRequestSave(void)
@@ -135,8 +183,37 @@ int PcPort_QuickCheckpointFieldIsActive(void)
 void PcPort_QuickCheckpointSetFieldActive(int active)
 {
     s_fieldActive = active != 0;
+    s_sceneAtPrevPoll = 0;
     if (!s_fieldActive && s_request.action != PC_PORT_QUICK_REQUEST_NONE)
         PcPort_QuickRequestCancel(&s_request);
+}
+
+/* The game-state image a retail save would hold now.  FieldMain syncs the
+ * live script variables (g_FieldScriptMemory) into g_GameState+0x1930 once
+ * per frame, at the START of the frame (func_80077DAC -> func_800A31E8 ->
+ * func_800A30FC), and polls the quick save before the next frame's sync.  A
+ * raw copy therefore misses everything the scripts did in the frame that just
+ * ran.  On field 14 that frame is the painting scene's last one: the player
+ * script sets scenario 6 (opcode 0x87 at ip 401), unlocks (FE53, ip 404) and
+ * hands over control (0x0C, ip 406), so the copy said scenario 3 and loading
+ * it replayed "Whew! That about does it...".  Build the image with retail's
+ * own sync routine, then put both buffers back so saving changes nothing. */
+static void checkpoint_state_image(uint8_t* out)
+{
+    static uint8_t liveState[PC_PORT_QUICK_CHECKPOINT_STATE_BYTES];
+    static uint8_t liveScript[PC_PORT_QUICK_SCRIPT_MEMORY_BYTES];
+
+    /* g_FieldScriptMemory is declared `void*` but is the script buffer
+     * itself; hide its declared size from _FORTIFY_SOURCE. */
+    uint8_t* script = (uint8_t*)&g_FieldScriptMemory;
+    __asm__("" : "+r"(script));
+
+    memcpy(liveState, g_GameState, sizeof liveState);
+    memcpy(liveScript, script, sizeof liveScript);
+    func_800A30FC();
+    memcpy(out, g_GameState, sizeof liveState);
+    memcpy(g_GameState, liveState, sizeof liveState);
+    memcpy(script, liveScript, sizeof liveScript);
 }
 
 static int capture_checkpoint(PcPortQuickCheckpoint* checkpoint)
@@ -145,8 +222,7 @@ static int capture_checkpoint(PcPortQuickCheckpoint* checkpoint)
     if (!actor)
         return -1;
     memset(checkpoint, 0, sizeof(*checkpoint));
-    memcpy(checkpoint->game_state, g_GameState,
-           PC_PORT_QUICK_CHECKPOINT_STATE_BYTES);
+    checkpoint_state_image(checkpoint->game_state);
     checkpoint->map = (u16)(g_GameSceneMapNum & 0x3FFF);
     checkpoint->entrance = *(u16*)(g_GameState + 0x1932);
     checkpoint->position[0] = actor->position.vx;
@@ -179,6 +255,13 @@ int PcPort_QuickCheckpointPoll(void)
     PcPortQuickCheckpoint checkpoint;
     const char* path;
     PcPortQuickRequestAction request;
+    int sceneNow, sceneClosing;
+    /* Scene state for quick saves: an event holds control now, or held it at
+     * the previous poll (released during the frame that just ran). */
+    sceneNow = s_fieldActive && scene_lock_held();
+    sceneClosing = s_fieldActive && s_sceneAtPrevPoll;
+    if (s_fieldActive)
+        s_sceneAtPrevPoll = sceneNow;
     s_fieldLoopCount++;
     /* A title-menu poll can prepare the load; keep the result available for
      * FieldMain's next poll after the menu's own cleanup has finished. */
@@ -194,6 +277,24 @@ int PcPort_QuickCheckpointPoll(void)
         return 1;
     if (s_request.action == PC_PORT_QUICK_REQUEST_NONE)
         return 0;
+    /* Quick saves only at settled field states: a save asked for while a
+     * field script event holds control, or in the frame it lets go, is
+     * refused (not deferred) with an on-screen notice.  Loads, warps and
+     * transient blocks (menu request, control disabled) are unchanged. */
+    if (s_request.action == PC_PORT_QUICK_REQUEST_SAVE &&
+        (g_GameSceneMapNum & 0x3FFF) != 490 && (sceneNow || sceneClosing)) {
+        char why[160];
+        PcPort_QuickCheckpointSafetyDescribe(why, sizeof why);
+        fprintf(stderr, "[xeno-port][quick] save refused: %s (%s)\n",
+                sceneNow ? "field script event holds control"
+                         : "field script event released control this frame",
+                why);
+        PcPort_QuickRequestCancel(&s_request);
+        PcPort_QuickCheckpointNoticeSet(PC_PORT_QUICK_SCENE_NOTICE);
+        if (PcPort_DevMenuQuickSaveResult)
+            PcPort_DevMenuQuickSaveResult(PC_PORT_QUICK_SCENE_NOTICE);
+        return 0;
+    }
     /* Map 490 is the retail title field. It owns script control and has no
      * controllable player, but Poll runs only after field initialization and
      * between updates, where the existing teardown/load path is safe. Allow
@@ -220,6 +321,7 @@ int PcPort_QuickCheckpointPoll(void)
                     strerror(errno));
             PcPort_QuickRequestSetResult(&s_request,
                                          PC_PORT_QUICK_UI_SAVE_ERROR);
+            PcPort_QuickCheckpointNoticeSet("QUICK SAVE FAILED");
             return 0;
         }
         if (capture_checkpoint(&checkpoint) != 0 ||
@@ -227,9 +329,13 @@ int PcPort_QuickCheckpointPoll(void)
             fprintf(stderr, "[xeno-port][quick] save failed: %s\n", path);
             PcPort_QuickRequestSetResult(&s_request,
                                          PC_PORT_QUICK_UI_SAVE_ERROR);
+            PcPort_QuickCheckpointNoticeSet("QUICK SAVE FAILED");
             return 0;
         }
         PcPort_QuickRequestSetResult(&s_request, PC_PORT_QUICK_UI_SAVE_OK);
+        PcPort_QuickCheckpointNoticeSet("QUICK SAVED");
+        if (PcPort_DevMenuQuickSaveResult)
+            PcPort_DevMenuQuickSaveResult("QUICK SAVED");
         fprintf(stderr,
                 "[xeno-port][quick] saved %s map=%u pos=(%d,%d,%d)\n",
                 path, (unsigned)checkpoint.map,

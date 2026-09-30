@@ -14,6 +14,7 @@ extern "C" void PsyX_HostFastForwardToggleFrom(const char* source);
 extern "C" int PcPort_PadConfirmCircle(void);
 extern "C" void PcPort_PadConfirmToggle(void);
 extern "C" int PcPort_FeiHd2dAssetPresent(void) __attribute__((weak));
+extern "C" const char* PcPort_QuickCheckpointNotice(void) __attribute__((weak));
 
 static int s_xenoDevMenuShotPending = 0;
 
@@ -126,6 +127,7 @@ static void PsyX_PortDevMenuDraw()
 	GLint scissor[4];
 	GLfloat clear[4];
 	int top, i, rows, height, cheats;
+	const char* notice;
 
 	if (s_xenoDevMenuShotPending > 0 && --s_xenoDevMenuShotPending == 0) {
 		eprintwarn("Saving screenshot...\n");
@@ -133,7 +135,8 @@ static void PsyX_PortDevMenuDraw()
 	}
 	PsyX_DevMenuScript(0);
 	cheats = PcPort_DevMenuCheatsActive();
-	if (!PcPort_DevMenuOpen() && !cheats) { PsyX_DevMenuScript(1); return; }
+	notice = PcPort_QuickCheckpointNotice ? PcPort_QuickCheckpointNotice() : NULL;
+	if (!PcPort_DevMenuOpen() && !cheats && !notice) { PsyX_DevMenuScript(1); return; }
 	scissorEnabled = glIsEnabled(GL_SCISSOR_TEST);
 	glGetBooleanv(GL_COLOR_WRITEMASK, mask);
 	glGetIntegerv(GL_SCISSOR_BOX, scissor);
@@ -144,6 +147,12 @@ static void PsyX_PortDevMenuDraw()
 		/* Persistent marker, top-right (GL y grows upward). */
 		PsyX_HostToolbarClearRect(g_windowWidth - 92, g_windowHeight - 24, 86, 20, 0.55f, 0.08f, 0.08f);
 		PsyX_DevMenuDrawTextColor("CHEATS", g_windowWidth - 86, g_windowHeight - 20, 1.0f, 0.95f, 0.95f);
+	}
+	if (notice) {
+		/* Quick save/load notice (quick_checkpoint.c), bottom-left. */
+		int w = (int)strlen(notice) * 12 + 16;
+		PsyX_HostToolbarClearRect(8, 8, w, 28, 0.035f, 0.05f, 0.09f);
+		PsyX_DevMenuDrawTextColor(notice, 16, 14, 0.98f, 0.85f, 0.45f);
 	}
 	if (PcPort_DevMenuOpen()) {
 		rows = PcPort_DevMenuRows();
