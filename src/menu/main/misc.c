@@ -2815,10 +2815,11 @@ u32 func_801CAA38(u8 interactive) {
         }
         func_801C7BF4();
         if (interactive != 0 && D_801E977A != 0) {
-            /* Retail stores +0x4F88 = 0 in the delay slot of the card-0
-             * compare, so it is cleared on every frame, changed or not. */
-            g_Menu->unk32C->unk4F80[8] = 0;
+            /* +0x4F88 is cleared only when card 0 changed: retail's
+             * `sb $zero,0x4F88` (0x801CAB64) follows the beq's nop delay
+             * slot.  A draft once cleared it on every frame. */
             if (card0 != g_Menu->unk32C->unk4F80[0x64]) {
+                g_Menu->unk32C->unk4F80[8] = 0;
                 g_Menu->input = MENU_INPUT_BACK;
                 D_801E9778 = 1;
             }
@@ -3260,10 +3261,11 @@ extern u8 D_801EA6D0[];
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CB9E8);
 #else
 /* Retail 0x801CB9E8: with startIdx 0xFF, scan the 15-byte row idx of
- * D_801EA6D0 for its first zero byte and return that index + 1 (retail's
- * counter increments in the branch delay slot before it is copied out), or
- * 0 when the row has none; otherwise return startIdx.  The port once
- * returned the bare index. */
+ * D_801EA6D0 for its first zero byte and return that index (0 when the row
+ * has none); otherwise return startIdx.  On a zero byte retail branches to
+ * .L801CBA38 with a nop delay slot, so the counter increment at 0x801CBA20
+ * does not run and `addu $a2,$a1,$zero` copies the bare index.  A draft once
+ * returned index + 1, which put the wrong save digit into the file name. */
 u8 func_801CB9E8(u8 idx, u8 startIdx) {
     s32 result = 0;
     s32 i;
@@ -3271,7 +3273,7 @@ u8 func_801CB9E8(u8 idx, u8 startIdx) {
         u8* pEntry = &D_801EA6D0[idx * 16];
         for (i = 0; i < 0xF; i++, pEntry++) {
             if (*pEntry == 0) {
-                result = i + 1;
+                result = i;
                 break;
             }
         }
