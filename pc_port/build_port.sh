@@ -666,6 +666,13 @@ apply_psycross_patch "$ROOT/pc_port/patches/psycross_host_speed.patch" "_xeno_ho
 # The BIOS memory-card driver entry points (InitCARD/_card_info/...) are owned
 # by pc_port/src/memcard_port.c; drop PsyCross's silent `return 0` copies.
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_card_native_owner.patch" "_xeno_card_native_owner"
+# Game controllers (pc_port/src/psycross_pad_select.inl): drop the handheld /
+# InputPlumber entries (28de:1205/1206, 17ef:*) from Steam's inherited
+# SDL_GAMECONTROLLER_IGNORE_DEVICES, open every pad but feed port 1 from one
+# (Steam's virtual pad only as a last resort), reconcile hotplug by instance
+# id, and let the left stick drive the digital pad's D-pad.  Generated on top
+# of every PsyX_pad.cpp patch above (pad include, tap latch, dev menu input).
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_pad_select.patch" "_xeno_pad_select"
 
 echo "==> [1/5] Building PsyCross (libpsycross.a) via CMake"
 # Drop a stale CMake cache generated under a different absolute path (e.g. from a

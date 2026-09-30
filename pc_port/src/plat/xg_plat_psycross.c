@@ -109,6 +109,19 @@ int xg_plat_input_bind_key(XgPlatButton button, const char* key_name)
     return 1;
 }
 
+void xg_plat_input_set_pad_face_swap(int swapped)
+{
+    static int s_swapped = 0;
+    PsyXControllerMapping* m = &g_cfg_controllerMapping;
+    swapped = swapped ? 1 : 0;
+    if (swapped != s_swapped) {
+        int cross = m->gc_cross;
+        m->gc_cross = m->gc_circle;
+        m->gc_circle = cross;
+        s_swapped = swapped;
+    }
+}
+
 /* --- timing -------------------------------------------------------------- */
 int xg_plat_timing_speed(void)
 {

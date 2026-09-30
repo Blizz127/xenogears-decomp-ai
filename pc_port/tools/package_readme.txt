@@ -36,6 +36,18 @@ RUNNING
   Gamescope / Steam: add xenogears.sh as a non-Steam game, or point a
   launcher (Banshee) at it with the folder as its argument.
 
+CONTROLLERS
+  Keyboard: arrows, Z confirm, V menu, C and X the other face buttons,
+  Return Start, Space Select (rebind under [input] in config.ini). A game controller works at
+  the same time: bottom face button (Xbox A / PlayStation Cross) confirms,
+  as on the US PlayStation; input.pad_confirm = circle swaps it with the
+  right button. The left stick also moves like the D-pad.
+  Steam Input is not needed. On handhelds (Steam Deck, Legion Go with
+  InputPlumber) the built-in pad is used directly even when Steam's
+  environment hides it; with several pads one drives the game, and Steam's
+  virtual pad is used only when nothing else answers. The terminal output
+  names the chosen pad ("pad: port 1 uses ...").
+
 HOW FAR IT PLAYS (tested on the build machine)
   Boot, title screen, New Game, the opening, into Lahan (field map 2).
   The world map runs partly on hand-written port code: walking from the

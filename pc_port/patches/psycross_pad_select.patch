@@ -1,0 +1,99 @@
+diff --git a/src/pad/PsyX_pad.cpp b/src/pad/PsyX_pad.cpp
+--- a/src/pad/PsyX_pad.cpp
++++ b/src/pad/PsyX_pad.cpp
+@@ -37,6 +37,10 @@
+ u_short PsyX_Pad_UpdateKeyboardInput();
+ void	PsyX_Pad_UpdateGameControllerInput(SDL_GameController* cont, LPPADRAW pad);
+ 
++/* _xeno_pad_select: sanitised Steam hints, one active pad for port 1 keyed by
++ * instance id, left stick as D-pad for the digital pad. */
++#include "../../../../src/psycross_pad_select.inl"
++
+ // Initializes SDL controllers
+ int PsyX_Pad_InitSystem()
+ {
+@@ -49,6 +53,8 @@
+ 	// init keyboard state
+ 	g_sdlKeyboardState = SDL_GetKeyboardState(NULL);
+ 
++	PsyX_Pad_ApplyHints();
++
+ 	if (SDL_InitSubSystem(SDL_INIT_GAMECONTROLLER | SDL_INIT_HAPTIC) < 0)
+ 	{
+ 		eprinterr("Failed to initialise SDL GameController subsystem!\n");
+@@ -155,46 +161,24 @@
+ // called from Psy-X SDL events
+ void PsyX_Pad_Event_ControllerAdded(Sint32 deviceId)
+ {
+-	int i;
+-	PsyXController* controller;
+-
+ 	// reinitialize haptics (why we still here?)
+ 	SDL_QuitSubSystem(SDL_INIT_HAPTIC);			// FIXME: this will crash if you already have haptics
+ 	SDL_InitSubSystem(SDL_INIT_HAPTIC);
+ 
+ 	PsyX_Pad_Debug_ListControllers();
+ 
+-	// find mapping and open
+-	for (i = 0; i < MAX_CONTROLLERS; i++)
+-	{
+-		controller = &g_controllers[i];
+-
+-		if (controller->deviceId == -1 || controller->deviceId == deviceId)
+-		{
+-			PsyX_Pad_OpenController(deviceId, i);
+-			break;
+-		}
+-	}
++	/* SDL_CONTROLLERDEVICEADDED carries a device index; the host table
++	 * tracks instance ids and picks port 1's pad in PsyX_Pad_HostSelect. */
++	PsyX_Pad_HostDeviceAdded(deviceId);
+ }
+ 
+ // called from Psy-X SDL events
+ void PsyX_Pad_Event_ControllerRemoved(Sint32 deviceId)
+ {
+-	int i;
+-	PsyXController* controller;
+-
+ 	PsyX_Pad_Debug_ListControllers();
+ 
+-	// find mapping and close
+-	for (int i = 0; i < MAX_CONTROLLERS; i++)
+-	{
+-		controller = &g_controllers[i];
+-
+-		if (controller->deviceId == deviceId)
+-		{
+-			PsyX_Pad_CloseController(i);
+-		}
+-	}
++	/* SDL_CONTROLLERDEVICEREMOVED carries an instance id. */
++	PsyX_Pad_HostDeviceRemoved((SDL_JoystickID)deviceId);
+ }
+ 
+ void PsyX_Pad_InternalPadUpdates()
+@@ -209,6 +193,10 @@
+ 
+ 	kbInputs = PsyX_Pad_UpdateKeyboardInput();
+ 
++	/* One active controller feeds port 1; port 2 has none. */
++	g_controllers[0].gc = PsyX_Pad_HostSelect();
++	g_controllers[1].gc = NULL;
++
+ 	for (int i = 0; i < MAX_CONTROLLERS; i++)
+ 	{
+ 		controller = &g_controllers[i];
+@@ -355,6 +343,12 @@
+ 	if (GetControllerButtonState(cont, mapping.gc_dpad_right) > 16384)//RIGHT
+ 		ret &= ~0x20;
+ 
++	/* The digital pad has no sticks: the left stick drives the D-pad. */
++	if (pad->id != 0x73)
++		ret &= XenoPad_StickToDpad(
++			GetControllerButtonState(cont, mapping.gc_axis_left_x),
++			GetControllerButtonState(cont, mapping.gc_axis_left_y));
++
+ 	if (GetControllerButtonState(cont, mapping.gc_l3) > 16384)//L3
+ 		ret &= ~0x2;
+ 
