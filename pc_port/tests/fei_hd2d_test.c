@@ -1,6 +1,8 @@
 #include <assert.h>
 #include "../src/fei_hd2d.c"
 
+uint8_t g_PsxRam[PSX_RAM_SIZE];
+
 static FieldActor field[1];
 static ActorData actor;
 static unsigned char sprite[0x164];

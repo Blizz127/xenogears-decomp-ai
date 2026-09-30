@@ -957,6 +957,14 @@ static void PcPort_PadTestInputInject(void)
     s_padTestFrame++;
 }
 
+/* TEST TOOLING: the XENO_PAD_TEST_INPUT schedule clock (-1 when no schedule
+ * is active), read by the XENO_PRESENT_HASH_LOG present hash
+ * (psycross_hd2d_hooks.patch) so a run can stop at a schedule frame. */
+int PcPort_PadTestInputFrame(void)
+{
+    return s_padTestState == 1 ? (int)s_padTestFrame : -1;
+}
+
 /* TEST TOOLING -- set by func_800799D4 just before MenuMain when the field
  * menu actually opens (not when D_800B21D0 blocks the opener).  PadOnControl
  * waits for this instead of trusting ADB64, which main.c clears even on the

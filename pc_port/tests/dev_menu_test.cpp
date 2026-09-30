@@ -141,6 +141,23 @@ static void ax(VPad* p, SDL_GameControllerAxis a, int v) { SDL_JoystickSetVirtua
 static void tap(VPad* p, SDL_GameControllerButton b) { btn(p, b, 1); frame(); btn(p, b, 0); frame(); }
 static const char* row(int i) { return PcPort_DevMenuRow(i); }
 
+/* Enhancement registry (HD-2D lane) test entries. */
+static int s_enhA = 0, s_enhB = 1, s_enhCalls = 0;
+static int enh_a_get(void) { return s_enhA; }
+static void enh_a_toggle(void) { s_enhA ^= 1; s_enhCalls++; }
+static int enh_b_get(void) { return s_enhB; }
+static void enh_b_toggle(void) { s_enhB ^= 1; s_enhCalls++; }
+static int enh_const_on(void) { return 1; }
+static void enh_noop(void) { s_enhCalls++; }
+static void open_enhancements(void)
+{
+    PcPort_DevMenuKey(PC_DEV_OPEN, 1);
+    for (int i = 0; i < 3; i++) PcPort_DevMenuKey(PC_DEV_DOWN, 1);
+    PcPort_DevMenuKey(PC_DEV_ACCEPT, 1);     /* OPTIONS */
+    PcPort_DevMenuKey(PC_DEV_UP, 1);         /* wraps to ENHANCEMENTS > */
+    PcPort_DevMenuKey(PC_DEV_ACCEPT, 1);
+}
+
 int main(void)
 {
     VPad pad, padB;
@@ -332,6 +349,43 @@ int main(void)
     CHECK(!PcPort_DevMenuOpen(), "Select+Start closes the menu");
     btn(&pad, SDL_CONTROLLER_BUTTON_BACK, 0); btn(&pad, SDL_CONTROLLER_BUTTON_START, 0); frame(); frame();
     CHECK(held() == 0, "combo release drained, nothing leaked");
+
+    printf("-- enhancement registry (PcPort_DevMenuRegisterEnhancement)\n");
+    CHECK(PcPort_DevMenuEnhancementCount() == 0, "registry starts empty");
+    PcPort_DevMenuRegisterEnhancement("HD-2D AREA", enh_a_get, enh_a_toggle);
+    PcPort_DevMenuRegisterEnhancement("HD-2D BLOOM", enh_b_get, enh_b_toggle);
+    PcPort_DevMenuRegisterEnhancement("", enh_a_get, enh_a_toggle);
+    PcPort_DevMenuRegisterEnhancement(NULL, enh_a_get, enh_a_toggle);
+    CHECK(PcPort_DevMenuEnhancementCount() == 2, "two entries (empty/NULL labels refused)");
+    open_enhancements();
+    CHECK(!strcmp(PcPort_DevMenuTitle(), "ENHANCEMENTS") && PcPort_DevMenuRows() == 3 &&
+          !strcmp(row(0), "HD-2D FEI: ON") && !strcmp(row(1), "HD-2D AREA: OFF") &&
+          !strcmp(row(2), "HD-2D BLOOM: ON") && PcPort_DevMenuCursor() == 0,
+          "registered rows follow HD-2D FEI: %s / %s / %s", row(0), row(1), row(2));
+    {
+        int hostBefore = s_hostCalls;
+        PcPort_DevMenuKey(PC_DEV_DOWN, 1); PcPort_DevMenuKey(PC_DEV_ACCEPT, 1);
+        CHECK(s_enhA == 1 && s_enhCalls == 1 && !strcmp(row(1), "HD-2D AREA: ON") &&
+              s_hostCalls == hostBefore && s_hd2d == 1, "selecting a registered row calls its toggle only");
+        PcPort_DevMenuKey(PC_DEV_DOWN, 1); PcPort_DevMenuKey(PC_DEV_ACCEPT, 1);
+        CHECK(s_enhB == 0 && s_enhCalls == 2 && !strcmp(row(2), "HD-2D BLOOM: OFF"), "second entry toggles");
+        PcPort_DevMenuKey(PC_DEV_DOWN, 1);
+        CHECK(PcPort_DevMenuCursor() == 0, "cursor wraps over the registered rows");
+    }
+    PcPort_DevMenuRegisterEnhancement("HD-2D AREA", enh_const_on, enh_noop);
+    CHECK(PcPort_DevMenuEnhancementCount() == 2 && !strcmp(row(1), "HD-2D AREA: ON"),
+          "re-registering a label replaces its entry");
+    for (int i = 0; i < 20; i++) {
+        char label[16];
+        snprintf(label, sizeof label, "FX %d", i);
+        PcPort_DevMenuRegisterEnhancement(label, i % 2 ? enh_const_on : NULL, enh_noop);
+    }
+    CHECK(PcPort_DevMenuEnhancementCount() == PC_DEV_MAX_ENHANCEMENTS && PcPort_DevMenuRows() == 17 &&
+          !strcmp(row(3), "FX 0") && !strcmp(row(4), "FX 1: ON") && !strcmp(row(16), "FX 13: ON"),
+          "capped at 16 entries (%d rows, last %s)", PcPort_DevMenuRows(), row(PcPort_DevMenuRows() - 1));
+    PcPort_DevMenuKey(PC_DEV_OPEN, 1);
+    CHECK(!PcPort_DevMenuOpen(), "F8 closes");
+    frame(); frame();
 
     SDL_Quit();
     printf("dev_menu_test: %s (%d failure%s)\n", s_fail ? "FAIL" : "PASS", s_fail, s_fail == 1 ? "" : "s");

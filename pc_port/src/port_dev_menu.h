@@ -74,6 +74,17 @@ typedef struct PcPortDevMenuHost {
 } PcPortDevMenuHost;
 void PcPort_DevMenuSetHost(const PcPortDevMenuHost *host);
 
+/* Enhancement registry (HD-2D lane, pc_port/src/hd2d): each entry is a row
+ * "LABEL: ON/OFF" on OPTIONS > ENHANCEMENTS after the built-in HD-2D FEI row,
+ * in registration order; selecting it calls toggle(). Up to
+ * PC_DEV_MAX_ENHANCEMENTS entries (later ones are refused with a log line);
+ * registering a label again replaces that entry. The label is copied (at most
+ * 40 characters). get may be NULL (shown without a value). Safe to call
+ * before PcPort_DevMenuInit, e.g. from a constructor. */
+#define PC_DEV_MAX_ENHANCEMENTS 16
+void PcPort_DevMenuRegisterEnhancement(const char *label, int (*get)(void), void (*toggle)(void));
+int PcPort_DevMenuEnhancementCount(void);
+
 /* Game-state actions (port_dev_menu_actions.c), reached through the cheat
  * queue as "dev <command>".  Returns 1 done, -1 refused. */
 int PcPort_DevMenuAction(const char *command);

@@ -40,7 +40,8 @@ typedef struct { char label[48]; int selectable; int action; int arg; } Row;
 enum {
     ACT_NONE, ACT_PAGE, ACT_AREA, ACT_WARP, ACT_FINISH,
     ACT_GOD, ACT_BATTLES, ACT_HEAL, ACT_GOLD, ACT_ITEMS,
-    ACT_FF, ACT_SPEED, ACT_RECORD, ACT_SHOT, ACT_QSAVE, ACT_QLOAD, ACT_HD2D
+    ACT_FF, ACT_SPEED, ACT_RECORD, ACT_SHOT, ACT_QSAVE, ACT_QLOAD, ACT_HD2D,
+    ACT_ENHANCEMENT
 };
 static Row s_rows[MAX_ROWS];
 static int s_rowCount;
@@ -66,6 +67,33 @@ static int area_seen_before(int i, const char *area)
 }
 
 static const char *on_off(int (*get)(void)) { return get && get() ? "ON" : "OFF"; }
+
+/* ---- enhancement registry --------------------------------------------- */
+typedef struct { char label[41]; int (*get)(void); void (*toggle)(void); } Enhancement;
+static Enhancement s_enh[PC_DEV_MAX_ENHANCEMENTS];
+static int s_enhCount;
+
+void PcPort_DevMenuRegisterEnhancement(const char *label, int (*get)(void), void (*toggle)(void))
+{
+    int i;
+    if (!label || !*label) return;
+    for (i = 0; i < s_enhCount; i++)
+        if (!strncmp(s_enh[i].label, label, sizeof s_enh[i].label - 1)) {
+            s_enh[i].get = get;
+            s_enh[i].toggle = toggle;
+            return;
+        }
+    if (s_enhCount >= PC_DEV_MAX_ENHANCEMENTS) {
+        fprintf(stderr, "[DEV_MENU] enhancement '%s' refused: %d already registered\n",
+                label, PC_DEV_MAX_ENHANCEMENTS);
+        return;
+    }
+    snprintf(s_enh[s_enhCount].label, sizeof s_enh[s_enhCount].label, "%s", label);
+    s_enh[s_enhCount].get = get;
+    s_enh[s_enhCount].toggle = toggle;
+    s_enhCount++;
+}
+int PcPort_DevMenuEnhancementCount(void) { return s_enhCount; }
 
 static void build_rows(void)
 {
@@ -130,6 +158,8 @@ static void build_rows(void)
     case PAGE_ENHANCE:
         if (s_host && s_host->hd2d_available && s_host->hd2d_available())
             add_row(1, ACT_HD2D, 0, "HD-2D FEI", on_off(s_host->hd2d_on));
+        for (i = 0; i < s_enhCount; i++)
+            add_row(1, ACT_ENHANCEMENT, i, s_enh[i].label, s_enh[i].get ? on_off(s_enh[i].get) : NULL);
         if (!s_rowCount) add_row(0, ACT_NONE, 0, "(NONE AVAILABLE)", NULL);
         break;
     }
@@ -298,6 +328,11 @@ static void activate(void)
     case ACT_HD2D:
         if (s_host && s_host->hd2d_toggle) s_host->hd2d_toggle();
         fprintf(stderr, "[DEV_MENU] HD-2D Fei toggled\n");
+        break;
+    case ACT_ENHANCEMENT:
+        if (r.arg >= 0 && r.arg < s_enhCount && s_enh[r.arg].toggle) s_enh[r.arg].toggle();
+        fprintf(stderr, "[DEV_MENU] enhancement '%s' toggled\n",
+                r.arg >= 0 && r.arg < s_enhCount ? s_enh[r.arg].label : "?");
         break;
     }
 }

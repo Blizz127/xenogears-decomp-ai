@@ -10,6 +10,13 @@
 #include "guest_prim_link.h"
 #include "fei_hd2d.h"
 #include "quick_checkpoint.h"
+#include "psx_memory.h"
+
+/* HD-2D lane sprite hooks (hd2d_sprite.h): weak, so this file links and
+ * behaves as before when pc_port/src/hd2d defines none of them. */
+#pragma weak PcPort_Hd2dSpriteBegin
+#pragma weak PcPort_Hd2dSpriteDraw
+#pragma weak PcPort_Hd2dSpriteEnd
 
 extern unsigned int GR_CreateRGBATexture(int, int, unsigned char *);
 extern void *g_GfxCurWorkBuffer, *g_GfxCurWorkBufferEnd;
@@ -93,11 +100,84 @@ unavailable:
     return 0;
 }
 
+/* A guest pointer (u32 in retail structs) that lies inside guest RAM, else
+ * NULL, so a stale or foreign pointer is never dereferenced. */
+static const u8 *GuestRamPtr(u32 addr, size_t bytes)
+{
+    uintptr_t p = (uintptr_t)addr, base = (uintptr_t)g_PsxRam;
+    if (!addr || p < base || p + bytes > base + (uintptr_t)PSX_RAM_SIZE) return NULL;
+    return (const u8 *)p;
+}
+
+static u32 Fnv1a(u32 h, const u8 *p, size_t n)
+{
+    while (n--) { h ^= *p++; h *= 0x01000193u; }
+    return h;
+}
+
+/* See hd2d_sprite.h: FNV-1a 32 over the package frame table (the u16 offset
+ * table, content not address) then the TIM and CLUT VRAM origins. */
+unsigned int PcPort_Hd2dSpriteIdentity(const void *sprite)
+{
+    const u8 *pkg, *frames;
+    u32 h = 0x811C9DC5u;
+    u8 xy[8];
+    int n, i;
+    if (!sprite) return h;
+    pkg = GuestRamPtr(*(const u32 *)((const u8 *)sprite + 0x24), 0x14);
+    if (!pkg) return h;
+    frames = GuestRamPtr(*(const u32 *)pkg, 2);
+    if (frames) {
+        n = ((frames[0] | frames[1] << 8) & 0x1FF) + 1;
+        if (n > 512) n = 512;
+        if (GuestRamPtr(*(const u32 *)pkg, (size_t)n * 2)) h = Fnv1a(h, frames, (size_t)n * 2);
+    }
+    for (i = 0; i < 8; ++i) xy[i] = pkg[4 + i]; /* tex x, tex y, clut x, clut y */
+    return Fnv1a(h, xy, sizeof xy);
+}
+
+static void Hd2dSpriteBegin(PcPortFeiHd2dBatch *b, void *sprite)
+{
+    int i;
+    b->hookState = 0;
+    b->part = 0;
+    if (!PcPort_Hd2dSpriteBegin && !PcPort_Hd2dSpriteDraw && !PcPort_Hd2dSpriteEnd) return;
+    b->info.identity = PcPort_Hd2dSpriteIdentity(sprite);
+    b->info.frame = *(s16 *)((u8 *)sprite + 0x34);
+    b->info.actor = -1;
+    b->info.sprite = sprite;
+    if (g_FieldActors)
+        for (i = 0; i < g_FieldNumActors; ++i)
+            if ((uintptr_t)sprite == g_FieldActors[i].pSpriteData) { b->info.actor = i; break; }
+    b->hookState = 1;
+    if (PcPort_Hd2dSpriteDraw && (!PcPort_Hd2dSpriteBegin || PcPort_Hd2dSpriteBegin(&b->info)))
+        b->hookState = 2;
+}
+
+/* Offer one retail part to the lane first; 1 = it drew the part. */
+static int Hd2dSpriteDraw(PcPortFeiHd2dBatch *b, void *poly, void *ot)
+{
+    const POLY_FT4 *p = poly;
+    PcPortHd2dRetailQuad q;
+    int part = b->part++;
+    if (b->hookState != 2) return 0;
+    q.x[0] = p->x0; q.y[0] = p->y0; q.u[0] = p->u0; q.v[0] = p->v0;
+    q.x[1] = p->x1; q.y[1] = p->y1; q.u[1] = p->u1; q.v[1] = p->v1;
+    q.x[2] = p->x2; q.y[2] = p->y2; q.u[2] = p->u2; q.v[2] = p->v2;
+    q.x[3] = p->x3; q.y[3] = p->y3; q.u[3] = p->u3; q.v[3] = p->v3;
+    q.tpage = p->tpage;
+    q.clut = p->clut;
+    q.ot = ot;
+    q.poly = poly;
+    return PcPort_Hd2dSpriteDraw(&b->info, part, &q) != 0;
+}
+
 void PcPort_FeiHd2dBegin(PcPortFeiHd2dBatch *b, void *sprite, int parts)
 {
     ActorData *actor;
     b->active = b->count = 0;
     b->sprite = sprite;
+    Hd2dSpriteBegin(b, sprite);
     if (!PcPort_FeiHd2dEnabled() || !PcPort_QuickCheckpointFieldIsActive() ||
         !D_800ADB04 || !g_FieldActors || g_PlayerActorIndex < 0 ||
         g_PlayerActorIndex >= g_FieldNumActors) return;
@@ -114,13 +194,22 @@ void PcPort_FeiHd2dBegin(PcPortFeiHd2dBatch *b, void *sprite, int parts)
 
 int PcPort_FeiHd2dCapture(PcPortFeiHd2dBatch *b, void *poly, void *ot)
 {
+    if (b->hookState && Hd2dSpriteDraw(b, poly, ot)) return 1;
     if (!b->active) return 0;
     b->prims[b->count] = poly;
     b->ots[b->count++] = ot;
     return 1;
 }
 
+static void FeiEnd(PcPortFeiHd2dBatch *b);
+
 void PcPort_FeiHd2dEnd(PcPortFeiHd2dBatch *b)
+{
+    FeiEnd(b);
+    if (b->hookState && PcPort_Hd2dSpriteEnd) PcPort_Hd2dSpriteEnd(&b->info);
+}
+
+static void FeiEnd(PcPortFeiHd2dBatch *b)
 {
     int i, j, minX = INT_MAX, minY = INT_MAX, maxX = INT_MIN, maxY = INT_MIN;
     int cell, angle, height, width, cx, walking;
