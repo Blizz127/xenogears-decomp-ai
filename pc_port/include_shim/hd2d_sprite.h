@@ -1,4 +1,4 @@
-/* HD-2D enhancement lane: hook contract (pc_port/src/hd2d/*.c defines these).
+/* HD-2D enhancement lane: hook contract (C sources in pc_port/src/hd2d).
  *
  * Every hook is a weak reference at its call site: with no definition linked
  * the port renders exactly as retail. A definition must do nothing (return 0)
