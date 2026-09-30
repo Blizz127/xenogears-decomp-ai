@@ -2760,8 +2760,11 @@ int func_8003BDFC(int flags)
 
 extern void* g_FieldScriptMemory;
 
+extern void PcPort_RouteLogScriptWrite(int address, int value);
+extern int PcPort_RouteLogOn(void);
 void FieldScriptMemoryWriteU16(int index, int value)
 {
+    if (PcPort_RouteLogOn()) PcPort_RouteLogScriptWrite(index, value); /* XENO_ROUTE_LOG only */
     ((u16*)&g_FieldScriptMemory)[index >> 1] = value;
 }
 

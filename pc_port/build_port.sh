@@ -848,6 +848,7 @@ PORT_SOURCES=(
     pc_port/src/port_dev_menu.c
     pc_port/src/port_dev_menu_actions.c
     pc_port/src/port_dev_menu_warps.c
+    pc_port/src/port_dev_menu_steps.c
     pc_port/src/krom_mapping.c
     pc_port/src/psx_memory.c
     pc_port/src/battle_mips_adapter.c
@@ -862,6 +863,7 @@ PORT_SOURCES=(
     pc_port/src/god_mode.c
     pc_port/src/file_menu_notice.c
     pc_port/src/memcard_port.c
+    pc_port/src/route_recorder.c  # TEST TOOLING: XENO_ROUTE_LOG progression recorder
     pc_port/src/field_pos_diag.c  # TEST TOOLING: XENO_FIELD_POS_DIAG walk telemetry
     pc_port/src/field_warp_diag.c # TEST TOOLING: XENO_FIELD_WARP one-shot debug teleport
     pc_port/src/debug_battle_warp.c # TEST TOOLING: XENO_BATTLE_WARP_FILE battle launcher

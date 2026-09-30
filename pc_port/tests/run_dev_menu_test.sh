@@ -23,5 +23,6 @@ g++ -std=gnu++17 -O1 -g -Wall -Wno-narrowing -fpermissive "${INC[@]}" $SDL_CFLAG
 g++ -std=gnu++17 -O1 -g -Wall "${INC[@]}" $SDL_CFLAGS -c pc_port/tests/dev_menu_test.cpp -o "$OUT/test.o"
 gcc -std=gnu17 -O1 -g -Wall -Wextra -Ipc_port/src -c pc_port/src/port_dev_menu.c -o "$OUT/menu.o"
 gcc -std=gnu17 -O1 -g -Wall -Wextra -Ipc_port/src -c pc_port/src/port_dev_menu_warps.c -o "$OUT/warps.o"
-g++ "$OUT/test.o" "$OUT/PsyX_pad.o" "$OUT/menu.o" "$OUT/warps.o" $(pkg-config --libs sdl2) -o "$OUT/dev_menu_test"
+gcc -std=gnu17 -O1 -g -Wall -Wextra -Ipc_port/src -c pc_port/src/port_dev_menu_steps.c -o "$OUT/steps.o"
+g++ "$OUT/test.o" "$OUT/PsyX_pad.o" "$OUT/menu.o" "$OUT/warps.o" "$OUT/steps.o" $(pkg-config --libs sdl2) -o "$OUT/dev_menu_test"
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy timeout 60s "$OUT/dev_menu_test"
