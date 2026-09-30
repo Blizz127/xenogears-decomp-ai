@@ -219,7 +219,8 @@ int main(void)
     tap(&pad, SDL_CONTROLLER_BUTTON_B);
     tap(&pad, SDL_CONTROLLER_BUTTON_DPAD_DOWN); tap(&pad, SDL_CONTROLLER_BUTTON_A);
     CHECK(!strcmp(PcPort_DevMenuTitle(), "CHEATS") && !strcmp(row(0), "GOD MODE: OFF") &&
-          !strcmp(row(1), "RANDOM BATTLES: ON") && PcPort_DevMenuRows() == 5, "CHEATS page: %s / %s ...", row(0), row(1));
+          !strcmp(row(1), "RANDOM BATTLES: ON") && PcPort_DevMenuRows() == 2,
+          "CHEATS page (unverified refill/gold/items hidden): %s / %s, %d rows", row(0), row(1), PcPort_DevMenuRows());
     tap(&pad, SDL_CONTROLLER_BUTTON_B);
     tap(&pad, SDL_CONTROLLER_BUTTON_DPAD_DOWN); tap(&pad, SDL_CONTROLLER_BUTTON_A);
     CHECK(!strcmp(PcPort_DevMenuTitle(), "OPTIONS") && !strcmp(row(0), "FAST-FORWARD: OFF") &&
@@ -283,6 +284,9 @@ int main(void)
     CHECK(held() == PS_CROSS, "then the keyboard reaches the game again (Z -> Cross)");
 
     printf("-- actions go through the queue / host (after the identity check)\n");
+    /* Refill / gold / items are hidden unless XENO_DEV_MENU_UNVERIFIED=1; the
+     * queue wiring is still exercised with it set. */
+    setenv("XENO_DEV_MENU_UNVERIFIED", "1", 1);
     PcPort_DevMenuKey(PC_DEV_OPEN, 1);
     PcPort_DevMenuKey(PC_DEV_DOWN, 1); PcPort_DevMenuKey(PC_DEV_DOWN, 1); PcPort_DevMenuKey(PC_DEV_ACCEPT, 1);
     frame();
