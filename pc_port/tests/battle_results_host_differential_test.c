@@ -622,6 +622,188 @@ static void shape_801E41B4(unsigned index, uint32_t args[4])
     }
 }
 
+/* ---- leaves batch 3 ---------------------------------------------------- */
+
+static uint32_t dirty_byte_arg(uint8_t value)
+{
+    return (rnd() & 1u) ? (rnd() << 8) | value : value;
+}
+
+/* func_801E1370(id a0, count a1, keys a2, values a3, n = byte at entry
+ * sp+0x10).  In play the tables are the five pairs in the native g_GameState
+ * copy that 0x801E1444 passes; the shaper also uses guest buffers, aliasing
+ * tables and every n.  The argument word's upper bytes are random: only the
+ * lbu'd low byte may count. */
+static void shape_801E1370(unsigned index, uint32_t args[4])
+{
+    static const uint32_t tables[5][3] = {
+        {0x8006F3D0u, 0x8006F36Cu, 100u}, {0x8006F4FCu, 0x8006F434u, 200u},
+        {0x8006F65Au, 0x8006F5C4u, 150u}, {0x8006F754u, 0x8006F6F0u, 100u},
+        {0x8006F84Eu, 0x8006F7B8u, 150u},
+    };
+    unsigned j, which = rnd() % 5u;
+    uint32_t keys, vals, n;
+    uint8_t id;
+
+    for (j = 0; j < 4; j++)
+        args[j] = rnd();
+    case_sp = BATTLE_STACK_TOP - 8u * (rnd() % 64u);
+    keys = tables[which][0];
+    vals = tables[which][1];
+    n = tables[which][2];
+    if (index >= 8 && index % 3u != 0) {
+        keys = guest_buffer(0x108u) + (rnd() & 3u);
+        vals = guest_buffer(0x108u) + 4u + (rnd() & 3u);
+        if (index % 7u == 1)
+            vals = keys + (rnd() % 9u) - 4u; /* overlapping tables */
+        n = (uint32_t[]){0u, 1u, 2u, 3u, 8u, 100u, 150u, 200u, 255u,
+                         rnd() & 0xFFu}[rnd() % 10u];
+    }
+    id = (uint8_t)((uint32_t[]){0u, 1u, 0xFFu, rnd(), rnd() & 3u}[rnd() % 5u]);
+    args[0] = dirty_byte_arg(id);
+    args[1] = (uint32_t[]){rnd() ^ (rnd() << 24), rnd() & 0xFFu, 99u, 100u, 1u,
+                           0u}[rnd() % 6u];
+    for (j = 0; j < 256u; j++) /* every real table fits below 0x8006F98C */
+        poke8(keys + j, (uint8_t)((uint32_t[]){0u, id, rnd(), rnd() & 3u,
+                                               id}[rnd() % 5u]));
+    switch (index) {
+    case 0: /* n == 0: nothing is read past the argument */
+        n = 0;
+        break;
+    case 1: /* hit, masked sum < 100: the FULL a1 is added (sb keeps the low byte) */
+        args[0] = 0x41u;
+        args[1] = 0x12345605u;
+        for (j = 0; j < n; j++) poke8(keys + j, 0x30);
+        poke8(keys + 5u, 0x41);
+        poke8(vals + 5u, 10);
+        break;
+    case 2: /* hit, masked sum >= 100 stores 99 */
+        args[0] = 0xFFFFFF41u;
+        args[1] = 5u;
+        for (j = 0; j < n; j++) poke8(keys + j, 0x30);
+        poke8(keys + 7u, 0x41);
+        poke8(vals + 7u, 95);
+        break;
+    case 3: /* miss, the only free key is the last one */
+        args[0] = 0x42u;
+        for (j = 0; j < n; j++) poke8(keys + j, 0x30);
+        poke8(keys + n - 1u, 0);
+        break;
+    case 4: /* miss, table full (keys 1..200, id 0xF0): no store */
+        args[0] = 0xF0u;
+        for (j = 0; j < n; j++) poke8(keys + j, (uint8_t)(1u + j % 200u));
+        break;
+    case 5: /* id 0 matches the first zero key as a hit */
+        args[0] = 0xAB00u;
+        args[1] = 0xFFFFFF63u;
+        for (j = 0; j < n; j++) poke8(keys + j, (uint8_t)(j < 9u ? 7u : 0u));
+        break;
+    case 6: /* n = 255 in a word with every upper bit set, guest tables */
+        keys = guest_buffer(0x100u);
+        vals = guest_buffer(0x100u);
+        n = 255u;
+        break;
+    case 7: /* values overlap keys by one byte */
+        keys = guest_buffer(0x104u);
+        vals = keys + 1u;
+        n = (uint32_t)(1u + rnd() % 255u);
+        break;
+    default:
+        break;
+    }
+    args[2] = keys;
+    args[3] = vals;
+    poke32(case_sp + 0x10u, (index == 6 ? 0xFFFFFF00u : rnd() << 8) | n);
+}
+
+/* func_801E2EB0(share a0, slot a1, mode a2), both s16-truncated.  Reads the
+ * slot record weights (word 0x801E44C8 + 0x170*(s16)a1 + 0x158/0x159), the
+ * 0x8000 flag at (word 0x801E44C4) + 0x22B6 (g_GameState in play) and the
+ * 0x1000/0x2000 flags at (word 0x801E44EC) + 0x32; writes 0x801E44F0/F4
+ * and word 0x801E44C8 + 8*(s16)a1 + 0xFE8/0xFEC.  Slot indices cover the
+ * real 0..2, the early path's 0xFF, and negative s16 values. */
+static void shape_801E2EB0(unsigned index, uint32_t args[4])
+{
+    static const uint32_t slots[] = {0u, 1u, 2u, 0xFFu, 0xFFFFu, 0xFFFEu,
+                                     0x10002u, 0xABCD0001u};
+    static const uint32_t modes[] = {0u, 0u, 0u, 1u, 0x10001u, 0xFFFF0001u,
+                                     2u, 0xFFFFu};
+    static const uint8_t weights[] = {0u, 1u, 2u, 3u, 255u};
+    uint32_t t1, g, e;
+    int k;
+
+    args[0] = (uint32_t[]){0u, 1u, 3u, 0xFFFFFFFFu, 0x55555556u, rnd() ^ (rnd() << 24),
+                           rnd() % 100000u}[rnd() % 7u];
+    args[1] = slots[rnd() % 8u];
+    args[2] = (rnd() & 1u) ? modes[rnd() % 8u] : rnd() ^ (rnd() << 24);
+    args[3] = rnd();
+    t1 = guest_buffer(0x18000u) + 0x400u;
+    g = (rnd() & 3u) ? 0x8006D634u : guest_buffer(0x2400u);
+    e = guest_buffer(0x40u);
+    if (index == 7 || (index >= 8 && index % 9u == 0))
+        e = 0x8006E000u; /* the flag record inside the native copy */
+    poke32(0x801E44C8u, t1);
+    poke32(0x801E44C4u, g);
+    poke32(0x801E44ECu, e);
+    for (k = -2; k <= 3; k++) {
+        poke8(t1 + 0x170u * (uint32_t)k + 0x158u, weights[rnd() % 5u]);
+        poke8(t1 + 0x170u * (uint32_t)k + 0x159u, weights[rnd() % 5u]);
+    }
+    poke8(t1 + 0x170u * 0xFFu + 0x158u, (uint8_t)rnd());
+    poke8(t1 + 0x170u * 0xFFu + 0x159u, (uint8_t)rnd());
+    poke16(g + 0x22B6u, (uint16_t)(rnd() & ((rnd() & 1u) ? 0x7FFFu : 0xFFFFu)));
+    poke16(e + 0x32u, (uint16_t)((uint32_t[]){0u, 0x1000u, 0x2000u, 0x3000u,
+                                              rnd()}[rnd() % 5u]));
+    switch (index) {
+    case 0: /* the caller's early path: a2 = 1, a1 = 0xFF */
+        args[1] = 0xFFu;
+        args[2] = 1u;
+        break;
+    case 1: /* s16 truncation of the mode: 0x10001 is 1 */
+        args[2] = 0x10001u;
+        break;
+    case 2: /* both weights 0 -> 1/1, the full 32-bit share */
+        args[0] = 0xFFFFFFFFu;
+        args[1] = 1u;
+        args[2] = 0u;
+        poke8(t1 + 0x170u + 0x158u, 0);
+        poke8(t1 + 0x170u + 0x159u, 0);
+        break;
+    case 3: /* the 0x8000 override with a zero share: both 0 -> 1 */
+        args[0] = 0u;
+        args[1] = 2u;
+        args[2] = 0u;
+        poke16(g + 0x22B6u, 0x8000u);
+        poke16(e + 0x32u, 0);
+        break;
+    case 4: /* both x1.5 boosts on huge values (32-bit wrap) */
+        args[0] = 0xFFFFFFF0u;
+        args[1] = 0u;
+        args[2] = 0u;
+        poke16(g + 0x22B6u, 0x8000u);
+        poke16(e + 0x32u, 0x3000u);
+        break;
+    case 5: /* slot -1 (a1 = 0xFFFF): records below the slot base */
+        args[1] = 0xFFFFu;
+        args[2] = 0u;
+        break;
+    case 6: /* weights 255/255 */
+        args[1] = 0u;
+        args[2] = 0u;
+        poke8(t1 + 0x158u, 255);
+        poke8(t1 + 0x159u, 255);
+        break;
+    case 7: /* a0 = 0, no flags: both 0 -> 1 */
+        args[0] = 0u;
+        args[2] = 0u;
+        poke16(g + 0x22B6u, 0);
+        poke16(e + 0x32u, 0);
+        break;
+    default:
+        break;
+    }
+}
+
 typedef struct LeafSpec {
     uint32_t address;
     void (*shape)(unsigned index, uint32_t args[4]);
@@ -636,6 +818,8 @@ static const LeafSpec kSpecs[] = {
     {0x801E2888u, shape_801E2888, 8},
     {0x801E403Cu, shape_801E403C, 6},
     {0x801E41B4u, shape_801E41B4, 5},
+    {0x801E1370u, shape_801E1370, 8},
+    {0x801E2EB0u, shape_801E2EB0, 8},
 };
 
 /* ---- running one side --------------------------------------------------- */

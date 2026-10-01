@@ -149,6 +149,19 @@ static void br_div(uint32_t rs, uint32_t rt, uint32_t *hi, uint32_t *lo)
     }
 }
 
+/* divu rs, rt.  R3000A results the interpreter reproduces: rt == 0 gives
+ * LO = 0xFFFFFFFF, HI = rs; otherwise the unsigned quotient/remainder. */
+static void br_divu(uint32_t rs, uint32_t rt, uint32_t *hi, uint32_t *lo)
+{
+    if (rt == 0) {
+        *lo = 0xFFFFFFFFu;
+        *hi = rs;
+    } else {
+        *lo = rs / rt;
+        *hi = rs % rt;
+    }
+}
+
 /* func_801DF910 (0x801DF910..0x801DFA34, leaf, 74 instructions, no frame).
  * Called once, from 0x801E04C4 (jal, nop delay slot) in 0x801E03FC's row
  * loop, with a0/a1 = two lbu'd bytes and a2 = 0x801E03FC's saved copy of
@@ -722,5 +735,242 @@ uint32_t battle_results_func_801E41B4(uint32_t a0, uint32_t a1, uint32_t a2,
     BattleResults_SetExitReg(4, r_a0);
     BattleResults_SetExitReg(5, r_a1);
     BattleResults_SetExitReg(6, r_a2);
+    return v0;
+}
+
+/* ---- leaves batch 3 ----------------------------------------------------- */
+
+/* func_801E1370 (0x801E1370..0x801E1440, leaf, 53 instructions).
+ * Called once, from 0x801E1540 (jal, nop delay slot) in 0x801E1444, with
+ * a0 = id byte, a1 = count byte, a2 = key table, a3 = value table (one of
+ * the five inventory table pairs in the native g_GameState copy), and a
+ * FIFTH argument n, the table length, in the caller's outgoing argument word
+ * at entry sp+0x10 (stored by 0x801E14E0/0x801E1520/0x801E153C); it is read
+ * with lbu, so only its low byte counts.  No branch, J or data word targets
+ * the entry.  The 8-byte frame (addiu sp,-8 / +8) holds nothing.
+ *
+ *   1370  sp -= 8 ; t5 = lbu 0x18(sp) (= entry sp+0x10) ; v0 = t5 & 0xFF
+ *   1380  blez v0 -> 13FC (delay t1 = 0)
+ *   1388  t3 = a0&FF ; t4 = a1&FF ; t6 = 99 ; t2 = v0 ; v1 = a3 ; t0 = a2
+ *   13A0  v0 = lbu (t0) ; bne v0, t3 -> 13E4
+ *   13B0    v0 = lbu (v1) + t4 ; slti v0 < 100 -> 13D0
+ *   13C8      j 13F8 (delay sb 99, (v1))
+ *   13D0      v0 = a1 + lbu (v1) ; j 13F8 (delay sb v0, (v1))
+ *   13E4  v1++ ; t1++ ; slt t1 < t2 -> 13A0 (delay t0++)
+ *   13F8  v0 = t5 & 0xFF
+ *   13FC  bne t1, v0 -> 1438 ; beq v0, 0 -> 1438 (delay v1 = v0 + a3)
+ *   140C  v0 = lbu (a2) ; bne v0, 0 -> 1428
+ *   141C    sb a0, (a2) ; j 1438 (delay sb a1, (a3))
+ *   1428  a3++ ; slt a3 < v1 -> 140C (delay a2++)
+ *   1438  sp += 8 ; jr ra
+ * A hit adds the FULL a1 (not a1&FF) to the stored byte when the masked sum
+ * is below 100, else stores 99; a miss stores a0/a1 into the first zero key
+ * (sb, low bytes).  The loop compares are signed (slt), as br_slt does.
+ *
+ * v0 on return: n on a hit; 0 otherwise (n == 0, the free key's 0 byte, or
+ * the last slt).
+ * Exit registers: t1 (0 if n == 0, else the hit index or n), t5 = n, v1 (a3
+ * if n == 0, a3 + hit index on a hit, a3 + n on a miss) always; t0
+ * (a2 + hit index, or a2 + n), t2 = n, t3 = a0&FF, t4 = a1&FF, t6 = 99 only
+ * if n != 0 (else as on entry); a2/a3 advanced by the free-slot scan on a
+ * miss (unchanged otherwise). */
+uint32_t battle_results_func_801E1370(uint32_t a0, uint32_t a1, uint32_t a2,
+                                      uint32_t a3)
+{
+    uint32_t sp = BattleResults_EntrySp() - 8u;
+    uint32_t v0, v1 = 0, t0 = 0, t1, t2 = 0, t3 = 0, t4 = 0, t5, t6 = 0;
+    uint32_t r_a2 = a2, r_a3 = a3;
+    int scanned = 0;
+
+    t5 = BR_LBU(sp + 0x18u);
+    v0 = t5 & 0xFFu;
+    t1 = 0;
+    if (v0 != 0) { /* blez: v0 is 0..255 */
+        scanned = 1;
+        t3 = a0 & 0xFFu;
+        t4 = a1 & 0xFFu;
+        t6 = 0x63u;
+        t2 = v0;
+        v1 = a3;
+        t0 = a2;
+        for (;;) {
+            v0 = BR_LBU(t0);
+            if (v0 == t3) {
+                v0 = BR_LBU(v1);
+                v0 = v0 + t4;
+                v0 = (uint32_t)br_slt(v0, 100u);
+                if (v0 == 0) {
+                    BR_SB(v1, t6);
+                } else {
+                    v0 = BR_LBU(v1);
+                    v0 = a1 + v0;
+                    BR_SB(v1, v0);
+                }
+                break;
+            }
+            v1++;
+            t1++;
+            v0 = (uint32_t)br_slt(t1, t2);
+            t0++;
+            if (v0 == 0)
+                break;
+        }
+        v0 = t5 & 0xFFu;
+    }
+    if (t1 == v0) {
+        v1 = v0 + r_a3;
+        if (v0 != 0) {
+            do {
+                v0 = BR_LBU(r_a2);
+                if (v0 == 0) {
+                    BR_SB(r_a2, a0);
+                    BR_SB(r_a3, a1);
+                    break;
+                }
+                r_a3++;
+                v0 = (uint32_t)br_slt(r_a3, v1);
+                r_a2++;
+            } while (v0 != 0);
+        }
+    }
+
+    BattleResults_SetExitReg(3, v1);
+    BattleResults_SetExitReg(6, r_a2);
+    BattleResults_SetExitReg(7, r_a3);
+    BattleResults_SetExitReg(9, t1);
+    BattleResults_SetExitReg(13, t5);
+    if (scanned) {
+        BattleResults_SetExitReg(8, t0);
+        BattleResults_SetExitReg(10, t2);
+        BattleResults_SetExitReg(11, t3);
+        BattleResults_SetExitReg(12, t4);
+        BattleResults_SetExitReg(14, t6);
+    }
+    return v0;
+}
+
+/* func_801E2EB0 (0x801E2EB0..0x801E3088, leaf, 119 instructions, no frame).
+ * Called once, from 0x801E2CB4 (jal, nop delay slot) in 0x801E2ACC, either
+ * with a2 = 0, a1 = party slot 0..2, a0 = a divu quotient, or with a2 = 1,
+ * a1 = 0xFF, a0 = s3 >> 1.  No branch, J or data word targets it.
+ *
+ * Splits a0 into the EXP/SP pair at the mutable module words 0x801E44F0 /
+ * 0x801E44F4 (guest RAM):
+ *   (s16)a2 == 1:  both = (3*a0) >> 2 (wrapping 32-bit), nothing else.
+ *   otherwise, k = (s16)a1, R = word 0x801E44C8 + 0x170*k (wrapping):
+ *     w0 = max(R[0x158], 1), w1 = max(R[0x159], 1) (slti < 2 -> 1)
+ *     44F0 = lo(a0*w0) / (w0+w1), 44F4 = lo(a0*w1) / (w0+w1)   (mult, divu)
+ *     (word 0x801E44C4)->u16[0x22B6] & 0x8000: both = a0
+ *     a zero word -> 1 (each re-read)
+ *     (word 0x801E44EC)->u16[0x32] & 0x2000: both *= 1.5 (x + x>>1)
+ *     same u16 re-read & 0x1000: 44F4 *= 1.5
+ *     word 0x801E44C8 + 8*k + 0xFE8/0xFEC = 44F0/44F4 (re-read)
+ * 0x801E44C4 normally holds g_GameState (0x8006D634), so the 0x22B6 flag is
+ * read from the native copy -- through the accessor.  The divisor is >= 2,
+ * but br_divu reproduces the R3000A zero-divisor result anyway.
+ *
+ * v0 on return: 3*a0 on the a2 == 1 path; else word 0x801E44C8 + 8*k.
+ * Exit registers: at = 0x801E0000, a2 = (s16) of the deciding register,
+ * a3, t0 = 1 always (a3 = (3*a0)>>2 on the early path, a0 otherwise);
+ * on the main path also v1 = 44F0, a0 = 44F4 (the final re-reads),
+ * a1 = word 0x801E44EC, a2 = k, t1 = word 0x801E44C8 and HI:LO = the second
+ * divu; the early path leaves v1, a0, a1, t1 and HI/LO as on entry. */
+uint32_t battle_results_func_801E2EB0(uint32_t a0, uint32_t a1, uint32_t a2,
+                                      uint32_t a3)
+{
+    uint32_t hi, lo, v0, v1, r_a0, r_a1, r_a2, r_a3, t0, t1, c;
+
+    (void)a3;
+    r_a2 = br_sra(a2 << 16, 16);
+    t0 = 1u;
+    r_a3 = a0;
+    if (r_a2 == t0) {
+        v0 = r_a3 << 1;
+        v0 = v0 + r_a3;
+        r_a3 = v0 >> 2;
+        BR_SW(0x801E44F0u, r_a3);
+        BR_SW(0x801E44F4u, r_a3);
+        BattleResults_SetExitReg(1, 0x801E0000u);
+        BattleResults_SetExitReg(6, r_a2);
+        BattleResults_SetExitReg(7, r_a3);
+        BattleResults_SetExitReg(8, t0);
+        return v0;
+    }
+    v0 = a1 << 16;
+    r_a2 = br_sra(v0, 16);
+    v0 = r_a2 << 1;
+    v0 = v0 + r_a2;
+    v0 = v0 << 3;
+    v0 = v0 - r_a2;
+    t1 = BR_LW(0x801E44C8u);
+    v0 = v0 << 4;
+    v0 = t1 + v0;
+    r_a0 = BR_LBU(v0 + 0x158u);
+    v1 = BR_LBU(v0 + 0x159u);
+    c = (uint32_t)br_slt(r_a0, 2u);
+    v0 = (uint32_t)br_slt(v1, 2u); /* beq delay slot */
+    if (c != 0)
+        r_a0 = 1u;
+    c = v0;
+    v0 = r_a0;                     /* beq delay slot */
+    if (c != 0)
+        v1 = 1u;
+    br_mult(r_a3, v0, &hi, &lo);
+    r_a0 = lo;
+    v0 = v0 + v1;
+    br_divu(r_a0, v0, &hi, &lo);
+    r_a0 = lo;
+    br_mult(r_a3, v1, &hi, &lo);
+    v1 = lo;
+    br_divu(v1, v0, &hi, &lo);
+    v1 = lo;
+    v0 = BR_LW(0x801E44C4u);
+    v0 = BR_LHU(v0 + 0x22B6u) & 0x8000u;
+    BR_SW(0x801E44F0u, r_a0);
+    BR_SW(0x801E44F4u, v1);
+    if (v0 != 0) {
+        BR_SW(0x801E44F0u, r_a3);
+        BR_SW(0x801E44F4u, r_a3);
+    }
+    v0 = BR_LW(0x801E44F0u);
+    if (v0 == 0)
+        BR_SW(0x801E44F0u, t0);
+    v0 = BR_LW(0x801E44F4u);
+    if (v0 == 0)
+        BR_SW(0x801E44F4u, t0);
+    r_a1 = BR_LW(0x801E44ECu);
+    v0 = BR_LHU(r_a1 + 0x32u) & 0x2000u;
+    if (v0 != 0) {
+        v1 = BR_LW(0x801E44F0u);
+        r_a0 = BR_LW(0x801E44F4u);
+        v0 = (v1 >> 1) + v1;
+        BR_SW(0x801E44F0u, v0);
+        v0 = (r_a0 >> 1) + r_a0;
+        BR_SW(0x801E44F4u, v0);
+    }
+    v0 = BR_LHU(r_a1 + 0x32u) & 0x1000u;
+    c = v0;
+    v0 = r_a2 << 3;                /* beq delay slot */
+    if (c != 0) {
+        v1 = BR_LW(0x801E44F4u);
+        v0 = (v1 >> 1) + v1;
+        BR_SW(0x801E44F4u, v0);
+        v0 = r_a2 << 3;
+    }
+    v1 = BR_LW(0x801E44F0u);
+    r_a0 = BR_LW(0x801E44F4u);
+    v0 = t1 + v0;
+    BR_SW(v0 + 0xFE8u, v1);
+    BR_SW(v0 + 0xFECu, r_a0);
+
+    BattleResults_SetExitReg(1, 0x801E0000u);
+    BattleResults_SetExitReg(3, v1);
+    BattleResults_SetExitReg(4, r_a0);
+    BattleResults_SetExitReg(5, r_a1);
+    BattleResults_SetExitReg(6, r_a2);
+    BattleResults_SetExitReg(7, r_a3);
+    BattleResults_SetExitReg(8, t0);
+    BattleResults_SetExitReg(9, t1);
+    BattleResults_SetExitHiLo(hi, lo);
     return v0;
 }
