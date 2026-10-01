@@ -69,6 +69,7 @@ typedef struct HostRange {
 
 typedef struct BattleMipsRuntime BattleMipsRuntime;
 #include "battle_file1_controller.h"
+#include "battle_results_gate.h"
 
 /* One resolved-call cache slot.  Every guest call that is not found in the
  * bridge table used to fall back to a `func_%08X` dlsym on EVERY call, plus a
@@ -95,6 +96,8 @@ struct BattleMipsRuntime {
      * C body on identical guest RAM and compare the two. */
     int force_interpret;
     BattleFile1Identity file1;
+    /* Identity gate for the adopted RESULTS module routines. */
+    BattleResultsIdentity results;
     PcPortMipsCpu *bridge_cpu;
     ResolvedFunction functions[1024];
     size_t function_count;
@@ -439,6 +442,19 @@ static int runtime_read(void *opaque, uint32_t address, unsigned width,
     return 0;
 }
 
+/* Store-side invalidation of the identity-gated modules, for a store about to
+ * land at resolved host pointer p.  Shared by the interpreter's bus and by
+ * the adopted results bodies' accessor (PcPort_BattleMipsResolve), so a
+ * native store has exactly the effect on module identity a retail one has. */
+static void runtime_note_store(BattleMipsRuntime *runtime, const uint8_t *p,
+                               unsigned width)
+{
+    if (runtime->file1.verified && (uintptr_t)p + width > (uintptr_t)g_PsxRam + 0x1e5000u &&
+        (uintptr_t)p < (uintptr_t)g_PsxRam + 0x1e9b5cu)
+        file1_invalidate(runtime);
+    results_note_store(runtime, p, width);
+}
+
 static int runtime_write(void *opaque, uint32_t address, unsigned width,
                          uint32_t value)
 {
@@ -446,9 +462,7 @@ static int runtime_write(void *opaque, uint32_t address, unsigned width,
     uint8_t *p = resolve_memory(runtime, address, width, 1);
     if (p == NULL)
         return -1;
-    if (runtime->file1.verified && (uintptr_t)p + width > (uintptr_t)g_PsxRam + 0x1e5000u &&
-        (uintptr_t)p < (uintptr_t)g_PsxRam + 0x1e9b5cu)
-        file1_invalidate(runtime);
+    runtime_note_store(runtime, p, width);
     store_le(p, width, value);
     return 0;
 }
@@ -910,6 +924,16 @@ static int runtime_bridge_call(void *opaque, PcPortMipsCpu *cpu, uint32_t target
     if (runtime->force_interpret && target_is_guest_code(target))
         return 0;
 
+    /* Adopted RESULTS module routines (battle_results_gate.inc).  Ahead of the
+     * per-target cache below, which keys on the address alone: other overlays
+     * load over 0x801DE000.., so only the module-identity gate may decide
+     * whether the retail results code is what is resident.  Returns 0 (run
+     * the retail bytes) for anything not allowlisted or not proven. */
+    {
+        int adopted = results_try_host(runtime, cpu, target);
+        if (adopted != 0) return adopted;
+    }
+
     if (target == 0x801e6ce8u) {
         int adopted = file1_try_controller(runtime, cpu);
         if (adopted != 0) return adopted;
@@ -1101,6 +1125,7 @@ static int runtime_bridge_call(void *opaque, PcPortMipsCpu *cpu, uint32_t target
     if (strcmp(resolved->name, "DrawOTag") == 0)
         return bridge_draw_otag(cpu);
     file1_before_archive(runtime, cpu, resolved->address, &file1_load_candidate);
+    results_note_archive(runtime, resolved->address);
     function = (GenericHostFunction)resolved->host;
     result = function(args[0], args[1], args[2], args[3],
                       args[4], args[5], args[6], args[7],
@@ -1330,6 +1355,10 @@ void func_800C11CC(void* sprite)
  * build; its bindings and identity gate remain private to this runtime. */
 #include "battle_file1_controller.inc"
 
+/* Identity-gated dispatch for the adopted battle RESULTS module routines and
+ * the guest accessor their native bodies use; after file-1 for its digest. */
+#include "battle_results_gate.inc"
+
 void func_80070F40(void)
 {
     BattleMipsRuntime *runtime = &g_BattleRuntime;
@@ -1339,6 +1368,7 @@ void func_80070F40(void)
 
     initialize_runtime(runtime);
     file1_invalidate(runtime);
+    results_invalidate(runtime);
     runtime->file1.archive20_selected = 0;
     first = load_le((const uint8_t *)PSX_ADDR(BATTLE_ENTRY), 4);
     if (first != 0x27bdffd0u) {
@@ -1357,6 +1387,7 @@ void func_80070F40(void)
                        battle_step_limit());
     g_ActiveBattleRuntime = NULL;
     file1_invalidate(runtime);
+    results_invalidate(runtime);
     runtime->file1.archive20_selected = 0;
     if (rc != PC_PORT_MIPS_HALTED) {
         fprintf(stderr,

@@ -1,0 +1,19 @@
+/* Battle RESULTS module routines the port may run as native C instead of
+ * interpreting the retail bytes the battle loads at 0x801DE000.  Hand-
+ * maintained; one {jal target, name} entry per adopted routine.  Each name
+ * must be defined as battle_results_<name> by pc_port/src/battle_results_host.c
+ * (build_port.sh fails otherwise), and every entry must pass
+ * pc_port/tests/run_battle_results_host_differential_test.sh.
+ *
+ * The address is the routine's real call target (the jal operand), not the
+ * first prologue instruction: several results routines hoist loads above
+ * their ADDIU SP (see BATCHES_INDEX.md "entry corrections").  The runtime
+ * dispatches on the guest PC equal to this address, so it must also be
+ * reached only as a call -- the differential test checks that no branch,
+ * J or data word in the module targets it.
+ *
+ * Names in this comment are left unquoted on purpose: the build and test
+ * scripts scrape quoted func_ names out of this file.
+ *
+ * Everything not listed here is interpreted (disclosed CPU fallback).
+ */
