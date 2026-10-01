@@ -64,6 +64,22 @@ typedef struct BattleResultsExitRegs {
 } BattleResultsExitRegs;
 extern BattleResultsExitRegs g_BattleResultsExit;
 
+/* Entry registers a body may need besides a0..a3, set by the dispatch before
+ * each call.  `sp` is the guest SP at the jal target: a routine that takes a
+ * fifth (or later) o32 argument reads it from the caller's outgoing argument
+ * area at sp+0x10.., exactly as its retail bytes do (func_801E1370).  A body
+ * never writes the guest stack through it: retail bodies adopted so far keep
+ * nothing in their frames. */
+typedef struct BattleResultsEntryRegs {
+    uint32_t sp;
+} BattleResultsEntryRegs;
+extern BattleResultsEntryRegs g_BattleResultsEntry;
+
+static inline uint32_t BattleResults_EntrySp(void)
+{
+    return g_BattleResultsEntry.sp;
+}
+
 static inline void BattleResults_SetExitReg(unsigned reg, uint32_t value)
 {
     g_BattleResultsExit.mask |= 1u << reg;

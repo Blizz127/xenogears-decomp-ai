@@ -106,6 +106,11 @@ uint8_t *__wrap_PcPort_BattleMipsResolve(uint32_t address, unsigned width,
 
 static BattleMipsRuntime rt;
 static PcPortMipsCpu cpu;
+/* Guest SP at the routine's entry.  BATTLE_STACK_TOP unless a shaper moves
+ * it: a routine with a stack argument (func_801E1370) must read it relative
+ * to the real entry SP, so its shaper varies the SP (8-aligned, inside the
+ * excluded frame window, which only the interpreter's own frame uses). */
+static uint32_t case_sp = BATTLE_STACK_TOP;
 static uint8_t module_image[MODULE_BYTES];
 static uint8_t *native_gs;
 
@@ -212,6 +217,7 @@ static void begin_case(uint32_t seed)
     for (i = 0; i < sizeof(g_PsxScratchpad); i++)
         g_PsxScratchpad[i] = (uint8_t)rnd();
     load_module_image();
+    case_sp = BATTLE_STACK_TOP;
 }
 
 /* ---- per-routine case shapers ------------------------------------------ */
@@ -672,6 +678,7 @@ static void prepare_cpu(const uint32_t args[4], uint32_t saved_seed)
         cpu.gpr[i] = (saved_seed ^ 0xC3A5u) * (i + 7u);
     }
     cpu.gpr[28] = 0x800C0000u + (saved_seed & 0xFFF0u);
+    cpu.gpr[29] = case_sp;
     cpu.gpr[30] = saved_seed ^ 0x5A5A5A5Au;
     /* HI/LO as well: a body must reproduce a MULT/DIV's HI:LO and leave them
      * alone when its retail bytes do not touch them. */

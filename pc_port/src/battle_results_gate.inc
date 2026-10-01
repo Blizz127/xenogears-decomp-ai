@@ -58,6 +58,7 @@ static const BattleResultsLeaf kResultsLeaves[] = {
 
 static BattleResultsHostBody g_ResultsHosts[RESULTS_LEAF_SLOTS];
 BattleResultsExitRegs g_BattleResultsExit;
+BattleResultsEntryRegs g_BattleResultsEntry;
 static unsigned char g_ResultsLogged[RESULTS_LEAF_SLOTS];
 static int g_ResultsBound;
 
@@ -250,6 +251,7 @@ static int results_try_host(BattleMipsRuntime *runtime, PcPortMipsCpu *cpu,
     }
     g_BattleResultsExit.mask = 0;
     g_BattleResultsExit.hilo = 0;
+    g_BattleResultsEntry.sp = cpu->gpr[29];
     v0 = g_ResultsHosts[index](cpu->gpr[4], cpu->gpr[5], cpu->gpr[6],
                                cpu->gpr[7]);
     results_call = call.previous;
