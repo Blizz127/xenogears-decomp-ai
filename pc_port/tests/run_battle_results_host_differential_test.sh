@@ -35,6 +35,9 @@ for need in "$STUBS" "$GS_OBJ"; do
 done
 
 OUT=${BATTLE_RESULTS_DIFFERENTIAL_OUT:-$(mktemp -d /tmp/xeno-results-diff.XXXXXXXX)}
+# The mutant controls #include sources by path from other directories, so a
+# relative artifacts directory must be made absolute.
+OUT=$(realpath -m "$OUT")
 mkdir -p "$OUT"
 printf 'BATTLE RESULTS DIFFERENTIAL artifacts=%s\n' "$OUT"
 
