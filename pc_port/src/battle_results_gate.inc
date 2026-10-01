@@ -114,17 +114,24 @@ static void results_bind(void)
     }
 }
 
+/* Lower-case hex digit computed, not looked up: a second "0123456789abcdef"
+ * table beside file1_hash_matches()'s laid out as a 64-byte run identical to
+ * the BIOS's own digit table, which retail_binary_guard rightly rejects. */
+static char results_hex_digit(unsigned nibble)
+{
+    return (char)(nibble < 10u ? '0' + nibble : 'a' + (nibble - 10u));
+}
+
 static int results_snapshot_matches_retail(const BattleResultsIdentity *identity)
 {
-    static const char digits[] = "0123456789abcdef";
     static const char expected[] = RESULTS_IMMUTABLE_SHA256;
     uint8_t digest[32];
     unsigned i;
 
     file1_digest(identity->snapshot, RESULTS_IMMUTABLE_BYTES, digest);
     for (i = 0; i < 32; i++) {
-        if (digits[digest[i] >> 4] != expected[i * 2] ||
-            digits[digest[i] & 15] != expected[i * 2 + 1])
+        if (results_hex_digit(digest[i] >> 4) != expected[i * 2] ||
+            results_hex_digit(digest[i] & 15u) != expected[i * 2 + 1])
             return 0;
     }
     return 1;
