@@ -48,8 +48,10 @@ in `src/battle_results_host_leaves.inc`, which run as native C from
 
 | Routine | Status |
 |---|---|
-| `func_801E24B0` (result-id -> g_GameState name-table map, leaf) | native, behind the identity gate; proof: `tests/run_battle_results_host_differential_test.sh` (adopted 2026-10-01, runner pass pending at time of writing) |
-| every other results routine (entry 0x801E252C, flow controller, EXP/AP/level/item steps, ...) | **interpreted** (CPU fallback) |
+| `func_801E24B0` (result-id -> g_GameState name-table map) | native, identity-gated; differential PASS on the runner (gates 3-7) |
+| `func_801DF910`, `func_801DFA38`, `func_801E1590`, `func_801E2888`, `func_801E403C`, `func_801E41B4` (leaves batch 2: percent bar, row max, drop dedupe, displayed-value clamp, record-state promotion, level badges) | native, identity-gated; differential PASS on the runner (gate 7, 70b48dc5) |
+| `func_801E1370`, `func_801E2EB0`, `func_801E3BE0`, `func_801E3D54`, `func_801E3E14`, `func_801E3EA4`, `func_801E3F28`, `func_801E3FB0` (leaves batch 3: inventory table add, EXP/SP split, the six 0x801E3A18 skill/flag helpers) | native, identity-gated; **runner differential pending** -- not proven until it passes |
+| every other results routine (entry 0x801E252C, flow controller, their callers such as 0x801E3A18/0x801E1444, EXP/AP/level/item steps, number/sprite drawing, ...) | **interpreted** (CPU fallback) |
 
 A native body runs only while the module's immutable bytes
 0x801DE000..0x801E44C0 in guest RAM match the pinned retail SHA-256
@@ -61,6 +63,40 @@ mapping, so main-exe globals such as `g_GameState` hit their native copies).
 `XENO_BATTLE_RESULTS_DIAG=1` logs identity verdicts and the first native run
 of each routine. Not a native-conversion claim for the battle: the battle
 overlay itself remains interpreted outside `src/battle_overlay_host_leaves.inc`.
+
+### Battle CPU-fallback meter (`XENO_CPU_FALLBACK_STATS`)
+
+How much of a battle still runs on the MIPS interpreter is measurable at
+runtime. With `XENO_CPU_FALLBACK_STATS=1` (unset or `0`: off, nothing counted
+or printed, dispatch unchanged) the battle runtime counts per battle --
+`func_80070F40` entry to exit -- and prints to **stderr** at battle exit:
+
+```
+[xeno-port][cpu-fallback] battle=1 end=returned interpreted_instructions=N interpreted_calls=N interpreted_targets=N untracked_calls=N native_main_exe_calls=N native_overlay_calls=N native_results_calls=N native_file1_calls=N native_call_share=P%
+[xeno-port][cpu-fallback] top 16 of N interpreted call targets:
+[xeno-port][cpu-fallback]    1. 0x800xxxxx calls=N (P%) battle.bin
+```
+
+- `interpreted_instructions`: guest instructions the interpreter executed
+  (the disclosed CPU fallback), from every guest CPU of the battle (the main
+  run, guest calls from native code, work-list callbacks).
+- `interpreted_calls` / the table: guest calls that ran interpreted -- a
+  JAL/JALR linking `ra` that the bridge did not take natively, plus each guest
+  entry made from native code -- by target address.
+- `native_main_exe_calls`: guest calls bridged into native main-executable
+  code; `native_overlay_calls`: battle.bin/overlay addresses run as native host
+  C (`src/battle_overlay_host_leaves.inc` and the typed overlay bridges);
+  `native_results_calls`: adopted RESULTS bodies (above);
+  `native_file1_calls`: the adopted file-1 controller 801E6CE8.
+
+Enabled, it only reads guest memory (the call word behind `ra`) and updates
+counters: no guest state, register, dispatch decision or timing input
+changes. Call detection is a heuristic (a JALR through a register other than
+`ra` is not counted as a call; its instructions are). Implementation:
+`src/battle_cpu_fallback_meter.inc`; self-check: the `--meter` run in
+`tests/run_battle_results_host_differential_test.sh`, which checks the counts
+against `cpu.steps` and the known call sequence of 0x801E3A18 and that the
+normal run prints nothing.
 
 > A native port requires every executed function to be real C — raw `INCLUDE_ASM`
 > (MIPS) cannot run on x86. Port progress is therefore gated on functional

@@ -211,10 +211,30 @@ RUNTIME="$PWD/pc_port/src/battle_mips_runtime.c"
 for mode in ${BATTLE_RESULTS_DIFFERENTIAL_MODES:-O0 O2 UBSan}; do
     build_link "$mode" pc_port/src "$RUNTIME" ""
     status=0
-    "$OUT/$mode" "$OUT/results_module.bin" >"$OUT/$mode.log" 2>&1 || status=$?
+    env -u XENO_CPU_FALLBACK_STATS "$OUT/$mode" "$OUT/results_module.bin" \
+        >"$OUT/$mode.log" 2>&1 || status=$?
     cat "$OUT/$mode.log"
     if [ "$status" -ne 0 ] || ! grep -q '^BATTLE RESULTS DIFFERENTIAL PASS ' "$OUT/$mode.log"; then
         echo "BATTLE RESULTS DIFFERENTIAL FAIL mode=$mode status=$status" >&2
+        exit 1
+    fi
+    # The CPU-fallback meter is off by default: not one line of it.
+    if grep -q 'cpu-fallback' "$OUT/$mode.log"; then
+        echo "BATTLE RESULTS DIFFERENTIAL FAIL mode=$mode meter output while off" >&2
+        exit 1
+    fi
+    # On: the meter self-check (counts against cpu.steps and the known call
+    # sequence of 0x801E3A18) and its stderr report format.
+    status=0
+    XENO_CPU_FALLBACK_STATS=1 "$OUT/$mode" "$OUT/results_module.bin" --meter \
+        >"$OUT/$mode-meter.log" 2>&1 || status=$?
+    cat "$OUT/$mode-meter.log"
+    summary='^\[xeno-port\]\[cpu-fallback\] battle=[12] end=returned interpreted_instructions=[0-9]+ interpreted_calls=[0-9]+ interpreted_targets=[0-9]+ untracked_calls=0 native_main_exe_calls=0 native_overlay_calls=0 native_results_calls=[0-9]+ native_file1_calls=0 native_call_share=[0-9.]+%$'
+    if [ "$status" -ne 0 ] ||
+       ! grep -q '^BATTLE RESULTS DIFFERENTIAL METER PASS ' "$OUT/$mode-meter.log" ||
+       [ "$(grep -cE "$summary" "$OUT/$mode-meter.log")" -ne 2 ] ||
+       ! grep -qE '^\[xeno-port\]\[cpu-fallback\]    1\. 0x801e3a18 calls=1 ' "$OUT/$mode-meter.log"; then
+        echo "BATTLE RESULTS DIFFERENTIAL FAIL mode=$mode meter status=$status" >&2
         exit 1
     fi
 done
@@ -240,4 +260,4 @@ expect_rejected -raw-mapping "$OUT/mutant-raw-mapping" "$RUNTIME" \
 expect_rejected -wrong-identity pc_port/src "$OUT/mutant-wrong-identity/battle_mips_runtime.c" \
     '^BATTLE RESULTS DIFFERENTIAL FAIL loaded module does not match the pinned identity'
 
-echo "BATTLE RESULTS DIFFERENTIAL PASS (O0/O2/UBSan + wrong-body, raw-mapping, wrong-identity controls rejected)"
+echo "BATTLE RESULTS DIFFERENTIAL PASS (O0/O2/UBSan + meter + wrong-body, raw-mapping, wrong-identity controls rejected)"

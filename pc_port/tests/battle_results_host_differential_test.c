@@ -1541,6 +1541,96 @@ static void gate_controls(const LeafSpec *spec)
     CONTROL("still native afterwards", dispatch(target) == 1);
 }
 
+/* ---- CPU-fallback meter (XENO_CPU_FALLBACK_STATS) ------------------------
+ *
+ * --meter (run with XENO_CPU_FALLBACK_STATS=1): two metered "battles" over
+ * one interpreted call of 0x801E3A18, whose three slots are shaped as kind 7
+ * so each slot jal's func_801E3D54, func_801E3F28 and func_801E3FB0:
+ *   retail  (force_interpret) 10 interpreted calls -- the entry plus 9 JALs
+ *           the heuristic must recognise -- and exactly cpu.steps
+ *           interpreted instructions, no native call;
+ *   native  the same, with the adopted helpers taken natively: 1 interpreted
+ *           call and 3 native results calls per allowlisted helper.
+ * The normal run checks that the meter counts nothing outside a metered
+ * battle, whatever the environment says. */
+static int meter_expect(const char *what, unsigned long long got,
+                        unsigned long long want)
+{
+    if (got == want)
+        return 1;
+    fprintf(stderr, "BATTLE RESULTS DIFFERENTIAL FAIL meter %s got=%llu want=%llu\n",
+            what, got, want);
+    failures++;
+    return 0;
+}
+
+static void shape_meter_3A18(uint32_t args[4])
+{
+    uint32_t slots, k, j;
+
+    for (j = 0; j < 4; j++)
+        args[j] = rnd();
+    shape_helper_world(0, 7);
+    slots = guest_buffer(0x500u);
+    poke32(0x801E44C8u, slots);
+    for (k = 0; k < 3; k++) {
+        poke16(slots + 0x170u * k + 0x7Cu, 0);   /* not dead */
+        poke8(slots + 0x170u * k + 0x56u, 7);    /* kind 7 */
+    }
+}
+
+static int meter_run(void)
+{
+    static const uint32_t helpers[3] = {0x801E3D54u, 0x801E3F28u, 0x801E3FB0u};
+    const CpuFallbackMeter *m = &g_CpuFallbackMeter;
+    uint32_t args[4], seed = 0x3A18u;
+    unsigned i, s, adopted = 0;
+    SideResult side;
+
+    if (!cpu_meter_enabled()) {
+        fprintf(stderr, "BATTLE RESULTS DIFFERENTIAL FAIL meter: run --meter with "
+                "XENO_CPU_FALLBACK_STATS=1\n");
+        return 1;
+    }
+    for (i = 0; kResultsLeaves[i].name != NULL; i++) {
+        for (s = 0; s < 3; s++)
+            adopted += kResultsLeaves[i].address == helpers[s];
+    }
+    for (s = 0; s < 2; s++) {
+        int force = s == 0;
+        begin_case(seed);
+        shape_meter_3A18(args);
+        cpu_meter_begin_battle();
+        cpu_meter_mark_entry(&cpu, 0x801E3A18u);
+        if (run_side(0x801E3A18u, args, force, seed, &side) != 0 ||
+            side.rc != PC_PORT_MIPS_HALTED) {
+            fprintf(stderr, "BATTLE RESULTS DIFFERENTIAL FAIL meter run %s: %s\n",
+                    force ? "retail" : "native", cpu.error);
+            failures++;
+            continue;
+        }
+        meter_expect("interpreted_instructions", m->interpreted_instructions,
+                     side.steps);
+        meter_expect("interpreted_calls", m->interpreted_calls,
+                     force ? 10u : 10u - 3u * adopted);
+        meter_expect("native_results_calls", m->native_results_calls,
+                     force ? 0u : 3u * adopted);
+        meter_expect("results bodies run", side.native_calls,
+                     force ? 0u : 3u * adopted);
+        meter_expect("native_main_exe_calls", m->native_main_exe_calls, 0);
+        meter_expect("native_overlay_calls", m->native_overlay_calls, 0);
+        meter_expect("native_file1_calls", m->native_file1_calls, 0);
+        meter_expect("interpreted_targets", m->distinct_targets,
+                     force ? 4u : 1u + 3u - adopted);
+        cpu_meter_end_battle("returned");
+        meter_expect("inactive after battle end", (unsigned long long)m->active, 0);
+    }
+    if (failures != 0)
+        return 1;
+    printf("BATTLE RESULTS DIFFERENTIAL METER PASS adopted_helpers=%u\n", adopted);
+    return 0;
+}
+
 /* An adopted address is dispatched whenever the guest PC equals it, so it
  * must be reachable only as a call: no branch, J, or data word (jump table)
  * in the module may target it. */
@@ -1577,8 +1667,8 @@ int main(int argc, char **argv)
     size_t i;
     unsigned spec_count = (unsigned)(sizeof(kSpecs) / sizeof(kSpecs[0]));
 
-    if (argc != 2) {
-        fprintf(stderr, "usage: %s results_module.bin\n", argv[0]);
+    if (argc != 2 && !(argc == 3 && strcmp(argv[2], "--meter") == 0)) {
+        fprintf(stderr, "usage: %s results_module.bin [--meter]\n", argv[0]);
         return 2;
     }
     f = fopen(argv[1], "rb");
@@ -1609,6 +1699,9 @@ int main(int argc, char **argv)
                 "match the pinned identity\n");
         return 1;
     }
+
+    if (argc == 3)
+        return meter_run();
 
     accessor_controls();
     for (i = 0; kResultsLeaves[i].name != NULL; i++) {
@@ -1646,6 +1739,14 @@ int main(int argc, char **argv)
     }
     if (kResultsLeaves[0].name == NULL)
         fprintf(stderr, "BATTLE RESULTS DIFFERENTIAL note: the allowlist is empty\n");
+    /* Outside a metered battle the meter is inert, set or not. */
+    CONTROL("cpu-fallback meter idle outside a battle",
+            !g_CpuFallbackMeter.active && g_CpuFallbackMeter.interpreted_instructions == 0 &&
+                g_CpuFallbackMeter.interpreted_calls == 0 &&
+                g_CpuFallbackMeter.native_results_calls == 0 &&
+                g_CpuFallbackMeter.native_main_exe_calls == 0 &&
+                g_CpuFallbackMeter.native_overlay_calls == 0 &&
+                g_CpuFallbackMeter.distinct_targets == 0);
 
     if (failures != 0) {
         fprintf(stderr, "BATTLE RESULTS DIFFERENTIAL FAIL total=%u\n", failures);
