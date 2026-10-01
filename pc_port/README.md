@@ -38,6 +38,30 @@ on-hardware reimplementations in `../src/slus_006.64/psyq/*`.
 - [ ] **Phase 3:** climb the boot path, replacing stubs with decompiled C until
       the intro/field renders.
 
+### Battle RESULTS module: adoption status (CPU fallback disclosed)
+
+The battle results module (retail overlay, disc archive 0x10/file 4, linked at
+guest 0x801DE000, 0x6500 bytes) still runs **interpreted** by
+`src/battle_mips_runtime.c`'s MIPS interpreter, except for the routines listed
+in `src/battle_results_host_leaves.inc`, which run as native C from
+`src/battle_results_host.c`:
+
+| Routine | Status |
+|---|---|
+| `func_801E24B0` (result-id -> g_GameState name-table map, leaf) | native, behind the identity gate; proof: `tests/run_battle_results_host_differential_test.sh` (adopted 2026-10-01, runner pass pending at time of writing) |
+| every other results routine (entry 0x801E252C, flow controller, EXP/AP/level/item steps, ...) | **interpreted** (CPU fallback) |
+
+A native body runs only while the module's immutable bytes
+0x801DE000..0x801E44C0 in guest RAM match the pinned retail SHA-256
+(`src/battle_results_gate.inc`); a different overlay at that address, any
+modified byte, a pending delay-slot load or the `force_interpret` test hook
+makes the runtime interpret the retail bytes instead. Bodies reach guest
+memory only through `PcPort_BattleMipsResolve` (the interpreter's own address
+mapping, so main-exe globals such as `g_GameState` hit their native copies).
+`XENO_BATTLE_RESULTS_DIAG=1` logs identity verdicts and the first native run
+of each routine. Not a native-conversion claim for the battle: the battle
+overlay itself remains interpreted outside `src/battle_overlay_host_leaves.inc`.
+
 > A native port requires every executed function to be real C — raw `INCLUDE_ASM`
 > (MIPS) cannot run on x86. Port progress is therefore gated on functional
 > decompilation coverage; byte-for-byte matching is **not** required for the port.
