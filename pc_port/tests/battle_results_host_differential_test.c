@@ -1571,7 +1571,7 @@ static void shape_meter_3A18(uint32_t args[4])
     for (j = 0; j < 4; j++)
         args[j] = rnd();
     shape_helper_world(0, 7);
-    slots = guest_buffer(0x500u);
+    slots = guest_buffer(0x1100u); /* 3A18 stores results at +0x101C.. */
     poke32(0x801E44C8u, slots);
     for (k = 0; k < 3; k++) {
         poke16(slots + 0x170u * k + 0x7Cu, 0);   /* not dead */
