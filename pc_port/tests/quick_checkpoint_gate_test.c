@@ -21,6 +21,7 @@ FieldActor* volatile g_FieldActors = g_TestFieldActors;
 s32 D_800ADB64;
 s32 D_800ADB68;
 s32 D_800ADBFC = 1;
+s32 D_800ADB2C;
 u8 D_800B21D0;
 
 /* g_FieldScriptMemory is a raw buffer in the game (field/actor.h declares it
@@ -64,6 +65,7 @@ static void reset_case(void)
     g_PlayerActorIndex = 0;
     g_FieldActors = g_TestFieldActors;
     D_800ADBFC = 1;
+    D_800ADB2C = 0;
     D_800ADB64 = 0xFF;
     D_800ADB68 = 1;
     D_800B21D0 = 0;
@@ -276,6 +278,34 @@ int main(int argc, char** argv)
             "corrupt title checkpoint was not rejected");
     unlink(g_path);
     puts("QUICK GATE title load/overwrite protection/invalid files: PASS");
+
+    /* A warp accepted during a live stream must retain its request and leave
+     * the field running until the consumer signals completion. */
+    reset_case();
+    D_800ADB2C = 1;
+    require(PcPort_QuickCheckpointRequestWarp(12, 2) == 1, "stream warp not queued");
+    require(PcPort_QuickCheckpointPoll() == 0, "stream warp tore down field");
+    require(PcPort_QuickCheckpointPoll() == 0, "queued stream warp lost deferral");
+    require(g_GameSceneMapNum == 13 && s_syncCalls == 0, "deferred warp changed field state");
+    D_800ADB2C = 0;
+    require(PcPort_QuickCheckpointPoll() == 1, "completed stream did not release warp");
+    PcPort_QuickCheckpointCommitLoad();
+    require(*(u16*)(g_GameState + 0x231A) == 12 &&
+            *(u16*)(g_GameState + 0x2320) == 2, "deferred warp lost destination");
+
+    reset_case();
+    PcPort_QuickCheckpointRequestSave();
+    expect_saved("stream load fixture");
+    D_800ADB2C = 1;
+    PcPort_QuickCheckpointRequestLoad();
+    require(PcPort_QuickCheckpointPoll() == 0 &&
+            PcPort_QuickCheckpointGetUiState() == PC_PORT_QUICK_UI_LOAD_PENDING,
+            "stream load tore down field or lost request");
+    D_800ADB2C = 0;
+    require(PcPort_QuickCheckpointPoll() == 1, "completed stream did not release load");
+    PcPort_QuickCheckpointCommitLoad();
+    require(*(u16*)(g_GameState + 0x231A) == 13, "deferred load lost saved map");
+    puts("QUICK GATE active stream load/warp deferral: PASS");
 
     require(munmap(g_actor_mapping, 4096) == 0, "actor unmap");
     puts("QUICK CHECKPOINT GATE PASS stable-file/blocked-controls/release");

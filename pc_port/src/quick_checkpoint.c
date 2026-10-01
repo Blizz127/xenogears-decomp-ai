@@ -25,6 +25,7 @@ extern s32 D_800ADB64;
 extern s32 D_800ADB68;
 extern u8 D_800B21D0;
 extern s32 D_800ADBFC;   /* live field actor count */
+extern s32 D_800ADB2C;   /* field stream consumer active (func_800854D0) */
 extern void* g_FieldScriptMemory;
 extern void func_800A30FC(void);
 /* Dev-menu status line (port_dev_menu.c); weak so standalone tests link. */
@@ -263,6 +264,15 @@ int PcPort_QuickCheckpointPoll(void)
     if (s_fieldActive)
         s_sceneAtPrevPoll = sceneNow;
     s_fieldLoopCount++;
+    /* Loads/warps must leave the field consumer alive until it releases the
+     * active stream. Otherwise the ring fills after teardown and the next
+     * overlay's ArchiveCdDataSync(0) waits forever for unread sectors. Keep
+     * the request queued and run another ordinary field frame; do not discard
+     * sectors or bypass the teardown. Retail CHANGE_FIELD uses this same
+     * D_800ADB2C completion flag (func_800932D0). */
+    if (s_fieldActive && D_800ADB2C != 0 &&
+        (s_warpReady || s_loadReady || s_request.action == PC_PORT_QUICK_REQUEST_LOAD))
+        return 0;
     /* A title-menu poll can prepare the load; keep the result available for
      * FieldMain's next poll after the menu's own cleanup has finished. */
     if (s_warpReady && PcPort_QuickCheckpointFieldIsSafe()) {
