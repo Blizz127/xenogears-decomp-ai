@@ -183,6 +183,18 @@ static void poke8(uint32_t address, uint8_t value)
     *p = value;
 }
 
+static void poke16(uint32_t address, uint16_t value)
+{
+    poke8(address, (uint8_t)value);
+    poke8(address + 1u, (uint8_t)(value >> 8));
+}
+
+static void poke32(uint32_t address, uint32_t value)
+{
+    poke16(address, (uint16_t)value);
+    poke16(address + 2u, (uint16_t)(value >> 16));
+}
+
 static void load_module_image(void)
 {
     memcpy(g_PsxRam + MODULE_OFFSET, module_image, MODULE_BYTES);
@@ -426,6 +438,184 @@ static void shape_801E1590(unsigned index, uint32_t args[4])
     }
 }
 
+/* func_801E2888 reads W = word 0x801E44C4 (character records W+620+164*n and
+ * gear records W+2424+164*m) and S = word 0x801E44C8 (three 0x170-byte slot
+ * records), D_800D2D24[3] (0xFF = empty slot) and the D_800CCE42 row flags.
+ * `wide` keeps every index byte so W must leave room for 255*164. */
+static void shape_801E2888(unsigned index, uint32_t args[4])
+{
+    unsigned j, k;
+    uint32_t w, s;
+    int wide = index >= 8 && index % 4u == 0;
+
+    for (j = 0; j < 4; j++)
+        args[j] = rnd();
+    w = guest_buffer(wide ? 0xB000u : 0x1800u);
+    s = guest_buffer(0x500u);
+    if (index == 6) {
+        /* Records inside the native g_GameState copy: only the production
+         * mapping reads and writes the same bytes as the interpreter. */
+        w = 0x8006D700u;
+        s = 0x8006E900u;
+    } else if (index == 7 || (index >= 8 && index % 7u == 0)) {
+        s = w + ((rnd() % 0x40u) << 2); /* slot records alias W's */
+    }
+    poke32(0x801E44C4u, w);
+    poke32(0x801E44C8u, s);
+    for (k = 0; k < 3; k++) {
+        uint32_t slot = s + 0x170u * k;
+        uint8_t kind = (uint8_t)(rnd() % 11u);
+        uint8_t gear = (uint8_t)(rnd() % 18u);
+        poke8(0x800D2D24u + k, (uint8_t)((rnd() & 3u) == 0 ? 0xFF : k));
+        if (wide) {
+            kind = (uint8_t)rnd();
+            gear = (uint8_t)rnd();
+        } else if ((rnd() & 3u) == 0) {
+            kind = 7; /* the EXP /100 path */
+        }
+        if ((rnd() & 7u) == 0)
+            kind = (uint8_t)(gear + 11u); /* A == B */
+        poke8(slot + 0x56u, kind);
+        poke8(slot + 0xA0u, gear);
+        if ((rnd() & 3u) == 0)
+            poke32(slot + 0x104u, (uint32_t[]){0xFFFFFFFFu, 0u, 98u, 99u}[rnd() & 3u]);
+    }
+    switch (index) {
+    case 0: /* every slot empty */
+        for (k = 0; k < 3; k++) poke8(0x800D2D24u + k, 0xFF);
+        break;
+    case 1: /* kind 7 + flag: 0xFFFFFFFF + 1 wraps to 0, stored 0 -> 1 */
+        poke8(0x800D2D24u, 0);
+        poke8(s + 0x56u, 7);
+        poke8(0x800CCE42u, 0x80);
+        poke32(s + 0x104u, 0xFFFFFFFFu);
+        break;
+    case 2: /* 99/100 == 0 -> 1, and the 0xC000 override */
+        poke8(0x800D2D24u + 1u, 1);
+        poke8(s + 0x170u + 0x56u, 7);
+        poke8(0x800CCE42u + 0x170u, 0xFF);
+        poke32(s + 0x170u + 0x104u, 98u);
+        poke16(s + 0x170u + 0x7Cu, 0x4000u);
+        break;
+    case 3: /* A == B for every slot */
+        for (k = 0; k < 3; k++) {
+            poke8(0x800D2D24u + k, (uint8_t)k);
+            poke8(s + 0x170u * k + 0xA0u, (uint8_t)(3u + k));
+            poke8(s + 0x170u * k + 0x56u, (uint8_t)(14u + k));
+        }
+        break;
+    case 4: /* gear bounds: 7 and 17 skip, 16 and 8 run */
+        for (k = 0; k < 3; k++) poke8(0x800D2D24u + k, (uint8_t)k);
+        poke8(s + 0xA0u, 7);
+        poke8(s + 0x170u + 0xA0u, 17);
+        poke8(s + 0x2E0u + 0xA0u, (rnd() & 1u) ? 16 : 8);
+        break;
+    case 5: /* the /10 path on a 0xFFFFFFFF value, all slots */
+        for (k = 0; k < 3; k++) {
+            uint8_t gear = (uint8_t)(k * 6u);
+            poke8(0x800D2D24u + k, (uint8_t)k);
+            poke8(s + 0x170u * k + 0xA0u, gear);
+            poke16(s + 0x170u * k + 0xA4u + 0x7Cu, 0x8000u);
+            poke32(w + 2424u + 164u * gear + 0x64u, 0xFFFFFFFFu);
+        }
+        break;
+    default:
+        break;
+    }
+}
+
+/* func_801E403C: W = word 0x801E44C4 (states W+0x16C0+32*i+0x17, levels
+ * (W+620+164*i)[0x62]), T = word 0x801E44E8 (thresholds T+0x110*i+0xCC..CE),
+ * pad flag g_GameState u16 0x8006F8EA bit 0x4000; i = 0..10. */
+static void shape_801E403C(unsigned index, uint32_t args[4])
+{
+    unsigned j, i;
+    uint32_t w, tbl;
+
+    for (j = 0; j < 4; j++)
+        args[j] = rnd();
+    w = guest_buffer(0x2000u); /* 0x1818 used; room for the overlap case */
+    tbl = guest_buffer(0xC00u);
+    if (index == 5) {
+        w = 0x8006D700u;   /* both inside the native g_GameState copy */
+        tbl = 0x8006E200u;
+    } else if (index >= 6 && index % 5u == 0) {
+        tbl = w + ((rnd() % 0x120u) << 2); /* overlapping tables */
+    }
+    poke32(0x801E44C4u, w);
+    poke32(0x801E44E8u, tbl);
+    for (i = 0; i < 11; i++) {
+        uint32_t state = w + 0x16C0u + 32u * i + 0x17u;
+        uint32_t level = w + 620u + 164u * i + 0x62u;
+        uint32_t row = tbl + 0x110u * i;
+        switch (index) {
+        case 0: poke8(state, 0); break;
+        case 1: poke8(state, 3); poke8(level, 0xFF); poke8(row + 0xCCu, 0); break;
+        case 2: /* level == threshold promotes, threshold - 1 does not */
+            poke8(state, (uint8_t)(3u + i % 3u));
+            poke8(row + 0xCCu + i % 3u, 40);
+            poke8(level, (uint8_t)((i & 4u) ? 39 : 40));
+            break;
+        case 3: /* state 6: level 49/50 x pad flag set/clear */
+            poke8(state, 6);
+            poke8(level, (uint8_t)((i & 1u) ? 50 : 49));
+            break;
+        case 4: poke8(state, (uint8_t)(i & 1u ? 7 : (i & 2u ? 8 : 0xFF))); break;
+        default:
+            poke8(state, (uint8_t)((rnd() & 1u) ? 3u + rnd() % 4u : rnd() % 9u));
+            if ((rnd() & 3u) == 0) poke8(state, (uint8_t)rnd());
+            poke8(level, (uint8_t)((rnd() & 1u) ? 49u + rnd() % 3u : rnd()));
+            break;
+        }
+    }
+    if (index == 3)
+        poke16(0x8006F8EAu, (uint16_t)((rnd() & 1u) ? 0x4000u : 0xBFFFu));
+    else if (index >= 6)
+        poke16(0x8006F8EAu, (uint16_t)(rnd() ^ ((rnd() & 1u) ? 0x4000u : 0u)));
+}
+
+/* func_801E41B4: c_k = D_800CCD3E[0x170*k] (guest BSS), level byte
+ * 0x8006D902 + 164*c, badge u16 0x8006ECF8 + 32*c.  c <= 100 keeps the badge
+ * inside the native g_GameState copy, c >= 112 puts it in guest RAM above the
+ * overlay base; 101..111 would land in other main-exe data no prover window
+ * covers, so they are not generated (party ids in play are 0..10). */
+static void shape_801E41B4(unsigned index, uint32_t args[4])
+{
+    static const uint8_t levels[] = {0, 1, 49, 50, 59, 60, 69, 70, 99, 255};
+    unsigned j, k;
+
+    for (j = 0; j < 4; j++)
+        args[j] = rnd();
+    for (k = 0; k < 3; k++) {
+        uint8_t id;
+        switch (index) {
+        case 0: id = 0; break;                       /* same id on all rows */
+        case 1: id = (uint8_t)(1u + k); break;
+        case 2: id = (uint8_t)(4u + k); break;
+        case 3: id = (uint8_t)(112u + 71u * k); break; /* guest-RAM badges */
+        case 4: id = (uint8_t)(98u + k); break;        /* top of the native copy */
+        default:
+            switch (rnd() % 4u) {
+            case 0: id = (uint8_t)(rnd() % 101u); break;
+            case 1: id = (uint8_t)(112u + rnd() % 144u); break;
+            default: id = (uint8_t)(rnd() % 11u); break;
+            }
+            break;
+        }
+        poke8(0x800CCD3Eu + 0x170u * k, id);
+        if (index == 0)
+            poke8(0x8006D902u, 99);
+        else if (index == 1)
+            poke8(0x8006D902u + 164u * id, (uint8_t[]){50, 60, 70}[k]);
+        else if (index == 2)
+            poke8(0x8006D902u + 164u * id, (uint8_t[]){49, 59, 69}[k]);
+        else
+            poke8(0x8006D902u + 164u * id, levels[rnd() % sizeof(levels)]);
+        if (index >= 5 && (rnd() & 3u) == 0)
+            poke8(0x8006D902u + 164u * id, (uint8_t)rnd());
+    }
+}
+
 typedef struct LeafSpec {
     uint32_t address;
     void (*shape)(unsigned index, uint32_t args[4]);
@@ -437,6 +627,9 @@ static const LeafSpec kSpecs[] = {
     {0x801DF910u, shape_801DF910, 8},
     {0x801DFA38u, shape_801DFA38, 5},
     {0x801E1590u, shape_801E1590, 8},
+    {0x801E2888u, shape_801E2888, 8},
+    {0x801E403Cu, shape_801E403C, 6},
+    {0x801E41B4u, shape_801E41B4, 5},
 };
 
 /* ---- running one side --------------------------------------------------- */
