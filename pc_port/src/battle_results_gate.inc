@@ -249,6 +249,7 @@ static int results_try_host(BattleMipsRuntime *runtime, PcPortMipsCpu *cpu,
         return -1;
     }
     g_BattleResultsExit.mask = 0;
+    g_BattleResultsExit.hilo = 0;
     v0 = g_ResultsHosts[index](cpu->gpr[4], cpu->gpr[5], cpu->gpr[6],
                                cpu->gpr[7]);
     results_call = call.previous;
@@ -262,6 +263,10 @@ static int results_try_host(BattleMipsRuntime *runtime, PcPortMipsCpu *cpu,
             if (reg != 2 && (g_BattleResultsExit.mask & (1u << reg)))
                 cpu->gpr[reg] = g_BattleResultsExit.gpr[reg];
         }
+    }
+    if (g_BattleResultsExit.hilo) {
+        cpu->hi = g_BattleResultsExit.hi;
+        cpu->lo = g_BattleResultsExit.lo;
     }
     return 1;
 }

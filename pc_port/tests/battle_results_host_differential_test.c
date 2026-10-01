@@ -12,9 +12,9 @@
  *
  * Both runs enter through PcPortMipsRun at the routine's jal target, so the
  * native side is reached exactly the way the interpreted caller reaches it.
- * Compared after each pair: the full v0, every other general register (the
- * scratch ones are seeded per case, so a body must leave exactly the retail
- * exit set and preserve the rest), all of
+ * Compared after each pair: the full v0, every other general register and
+ * HI/LO (the scratch ones and HI/LO are seeded per case, so a body must leave
+ * exactly the retail exit set and preserve the rest), all of
  * guest RAM (minus the interpreter's own frame below the entry SP), the whole
  * native g_GameState object and the scratchpad.  Every store either side makes
  * is also recorded by host address and must land inside one of those compared
@@ -29,7 +29,8 @@
  * identical-value store and writes to the excluded mutable module data must
  * not.  The accessor's fail-closed paths are checked too.
  *
- * Not covered: HI/LO and timing.
+ * Not covered: timing, and the order of guest accesses within a call (only
+ * their end state is compared).
  */
 
 #include <setjmp.h>
@@ -277,6 +278,8 @@ typedef struct SideResult {
     uint32_t v0;
     uint32_t saved[11]; /* s0-s7, gp, sp, fp */
     uint32_t gpr[32];
+    uint32_t hi;
+    uint32_t lo;
     uint64_t steps;
     uint64_t native_calls;
     unsigned accessor_calls;
@@ -309,6 +312,10 @@ static void prepare_cpu(const uint32_t args[4], uint32_t saved_seed)
     }
     cpu.gpr[28] = 0x800C0000u + (saved_seed & 0xFFF0u);
     cpu.gpr[30] = saved_seed ^ 0x5A5A5A5Au;
+    /* HI/LO as well: a body must reproduce a MULT/DIV's HI:LO and leave them
+     * alone when its retail bytes do not touch them. */
+    cpu.hi = saved_seed * 0x9E3779B1u;
+    cpu.lo = ~saved_seed ^ 0x0F1E2D3Cu;
 }
 
 static int run_side(uint32_t target, const uint32_t args[4], int force,
@@ -334,6 +341,8 @@ static int run_side(uint32_t target, const uint32_t args[4], int force,
     out->saved[9] = cpu.gpr[29];
     out->saved[10] = cpu.gpr[30];
     memcpy(out->gpr, cpu.gpr, sizeof(out->gpr));
+    out->hi = cpu.hi;
+    out->lo = cpu.lo;
     out->steps = cpu.steps;
     out->native_calls = rt.results.native_calls - calls;
     out->accessor_calls = accessor_calls - accessed;
@@ -435,6 +444,13 @@ static unsigned compare_case(const char *name, uint32_t target,
             }
         }
     }
+    if (retail.hi != native.hi || retail.lo != native.lo) {
+        snprintf(detail, sizeof(detail),
+                 "hi retail=%08x native=%08x lo retail=%08x native=%08x seed=%08x",
+                 retail.hi, native.hi, retail.lo, native.lo, seed);
+        fail(name, "hilo", detail);
+        return 0;
+    }
     count_diffs(retail_ram, g_PsxRam, PSX_RAM_SIZE, FRAME_SKIP_LO,
                 FRAME_SKIP_HI, &diffs, &first);
     if (diffs != 0) {
@@ -478,11 +494,23 @@ static unsigned compare_case(const char *name, uint32_t target,
 
 /* ---- gate controls ------------------------------------------------------ */
 
+/* The gate controls dispatch for real, so an adopted body runs each time it
+ * is allowed to: its inputs (pointers in the mutable module words, argument
+ * buffers) are re-shaped before every dispatch so that it runs on valid guest
+ * state even after a control reloaded the module image. */
+static const LeafSpec *gate_spec;
+static uint32_t gate_args[4];
+
+static void arm_gate(void)
+{
+    gate_spec->shape(gate_spec->edge_cases, gate_args);
+    prepare_cpu(gate_args, 1);
+}
+
 /* 1 native, 0 interpret, as production's bridge decides for this PC. */
 static int dispatch(uint32_t target)
 {
-    static const uint32_t args[4] = {0, 0, 0, 0};
-    prepare_cpu(args, 1);
+    arm_gate();
     rt.bridge_cpu = &cpu;
     return runtime_bridge(&rt, &cpu, target);
 }
@@ -539,13 +567,15 @@ static void accessor_controls(void)
             PcPort_BattleMipsResolve(0xA006F65Au, 1, 0) == native_gs + 0x2026u);
 }
 
-static void gate_controls(uint32_t target)
+static void gate_controls(const LeafSpec *spec)
 {
+    uint32_t target = spec->address;
     static const uint32_t probes[] = {0x0000u, 0x44B0u, RESULTS_IMMUTABLE_BYTES - 1u};
     uint64_t generation;
     unsigned k;
     uint8_t saved;
 
+    gate_spec = spec;
     begin_case(0xC0FFEEu);
     CONTROL("retail module verifies", results_identity_current(&rt, target));
     CONTROL("baseline native", dispatch(target) == 1);
@@ -601,12 +631,12 @@ static void gate_controls(uint32_t target)
     load_module_image();
     CONTROL("reloaded module adopts", dispatch(target) == 1);
 
-    prepare_cpu((const uint32_t[4]){0, 0, 0, 0}, 1);
+    arm_gate();
     cpu.load_valid = 1;
     cpu.load_reg = 4;
     rt.bridge_cpu = &cpu;
     CONTROL("pending delay-slot load interprets", runtime_bridge(&rt, &cpu, target) == 0);
-    prepare_cpu((const uint32_t[4]){0, 0, 0, 0}, 1);
+    arm_gate();
     cpu.load_valid = 1;
     cpu.load_reg = 0;
     CONTROL("load into $zero does not block", runtime_bridge(&rt, &cpu, target) == 1);
@@ -725,7 +755,7 @@ int main(int argc, char **argv)
             printf("BATTLE RESULTS DIFFERENTIAL leaf %s cases=%u\n", leaf->name,
                    proven);
         }
-        gate_controls(leaf->address);
+        gate_controls(spec);
     }
     if (kResultsLeaves[0].name == NULL)
         fprintf(stderr, "BATTLE RESULTS DIFFERENTIAL note: the allowlist is empty\n");

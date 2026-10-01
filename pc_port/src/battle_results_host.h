@@ -43,18 +43,24 @@ uint8_t *PcPort_BattleMipsResolve(uint32_t address, unsigned width, int write);
  * register: a body must return exactly the v0 the retail bytes leave, which
  * for a void routine is the value its last instruction leaves there (each body
  * documents it).  Any other register the retail bytes leave changed is
- * reproduced through BattleResults_SetExitReg(), so the caller resumes on the
- * same register file it would after interpretation; each body documents its
- * exit set. */
+ * reproduced through BattleResults_SetExitReg() (HI/LO through
+ * BattleResults_SetExitHiLo()), so the caller resumes on the same register
+ * file it would after interpretation; each body documents its exit set. */
 typedef uint32_t (*BattleResultsHostBody)(uint32_t a0, uint32_t a1,
                                           uint32_t a2, uint32_t a3);
 
 /* Exit registers besides v0, applied by the dispatch after the body returns.
- * The dispatch clears `mask` before each call; bit n set means gpr[n] is
- * stored.  Defined by battle_mips_runtime.c (battle_results_gate.inc). */
+ * The dispatch clears `mask` and `hilo` before each call; bit n set means
+ * gpr[n] is stored, `hilo` != 0 means HI and LO are (a body whose retail
+ * bytes execute a MULT/MULTU/DIV/DIVU or MTHI/MTLO leaves HI/LO changed, so it
+ * reproduces them exactly like a GPR).  Defined by battle_mips_runtime.c
+ * (battle_results_gate.inc). */
 typedef struct BattleResultsExitRegs {
     uint32_t mask;
     uint32_t gpr[32];
+    int hilo;
+    uint32_t hi;
+    uint32_t lo;
 } BattleResultsExitRegs;
 extern BattleResultsExitRegs g_BattleResultsExit;
 
@@ -62,6 +68,13 @@ static inline void BattleResults_SetExitReg(unsigned reg, uint32_t value)
 {
     g_BattleResultsExit.mask |= 1u << reg;
     g_BattleResultsExit.gpr[reg] = value;
+}
+
+static inline void BattleResults_SetExitHiLo(uint32_t hi, uint32_t lo)
+{
+    g_BattleResultsExit.hilo = 1;
+    g_BattleResultsExit.hi = hi;
+    g_BattleResultsExit.lo = lo;
 }
 
 /* Typed guest accessors for adopted bodies.  Little-endian like the guest; the
