@@ -18,3 +18,6 @@
  * Everything not listed here is interpreted (disclosed CPU fallback).
  */
     {0x801e24b0u, "func_801E24B0"},
+    {0x801df910u, "func_801DF910"},
+    {0x801dfa38u, "func_801DFA38"},
+    {0x801e1590u, "func_801E1590"},

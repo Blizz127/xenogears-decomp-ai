@@ -261,6 +261,171 @@ static void shape_801E24B0(unsigned index, uint32_t args[4])
         poke8(0x8006F65Au + i, (uint8_t)(rnd() % alphabet));
 }
 
+/* Guest pointers the shapers hand to pointer-driven routines: 4-aligned, in
+ * plain guest RAM above the battle overlay (compared, not natively mirrored),
+ * clear of the results module (0x801DE000..0x801E4500) and of the
+ * interpreter's frame window below BATTLE_STACK_TOP, so every store lands in
+ * a compared window.  `span` is how far past the pointer the routine reaches. */
+static uint32_t guest_buffer(uint32_t span)
+{
+    for (;;) {
+        uint32_t p = 0x800D8000u + ((rnd() % (0x801D0000u - 0x800D8000u)) & ~3u);
+        if (p + span <= 0x801DE000u)
+            return p;
+    }
+}
+
+/* func_801DF910: arguments only (a0/a1 masked bytes, a2 a full 32-bit DIV
+ * divisor); writes 0x801E44CC..0x801E44E4.  a2 == 0 exercises the R3000A
+ * divide-by-zero result, -1 and 0x80000000 the signed edges.  In play a2 is
+ * func_801DFA38's 0..255 result. */
+static void shape_801DF910(unsigned index, uint32_t args[4])
+{
+    static const uint32_t edges[8][3] = {
+        {0u, 0u, 0u},           /* 0/0 twice */
+        {255u, 0u, 0u},         /* negative delta, divisor 0 */
+        {0u, 255u, 255u},
+        {200u, 100u, 1u},       /* large quotients through the magic mult */
+        {37u, 201u, 0xFFFFFFFFu},
+        {201u, 37u, 0x80000000u},
+        {0xFFFFFF10u, 0x12345620u, 7u}, /* dirty upper bits are masked */
+        {99u, 99u, 0u},         /* zero delta, 0/0 */
+    };
+    unsigned j;
+
+    for (j = 0; j < 4; j++)
+        args[j] = rnd();
+    if (index < 8) {
+        args[0] = edges[index][0];
+        args[1] = edges[index][1];
+        args[2] = edges[index][2];
+        return;
+    }
+    switch (index % 4u) {
+    case 0: args[2] = rnd() & 0xFFu; break;   /* the real 0..255 range */
+    case 1: args[2] = rnd() % 4u; break;      /* 0..3, zero included */
+    case 2: args[2] = rnd() ^ (rnd() << 24); break; /* any 32-bit divisor */
+    default: args[2] = (rnd() & 0xFFu) | ((rnd() & 1u) ? 0x80000000u : 0u); break;
+    }
+}
+
+/* func_801DFA38: a0 & 0xFF selects 7+7 bytes of D_800CDD10 / D_800CDD28
+ * (guest BSS, 8-byte rows).  Read-only. */
+static void shape_801DFA38(unsigned index, uint32_t args[4])
+{
+    unsigned j, row, alphabet;
+
+    for (j = 0; j < 4; j++)
+        args[j] = rnd();
+    row = args[0] & 0xFFu;
+    switch (index) {
+    case 0: /* all zero: the maximum stays the initial 0 */
+        for (j = 0; j < 0x820u; j++) poke8(0x800CDD10u + j, 0);
+        args[0] = 0;
+        return;
+    case 1: /* all 0xFF at the last row */
+        for (j = 0; j < 0x820u; j++) poke8(0x800CDD10u + j, 0xFF);
+        args[0] = 0xFF;
+        return;
+    case 2: /* max in the first byte of the first window only */
+        for (j = 0; j < 7; j++) {
+            poke8(0x800CDD10u + row * 8u + j, 1);
+            poke8(0x800CDD28u + row * 8u + j, 1);
+        }
+        poke8(0x800CDD10u + row * 8u, 0xC0);
+        return;
+    case 3: /* max in the last byte of the second window only */
+        for (j = 0; j < 7; j++) {
+            poke8(0x800CDD10u + row * 8u + j, 2);
+            poke8(0x800CDD28u + row * 8u + j, 2);
+        }
+        poke8(0x800CDD28u + row * 8u + 6u, 0x81);
+        return;
+    case 4: /* dirty upper bits; byte 7 of each row (not read) is the max */
+        args[0] = 0xABCDEF05u;
+        poke8(0x800CDD10u + 5u * 8u + 7u, 0xFF);
+        poke8(0x800CDD28u + 5u * 8u + 7u, 0xFF);
+        return;
+    default:
+        break;
+    }
+    alphabet = (unsigned[]){2, 3, 16, 256}[index % 4u];
+    for (j = 0; j < 7; j++) {
+        poke8(0x800CDD10u + row * 8u + j, (uint8_t)(rnd() % alphabet));
+        poke8(0x800CDD28u + row * 8u + j, (uint8_t)(rnd() % alphabet));
+    }
+}
+
+/* func_801E1590: (a0 ids[8], a1 counts[8], a2 kinds[8]) guest buffers --
+ * in play sp+24 / sp+40 / sp+32 of 0x801E1690's frame -- and the 8 pending
+ * drops D_800CDCF4 (kinds) / D_800CDCFC (ids).  kinds[] is not cleared by
+ * retail, so it keeps its random bytes. */
+static void shape_801E1590(unsigned index, uint32_t args[4])
+{
+    unsigned j, alphabet;
+    uint32_t base;
+
+    for (j = 0; j < 4; j++)
+        args[j] = rnd();
+    base = guest_buffer(0x20u);
+    args[0] = base;       /* ids    = sp+24 */
+    args[2] = base + 8u;  /* kinds  = sp+32 */
+    args[1] = base + 16u; /* counts = sp+40 */
+    switch (index) {
+    case 0: /* no pending drop: only the clearing runs */
+        for (j = 0; j < 8; j++) poke8(0x800CDCFCu + j, 0);
+        return;
+    case 1: /* 8 identical (kind, id): one slot counting 8 */
+        for (j = 0; j < 8; j++) {
+            poke8(0x800CDCF4u + j, 3);
+            poke8(0x800CDCFCu + j, 0x41);
+        }
+        return;
+    case 2: /* 8 distinct: 8 slots */
+        for (j = 0; j < 8; j++) {
+            poke8(0x800CDCF4u + j, (uint8_t)j);
+            poke8(0x800CDCFCu + j, (uint8_t)(0x10 + j));
+        }
+        return;
+    case 3: /* same id, alternating kinds; one zero id in the middle */
+        for (j = 0; j < 8; j++) {
+            poke8(0x800CDCF4u + j, (uint8_t)(j & 1));
+            poke8(0x800CDCFCu + j, j == 4 ? 0 : 0x22);
+        }
+        return;
+    case 4: /* stale kinds[] equal to every pending kind */
+        for (j = 0; j < 8; j++) {
+            poke8(0x800CDCF4u + j, 2);
+            poke8(0x800CDCFCu + j, (uint8_t)(1 + (j % 3u)));
+            poke8(args[2] + j, 2);
+        }
+        return;
+    case 5: /* separate, non-adjacent buffers */
+        args[0] = guest_buffer(8u);
+        args[1] = guest_buffer(8u);
+        args[2] = guest_buffer(8u);
+        break;
+    case 6: /* counts overlapping ids (aliasing) */
+        args[1] = base + 4u;
+        break;
+    case 7: /* the kinds buffer is the pending-kinds table itself */
+        args[2] = 0x800CDCF4u;
+        break;
+    default:
+        if (index % 3u == 0) {
+            args[0] = guest_buffer(8u);
+            args[1] = guest_buffer(8u);
+            args[2] = guest_buffer(8u);
+        }
+        break;
+    }
+    alphabet = (unsigned[]){2, 3, 5, 256}[index % 4u];
+    for (j = 0; j < 8; j++) {
+        poke8(0x800CDCF4u + j, (uint8_t)(rnd() % alphabet));
+        poke8(0x800CDCFCu + j, (uint8_t)(rnd() % alphabet));
+    }
+}
+
 typedef struct LeafSpec {
     uint32_t address;
     void (*shape)(unsigned index, uint32_t args[4]);
@@ -269,6 +434,9 @@ typedef struct LeafSpec {
 
 static const LeafSpec kSpecs[] = {
     {0x801E24B0u, shape_801E24B0, 7},
+    {0x801DF910u, shape_801DF910, 8},
+    {0x801DFA38u, shape_801DFA38, 5},
+    {0x801E1590u, shape_801E1590, 8},
 };
 
 /* ---- running one side --------------------------------------------------- */
