@@ -42,10 +42,27 @@ uint8_t *PcPort_BattleMipsResolve(uint32_t address, unsigned width, int write);
  * the accessors below).  The return value is stored to v0 as the full 32-bit
  * register: a body must return exactly the v0 the retail bytes leave, which
  * for a void routine is the value its last instruction leaves there (each body
- * documents it).  Other caller-saved registers are not reproduced; each body
- * records why its callers cannot observe them. */
+ * documents it).  Any other register the retail bytes leave changed is
+ * reproduced through BattleResults_SetExitReg(), so the caller resumes on the
+ * same register file it would after interpretation; each body documents its
+ * exit set. */
 typedef uint32_t (*BattleResultsHostBody)(uint32_t a0, uint32_t a1,
                                           uint32_t a2, uint32_t a3);
+
+/* Exit registers besides v0, applied by the dispatch after the body returns.
+ * The dispatch clears `mask` before each call; bit n set means gpr[n] is
+ * stored.  Defined by battle_mips_runtime.c (battle_results_gate.inc). */
+typedef struct BattleResultsExitRegs {
+    uint32_t mask;
+    uint32_t gpr[32];
+} BattleResultsExitRegs;
+extern BattleResultsExitRegs g_BattleResultsExit;
+
+static inline void BattleResults_SetExitReg(unsigned reg, uint32_t value)
+{
+    g_BattleResultsExit.mask |= 1u << reg;
+    g_BattleResultsExit.gpr[reg] = value;
+}
 
 /* Typed guest accessors for adopted bodies.  Little-endian like the guest; the
  * multi-byte forms go through memcpy so the host access has no alignment

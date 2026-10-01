@@ -57,6 +57,7 @@ static const BattleResultsLeaf kResultsLeaves[] = {
 #define RESULTS_LEAF_SLOTS (sizeof(kResultsLeaves) / sizeof(kResultsLeaves[0]))
 
 static BattleResultsHostBody g_ResultsHosts[RESULTS_LEAF_SLOTS];
+BattleResultsExitRegs g_BattleResultsExit;
 static unsigned char g_ResultsLogged[RESULTS_LEAF_SLOTS];
 static int g_ResultsBound;
 
@@ -248,11 +249,21 @@ static int results_try_host(BattleMipsRuntime *runtime, PcPortMipsCpu *cpu,
                 results_failure_address, results_failure_width);
         return -1;
     }
+    g_BattleResultsExit.mask = 0;
     v0 = g_ResultsHosts[index](cpu->gpr[4], cpu->gpr[5], cpu->gpr[6],
                                cpu->gpr[7]);
     results_call = call.previous;
     runtime->results.native_calls++;
     cpu->gpr[2] = v0;
+    /* r0 never; v0 is the return; sp/ra/s* are callee-saved by the retail
+     * body's own prologue and never in an exit set. */
+    {
+        unsigned reg;
+        for (reg = 1; reg < 32; reg++) {
+            if (reg != 2 && (g_BattleResultsExit.mask & (1u << reg)))
+                cpu->gpr[reg] = g_BattleResultsExit.gpr[reg];
+        }
+    }
     return 1;
 }
 

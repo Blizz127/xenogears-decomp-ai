@@ -12,7 +12,9 @@
  *
  * Both runs enter through PcPortMipsRun at the routine's jal target, so the
  * native side is reached exactly the way the interpreted caller reaches it.
- * Compared after each pair: the full v0, the callee-saved registers, all of
+ * Compared after each pair: the full v0, every other general register (the
+ * scratch ones are seeded per case, so a body must leave exactly the retail
+ * exit set and preserve the rest), all of
  * guest RAM (minus the interpreter's own frame below the entry SP), the whole
  * native g_GameState object and the scratchpad.  Every store either side makes
  * is also recorded by host address and must land inside one of those compared
@@ -27,8 +29,7 @@
  * identical-value store and writes to the excluded mutable module data must
  * not.  The accessor's fail-closed paths are checked too.
  *
- * Not covered: caller-saved scratch registers other than v0 (each body
- * documents why its callers cannot observe them), and timing.
+ * Not covered: HI/LO and timing.
  */
 
 #include <setjmp.h>
@@ -275,6 +276,7 @@ typedef struct SideResult {
     int rc;
     uint32_t v0;
     uint32_t saved[11]; /* s0-s7, gp, sp, fp */
+    uint32_t gpr[32];
     uint64_t steps;
     uint64_t native_calls;
     unsigned accessor_calls;
@@ -298,6 +300,13 @@ static void prepare_cpu(const uint32_t args[4], uint32_t saved_seed)
         cpu.gpr[4 + i] = args[i];
     for (i = 16; i <= 23; i++)
         cpu.gpr[i] = saved_seed * (i + 1u);
+    /* Scratch registers too: an exit set that misses a register the retail
+     * bytes change, or clobbers one they keep, shows up as a difference. */
+    for (i = 1; i <= 25; i++) {
+        if (i == 2 || (i >= 4 && i <= 7) || (i >= 16 && i <= 23))
+            continue;
+        cpu.gpr[i] = (saved_seed ^ 0xC3A5u) * (i + 7u);
+    }
     cpu.gpr[28] = 0x800C0000u + (saved_seed & 0xFFF0u);
     cpu.gpr[30] = saved_seed ^ 0x5A5A5A5Au;
 }
@@ -324,6 +333,7 @@ static int run_side(uint32_t target, const uint32_t args[4], int force,
     out->saved[8] = cpu.gpr[28];
     out->saved[9] = cpu.gpr[29];
     out->saved[10] = cpu.gpr[30];
+    memcpy(out->gpr, cpu.gpr, sizeof(out->gpr));
     out->steps = cpu.steps;
     out->native_calls = rt.results.native_calls - calls;
     out->accessor_calls = accessor_calls - accessed;
@@ -412,6 +422,18 @@ static unsigned compare_case(const char *name, uint32_t target,
     if (memcmp(retail.saved, native.saved, sizeof(retail.saved)) != 0) {
         fail(name, "callee-saved", "s0-s7/gp/sp/fp differ");
         return 0;
+    }
+    {
+        unsigned reg;
+        for (reg = 1; reg < 32; reg++) {
+            if (retail.gpr[reg] != native.gpr[reg]) {
+                snprintf(detail, sizeof(detail),
+                         "r%u retail=%08x native=%08x seed=%08x", reg,
+                         retail.gpr[reg], native.gpr[reg], seed);
+                fail(name, "exit-registers", detail);
+                return 0;
+            }
+        }
     }
     count_diffs(retail_ram, g_PsxRam, PSX_RAM_SIZE, FRAME_SKIP_LO,
                 FRAME_SKIP_HI, &diffs, &first);

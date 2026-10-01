@@ -43,13 +43,19 @@
  * temporaries so C's unspecified operand order cannot reorder them.
  *
  * v0 on return: the final `slti v0, a2, 48` with a2 == 48, i.e. always 0.
- * v1/a0/a1/a2 exit values are not reproduced: the only caller overwrites v1
- * and v0 at 0x801E25F8/0x801E2600 and sets a0 before its next call. */
+ * Other exit registers, reproduced exactly (the caller's victory path goes on
+ * to jal 0x800BFBA0 / 0x801E2280 without setting arguments, so they are not
+ * provably dead):
+ *   a1 = 0x800D2FE4 + 48, a2 = 48                       always;
+ *   a0 = 150, v1 = the last nonzero id, at = 0x80070000 + 149
+ *                                  only if some id was nonzero (else as on entry). */
 uint32_t battle_results_func_801E24B0(uint32_t a0, uint32_t a1, uint32_t a2,
                                       uint32_t a3)
 {
     int32_t j;
     int32_t i;
+    int inner_ran = 0;
+    uint8_t last_id = 0;
 
     (void)a0;
     (void)a1;
@@ -58,14 +64,23 @@ uint32_t battle_results_func_801E24B0(uint32_t a0, uint32_t a1, uint32_t a2,
     for (j = 0; j < 48; j++) {
         if (BR_LBU(0x800D2FE4u + (uint32_t)j) == 0)
             continue;
+        inner_ran = 1;
         for (i = 0; i < 150; i++) {
             uint8_t id = BR_LBU(0x800D2FE4u + (uint32_t)j);
+            last_id = id;
             uint8_t entry = BR_LBU(0x8006F65Au + (uint32_t)i);
             if (id == entry) {
                 uint8_t value = BR_LBU(0x800D2CB0u + (uint32_t)j);
                 BR_SB(0x8006F5C4u + (uint32_t)i, value);
             }
         }
+    }
+    BattleResults_SetExitReg(5, 0x800D2FE4u + 48u);
+    BattleResults_SetExitReg(6, 48u);
+    if (inner_ran) {
+        BattleResults_SetExitReg(1, 0x80070000u + 149u);
+        BattleResults_SetExitReg(3, last_id);
+        BattleResults_SetExitReg(4, 150u);
     }
     return 0;
 }
