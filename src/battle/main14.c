@@ -111,6 +111,13 @@ u8 func_80079ED8(u8 a0, u8 a1, u8 a2, u8 a3) {
     }
     if (a3 == 0) {
         *p = a2;
+#ifdef XENO_PC_PORT
+        /* Retail returns the caller's t0 unchanged here (jr ra; addu v0, t0,
+         * zero), which C cannot express; no retail or native caller reads v0
+         * after a store (native-audit/battle-decomp/callerscan).  A defined
+         * value keeps the host body free of an uninitialised read. */
+        ret = 0;
+#endif
     } else {
         ret = *p;
     }
@@ -221,6 +228,13 @@ u16 func_8007A280(u8 a0, u8 a1, u16 a2, u8 a3) {
     }
     if (a3 == 0) {
         *(u16*)p = a2;
+#ifdef XENO_PC_PORT
+        /* Retail returns the caller's t0 unchanged here (jr ra; addu v0, t0,
+         * zero), which C cannot express; no retail or native caller reads v0
+         * after a store (native-audit/battle-decomp/callerscan).  A defined
+         * value keeps the host body free of an uninitialised read. */
+        ret = 0;
+#endif
     } else {
         ret = *(u16*)p;
     }

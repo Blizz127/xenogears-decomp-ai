@@ -114,6 +114,12 @@ src = Path("src/battle/main12.c").read_text()
 old = "*pValue += 4;"
 assert src.count(old) == 1, src.count(old)
 (out / "mutant_main12.c").write_text(src.replace(old, "*pValue += 5;", 1))
+# Second control: the store-path return rule (func_80079ED8's defined port
+# return) must reject a body that returns anything else there.
+src = Path("src/battle/main14.c").read_text()
+old = "        ret = 0;\n#endif"
+assert src.count(old) == 2, src.count(old)
+(out / "mutant_main14.c").write_text(src.replace(old, "        ret = 1;\n#endif", 1))
 PY
 
 mode_flags() {
@@ -127,6 +133,7 @@ mode_flags() {
 # build_link <mode> <host-object-dir> <main12 source> <output suffix>
 build_link() {
     local mode="$1" hostdir="$2" main12="$3" suffix="${4:-}"
+    local main14="${5:-src/battle/main14.c}"
     local flags; flags=$(mode_flags "$mode")
     local target="$OUT/$mode$suffix"
     local err="$OUT/$mode$suffix-bridge.err"
@@ -136,6 +143,7 @@ build_link() {
     for tu in $TUS; do
         local src="$tu"
         [ "$tu" = "src/battle/main12.c" ] && src="$main12"
+        [ "$tu" = "src/battle/main14.c" ] && src="$main14"
         gcc -c "$src" "${HOST_FLAGS[@]}" "${HOST_INC[@]}" \
             -o "$hostdir/$(basename "$tu" .c).o"
     done
@@ -234,4 +242,14 @@ if [ "$status" -eq 0 ] || ! grep -q '^BATTLE OVERLAY DIFFERENTIAL FAIL ' "$OUT/m
 fi
 grep -m1 '^BATTLE OVERLAY DIFFERENTIAL FAIL ' "$OUT/mutant.log" >&2
 
-echo "BATTLE OVERLAY DIFFERENTIAL PASS (O0/O2/UBSan + wrong-result control rejected)"
+# Negative control 2: a store path that returns a nonzero value must be rejected.
+build_link O2 "$OUT/host-mutant-store" src/battle/main12.c "-mutant-store" "$OUT/mutant_main14.c"
+status=0
+"$OUT/O2-mutant-store" >"$OUT/mutant-store.log" 2>&1 || status=$?
+if [ "$status" -eq 0 ] || ! grep -q 'store-path v0' "$OUT/mutant-store.log"; then
+    cat "$OUT/mutant-store.log" >&2
+    echo "BATTLE OVERLAY DIFFERENTIAL CONTROL FAILURE store-path return rule accepted a nonzero return" >&2
+    exit 1
+fi
+grep -m1 'store-path v0' "$OUT/mutant-store.log" >&2
+echo "BATTLE OVERLAY DIFFERENTIAL PASS (O0/O2/UBSan + wrong-result and store-path controls rejected)"

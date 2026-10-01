@@ -245,6 +245,19 @@ static void runtime_up(void)
     rt.bridge_cpu = &cpu;
 }
 
+/* Seeded into t0 on both sides.  func_80079ED8/func_8007A280 return the
+ * caller's t0 unchanged on their store path (a3 == 0); see the rule in the
+ * return comparison below. */
+#define PROVER_T0_SEED 0x7E57A00Du
+static unsigned store_pass_through_checks;
+
+static int is_store_pass_through(const char *name, const uint32_t *args)
+{
+    return (args[3] & 0xFFu) == 0 &&
+           (strcmp(name, "func_80079ED8") == 0 ||
+            strcmp(name, "func_8007A280") == 0);
+}
+
 static int run_interpreted(uint32_t target, const uint32_t *args)
 {
     unsigned i;
@@ -252,6 +265,7 @@ static int run_interpreted(uint32_t target, const uint32_t *args)
     initialize_cpu(&cpu, &rt);
     for (i = 0; i < 4; i++)
         cpu.gpr[4 + i] = args[i];
+    cpu.gpr[8] = PROVER_T0_SEED;
     rt.force_interpret = 1;
     /*
      * force_interpret must be cleared before the next host call; PcPortMipsRun
@@ -267,6 +281,7 @@ static int run_host(uint32_t target, const uint32_t *args)
     initialize_cpu(&cpu, &rt);
     for (i = 0; i < 4; i++)
         cpu.gpr[4 + i] = args[i];
+    cpu.gpr[8] = PROVER_T0_SEED;
     rt.force_interpret = 0;
     return runtime_bridge(&rt, &cpu, target);
 }
@@ -395,6 +410,23 @@ static void compare(const Leaf *leaf, const uint32_t *args)
     case 16: mask = 0xFFFFu; break;
     case 32: mask = 0xFFFFFFFFu; break;
     default: mask = 0; break;
+    }
+    /* Store path of the two table accessors: retail's v0 is the caller's t0
+     * passed through (jr ra; addu v0, t0, zero), which a C body cannot
+     * reproduce.  Every retail jal site and every native caller was checked to
+     * not read v0 after a store (native-audit/battle-decomp/callerscan), so
+     * the port body returns a defined 0 there.  Prove both halves of that
+     * statement instead of comparing the two values. */
+    if (mask != 0 && is_store_pass_through(name, args)) {
+        if (iv0 != PROVER_T0_SEED || (hv0 & mask) != 0) {
+            snprintf(detail, sizeof(detail),
+                     "store-path v0 retail=%08x (expected t0 %08x) host=%08x (expected 0) a0=%08x a1=%08x a2=%08x",
+                     iv0, PROVER_T0_SEED, hv0, args[0], args[1], args[2]);
+            fail(name, "return", detail);
+            return;
+        }
+        store_pass_through_checks++;
+        mask = 0;
     }
     if (mask != 0 && (iv0 & mask) != (hv0 & mask)) {
         snprintf(detail, sizeof(detail),
@@ -693,7 +725,8 @@ int main(void)
         return 1;
     }
     printf("BATTLE OVERLAY DIFFERENTIAL PASS checks=%u inconclusive=%u "
-           "hand-only=%u leaves=%u\n",
-           checks, inconclusive, hand_only, (unsigned)LEAF_COUNT);
+           "hand-only=%u leaves=%u store-pass-through=%u\n",
+           checks, inconclusive, hand_only, (unsigned)LEAF_COUNT,
+           store_pass_through_checks);
     return 0;
 }
