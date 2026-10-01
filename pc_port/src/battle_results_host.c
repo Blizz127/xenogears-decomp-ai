@@ -162,6 +162,13 @@ static void br_divu(uint32_t rs, uint32_t rt, uint32_t *hi, uint32_t *lo)
     }
 }
 
+/* srav rd, rt, rs: arithmetic shift by the low 5 bits of rs. */
+static uint32_t br_srav(uint32_t value, uint32_t amount)
+{
+    amount &= 31u;
+    return amount == 0 ? value : br_sra(value, amount);
+}
+
 /* func_801DF910 (0x801DF910..0x801DFA34, leaf, 74 instructions, no frame).
  * Called once, from 0x801E04C4 (jal, nop delay slot) in 0x801E03FC's row
  * loop, with a0/a1 = two lbu'd bytes and a2 = 0x801E03FC's saved copy of
@@ -971,6 +978,529 @@ uint32_t battle_results_func_801E2EB0(uint32_t a0, uint32_t a1, uint32_t a2,
     BattleResults_SetExitReg(7, r_a3);
     BattleResults_SetExitReg(8, t0);
     BattleResults_SetExitReg(9, t1);
+    BattleResults_SetExitHiLo(hi, lo);
+    return v0;
+}
+
+/* func_801E3BE0 (0x801E3BE0..0x801E3D50, leaf, 93 instructions, no frame).
+ * Called once, from 0x801E3A8C (jal, nop delay slot) in 0x801E3A18, with
+ * a0 = the record's kind byte; no branch, J or data word targets it.
+ *
+ * Skill-learn scan for character k = a0 & 0xFF.  M = u16 0x8006ECF4 + 32k
+ * (learned mask, read once), L = byte 0x8006D902 + 164k (level, re-read per
+ * candidate), D = word 0x801E44E8 + 0x110k, E = word 0x801E44EC (re-read per
+ * requirement).  For candidate i = 0 .. n-1 (n = 13 if u16 0x8006F8EA has
+ * 0x4000, else 7):
+ *   bit 0x8000>>i of M set -> next i
+ *   L < D[0x100+i] -> stop, nothing learned
+ *   all j in 0..6: !(E.u16[0x90+2j] < D.u16[14i+2j]) -> learn i, stop
+ *   else next i
+ * Learning ORs 0x8000>>i into the u16 at 0x8006ECF4 + 32k (re-read).
+ * Both 0x8006 tables are in the native g_GameState copy for k <= 100.
+ *
+ *   3BE0  t5 = a0 ; t1 = 7 or 13 ; t4 = 0xFF ; a3 = 0 ; t6 = 0x8000
+ *   3C10  v1 = k ; t3 = 164k ; at = 0x80070000+32k ; t2 = lhu -0x130C(at)
+ *         t0 = lw 44E8 + 0x110k ; a0 = 0
+ *   3C54  v0 = t2 & (t6 srav a0) ; bne -> 3CE8 (delay v0 = t0 + a0)
+ *         v1 = lbu 0x100(v0) ; at = 0x80070000+t3 ; v0 = lbu -0x26FE(at)
+ *         sltu v0 < v1 -> 3CFC (delay a1 = 0) ; a2 = 14*a0 + t0
+ *   3C98  v0 = 2*(a1&FF) ; v1 = lw 44EC ; a0 = v0 + a2 ; v1 = lhu (a0) ;
+ *         v0 = lhu 0x90(v0 + E) ; sltu v0 < v1 -> 3CD8 ;
+ *         a1++ ; sltiu (a1&FF) < 7 -> 3C98 (delay v0 = a1&FF)
+ *   3CD8  (a1&FF) == 7 -> 3D40: j 3CFC (delay t4 = a3)
+ *   3CE8  a3++ ; sltu (a3&FF) < t1 -> 3C54 (delay a0 = a3&FF)
+ *   3CFC  v1 = t4&FF ; == 0xFF -> 3D48 (delay v0 = v1) ;
+ *         at = 0x80070000+32k ; a1 = lhu -0x130C(at) | (0x8000 srav v0) ;
+ *         sh a1 ; j 3D4C
+ *   3D48  v0 = 0 ;  3D4C jr ra
+ *
+ * v0 on return: the learned index i (so 0 both for "none" and for i == 0,
+ * the retail quirk 0x801E3A18 lives with), or 0.
+ * Exit registers: t0, t1, t2, t3, t4, t5 = a0, t6 = 0x8000, a0, a3, v1, at
+ * always; a1 if any candidate reached its level test or something was
+ * learned; a2 if any candidate reached its requirement loop. */
+uint32_t battle_results_func_801E3BE0(uint32_t a0, uint32_t a1, uint32_t a2,
+                                      uint32_t a3)
+{
+    uint32_t v0, v1, at, r_a0, r_a1 = a1, r_a2 = a2, r_a3;
+    uint32_t t0, t1, t2, t3, t4, t5, t6, c;
+
+    (void)a3;
+    t5 = a0;
+    v0 = BR_LHU(0x8006F8EAu) & 0x4000u;
+    t1 = 7u;
+    if (v0 != 0)
+        t1 = 13u;
+    t4 = 0xFFu;
+    r_a3 = 0;
+    /* beq t1, zero: t1 is 7 or 13, never taken. */
+    t6 = 0x8000u;
+    v1 = t5 & 0xFFu;
+    v0 = v1 << 2;
+    v0 = v0 + v1;
+    v0 = v0 << 3;
+    v0 = v0 + v1;
+    t3 = v0 << 2;
+    v0 = v1 << 5;
+    at = 0x80070000u + v0;
+    t2 = BR_LHU(at - 0x130Cu);
+    v0 = v1 << 4;
+    v0 = v0 + v1;
+    v1 = BR_LW(0x801E44E8u);
+    v0 = v0 << 4;
+    t0 = v1 + v0;
+    r_a0 = r_a3 & 0xFFu;
+    for (;;) {
+        v0 = br_srav(t6, r_a0);
+        v0 = t2 & v0;
+        c = v0;
+        v0 = t0 + r_a0;            /* bne delay slot */
+        if (c == 0) {
+            v1 = BR_LBU(v0 + 0x100u);
+            at = 0x80070000u + t3;
+            v0 = BR_LBU(at - 0x26FEu);
+            v0 = v0 < v1;
+            r_a1 = 0;              /* bne delay slot */
+            if (v0 != 0)
+                break;             /* -> 3CFC */
+            v0 = r_a0 << 3;
+            v0 = v0 - r_a0;
+            v0 = v0 << 1;
+            r_a2 = v0 + t0;
+            v0 = r_a1 & 0xFFu;
+            for (;;) {
+                v0 = v0 << 1;
+                v1 = BR_LW(0x801E44ECu);
+                r_a0 = v0 + r_a2;
+                v0 = v0 + v1;
+                v1 = BR_LHU(r_a0);
+                v0 = BR_LHU(v0 + 0x90u);
+                v0 = v0 < v1;
+                if (v0 != 0)
+                    break;         /* -> 3CD8 */
+                r_a1++;
+                c = (r_a1 & 0xFFu) < 7u;
+                v0 = r_a1 & 0xFFu; /* bne delay slot */
+                if (c == 0)
+                    break;
+            }
+            v1 = r_a1 & 0xFFu;
+            v0 = 7u;
+            if (v1 == v0) {
+                t4 = r_a3;         /* 3D40: j 3CFC, delay slot */
+                break;
+            }
+        }
+        r_a3++;
+        v0 = (r_a3 & 0xFFu) < t1;
+        r_a0 = r_a3 & 0xFFu;       /* bne delay slot */
+        if (v0 == 0)
+            break;
+    }
+    v1 = t4 & 0xFFu;
+    c = v1 == 0xFFu;
+    v0 = v1;                       /* beq delay slot */
+    if (c) {
+        v0 = 0;
+    } else {
+        uint32_t bit;
+        v1 = t5 & 0xFFu;
+        v1 = v1 << 5;
+        bit = 0x8000u;
+        at = 0x80070000u + v1;
+        r_a1 = BR_LHU(at - 0x130Cu);
+        r_a0 = br_srav(bit, v0);
+        r_a1 = r_a1 | r_a0;
+        at = 0x80070000u + v1;
+        BR_SH(at - 0x130Cu, r_a1);
+    }
+
+    BattleResults_SetExitReg(1, at);
+    BattleResults_SetExitReg(3, v1);
+    BattleResults_SetExitReg(4, r_a0);
+    BattleResults_SetExitReg(5, r_a1);
+    BattleResults_SetExitReg(6, r_a2);
+    BattleResults_SetExitReg(7, r_a3);
+    BattleResults_SetExitReg(8, t0);
+    BattleResults_SetExitReg(9, t1);
+    BattleResults_SetExitReg(10, t2);
+    BattleResults_SetExitReg(11, t3);
+    BattleResults_SetExitReg(12, t4);
+    BattleResults_SetExitReg(13, t5);
+    BattleResults_SetExitReg(14, t6);
+    return v0;
+}
+
+/* func_801E3D54 (0x801E3D54..0x801E3E10, leaf, 48 instructions, no frame).
+ * Called once, from 0x801E3AD4 (jal, nop delay slot) in 0x801E3A18, with
+ * a0 = the record's kind byte; no branch, J or data word targets it.
+ *
+ * For k = a0 & 0xFF, D = word 0x801E44E8 + 0x110k, F = word 0x801E44C4 +
+ * 32k + 0x16C2 (u16), L = byte 0x8006D902 + 164k (re-read per entry): walks
+ * the list D[0xF0 + i], i = 0..11, until a 0xFF entry (-> return 0); the
+ * first entry with !(L < e) whose bit 0x8000>>i is clear in F (re-read) gets
+ * the bit set (sh) and returns i+1.  Entries that fail either test are
+ * skipped; twelve entries without 0xFF return 0.
+ *
+ *   3D54  a2 = 0x8000 ; a1 = 0 ; a0 &= 0xFF ; t0 = 164k
+ *         v1 = lw 44E8 + 0x110k ; a3 = lw 44C4 + 32k
+ *   3D9C  a0 = lbu 0xF0(v1 + (a1&FF)) ; == 0xFF -> 3E0C (delay v0 = 0)
+ *         at = 0x80070000 + t0 ; v0 = lbu -0x26FE(at) ; sltu v0 < a0 -> 3DF4
+ *         a0 = lhu 0x16C2(a3) ; a2 & a0 -> 3DF4 (delay v0 = a2 | a0)
+ *         sh v0, 0x16C2(a3) ; v0 = (a1 + 1) & 0xFF ; j 3E0C
+ *   3DF4  a1++ ; sltiu (a1&FF) < 12 -> 3D9C (delay a2 >>= 1) ; v0 = 0
+ *
+ * v0 on return: i+1 (1..12) for a newly set bit, else 0.
+ * Exit registers: a0 (the last byte or mask loaded), a1, a2, a3, t0, v1
+ * always; at = 0x80070000 + 164k only if some entry reached its level test. */
+uint32_t battle_results_func_801E3D54(uint32_t a0, uint32_t a1, uint32_t a2,
+                                      uint32_t a3)
+{
+    uint32_t v0, v1, r_a0, r_a1, r_a2, r_a3, t0;
+    int level_read = 0;
+
+    (void)a1;
+    (void)a2;
+    (void)a3;
+    r_a2 = 0x8000u;
+    r_a1 = 0;
+    r_a0 = a0 & 0xFFu;
+    v0 = r_a0 << 2;
+    v0 = v0 + r_a0;
+    v0 = v0 << 3;
+    v0 = v0 + r_a0;
+    t0 = v0 << 2;
+    v0 = r_a0 << 4;
+    v0 = v0 + r_a0;
+    v1 = BR_LW(0x801E44E8u);
+    v0 = v0 << 4;
+    v1 = v1 + v0;
+    v0 = BR_LW(0x801E44C4u);
+    r_a0 = r_a0 << 5;
+    r_a3 = v0 + r_a0;
+    for (;;) {
+        v0 = r_a1 & 0xFFu;
+        v0 = v1 + v0;
+        r_a0 = BR_LBU(v0 + 0xF0u);
+        v0 = 0;                    /* beq delay slot */
+        if (r_a0 == 0xFFu)
+            break;
+        level_read = 1;
+        v0 = BR_LBU(0x80070000u + t0 - 0x26FEu);
+        v0 = v0 < r_a0;
+        if (v0 == 0) {
+            uint32_t c;
+            r_a0 = BR_LHU(r_a3 + 0x16C2u);
+            c = r_a2 & r_a0;
+            v0 = r_a2 | r_a0;      /* bne delay slot */
+            if (c == 0) {
+                BR_SH(r_a3 + 0x16C2u, v0);
+                v0 = r_a1 + 1u;
+                v0 = v0 & 0xFFu;
+                break;
+            }
+        }
+        r_a1++;
+        v0 = (r_a1 & 0xFFu) < 12u;
+        r_a2 = r_a2 >> 1;          /* bne delay slot */
+        if (v0 == 0) {
+            v0 = 0;
+            break;
+        }
+    }
+
+    if (level_read)
+        BattleResults_SetExitReg(1, 0x80070000u + t0);
+    BattleResults_SetExitReg(3, v1);
+    BattleResults_SetExitReg(4, r_a0);
+    BattleResults_SetExitReg(5, r_a1);
+    BattleResults_SetExitReg(6, r_a2);
+    BattleResults_SetExitReg(7, r_a3);
+    BattleResults_SetExitReg(8, t0);
+    return v0;
+}
+
+/* func_801E3E14 (0x801E3E14..0x801E3EA0, leaf, 36 instructions, no frame).
+ * Called once, from 0x801E3B30 (jal, nop delay slot) in 0x801E3A18, with
+ * a0 = the record's kind byte; no branch, J or data word targets it.
+ *
+ * For k = a0 & 0xFF, D = word 0x801E44E8 + 0x110k, G = word 0x801E44C4 +
+ * 32k: for i = 0..8 until D[0xD0 + i] == 0xFF, e = D[0xD0+i]: if
+ * u16 G[0x16C0] & (0x8000 srav (e-1)) then u16 G[0x16C4] |= 0x8000 srav
+ * (i+3) (each a fresh lhu).  srav uses the low 5 bits: e == 0 shifts by 31
+ * (bit 0), e > 16 shifts the bit out.
+ *
+ *   3E14  a1 = 0 ; t1 = 0xFF ; a3 = 0x8000 ; a0 &= 0xFF
+ *         t0 = lw 44E8 + 0x110k ; a2 = lw 44C4 + 32k ; a0 = 0
+ *   3E50  v0 = lbu 0xD0(t0 + a0) ; == t1 -> 3E9C (delay v0 -= 1)
+ *         v1 = lhu 0x16C0(a2) & (a3 srav v0) ; == 0 -> 3E8C (delay a1++)
+ *         v0 = a0 + 3 ; v1 = lhu 0x16C4(a2) | (a3 srav v0) ; sh v1
+ *   3E8C  sltiu (a1&FF) < 9 -> 3E50 (delay a0 = a1&FF) ; jr ra
+ *
+ * v0 on return: 0xFE on a 0xFF terminator, else the final sltiu (0).
+ * Exit registers, always: a0, a1, a2 = G, a3 = 0x8000, t0 = D, t1 = 0xFF,
+ * v1 (the last value loaded/combined; word 44E8 if the first entry is 0xFF). */
+uint32_t battle_results_func_801E3E14(uint32_t a0, uint32_t a1, uint32_t a2,
+                                      uint32_t a3)
+{
+    uint32_t v0, v1, r_a0, r_a1, r_a2, r_a3, t0, t1;
+
+    (void)a1;
+    (void)a2;
+    (void)a3;
+    r_a1 = 0;
+    t1 = 0xFFu;
+    r_a3 = 0x8000u;
+    r_a0 = a0 & 0xFFu;
+    v0 = r_a0 << 4;
+    v0 = v0 + r_a0;
+    v1 = BR_LW(0x801E44E8u);
+    v0 = v0 << 4;
+    t0 = v1 + v0;
+    v0 = BR_LW(0x801E44C4u);
+    r_a0 = r_a0 << 5;
+    r_a2 = v0 + r_a0;
+    r_a0 = r_a1 & 0xFFu;
+    for (;;) {
+        uint32_t e;
+        v0 = t0 + r_a0;
+        e = BR_LBU(v0 + 0xD0u);
+        v0 = e - 1u;               /* beq delay slot */
+        if (e == t1)
+            break;
+        v1 = BR_LHU(r_a2 + 0x16C0u);
+        v0 = br_srav(r_a3, v0);
+        v1 = v1 & v0;
+        r_a1++;                    /* beq delay slot */
+        if (v1 != 0) {
+            v0 = r_a0 + 3u;
+            v1 = BR_LHU(r_a2 + 0x16C4u);
+            v0 = br_srav(r_a3, v0);
+            v1 = v1 | v0;
+            BR_SH(r_a2 + 0x16C4u, v1);
+        }
+        v0 = (r_a1 & 0xFFu) < 9u;
+        r_a0 = r_a1 & 0xFFu;       /* bne delay slot */
+        if (v0 == 0)
+            break;
+    }
+
+    BattleResults_SetExitReg(3, v1);
+    BattleResults_SetExitReg(4, r_a0);
+    BattleResults_SetExitReg(5, r_a1);
+    BattleResults_SetExitReg(6, r_a2);
+    BattleResults_SetExitReg(7, r_a3);
+    BattleResults_SetExitReg(8, t0);
+    BattleResults_SetExitReg(9, t1);
+    return v0;
+}
+
+/* func_801E3EA4 (0x801E3EA4..0x801E3F24, leaf, 33 instructions, no frame).
+ * Called once, from 0x801E3B84 (jal, nop delay slot) in 0x801E3A18, only
+ * for kind 8; it takes no argument (a0 is not read).  No branch, J or data
+ * word targets it.
+ *
+ * D = word 0x801E44E8 (row 0: no kind offset), G = word 0x801E44C4 (no 32k
+ * offset), L = byte 0x8006DE22 (native g_GameState, re-read per entry): for
+ * i = 0..8 until D[0x950 + i] == 0xFF, if !(L < D[0x950+i]) and the bit
+ * 0x1000 srav i is clear in u16 G[0x17C4] (re-read), set it (sh).
+ *
+ *   3EA4  a2 = 0 ; t3 = 0xFF ; t2 = 0x8006DE22 ; t1 = 0x1000
+ *         t0 = lw 44E8 ; a3 = lw 44C4 ; a1 = 0
+ *   3ECC  v1 = lbu 0x950(t0 + a1) ; == t3 -> 3F20 (delay nop)
+ *         v0 = lbu (t2) ; sltu v0 < v1 -> 3F10 (delay a2++)
+ *         a0 = lhu 0x17C4(a3) ; v1 = t1 srav a1 ; a0 & v1 -> 3F14
+ *           (delay v0 = a2&FF) ; sh (v1 | a0), 0x17C4(a3)
+ *   3F10  v0 = a2&FF
+ *   3F14  sltiu v0 < 9 -> 3ECC (delay a1 = a2&FF) ; jr ra
+ *
+ * v0 on return: t0 + i (the terminator's row address) on a 0xFF entry, else
+ * the final sltiu (0).
+ * Exit registers: a1, a2, a3 = G, t0 = D, t1 = 0x1000, t2 = 0x8006DE22,
+ * t3 = 0xFF, v1 always; a0 = the last mask loaded, only if some entry passed
+ * its level test (else as on entry). */
+uint32_t battle_results_func_801E3EA4(uint32_t a0, uint32_t a1, uint32_t a2,
+                                      uint32_t a3)
+{
+    uint32_t v0, v1, r_a0 = a0, r_a1, r_a2, r_a3, t0, t1, t2, t3, c;
+
+    (void)a1;
+    (void)a2;
+    (void)a3;
+    r_a2 = 0;
+    t3 = 0xFFu;
+    t2 = 0x8006DE22u;
+    t1 = 0x1000u;
+    t0 = BR_LW(0x801E44E8u);
+    r_a3 = BR_LW(0x801E44C4u);
+    r_a1 = r_a2 & 0xFFu;
+    for (;;) {
+        v0 = t0 + r_a1;
+        v1 = BR_LBU(v0 + 0x950u);
+        if (v1 == t3)
+            break;
+        v0 = BR_LBU(t2);
+        v0 = v0 < v1;
+        r_a2++;                    /* bne delay slot */
+        if (v0 == 0) {
+            r_a0 = BR_LHU(r_a3 + 0x17C4u);
+            v1 = br_srav(t1, r_a1);
+            v0 = r_a0 & v1;
+            c = v0;
+            v0 = r_a2 & 0xFFu;     /* bne delay slot */
+            if (c == 0) {
+                v0 = v1 | r_a0;
+                BR_SH(r_a3 + 0x17C4u, v0);
+                v0 = r_a2 & 0xFFu;
+            }
+        } else {
+            v0 = r_a2 & 0xFFu;
+        }
+        v0 = v0 < 9u;
+        r_a1 = r_a2 & 0xFFu;       /* bne delay slot */
+        if (v0 == 0)
+            break;
+    }
+
+    BattleResults_SetExitReg(3, v1);
+    BattleResults_SetExitReg(4, r_a0);
+    BattleResults_SetExitReg(5, r_a1);
+    BattleResults_SetExitReg(6, r_a2);
+    BattleResults_SetExitReg(7, r_a3);
+    BattleResults_SetExitReg(8, t0);
+    BattleResults_SetExitReg(9, t1);
+    BattleResults_SetExitReg(10, t2);
+    BattleResults_SetExitReg(11, t3);
+    return v0;
+}
+
+/* func_801E3F28 (0x801E3F28..0x801E3FAC, leaf, 34 instructions, no frame).
+ * Called once, from 0x801E3B60 (jal, nop delay slot) in 0x801E3A18, with
+ * a0 = the record's kind byte; no branch, J or data word targets it.
+ *
+ * For k = a0 & 0xFF, D = word 0x801E44E8 + 0x110k, G = word 0x801E44C4 +
+ * 32k: for i = 0..12 until D[0xE0 + i] == 0, e = D[0xE0+i]: if
+ * u16 G[0x16C2] & (0x8000 srav (e-1)) then u16 G[0x16C6] |= 0x8000 srav i
+ * (each a fresh lhu; srav takes the low 5 bits).
+ *
+ *   3F28  a1 = 0 ; a3 = 0x8000 ; a0 &= 0xFF ; t0 = lw 44E8 + 0x110k ;
+ *         a2 = lw 44C4 + 32k ; a0 = 0
+ *   3F60  v0 = lbu 0xE0(t0 + a0) ; == 0 -> 3FA8 (delay v0 -= 1)
+ *         v1 = lhu 0x16C2(a2) & (a3 srav v0) ; == 0 -> 3F98 (delay a1++)
+ *         v0 = lhu 0x16C6(a2) | (a3 srav a0) ; sh v0
+ *   3F98  sltiu (a1&FF) < 13 -> 3F60 (delay a0 = a1&FF) ; jr ra
+ *
+ * v0 on return: 0xFFFFFFFF on a 0 terminator, else the final sltiu (0).
+ * Exit registers, always: a0, a1, a2 = G, a3 = 0x8000, t0 = D, v1 (the last
+ * value loaded/combined; word 44E8 if the first entry is 0). */
+uint32_t battle_results_func_801E3F28(uint32_t a0, uint32_t a1, uint32_t a2,
+                                      uint32_t a3)
+{
+    uint32_t v0, v1, r_a0, r_a1, r_a2, r_a3, t0;
+
+    (void)a1;
+    (void)a2;
+    (void)a3;
+    r_a1 = 0;
+    r_a3 = 0x8000u;
+    r_a0 = a0 & 0xFFu;
+    v0 = r_a0 << 4;
+    v0 = v0 + r_a0;
+    v1 = BR_LW(0x801E44E8u);
+    v0 = v0 << 4;
+    t0 = v1 + v0;
+    v0 = BR_LW(0x801E44C4u);
+    r_a0 = r_a0 << 5;
+    r_a2 = v0 + r_a0;
+    r_a0 = r_a1 & 0xFFu;
+    for (;;) {
+        uint32_t e;
+        v0 = t0 + r_a0;
+        e = BR_LBU(v0 + 0xE0u);
+        v0 = e - 1u;               /* beq delay slot */
+        if (e == 0)
+            break;
+        v1 = BR_LHU(r_a2 + 0x16C2u);
+        v0 = br_srav(r_a3, v0);
+        v1 = v1 & v0;
+        r_a1++;                    /* beq delay slot */
+        if (v1 != 0) {
+            v0 = BR_LHU(r_a2 + 0x16C6u);
+            v1 = br_srav(r_a3, r_a0);
+            v0 = v0 | v1;
+            BR_SH(r_a2 + 0x16C6u, v0);
+        }
+        v0 = (r_a1 & 0xFFu) < 13u;
+        r_a0 = r_a1 & 0xFFu;       /* bne delay slot */
+        if (v0 == 0)
+            break;
+    }
+
+    BattleResults_SetExitReg(3, v1);
+    BattleResults_SetExitReg(4, r_a0);
+    BattleResults_SetExitReg(5, r_a1);
+    BattleResults_SetExitReg(6, r_a2);
+    BattleResults_SetExitReg(7, r_a3);
+    BattleResults_SetExitReg(8, t0);
+    return v0;
+}
+
+/* func_801E3FB0 (0x801E3FB0..0x801E4038, leaf, 35 instructions, no frame).
+ * Called once, from 0x801E3BA8 (jal, nop delay slot) in 0x801E3A18, only
+ * for kind 7; it takes no argument.  No branch, J or data word targets it.
+ *
+ * E = word 0x801E44EC (read twice), G = word 0x801E44C4 (read once):
+ *   G.u32[0xE58] = 200 * E.u16[0x4E]      (sll/addu chain, 32-bit)
+ *   G.u8[0xE30]  = (E[0x58] * 0xCCCCCCCD hi >> 2) + 1   (multu; = x/5 + 1)
+ *   G.u16[0xE64] = 10 * E.u16[0x4E] ; G.u16[0xE66] = 10 * E.u16[0x4E]
+ *     (E re-read from 44EC before 0xE64, the u16 re-read before each store;
+ *     the 0xE66 store is in the jr delay slot)
+ *
+ * v0 on return: 10 * the last u16 read.
+ * Exit registers, always: a0 = G, a1 = E (the re-read), a2 = 0xCCCCCCCD,
+ * v1 = the last u16 read, HI:LO = the multu's product. */
+uint32_t battle_results_func_801E3FB0(uint32_t a0, uint32_t a1, uint32_t a2,
+                                      uint32_t a3)
+{
+    uint32_t hi, lo, v0, v1, r_a0, r_a1, r_a2;
+
+    (void)a0;
+    (void)a1;
+    (void)a2;
+    (void)a3;
+    r_a1 = BR_LW(0x801E44ECu);
+    r_a2 = 0xCCCC0000u;
+    v1 = BR_LHU(r_a1 + 0x4Eu);
+    r_a0 = BR_LW(0x801E44C4u);
+    v0 = v1 << 1;
+    v0 = v0 + v1;
+    v0 = v0 << 3;
+    v0 = v0 + v1;
+    v0 = v0 << 3;
+    BR_SW(r_a0 + 0xE58u, v0);
+    v0 = BR_LBU(r_a1 + 0x58u);
+    r_a2 = r_a2 | 0xCCCDu;
+    br_multu(v0, r_a2, &hi, &lo);
+    v0 = hi;
+    v0 = v0 >> 2;
+    v0 = v0 + 1u;
+    BR_SB(r_a0 + 0xE30u, v0);
+    r_a1 = BR_LW(0x801E44ECu);
+    v1 = BR_LHU(r_a1 + 0x4Eu);
+    v0 = v1 << 2;
+    v0 = v0 + v1;
+    v0 = v0 << 1;
+    BR_SH(r_a0 + 0xE64u, v0);
+    v1 = BR_LHU(r_a1 + 0x4Eu);
+    v0 = v1 << 2;
+    v0 = v0 + v1;
+    v0 = v0 << 1;
+    BR_SH(r_a0 + 0xE66u, v0);
+
+    BattleResults_SetExitReg(3, v1);
+    BattleResults_SetExitReg(4, r_a0);
+    BattleResults_SetExitReg(5, r_a1);
+    BattleResults_SetExitReg(6, r_a2);
     BattleResults_SetExitHiLo(hi, lo);
     return v0;
 }

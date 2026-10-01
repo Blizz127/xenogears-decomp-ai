@@ -804,6 +804,335 @@ static void shape_801E2EB0(unsigned index, uint32_t args[4])
     }
 }
 
+/* A character index k = a0 & 0xFF for the 0x8006xxxx per-character tables
+ * (stores at 0x8006ECF4 + 32k + 0..6, 0x8006D634 + 32k + 0x16C2..0x16C6):
+ * k <= 100 keeps them in the native g_GameState copy, k >= 112 puts them in
+ * guest RAM above the overlay base; 101..111 would store into main-exe data
+ * between the copy's end (0x8006F98C) and BATTLE_BASE that no prover window
+ * covers, so they are not generated (party kinds in play are 0..10). */
+static uint8_t shape_kind(void)
+{
+    switch (rnd() % 4u) {
+    case 0: return (uint8_t)(rnd() % 101u);
+    case 1: return (uint8_t)(112u + rnd() % 144u);
+    default: return (uint8_t)(rnd() % 11u);
+    }
+}
+
+/* Level byte 0x8006D902 + 164k.  k = 51/52 put it in that same uncovered
+ * main-exe data (0x8006F9AE / 0x8006FA52): the routines only read it there,
+ * so the harness leaves those bytes alone rather than poke host data. */
+static void poke_level(uint8_t k, uint8_t level)
+{
+    if (k != 51u && k != 52u)
+        poke8(0x8006D902u + 164u * k, level);
+}
+
+/* Shared world for the 0x801E3A18 helpers: D = word 0x801E44E8 (data rows
+ * 0x110 apart), G = word 0x801E44C4 (g_GameState in play, else a guest
+ * buffer), E = word 0x801E44EC (the slot record), the 0x4000 pad flag, the
+ * learned mask 0x8006ECF4 + 32k and the level 0x8006D902 + 164k. */
+static uint32_t helper_d, helper_g, helper_e;
+
+static void shape_helper_world(unsigned index, uint8_t k)
+{
+    helper_d = guest_buffer(0x11300u);
+    helper_g = (rnd() & 3u) ? 0x8006D634u : guest_buffer(0x3800u);
+    helper_e = guest_buffer(0xA0u);
+    if (index % 11u == 10u) {
+        /* rows and record inside the native copy (k <= 10 fits) */
+        helper_d = 0x8006D640u;
+        helper_e = 0x8006F800u;
+        if (k > 10u)
+            helper_d = guest_buffer(0x11300u);
+    }
+    poke32(0x801E44E8u, helper_d);
+    poke32(0x801E44C4u, helper_g);
+    poke32(0x801E44ECu, helper_e);
+    poke16(0x8006F8EAu, (uint16_t)rnd());
+    poke_level(k, (uint8_t)((uint32_t[]){0u, 1u, 50u, 99u, 255u, rnd()}[rnd() % 6u]));
+}
+
+/* Read test state through the production mapping (not the accessor under
+ * observation). */
+static uint8_t peek8(uint32_t address)
+{
+    uint8_t *p = resolve_memory(&rt, address, 1, 0);
+    if (p == NULL) {
+        fprintf(stderr, "BATTLE RESULTS DIFFERENTIAL FAIL harness peek 0x%08x\n",
+                address);
+        exit(2);
+    }
+    return *p;
+}
+
+static uint16_t peek16(uint32_t address)
+{
+    return (uint16_t)(peek8(address) | (peek8(address + 1u) << 8));
+}
+
+static uint8_t level_of(uint8_t k)
+{
+    return peek8(0x8006D902u + 164u * k);
+}
+
+/* func_801E3BE0(kind a0): candidates i < 7 (13 with pad flag 0x4000), learned
+ * mask, per-candidate level gate D[0x100+i], 7 requirements D.u16[14i+2j]
+ * against E.u16[0x90+2j].  Gates and requirements are drawn around the
+ * actual level / stats so the equal and one-off cases all occur. */
+static void shape_801E3BE0(unsigned index, uint32_t args[4])
+{
+    uint8_t k = shape_kind(), level;
+    uint32_t row, i, j;
+
+    for (j = 0; j < 4; j++)
+        args[j] = rnd();
+    if (index == 5) k = 200;
+    if (index == 6) k = 100;
+    shape_helper_world(index, k);
+    row = helper_d + 0x110u * k;
+    level = level_of(k);
+    poke16(0x8006ECF4u + 32u * k, (uint16_t)((uint32_t[]){0u, 0xFFFFu, rnd(),
+                                                          rnd() & rnd()}[rnd() % 4u]));
+    for (i = 0; i < 13; i++) {
+        poke8(row + 0x100u + i, (uint8_t)((uint32_t[]){level, level + 1u, level - 1u, 0u,
+                                                       rnd()}[rnd() % 5u]));
+        for (j = 0; j < 7; j++) {
+            uint16_t stat = peek16(helper_e + 0x90u + 2u * j);
+            poke16(row + 14u * i + 2u * j,
+                   (uint16_t)((uint32_t[]){0u, stat, stat + 1u, stat - 1u, rnd()}[rnd() % 5u]));
+        }
+    }
+    switch (index) {
+    case 0: /* 7 candidates, nothing learned, everything passes: learns i = 0, returns 0 */
+        poke16(0x8006F8EAu, 0);
+        poke16(0x8006ECF4u + 32u * k, 0);
+        for (i = 0; i < 13; i++) {
+            poke8(row + 0x100u + i, 0);
+            for (j = 0; j < 7; j++) poke16(row + 14u * i + 2u * j, 0);
+        }
+        break;
+    case 1: /* 13 candidates, all but i = 12 learned: learns 12 */
+        poke16(0x8006F8EAu, 0x4000u);
+        poke16(0x8006ECF4u + 32u * k, 0xFFF0u);
+        poke8(row + 0x100u + 12u, 0);
+        for (j = 0; j < 7; j++) poke16(row + 14u * 12u + 2u * j, 0);
+        break;
+    case 2: /* the first unlearned candidate's gate is above the level: stop */
+        poke16(0x8006ECF4u + 32u * k, 0x8000u);
+        poke8(row + 0x101u, (uint8_t)(level + 1u));
+        if (level == 0xFFu) {
+            poke8(row + 0x101u, 0xFF);
+            poke_level(k, 0xFE);
+        }
+        break;
+    case 3: /* candidate 0 fails only its last requirement (stat = req - 1),
+             * candidate 1 meets every one exactly */
+        poke16(0x8006F8EAu, 0);
+        poke16(0x8006ECF4u + 32u * k, 0);
+        poke8(row + 0x100u, 0);
+        poke8(row + 0x101u, 0);
+        for (j = 0; j < 7; j++) {
+            uint16_t stat = peek16(helper_e + 0x90u + 2u * j);
+            if (stat == 0xFFFFu) poke16(helper_e + 0x90u + 2u * j, stat = 0xFFFEu);
+            poke16(row + 2u * j, j == 6 ? (uint16_t)(stat + 1u) : stat);
+            poke16(row + 14u + 2u * j, stat);
+        }
+        break;
+    case 4: /* everything learned: none, 0 */
+        poke16(0x8006ECF4u + 32u * k, 0xFFFFu);
+        break;
+    default:
+        break;
+    }
+    args[0] = dirty_byte_arg(k);
+}
+
+/* func_801E3D54(kind a0): list D[0xF0 + i] (0xFF ends it, at most 12)
+ * against the level, award bit 0x8000>>i in G + 32k + 0x16C2. */
+static void shape_801E3D54(unsigned index, uint32_t args[4])
+{
+    uint8_t k = shape_kind(), level;
+    uint32_t row, i, j;
+
+    for (j = 0; j < 4; j++)
+        args[j] = rnd();
+    if (index == 5) k = 180;
+    shape_helper_world(index, k);
+    row = helper_d + 0x110u * k;
+    level = level_of(k);
+    poke16(helper_g + 32u * k + 0x16C2u,
+           (uint16_t)((uint32_t[]){0u, 0xFFFFu, rnd(), rnd() & rnd()}[rnd() % 4u]));
+    for (i = 0; i < 12; i++)
+        poke8(row + 0xF0u + i, (uint8_t)((uint32_t[]){level, level + 1u, level - 1u, 0u,
+                                                      0xFFu, rnd()}[rnd() % 6u]));
+    switch (index) {
+    case 0: poke8(row + 0xF0u, 0xFF); break;           /* empty list: 0 */
+    case 1: /* 12 entries above the level, no terminator: 0, a2 = 0x8 */
+        if (level == 0xFFu) poke_level(k, level = 0xFE);
+        for (i = 0; i < 12; i++) poke8(row + 0xF0u + i, (uint8_t)(level + 1u));
+        break;
+    case 2: /* entry 0 == level, bit clear: returns 1 */
+        poke8(row + 0xF0u, level);
+        poke16(helper_g + 32u * k + 0x16C2u, 0x7FFFu);
+        break;
+    case 3: /* first four bits already set: returns 5 */
+        for (i = 0; i < 6; i++) poke8(row + 0xF0u + i, 0);
+        poke16(helper_g + 32u * k + 0x16C2u, 0xF000u);
+        break;
+    case 4: /* last entry only: returns 12 */
+        if (level == 0xFFu) poke_level(k, level = 0xFE);
+        for (i = 0; i < 11; i++) poke8(row + 0xF0u + i, (uint8_t)(level + 1u));
+        poke8(row + 0xFBu, level);
+        poke16(helper_g + 32u * k + 0x16C2u, 0);
+        break;
+    default:
+        break;
+    }
+    args[0] = dirty_byte_arg(k);
+}
+
+/* func_801E3E14(kind a0): list D[0xD0 + i] (0xFF ends it, at most 9),
+ * entry e tests bit (e-1)&31 of G + 32k + 0x16C0, sets bit (i+3) of
+ * G + 32k + 0x16C4. */
+static void shape_801E3E14(unsigned index, uint32_t args[4])
+{
+    uint8_t k = shape_kind();
+    uint32_t row, i, j;
+
+    for (j = 0; j < 4; j++)
+        args[j] = rnd();
+    shape_helper_world(index, k);
+    row = helper_d + 0x110u * k;
+    poke16(helper_g + 32u * k + 0x16C0u,
+           (uint16_t)((uint32_t[]){0u, 0xFFFFu, rnd(), rnd() & rnd()}[rnd() % 4u]));
+    poke16(helper_g + 32u * k + 0x16C4u, (uint16_t)rnd());
+    for (i = 0; i < 9; i++)
+        poke8(row + 0xD0u + i, (uint8_t)((uint32_t[]){0u, 1u, 16u, 17u, 32u, 33u, 0xFFu,
+                                                      rnd(), 1u + rnd() % 16u}[rnd() % 9u]));
+    switch (index) {
+    case 0: poke8(row + 0xD0u, 0xFF); break;       /* empty: returns 0xFE */
+    case 1: /* 9 entries, no terminator, every bit set */
+        poke16(helper_g + 32u * k + 0x16C0u, 0xFFFFu);
+        poke16(helper_g + 32u * k + 0x16C4u, 0);
+        for (i = 0; i < 9; i++) poke8(row + 0xD0u + i, (uint8_t)(1u + i));
+        break;
+    case 2: /* e = 0 (srav by 31 tests bit 0), e = 33 (shift 0 tests 0x8000) */
+        poke16(helper_g + 32u * k + 0x16C0u, 0x8001u);
+        poke8(row + 0xD0u, 0);
+        poke8(row + 0xD1u, 33);
+        poke8(row + 0xD2u, 0xFF);
+        break;
+    case 3: /* e = 16 and 17: bit 0 and shifted out */
+        poke16(helper_g + 32u * k + 0x16C0u, 0xFFFFu);
+        poke8(row + 0xD0u, 16);
+        poke8(row + 0xD1u, 17);
+        break;
+    default:
+        break;
+    }
+    args[0] = dirty_byte_arg(k);
+}
+
+/* func_801E3EA4(): row 0 list D[0x950 + i] (0xFF ends it, at most 9) against
+ * the level byte 0x8006DE22, bit 0x1000>>i of G + 0x17C4.  a0 is not an
+ * input. */
+static void shape_801E3EA4(unsigned index, uint32_t args[4])
+{
+    uint32_t i, j;
+    uint8_t level;
+
+    for (j = 0; j < 4; j++)
+        args[j] = rnd();
+    shape_helper_world(index, 8);
+    level = (uint8_t)((uint32_t[]){0u, 1u, 40u, 99u, 255u, rnd()}[rnd() % 6u]);
+    poke8(0x8006DE22u, level);
+    poke16(helper_g + 0x17C4u,
+           (uint16_t)((uint32_t[]){0u, 0xFFFFu, rnd(), 0x1FF0u}[rnd() % 4u]));
+    for (i = 0; i < 9; i++)
+        poke8(helper_d + 0x950u + i, (uint8_t)((uint32_t[]){level, level + 1u, level - 1u,
+                                                            0u, 0xFFu, rnd()}[rnd() % 6u]));
+    switch (index) {
+    case 0: poke8(helper_d + 0x950u, 0xFF); break; /* returns D + 0 */
+    case 1: /* nine entries at the level, mask clear: sets 0x1000..0x10 */
+        for (i = 0; i < 9; i++) poke8(helper_d + 0x950u + i, level);
+        poke16(helper_g + 0x17C4u, 0);
+        break;
+    case 2: /* entries one above the level: nothing (a0 not written) */
+        if (level == 0xFFu) poke8(0x8006DE22u, level = 0xFE);
+        for (i = 0; i < 9; i++) poke8(helper_d + 0x950u + i, (uint8_t)(level + 1u));
+        break;
+    default:
+        break;
+    }
+}
+
+/* func_801E3F28(kind a0): list D[0xE0 + i] (0 ends it, at most 13), entry e
+ * tests bit (e-1)&31 of G + 32k + 0x16C2, sets bit i of G + 32k + 0x16C6. */
+static void shape_801E3F28(unsigned index, uint32_t args[4])
+{
+    uint8_t k = shape_kind();
+    uint32_t row, i, j;
+
+    for (j = 0; j < 4; j++)
+        args[j] = rnd();
+    shape_helper_world(index, k);
+    row = helper_d + 0x110u * k;
+    poke16(helper_g + 32u * k + 0x16C2u,
+           (uint16_t)((uint32_t[]){0u, 0xFFFFu, rnd(), rnd() & rnd()}[rnd() % 4u]));
+    poke16(helper_g + 32u * k + 0x16C6u, (uint16_t)rnd());
+    for (i = 0; i < 13; i++)
+        poke8(row + 0xE0u + i, (uint8_t)((uint32_t[]){0u, 1u, 16u, 17u, 33u, 0xFFu,
+                                                      rnd(), 1u + rnd() % 16u}[rnd() % 8u]));
+    switch (index) {
+    case 0: poke8(row + 0xE0u, 0); break;          /* empty: returns -1 */
+    case 1: /* 13 entries, no terminator, every bit set */
+        poke16(helper_g + 32u * k + 0x16C2u, 0xFFFFu);
+        poke16(helper_g + 32u * k + 0x16C6u, 0);
+        for (i = 0; i < 13; i++) poke8(row + 0xE0u + i, (uint8_t)(1u + i));
+        break;
+    case 2: /* e = 0xFF (shift 30) and 33 (shift 0) */
+        poke16(helper_g + 32u * k + 0x16C2u, 0x8000u);
+        poke8(row + 0xE0u, 0xFF);
+        poke8(row + 0xE1u, 33);
+        poke8(row + 0xE2u, 0);
+        break;
+    default:
+        break;
+    }
+    args[0] = dirty_byte_arg(k);
+}
+
+/* func_801E3FB0(): E = word 0x801E44EC (+0x4E u16, +0x58 byte), G = word
+ * 0x801E44C4 (+0xE30, +0xE58, +0xE64, +0xE66).  The alias case puts E+0x4E
+ * on G+0xE64, so the re-read before the 0xE66 store sees the 0xE64 store. */
+static void shape_801E3FB0(unsigned index, uint32_t args[4])
+{
+    uint32_t j;
+
+    for (j = 0; j < 4; j++)
+        args[j] = rnd();
+    shape_helper_world(index, 7);
+    poke16(helper_e + 0x4Eu, (uint16_t)((uint32_t[]){0u, 1u, 999u, 6553u, 6554u,
+                                                     0xFFFFu, rnd()}[rnd() % 7u]));
+    poke8(helper_e + 0x58u, (uint8_t)((uint32_t[]){0u, 4u, 5u, 254u, 255u,
+                                                   rnd()}[rnd() % 6u]));
+    switch (index) {
+    case 0: poke16(helper_e + 0x4Eu, 0xFFFFu); poke8(helper_e + 0x58u, 255); break;
+    case 1: poke16(helper_e + 0x4Eu, 0); poke8(helper_e + 0x58u, 0); break;
+    case 2: /* E + 0x4E aliases G + 0xE64 */
+        helper_e = helper_g + 0xE16u;
+        poke32(0x801E44ECu, helper_e);
+        break;
+    case 3: /* E + 0x58 aliases G + 0xE58's low byte (stored first) */
+        helper_e = helper_g + 0xE00u;
+        poke32(0x801E44ECu, helper_e);
+        break;
+    default:
+        break;
+    }
+}
+
 typedef struct LeafSpec {
     uint32_t address;
     void (*shape)(unsigned index, uint32_t args[4]);
@@ -820,6 +1149,12 @@ static const LeafSpec kSpecs[] = {
     {0x801E41B4u, shape_801E41B4, 5},
     {0x801E1370u, shape_801E1370, 8},
     {0x801E2EB0u, shape_801E2EB0, 8},
+    {0x801E3BE0u, shape_801E3BE0, 7},
+    {0x801E3D54u, shape_801E3D54, 6},
+    {0x801E3E14u, shape_801E3E14, 4},
+    {0x801E3EA4u, shape_801E3EA4, 3},
+    {0x801E3F28u, shape_801E3F28, 3},
+    {0x801E3FB0u, shape_801E3FB0, 4},
 };
 
 /* ---- running one side --------------------------------------------------- */
