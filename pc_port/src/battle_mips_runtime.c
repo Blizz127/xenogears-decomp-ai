@@ -504,6 +504,9 @@ static int target_is_guest_code(uint32_t target)
     return 0;
 }
 
+/* XENO_CPU_FALLBACK_STATS: per-battle interpreter-vs-native meter (stderr). */
+#include "battle_cpu_fallback_meter.inc"
+
 /* Overlay C adopted onto the host. Pointer-only leaves plus bodies that
  * touch overlay D_* through battle_overlay_guest_ram.h (guest RAM, not a
  * second host copy). Nested guest pointers loaded from structs stay in
@@ -931,6 +934,8 @@ static int runtime_bridge_call(void *opaque, PcPortMipsCpu *cpu, uint32_t target
      * the retail bytes) for anything not allowlisted or not proven. */
     {
         int adopted = results_try_host(runtime, cpu, target);
+        if (adopted > 0)
+            cpu_meter_note_kind(CPU_METER_KIND_RESULTS);
         if (adopted != 0) return adopted;
     }
 
@@ -1126,6 +1131,7 @@ static int runtime_bridge_call(void *opaque, PcPortMipsCpu *cpu, uint32_t target
         return bridge_draw_otag(cpu);
     file1_before_archive(runtime, cpu, resolved->address, &file1_load_candidate);
     results_note_archive(runtime, resolved->address);
+    cpu_meter_note_kind(CPU_METER_KIND_GENERIC);
     function = (GenericHostFunction)resolved->host;
     result = function(args[0], args[1], args[2], args[3],
                       args[4], args[5], args[6], args[7],
@@ -1150,13 +1156,16 @@ static int runtime_bridge(void *opaque, PcPortMipsCpu *cpu, uint32_t target)
      * repeated bridge calls in the same tick cannot push duplicate states. */
     { extern void PcPort_PadVblankPump(void); PcPort_PadVblankPump(); }
     PcPortMipsCpu *previous = runtime->bridge_cpu;
+    CpuMeterBridgeState meter;
     runtime->bridge_cpu = cpu;
     {
         void (*volatile god_hook)(PcPortMipsCpu*, uint32_t) = PcPort_GodModeBeforeGuest;
         if (god_hook)
             god_hook(cpu, target);
     }
+    cpu_meter_bridge_enter(runtime, cpu, target, &meter);
     int result = runtime_bridge_call(opaque, cpu, target);
+    cpu_meter_bridge_leave(cpu, target, result, &meter);
     runtime->bridge_cpu = previous;
     return result;
 }
@@ -1262,6 +1271,7 @@ int PcPort_BattleMipsCallGuest(uint32_t target, const uint32_t *args,
     }
 
     runtime->bridge_cpu = &cpu;
+    cpu_meter_mark_entry(&cpu, target);
     rc = PcPortMipsRun(&cpu, target, BATTLE_HALT_PC, CALLBACK_STEP_LIMIT);
     runtime->bridge_cpu = caller;
     if (rc != PC_PORT_MIPS_HALTED) {
@@ -1288,6 +1298,7 @@ static int run_guest_callback(BattleMipsRuntime *runtime, uint32_t callback,
     if (runtime->bridge_cpu != NULL)
         cpu.gpr[29] = runtime->bridge_cpu->gpr[29];
     cpu.gpr[4] = (uint32_t)(uintptr_t)argument;
+    cpu_meter_mark_entry(&cpu, callback);
     rc = PcPortMipsRun(&cpu, callback, BATTLE_HALT_PC, CALLBACK_STEP_LIMIT);
     if (rc != PC_PORT_MIPS_HALTED) {
         fprintf(stderr,
@@ -1383,8 +1394,11 @@ void func_80070F40(void)
     fprintf(stderr,
             "[xeno-port][battle-mips] enter retail battle.bin at 0x%08x\n",
             BATTLE_ENTRY);
+    cpu_meter_begin_battle();
+    cpu_meter_mark_entry(&cpu, BATTLE_ENTRY);
     rc = PcPortMipsRun(&cpu, BATTLE_ENTRY, BATTLE_HALT_PC,
                        battle_step_limit());
+    cpu_meter_end_battle(rc == PC_PORT_MIPS_HALTED ? "returned" : "stopped");
     g_ActiveBattleRuntime = NULL;
     file1_invalidate(runtime);
     results_invalidate(runtime);
