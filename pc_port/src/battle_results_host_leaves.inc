@@ -17,3 +17,4 @@
  *
  * Everything not listed here is interpreted (disclosed CPU fallback).
  */
+    {0x801e24b0u, "func_801E24B0"},

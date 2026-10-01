@@ -886,6 +886,7 @@ PORT_SOURCES=(
     pc_port/src/psx_memory.c
     pc_port/src/battle_mips_adapter.c
     pc_port/src/battle_mips_runtime.c
+    pc_port/src/battle_results_host.c
     pc_port/src/guest_prim_link.c
     pc_port/src/model_prim_link.c
     pc_port/src/model_prim_ed20.c
@@ -1303,6 +1304,31 @@ for leaf in $(python3 tools/scripts/battle_overlay_host_tus.py --leaves); do
 done
 echo "    ${#BATTLE_HOST_OBJS[@]} battle host units define the full allowlist"
 
+# The battle RESULTS module (retail overlay at 0x801DE000) has its own
+# allowlist, pc_port/src/battle_results_host_leaves.inc, and its own host TU,
+# pc_port/src/battle_results_host.c (in PORT_SOURCES above).  The runtime binds
+# each entry with dlsym("battle_results_func_XXXXXXXX") behind the module
+# identity gate (battle_results_gate.inc); an entry with no compiled body would
+# silently stay interpreted while the list claims native coverage.  An empty
+# list is valid: then every results routine is interpreted, as before.
+RESULTS_HOST_OBJECT="$OBJ/battle_results_host.c.o"
+if ! python3 tools/scripts/battle_results_host_leaves.py --verify >/dev/null; then
+    echo "ERROR: pc_port/src/battle_results_host_leaves.inc is malformed."
+    exit 1
+fi
+BATTLE_RESULTS_SYMBOLS="$(python3 tools/scripts/battle_results_host_leaves.py --symbols)"
+results_adopted=0
+for sym in $BATTLE_RESULTS_SYMBOLS; do
+    if ! nm -g --defined-only "$RESULTS_HOST_OBJECT" 2>/dev/null \
+        | awk -v s="$sym" '$2 == "T" && $3 == s {found=1} END {exit !found}'; then
+        echo "ERROR: adopted results routine $sym is not defined by $RESULTS_HOST_OBJECT."
+        echo "ERROR: the results allowlist would be inert for it."
+        exit 1
+    fi
+    results_adopted=$((results_adopted+1))
+done
+echo "    ${results_adopted} adopted battle results bodies defined (rest of the results module interpreted)"
+
 # Every overlay loads at the same vram base, so a battle function and a field
 # function can share an address -- and therefore a splat symbol name. src/battle
 # /main2.c defines func_800764B4 and so does src/field/main/misc2.c. Two strong
@@ -1634,6 +1660,21 @@ if [ -f "$OUT/xeno-port" ] && [ ! -s "$OUT/link2.err" ]; then
         exit 1
     fi
     echo "    overlay host allowlist verified against the linked binary"
+
+    # Same for the results allowlist: dlsym() needs each body exported by the
+    # shipped binary (-rdynamic), and never as a generated stub.
+    for sym in $BATTLE_RESULTS_SYMBOLS; do
+        if ! nm -D --defined-only "$OUT/xeno-port" 2>/dev/null \
+            | awk -v s="$sym" '$3 == s {found=1} END {exit !found}'; then
+            echo "ERROR: adopted results body is not exported by the linked binary: $sym"
+            exit 1
+        fi
+        if rg -q "\"$sym\"" "$OUT/stubs.c" 2>/dev/null; then
+            echo "ERROR: adopted results body is also a generated stub: $sym"
+            exit 1
+        fi
+    done
+    echo "    results host allowlist verified against the linked binary"
 
     # Being in the binary is not enough: an adopted body that reaches a
     # generated stub calls a placeholder where retail ran real code, and it
