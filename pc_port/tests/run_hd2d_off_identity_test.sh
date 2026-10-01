@@ -99,7 +99,9 @@ fi
 run_one() { # name binary
     local name="$1" bin="$2" n last
     rm -rf "$OUTDIR/run_$name" "$OUTDIR/hash_$name.txt"
-    ALSOFT_DRIVERS=null SDL_AUDIODRIVER=dummy \
+    # XENO_LOG_TEE=0: the stderr tee thread (port_log.c) is not drained by the
+    # present-hash _Exit, which could drop the "presents logged; exiting" marker.
+    XENO_LOG_TEE=0 ALSOFT_DRIVERS=null SDL_AUDIODRIVER=dummy \
     XENO_PORT_BINARY="$bin" \
     XENO_TITLE_SMOKE_OUTDIR="$OUTDIR/run_$name" \
     XENO_TITLE_SMOKE_SECONDS="$SECONDS_PER_RUN" \
