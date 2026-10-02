@@ -6,11 +6,15 @@ from 18:44:27Z through 18:59:48Z found no `HANDOVER.md` in any registered projec
 worktree and no handover commit. Under the owner's 15-minute fallback, work
 continued from the newest commit, `6e189169d3e88abe1c0ebb78a87341eaf0160b78`.
 
-Active branch: `codex/battle-results-native-resume-20261002`, in
-`~/dev/xenogears-decomp-battle-results`. The prior Claude branch and all other
-worktrees are preserved. Codex is the single writer. The Claude permission
-prompt was not answered, dismissed or bypassed; existing authorization and
-credential holds remain in effect.
+Active branch: `codex/native-port-20261002`, in
+`~/dev/xenogears-decomp-codex-native`. The initial checkpoint remains on
+`codex/battle-results-native-resume-20261002` in the battle-results worktree.
+The coordinator then clarified that Claude's pending Dangerous rm prompt
+concerns `infra-scratch/leaves3` cleanup. Leave that worktree's uncommitted
+scratch untouched while the owner resolves it; all further Codex edits use
+this isolated worktree. The prior Claude branch and all other worktrees are
+preserved. Codex is the single writer. The permission prompt was not answered
+or dismissed; existing authorization and credential holds remain in effect.
 
 The unfinished next step recorded by `pc_port/README.md` and the private
 `native-audit/battle-decomp/BATCHES_INDEX.md` was the batch-3 runner gate.
@@ -25,6 +29,18 @@ Do not adopt native caller drafts without the guest-frame/call-recorder proof.
 Battle remains hybrid; the native milestone and coverage limits are tracked in
 the validation record.
 
+Route preparation review: the older worldmap2 probe job
+`20260930-190001-xeno-worldmap2-verify-probes-1685321` did not prove a victory.
+Its natural route never confirmed New Game, and both battle probes aborted;
+the job's outer zero exit masked those sub-results. The onehit map-1 probe
+reached RESULTS and returned with an empty party, so it is only a diagnostic
+fixture. The existing `assists_test.py` also closes its log in `stop()` before
+the caller writes its final marker. Before reusing that driver, fix its
+shutdown ordering and isolate config, memory cards and a copied checkpoint.
+Compare state at results entry and return, not guest-store log lines: native
+helpers' writes are not present in that instruction-only log. These are
+preparation findings, not new route acceptance or newly executed tests.
+
 Existing HD-2D lane: approved detailed-v2 direction, art opt-in and OFF by
 default, full Fei set incomplete. The first 32-state batch has 25 passing masks
 and seven unresolved masks. Preserve the private art, contact sheets, approved
@@ -37,6 +53,7 @@ per lane, with PE/PlanetSide priority. Preserve private-channel release gates,
 rollback, saves/settings, native/hybrid disclosure and the owner-device launch
 restrictions. No public push or competing publisher.
 
-The supplied coordinator report task ID `none` returned `Task not found`.
-Progress was delivered through the coordinator's existing native inbox. No task
-ledger was invented; the existing HD-2D task `83b32c4c7ff6` remains separate.
+The initially supplied report task ID `none` returned `Task not found`, so the
+first progress reports used the coordinator's native inbox. The coordinator
+subsequently assigned **`f5b072578f5f`** to the native-port takeover; use that
+ledger task for further reports. Keep HD-2D task **`83b32c4c7ff6`** separate.
