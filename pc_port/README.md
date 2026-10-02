@@ -50,7 +50,7 @@ in `src/battle_results_host_leaves.inc`, which run as native C from
 |---|---|
 | `func_801E24B0` (result-id -> g_GameState name-table map) | native, identity-gated; differential PASS on the runner (gates 3-7) |
 | `func_801DF910`, `func_801DFA38`, `func_801E1590`, `func_801E2888`, `func_801E403C`, `func_801E41B4` (leaves batch 2: percent bar, row max, drop dedupe, displayed-value clamp, record-state promotion, level badges) | native, identity-gated; differential PASS on the runner (gate 7, 70b48dc5) |
-| `func_801E1370`, `func_801E2EB0`, `func_801E3BE0`, `func_801E3D54`, `func_801E3E14`, `func_801E3EA4`, `func_801E3F28`, `func_801E3FB0` (leaves batch 3: inventory table add, EXP/SP split, the six 0x801E3A18 skill/flag helpers) | native, identity-gated; **runner differential pending** -- not proven until it passes |
+| `func_801E1370`, `func_801E2EB0`, `func_801E3BE0`, `func_801E3D54`, `func_801E3E14`, `func_801E3EA4`, `func_801E3F28`, `func_801E3FB0` (leaves batch 3: inventory table add, EXP/SP split, the six 0x801E3A18 skill/flag helpers) | native, identity-gated; differential PASS at O0/O2/UBSan on the runner ([batch-3 evidence](../docs/evidence/battle-results-batch3-20261002.md), source `6e189169`) |
 | every other results routine (entry 0x801E252C, flow controller, their callers such as 0x801E3A18/0x801E1444, EXP/AP/level/item steps, number/sprite drawing, ...) | **interpreted** (CPU fallback) |
 
 A native body runs only while the module's immutable bytes
@@ -97,6 +97,12 @@ changes. Call detection is a heuristic (a JALR through a register other than
 `tests/run_battle_results_host_differential_test.sh`, which checks the counts
 against `cpu.steps` and the known call sequence of 0x801E3A18 and that the
 normal run prints nothing.
+
+The batch-3 runner self-check passes in all three compiler modes. It exercises
+one interpreted caller and nine native results-helper calls, not a complete
+battle. `native_call_share` is a share of calls, not execution time or instruction
+coverage. In-game results-state identity and a route showing actual native
+results execution remain pending; see the [current evidence and limits](../docs/evidence/battle-results-batch3-20261002.md).
 
 > A native port requires every executed function to be real C — raw `INCLUDE_ASM`
 > (MIPS) cannot run on x86. Port progress is therefore gated on functional
