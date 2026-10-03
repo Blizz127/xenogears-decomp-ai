@@ -73,4 +73,40 @@ before. The battle_state_hash identity run and the overlay differential prover
 must pass before adoption. Effort: one generator plus a few dozen
 declarations. No new dependencies.
 
-Not done here: steps 1–4, any runtime build, the differential prover.
+## Step 1, static part — census (2026-10-03)
+
+`tools/scripts/battle_generic_call_census.py` (read-only, no build) classifies
+every direct `jal` in disc/battle.bin (SHA 1830b4ef…) by target. Receipt:
+`generic-call-census.json` in the private evidence root (SHA c1032081…).
+
+- 1005 distinct targets: 350 reach the generic call (213 main-executable
+  functions, 137 allowlisted overlay leaves, 1836 call sites), 13 typed
+  special cases, 638 interpreted guest targets, and 4 data words that decode
+  as jal.
+- Grades for the 350 generic callees, using source definitions where they
+  exist: 130 void return (v0 and v1 unspecified), 45 32-bit return (v1
+  unspecified), 36 pointer or 64-bit, 104 narrow parameter or return,
+  27 conflicting definitions, 6 declaration-only conflicts, 1 unknown
+  (func_80025D4C), 1 variadic.
+- Highest-risk class: narrow returns through the generic path. Bits above
+  8/16 in v0 depend on the callee. func_80089C08 `u16(u8)` (77 sites),
+  func_8001BD40 `u8(u8,u8)` (24), func_8007A280 `u16(u8,u8,u16,u8)` (12),
+  func_80079ED8, func_80089BEC, func_80089B50, func_800885D0, func_8009C050.
+  Production compiles with gcc -O0 (build_port.sh GFLAGS), which in practice
+  extends inside the callee, so today's binary works by toolchain habit, not
+  by ABI guarantee. A clang or optimized build could change guest v0.
+- `FontPrintf(char *, ...)` (3 sites) is variadic, and the generic
+  non-variadic call leaves %al unset under SysV. It needs a typed thunk or a
+  refusal.
+- 27 names have more than one non-static definition in the sources
+  (e.g. WorkListAddTask, Square0, ReadGeomScreen, func_8003BDFC `int` vs
+  `s16`). Which one dlsym binds depends on what the port links; the thunk
+  generator must take the linked definition, not a header guess.
+- Not covered: 48 indirect jalr sites, the file1/intro/results modules,
+  dlsym exportability, and the dynamic subset actually reached (the
+  runtime-trace part of step 1, which needs a run).
+
+Suggested first thunk batch for review: the 8 narrow-return callees plus
+FontPrintf, then HeapFree (98 sites), func_80021AD8 (86) and AddPrim (52).
+
+Not done here: runtime part of step 1, steps 2–4, any runtime build, the differential prover.
