@@ -173,7 +173,19 @@ s32 func_battle_command_file1_801E73D4(s32 arg0, s32 arg1) {
 }
 #endif
 
-INCLUDE_ASM("asm/battle_command_file1/nonmatchings/after_controller", func_battle_command_file1_801E7424);
+#ifndef XENO_PC_PORT
+/* Called for its side effect only: the TU's s32 prototype keeps v0 live across
+ * the call and gcc 2.6.3 then returns 3 through v1 (asm alias, void view). */
+void func_battle_command_file1_801E57F8__void(s32, s32, s32, s32) asm("func_battle_command_file1_801E57F8");
+extern u8 D_8005942C;
+
+s32 func_battle_command_file1_801E7424(s32 arg0, s32 arg1) {
+    func_battle_command_file1_801E57F8__void(arg1, 1, 0, 1);
+    D_8005942C = *(u8*)((u8*)D_800D3278 + 0x380);
+    return 3;
+}
+#endif
+
 
 s32 func_battle_command_file1_801E746C(void) {
     D_800C3D44 = 1;
@@ -220,7 +232,19 @@ s32 func_battle_command_file1_801E7660(void) {
 #endif
 
 INCLUDE_ASM("asm/battle_command_file1/nonmatchings/after_controller", func_battle_command_file1_801E7684);
-INCLUDE_ASM("asm/battle_command_file1/nonmatchings/after_controller", func_battle_command_file1_801E7700);
+#ifndef XENO_PC_PORT
+extern u8 D_8005947C;
+extern u8 D_8005954C;
+
+/* Same void view of func_battle_command_file1_801E57F8 as func_battle_command_file1_801E7424. */
+s32 func_battle_command_file1_801E7700(s32 arg0, s32 arg1) {
+    func_battle_command_file1_801E57F8__void(arg1, 2, 0, 1);
+    D_8005947C = *(u8*)((u8*)D_800D3278 + 0x380) + 1;
+    D_8005954C = *(u8*)((u8*)D_800D3278 + 0x382);
+    return 5;
+}
+#endif
+
 
 s32 func_battle_command_file1_801E775C(void) {
     D_800C3D5C = 1;

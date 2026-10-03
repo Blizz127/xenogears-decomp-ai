@@ -352,9 +352,13 @@ extern u8 D_801E96A5;
 extern u8 D_801E96A4;
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C57A4);
-#else
+void func_801D1E80(void);
+void func_801D22F4(s32);
+void func_801D2484(void);
+#endif
+
 void func_801C57A4(void) {
+#ifdef XENO_PC_PORT
     u8 result = 1;
     D_80059171 = 1;
     D_801E977A = 0;
@@ -390,8 +394,35 @@ skip:
         ((u8*)g_Menu->pManager)[3] = 0;
     }
     func_801C8694(D_80059171);
-}
+#else
+    s32 doReset;
+
+    D_80059171 = 1;
+    D_801E977A = 0;
+    doReset = 1;
+    func_801D1E80();
+    if (*(u8*)((s8*)g_Menu + 0x329) != 0) {
+        do {
+            func_801C7BF4();
+        } while (*(u8*)((s8*)g_Menu + 0x329) != 0);
+    }
+    func_801D22F4(0);
+    if (((func_801CACF8(0x7D, 0xFF, 1) & 0xFF) || (D_801EA8FC != 0)) && (func_801CACF8(0x80, 0xFF, 1) != 0)) {
+        doReset = 0;
+    }
+    func_801D2484();
+    if (doReset & 0xFF) {
+        D_801E96A5 = 1;
+        D_801E96A4 = 1;
+        func_801C531C(0);
+        D_801E96A4 = 0;
+        D_801E96A5 = 0;
+    }
+    *(s8*)((s8*)(*(void**)((s8*)g_Menu + 0x33C)) + 4) = 0;
+    *(s8*)((s8*)(*(void**)((s8*)g_Menu + 0x33C)) + 3) = 0;
+    func_801C8694(D_80059171);
 #endif
+}
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C58EC);

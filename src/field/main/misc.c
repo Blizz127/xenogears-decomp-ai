@@ -604,10 +604,8 @@ void FieldScriptSetCharacterGear(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_800883D4);
-#else
 void func_800883D4(void) {
+#ifdef XENO_PC_PORT
     s32 charId = func_8008CF3C(FieldScriptVMGetArgument(2));
     if (charId != 0xFF) {
         ActorData* pActor = g_FieldScriptVMCurActor;
@@ -623,8 +621,18 @@ void func_800883D4(void) {
         }
     }
     g_FieldScriptVMCurActor->scriptInstructionPointer += 4;
+#else
+    s32 bit = func_8008CF3C(FieldScriptVMGetArgument(2));
+    if (bit != 0xFF) {
+        if (SCRIPT_READ_U8_REL(1) == 0) {
+            *(u16*)((u8*)g_pGameState + 0x2318) |= 1 << bit;
+        } else {
+            *(u16*)((u8*)g_pGameState + 0x2318) &= ~(1 << bit);
+        }
+    }
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 4;
+#endif
 }
-#endif /* XENO_PC_PORT */
 
 extern s16 D_800B236C;
 
@@ -1159,10 +1167,8 @@ void func_80089FD0(void) {
 
 extern s32 D_800B0090, D_800B0094, D_800B0098;
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008A08C);
-#else
 void func_8008A08C(void) {
+#ifdef XENO_PC_PORT
     u8 mask = SCRIPT_READ_U8_REL(7);
     D_800B0090 = FieldScriptArgument1(1, mask);
     mask = SCRIPT_READ_U8_REL(7);
@@ -1170,8 +1176,13 @@ void func_8008A08C(void) {
     mask = SCRIPT_READ_U8_REL(7);
     D_800B0094 = FieldScriptArgument3(5, mask);
     g_FieldScriptVMCurActor->scriptInstructionPointer += 8;
+#else
+    D_800B0090 = FieldScriptArgument1(1, SCRIPT_READ_U8_REL_RAW(7));
+    D_800B0098 = FieldScriptArgument2(3, SCRIPT_READ_U8_REL_RAW(7));
+    D_800B0094 = FieldScriptArgument3(5, SCRIPT_READ_U8_REL_RAW(7));
+    *(u16*)((u8*)g_FieldScriptVMCurActor + 0xCC) += 8;
+#endif
 }
-#endif /* XENO_PC_PORT */
 
 extern u8 D_800B00A0, D_800B00A1, D_800B00A2, D_800B00A4, D_800B00A5, D_800B00A6, D_800B00A8, D_800B00A9, D_800B00AA;
 extern s16 D_800B00AC, D_800B00AE, D_800B00B0, D_800B00B2;
@@ -1753,10 +1764,8 @@ void func_8008B328(void) {
 
 extern s16 D_800B2184, D_800B2186, D_800B2188;
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008B45C);
-#else
 void func_8008B45C(void) {
+#ifdef XENO_PC_PORT
     u8 mask = SCRIPT_READ_U8_REL(7);
     D_800B2184 = (s16)FieldScriptArgument1(1, mask);
     mask = SCRIPT_READ_U8_REL(7);
@@ -1764,8 +1773,13 @@ void func_8008B45C(void) {
     mask = SCRIPT_READ_U8_REL(7);
     D_800B2186 = (s16)FieldScriptArgument3(5, mask);
     g_FieldScriptVMCurActor->scriptInstructionPointer += 8;
+#else
+    D_800B2184 = FieldScriptArgument1(1, SCRIPT_READ_U8_REL_RAW(7));
+    D_800B2188 = FieldScriptArgument2(3, SCRIPT_READ_U8_REL_RAW(7));
+    D_800B2186 = FieldScriptArgument3(5, SCRIPT_READ_U8_REL_RAW(7));
+    *(u16*)((u8*)g_FieldScriptVMCurActor + 0xCC) += 8;
+#endif
 }
-#endif /* XENO_PC_PORT */
 
 void func_8008B518(void) {
     u8 mask = SCRIPT_READ_U8_REL(7);
@@ -3345,10 +3359,8 @@ void func_8008F070(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008F0B4);
-#else
 void func_8008F0B4(void) {
+#ifdef XENO_PC_PORT
     s32 actorIdx = FieldScriptVMGetActorIndex(2);
     if (actorIdx != 0xFF) {
         u8* pFieldActor = (u8*)g_FieldActors + actorIdx * 92;
@@ -3368,8 +3380,24 @@ void func_8008F0B4(void) {
         }
     }
     g_FieldScriptVMCurActor->scriptInstructionPointer += 9;
+#else
+    s32 actorIdx = FieldScriptVMGetActorIndex(2);
+    if (actorIdx != 0xFF) {
+        u8* pSub = (u8*)(uintptr_t)g_FieldActors[actorIdx].pActorData;
+        if (SCRIPT_READ_U8_REL(1) & 1) {
+            pSub[0xFC] = FieldScriptVMGetArgument(3);
+            pSub[0xFD] = FieldScriptVMGetArgument(5);
+            pSub[0xFE] = FieldScriptVMGetArgument(7);
+        }
+        if (SCRIPT_READ_U8_REL(1) & 2) {
+            pSub[0xFF] = FieldScriptVMGetArgument(3);
+            pSub[0x100] = FieldScriptVMGetArgument(5);
+            pSub[0x101] = FieldScriptVMGetArgument(7);
+        }
+    }
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 9;
+#endif
 }
-#endif /* XENO_PC_PORT */
 
 /* Field-script opcode: conditionally (per the opcode's flag byte at IP+1) copy
  * two operand triples into the actor's color fields (unkFC..FE / unkFF..101),

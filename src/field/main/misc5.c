@@ -910,10 +910,10 @@ void func_800A7120(u16 arg0, s32 arg1, u16 arg2) {
 }
 #endif /* XENO_PC_PORT */
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A7218);
-#else
+void func_800A7120(u16 arg0, s32 arg1, u16 arg2);
+
 void func_800A7218(void) {
+#ifdef XENO_PC_PORT
     D_800B06A0 = 0;
     HeapChangeCurrentUser(4, NULL);
     if (D_800ADB6C == 0) {
@@ -936,8 +936,27 @@ void func_800A7218(void) {
         ArchiveSetIndex(4, 0);
     }
     HeapChangeCurrentUser(8, NULL);
+#else
+    /* Retail reads D_800C3A22..2E and D_800C3A3A unsigned (lhu); the TU declares
+     * the block s16, so this arm reads them through u16 casts. */
+    s32 fadeType;
+
+    D_800B06A0 = 0;
+    HeapChangeCurrentUser(4, 0);
+    if (D_800ADB6C == 0) {
+        ArchiveSetIndex(0x18, 1);
+        fadeType = 1;
+        if (D_800C3A38 != 0xFF || (D_800ADB80 & 0x40)) {
+            fadeType = 3;
+        }
+        func_801D37CC(D_800C3A20 + 2, (*(u16*)&D_800C3A2A), (*(u16*)&D_800C3A2C), (*(u16*)&D_800C3A2E), 1, fadeType,
+                      (*(u16*)&D_800C3A3A), (*(u16*)&D_800C3A22), (*(u16*)&D_800C3A24), (*(u16*)&D_800C3A26),
+                      (*(u16*)&D_800C3A28), 0xE0, func_800A7120);
+        ArchiveSetIndex(4, 0);
+    }
+    HeapChangeCurrentUser(8, 0);
+#endif
 }
-#endif /* XENO_PC_PORT */
 
 extern s32 D_800ADB6C;
 

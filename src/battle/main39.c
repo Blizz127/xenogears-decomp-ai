@@ -2,7 +2,35 @@
 
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/main39", func_80087A38);
+/* Retail-typed callee prototypes for the matched bodies in this TU.  The port
+ * prototypes below (u8 parameters) would make gcc 2.7.2 re-mask the already
+ * masked index on every call. */
+extern u8* D_800C3EAC;
+extern u8 D_800D366C;
+extern u8 D_800C3E18;
+void func_80085D34(void);
+void func_800879A8(s32 index, u8 column);
+s32 func_800877E0(s32 index, u8 column);
+s32 func_80080AE4(s32 index);
+void func_800B89FC(s32 r, s32 index, u8 column, s32 target);
+
+void func_80087A38(s32 arg0) {
+    s32 index;
+    s32 row;
+    s32 r;
+
+    func_80085D34();
+    index = arg0 & 0xFF;
+    /* Integer row address: pointer arithmetic swaps the addu operands. */
+    row = index << 6;
+    func_800879A8(index, *(u8*)((s32)D_800C3EAC + row + 0x3C));
+    D_800D366C = 0;
+    r = func_800877E0(index, *(u8*)((s32)D_800C3EAC + row + 0x3C));
+    func_800B89FC(r, index, *(u8*)((s32)D_800C3EAC + row + 0x3C), func_80080AE4(index));
+    D_800D366C = 1;
+    D_800C3E18 = 0;
+}
+
 INCLUDE_ASM("asm/battle/nonmatchings/main39", func_80087AF0);
 INCLUDE_ASM("asm/battle/nonmatchings/main39", func_80087EDC);
 INCLUDE_ASM("asm/battle/nonmatchings/main39", func_800881B8);
@@ -60,6 +88,7 @@ extern u16 D_800D2C94;
 extern u16 D_800D2C98;
 #endif
 extern u8 g_GameState[];
+#ifdef XENO_PC_PORT
 extern void func_80085D34(void);
 extern void func_800879A8(u8 v, u8 idx);
 extern u32 func_800877E0(u8 a, u8 b);
@@ -74,6 +103,7 @@ extern u16 func_80089C08(u8 index);
 extern u32 func_80089C48(u8 index);
 extern u32 func_80089C6C(u32 mask, u8 index);
 extern u32 func_80089C9C(u32 mask, u8 index);
+#endif /* XENO_PC_PORT */
 
 /* Slot bookkeeping shared by the functions below.  D_800C3EB4 is a table of
  * 28-byte per-combatant rows: +0 group, +1 slot within the group, +0xA/+0xC

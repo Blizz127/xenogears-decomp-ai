@@ -529,10 +529,8 @@ void func_800985BC(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009861C);
-#else
 void func_8009861C(void) {
+#ifdef XENO_PC_PORT
     u8 mask;
     s32 arg2, arg3, arg4, arg5, addr;
     s32 dx, dz, dist;
@@ -550,13 +548,19 @@ void func_8009861C(void) {
     dist = FieldGetVec2Magnitude(dx, dz);
     FieldScriptMemoryWriteU16((u16)addr, (u16)dist);
     g_FieldScriptVMCurActor->scriptInstructionPointer += 0xC;
-}
-#endif /* XENO_PC_PORT */
-
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_80098738);
 #else
+    s32 x1 = FieldScriptArgument2(3, SCRIPT_READ_U8_REL_RAW(0xB));
+    s32 z1 = FieldScriptArgument3(5, SCRIPT_READ_U8_REL_RAW(0xB));
+    s32 x2 = FieldScriptArgument4(7, SCRIPT_READ_U8_REL_RAW(0xB));
+    s32 z2 = FieldScriptArgument5(9, SCRIPT_READ_U8_REL_RAW(0xB));
+    s32 addr = SCRIPT_IMM_ARG(1);
+    FieldScriptMemoryWriteU16(addr, FieldGetVec2Magnitude(x2 - x1, z2 - z1));
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 0xC;
+#endif
+}
+
 void func_80098738(void) {
+#ifdef XENO_PC_PORT
     u8 mask;
     s32 a2, a3, a4, a5, a6, a7, addr, dist;
     mask = SCRIPT_READ_U8_REL(0xF);
@@ -575,8 +579,18 @@ void func_80098738(void) {
     dist = FieldGetVec3Magnitude(a6 - a2, a7 - a3, a5 - a4);
     FieldScriptMemoryWriteU16((u16)addr, (u16)dist);
     g_FieldScriptVMCurActor->scriptInstructionPointer += 0x10;
+#else
+    s32 x1 = FieldScriptArgument2(3, SCRIPT_READ_U8_REL_RAW(0xF));
+    s32 y1 = FieldScriptArgument3(5, SCRIPT_READ_U8_REL_RAW(0xF));
+    s32 z1 = FieldScriptArgument3(7, SCRIPT_READ_U8_REL_RAW(0xF));
+    s32 x2 = FieldScriptArgument4(9, SCRIPT_READ_U8_REL_RAW(0xF));
+    s32 y2 = FieldScriptArgument5(0xB, SCRIPT_READ_U8_REL_RAW(0xF));
+    s32 z2 = FieldScriptArgument5(0xD, SCRIPT_READ_U8_REL_RAW(0xF));
+    s32 addr = SCRIPT_IMM_ARG(1);
+    FieldScriptMemoryWriteU16(addr, FieldGetVec3Magnitude(x2 - x1, z2 - z1, y2 - y1));
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 0x10;
+#endif
 }
-#endif /* XENO_PC_PORT */
 
 extern s32 FieldMathInterpolateAngle(s32, s32, s32);
 
@@ -1283,10 +1297,8 @@ void func_8009A1AC(void) {
 
 extern s32 D_8005A444[];
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009A1E4);
-#else
 void func_8009A1E4(void) {
+#ifdef XENO_PC_PORT
     void* pActor = g_FieldScriptVMCurActor;
     u8* pScriptData = (u8*)g_FieldScriptVMCurScriptData;
     u8 arg = *(u8*)(pScriptData + *(u16*)((u8*)pActor + 0xCC) + 1);
@@ -1302,8 +1314,20 @@ void func_8009A1E4(void) {
         *(u16*)((u8*)pActor + 0x106) = (u16)angle;
     }
     g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
+#else
+    /* Retail reloads g_FieldScriptVMCurActor after the ratan2 call and again for
+     * the IP advance, so the global is read at each use instead of being cached. */
+    s32 targetIdx = D_8005A444[SCRIPT_READ_U8_REL(1)];
+    if (targetIdx != 0xFF) {
+        ActorData* target = (ActorData*)(uintptr_t)g_FieldActors[targetIdx].pActorData;
+        s16 angle = -ratan2(target->position.vz - g_FieldScriptVMCurActor->position.vz,
+                            target->position.vx - g_FieldScriptVMCurActor->position.vx) | 0x8000;
+        g_FieldScriptVMCurActor->rotation.vx = angle;
+        g_FieldScriptVMCurActor->rotation.vy = angle;
+    }
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
+#endif
 }
-#endif /* XENO_PC_PORT */
 
 /* Opcode 0x6F (OP_ROTATE_TO_ACTOR), asm 8009A2A8-8009A348 line-verified.
  * Turn the current actor to face the target actor named by script byte +1,
@@ -1511,10 +1535,8 @@ void FieldScriptSetActorRotation(int angle) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 4;
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009AA00);
-#else
 void func_8009AA00(void) {
+#ifdef XENO_PC_PORT
     s32 idx1 = FieldScriptVMGetActorIndex(1);
     if (idx1 == 0xFF) goto advance;
     {
@@ -1540,8 +1562,23 @@ void func_8009AA00(void) {
     }
 advance:
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
+#else
+    if (FieldScriptVMGetActorIndex(1) != 0xFF && FieldScriptVMGetActorIndex(2) != 0xFF) {
+        ActorData* target = (ActorData*)(uintptr_t)g_FieldActors[FieldScriptVMGetActorIndex(2)].pActorData;
+        ActorData* self = (ActorData*)(uintptr_t)g_FieldActors[FieldScriptVMGetActorIndex(1)].pActorData;
+        s16 angle = -ratan2(target->position.vz - self->position.vz,
+                            target->position.vx - self->position.vx) | 0x8000;
+        if (D_800ADB1C == 0) {
+            self->rotation.vx = angle;
+            self->rotation.vy = angle;
+            self->rotation.vz = angle;
+        }
+        self->rotation.vx = angle;
+        self->rotation.vy = angle;
+    }
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
+#endif
 }
-#endif /* XENO_PC_PORT */
 
 void func_8009AB08(int rotation) {
     short rotationValue;
@@ -1816,10 +1853,8 @@ extern u8 D_800B21CC;
 extern s16 D_800B2348;
 extern void func_8009B338(void);
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009B210);
-#else
 void func_8009B210(void) {
+#ifdef XENO_PC_PORT
     ActorData* pModel =
         (ActorData*)(uintptr_t)g_FieldActors[D_8005A444[0]].pActorData;
     s16 posX = *(s16*)((u8*)pModel + 0x22);
@@ -1843,8 +1878,31 @@ void func_8009B210(void) {
         D_800B21CC = 1;
         g_FieldScriptVMCurActor->scriptInstructionPointer -= 1;
     }
+#else
+    /* Plain-pointer IP updates: as struct fields they are reordered across the
+     * D_800B21CC/D_800B2348 stores (gcc 2.7.2 struct/non-struct alias rule). */
+    ActorData* actor = (ActorData*)(uintptr_t)g_FieldActors[D_8005A444[0]].pActorData;
+    s16 x = *(s16*)((u8*)actor + 0x22);
+    s16 z = *(s16*)((u8*)actor + 0x2A);
+    s32 blocked = func_8009AEE0(0, x, z, 0xFF) == 0;
+    if (func_8009AEE0(1, x, z, 0xFF) == 0) {
+        blocked |= 2;
+    }
+    if (func_8009AEE0(2, x, z, 0xFF) == 0) {
+        blocked |= 4;
+    }
+    D_800B00C0 = 1;
+    if (blocked == 7) {
+        *(u16*)((u8*)g_FieldScriptVMCurActor + 0xCC) += 1;
+        D_800B21CC = 0;
+        D_800B2348 = 0;
+        func_8009B338();
+        return;
+    }
+    D_800B21CC = 1;
+    *(u16*)((u8*)g_FieldScriptVMCurActor + 0xCC) -= 1;
+#endif
 }
-#endif /* XENO_PC_PORT */
 
 extern s32 D_800B2360;
 extern s32 D_800B2364;

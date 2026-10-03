@@ -955,18 +955,25 @@ void func_8009FA54(s32 scriptEntryIndex) {
 
 extern int g_GameSceneMapNum;
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_8009FB98);
-#else
 void func_8009FB98(void) {
+#ifdef XENO_PC_PORT
     g_GameSceneMapNum |= 0xC000;
     GameWaitForCdData();
     GamePartySyncSkinData();
     GamePartySyncStreamedData();
     D_800B2268 = SCRIPT_READ_U8_REL(1);
     g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
+#else
+    /* Plain-pointer IP access: as a struct field the IP store is scheduled above
+     * the D_800B2268 store (gcc 2.7.2 struct/non-struct alias rule). */
+    g_GameSceneMapNum |= 0xC000;
+    GameWaitForCdData();
+    GamePartySyncSkinData();
+    GamePartySyncStreamedData();
+    D_800B2268 = SCRIPT_READ_U8_REL_RAW(1);
+    *(u16*)((u8*)g_FieldScriptVMCurActor + 0xCC) += 2;
+#endif
 }
-#endif /* XENO_PC_PORT */
 
 extern s32 D_8006F990[];
 int func_8009FC10(int actorIndex) {
