@@ -2600,7 +2600,7 @@ void func_8003A3B8(s32 pData, s32 pitch, s32 steps) {
     u8* pBase = (u8*)(uintptr_t)D_800595D8;
     u8* pEntry = pBase + 0x98;
     s32 count = D_80059478;
-    u16 pitchWord = (u16)(pitch << 8);
+    s32 pitchWord = (s32)((u32)pitch << 8);
     while (count-- != 0) {
         u16 flags = *(u16*)(pEntry - 4);
         if ((flags & 1) && *(s32*)(pEntry + 4) == pData) {
