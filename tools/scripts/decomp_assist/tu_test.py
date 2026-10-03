@@ -87,16 +87,88 @@ for line in open(asm):
     if mm and in_func:
         word = int.from_bytes(bytes.fromhex(mm[3]), 'little')
         mask = 0xFFFFFFFF
+        rel = None  # (kind, symbol, addend) the row relocates against, if any
+        r = re.search(r'%(hi|lo)\(([A-Za-z_]\w*)\s*([+-]\s*0x[0-9A-Fa-f]+|[+-]\s*\d+)?\)', mm[5])
         if '%hi(' in mm[5] or '%lo(' in mm[5] or '%gp_rel' in mm[5]:
             mask = 0xFFFF0000
+            if r:
+                rel = (r[1].upper() + '16', r[2], int(r[3].replace(' ', ''), 0) if r[3] else 0)
         elif mm[4] in ('jal', 'j'):
             mask = 0xFC000000
-        ins.append((int(mm[1], 16), word, mask))
+            if mm[4] == 'jal' and re.match(r'[A-Za-z_]\w*$', mm[5].strip()):
+                rel = ('26', mm[5].strip(), 0)
+        ins.append((int(mm[1], 16), word, mask, rel))
 got = func_words(o_file, name)
 if not got:
     sys.exit('no symbol')
-bad = compare(ins, got[1])
-print(f"{tc['preset']}:", 'MATCH' if bad == 0 else (f'diff {bad}/{len(ins)}' if bad > 0 else f'size {got[0]} vs {len(ins) * 4}'))
+bad = compare([i[:3] for i in ins], got[1])
+
+
+def reloc_mismatches(obj, name, ins, words):
+    """Rows whose relocation symbol (and, for %lo with a derivable symbol
+    address, addend) differs from retail.  compare() masks these fields, so
+    two swapped globals or a wrong struct offset would otherwise pass."""
+    nm = subprocess.run(['mips-linux-gnu-nm', '-S', obj], capture_output=True, text=True).stdout
+    text = {}
+    base = size = None
+    for l in nm.splitlines():
+        p = l.split()
+        if len(p) == 4 and p[2] in 'tT':
+            text[int(p[0], 16)] = p[3]
+            if p[3] == name:
+                base, size = int(p[0], 16), int(p[1], 16)
+    if base is None:
+        return []
+    rels = {}
+    sect = None
+    for l in subprocess.run(['mips-linux-gnu-objdump', '-r', obj], capture_output=True, text=True).stdout.splitlines():
+        m = re.match(r'RELOCATION RECORDS FOR \[(\S+)\]', l)
+        if m:
+            sect = m[1]
+            continue
+        m = re.match(r'([0-9a-f]+)\s+R_MIPS_(HI16|LO16|26)\s+(\S+)', l)
+        if m and sect == '.text':
+            off = int(m[1], 16)
+            if base <= off < base + size:
+                sym = m[3]
+                mt = re.match(r'\.text([+-]0x[0-9a-f]+)?$', sym)
+                if mt:  # a same-TU callee or label: name it
+                    sym = text.get(int(mt[1] or '0', 16), sym)
+                rels[off - base] = (m[2], sym)
+    out = []
+    for i, (off, word, mask, rel) in enumerate(ins):
+        if rel is None:
+            continue
+        kind, sym, add = rel
+        got_rel = rels.get(i * 4)
+        if got_rel is None or got_rel[0] != kind:
+            continue  # local label or section-relative target: not comparable
+        bsym = got_rel[1].split('+')[0].split('-')[0]
+        if bsym.startswith('.'):
+            continue  # section-relative (jump table label etc.): not comparable by name
+        badd = (words[i] & 0xFFFF) if kind == 'LO16' else 0
+        if badd >= 0x8000:
+            badd -= 0x10000
+        addr = lambda n: int(n[n.rindex('_') + 1:], 16) if re.match(r'(?:D|func|jtbl)_[0-9A-Fa-f]{8}$', n) else None
+        ra, ba = addr(sym), addr(bsym)
+        if ra is not None and ba is not None and kind == 'LO16':
+            # same address spelt differently (D_x+4 vs D_x4) links identically
+            if ra + add != ba + badd:
+                out.append((off, f'%lo({sym}{add:+#x}) vs %lo({bsym}{badd:+#x})'))
+        elif ra is not None and ba is not None and kind == 'HI16':
+            if ra != ba and sym != bsym and abs(ra - ba) >= 0x10000:
+                out.append((off, f'{sym} vs {bsym}'))
+        elif bsym != sym:
+            out.append((off, f'{sym} vs {bsym}'))
+    return out
+
+
+relbad = reloc_mismatches(o_file, name, ins, got[1]) if bad == 0 else []
+if bad == 0 and relbad:
+    bad = len(relbad)
+    print(f"{tc['preset']}: code MATCH but {len(relbad)} relocation row(s) differ, first at +{relbad[0][0]:#x}: {relbad[0][1]}")
+else:
+    print(f"{tc['preset']}:", 'MATCH' if bad == 0 else (f'diff {bad}/{len(ins)}' if bad > 0 else f'size {got[0]} vs {len(ins) * 4}'))
 if bad == 0 and '--write' in sys.argv and ported:
     sys.exit('not written: the site has a port body (use m2c_insert.py --inner)')
 if bad == 0 and '--write' in sys.argv:
