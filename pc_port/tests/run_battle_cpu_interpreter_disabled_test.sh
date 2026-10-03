@@ -24,4 +24,9 @@ for mode in O0 O2 UBSan; do
         echo 'Unexpected execution report with statistics disabled' >&2
         exit 1
     fi
+    clang -std=c11 -Wall -Wextra -Werror "${flags[@]}" -Ipc_port/src \
+        pc_port/tests/battle_cpu_meter_disabled_test.c \
+        pc_port/src/battle_mips_adapter.c -o "$test_out/$mode.meter"
+    "$test_out/$mode.meter" >"$test_out/$mode.meter.log" 2>&1
+    cat "$test_out/$mode.meter.log"
 done

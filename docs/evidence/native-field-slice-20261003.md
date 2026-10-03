@@ -62,8 +62,7 @@ The next driver uses the existing `xeno_drive.py` XTest helper on its own Xvfb
 display, with both console and developer menu explicitly disabled. It waits
 for real title state, sends ordinary 0.2-second keyboard presses, and captures
 the menu before/after Up. The reviewed after-Up image shows New Game selected;
-the log confirms choice 2 and prologue map 4. This 600-second observation is
-still pending. The first attempt at this driver imported the helper before
+the log confirms choice 2 and prologue map 4. The first attempt at this driver imported the helper before
 setting its binary override; it exited because the default build was absent.
 Moving environment setup before import corrected that harness-only error.
 
@@ -73,6 +72,43 @@ party `[0,255,255]`. They help define expected outcomes, but their companion
 quicksaves are not admitted fixtures: the retained `f14save.out` contains a
 failed `/proc/.../fd/0` save attempt, and creation provenance is incomplete.
 No such save has been loaded into these probes.
+
+## Real route terminal result and first native dependency
+
+The keyboard run reached map 2 at **396.36 seconds**, through a recorded
+scenario 0 -> 3 transition, party `[0,2,255]`, gold 100, entrance 0. The reviewed
+map-2 capture shows the real opening scene. At 480.19 seconds, an ordinary F11
+press was correctly refused: `field script event holds control`, `ADB68=0`,
+`ADB64=0xFF`, `B21D0=1`. No save was fabricated or guard relaxed. The local
+single-CPU software renderer advanced at roughly two frames per second there;
+this is not timing parity.
+
+At **577.53 seconds** the natural opening battle entered **0x80070f40** and
+the disabled-interpreter guard refused it. The adapter reported **0 executed
+instructions**; the runtime aborted (return code -6). The raw battle meter
+incorrectly printed one interpreted instruction/call because it counted the
+bridge miss before the adapter guard. Preserve that raw receipt and its
+qualification; do not report it as one instruction actually executed.
+
+The meter correction separates `disabled_dispatches` from interpreted
+instructions/calls and target rankings. Its regression uses the production
+adapter and production meter include together: enabled execution counts three
+synthetic instructions, disabled entry counts zero with one refused dispatch,
+and a native bridge followed by refusal retains its native count. Clang O0,
+O2 and UBSan pass. These are mechanism tests, not game-fixture tests. The
+production executable still predates the fix and requires a coordinated build.
+
+Battle entry is still an `INCLUDE_ASM` retail body, 522 assembly-file lines,
+with 54 direct call sites / 29 distinct callees. Native adoption of the entry
+alone would not establish native battle execution; every reachable unconverted
+callee would remain a refusal. The next smaller field-proof route is to capture
+a legitimate post-opening-battle save with the unchanged **hybrid reference**
+runtime, then replay that bounded field slice with the interpreter disabled.
+A separate one-CPU, nice-19 reference run has a 1,800-second deadline, uses
+ordinary keyboard input, and will save only after map 14 reports free player
+control. Its CPU fallback is intentional reference behavior, never native proof.
+No reference save is admitted until the real route and successful save receipt
+are retained. This also preserves the larger battle-conversion milestone.
 
 ## Process-wide execution counter instrumentation
 
@@ -109,9 +145,14 @@ not substitute for the real game's audio comparison.
 
 ## Next step
 
-Finish the bounded retained route, preserve its exact outcome, and identify
-the first real runtime blocker if it cannot reach the useful field slice.
-Integrate the counter instrumentation into one production build when capacity
-is coordinated, then repeat the legitimate route. Retain the binary retail-data
+Finish and audit the separately labelled reference-fixture capture. Integrate
+both counter changes into one production build when capacity is coordinated,
+then replay a legitimate useful field slice with the interpreter disabled.
+Runner readback: CPU quota 450%, memory cap 3G, free-memory floor 2G, disk-free
+floor 30G, footprint cap 32 GiB. Filesystem free space was 31G; readable runner
+footprint was 32,128,236 KiB (a lower bound because some retained cache/temp
+directories denied reads). Two audit jobs were active and the queue was empty.
+No cleanup, cap change or new submission was performed; the coordinator has
+the exact build/capture request and narrow disk margin. Retain the binary retail-data
 blocker (19 runs / 25,068 bytes), all guards and separate native/runtime/matching
 evidence. No publication is authorized by this work.

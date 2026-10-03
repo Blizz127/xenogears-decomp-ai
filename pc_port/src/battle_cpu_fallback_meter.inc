@@ -22,6 +22,8 @@
  *   native_results_calls      adopted RESULTS module bodies
  *                             (battle_results_gate.inc);
  *   native_file1_calls        the adopted file-1 controller 801E6CE8.
+ *   disabled_dispatches       bridge misses refused by the disabled CPU gate;
+ *                             excluded from interpreted instructions/calls.
  *
  * At battle exit it prints one summary line and the top interpreted call
  * targets to stderr.  When the variable is unset nothing is counted or
@@ -62,6 +64,7 @@ typedef struct CpuFallbackMeter {
     uint32_t entry_pc;
     uint64_t interpreted_instructions;
     uint64_t interpreted_calls;
+    uint64_t disabled_dispatches;
     uint64_t untracked_calls; /* targets that did not fit the table */
     uint64_t native_main_exe_calls;
     uint64_t native_overlay_calls;
@@ -197,10 +200,16 @@ static void cpu_meter_bridge_leave(const PcPortMipsCpu *cpu, uint32_t target,
     m->last_cpu = cpu;
     m->last_pc = target;
     if (result == 0) {
-        m->interpreted_instructions++;
-        if (state->call) {
-            m->interpreted_calls++;
-            cpu_meter_count_target(target);
+        /* The adapter consults the bridge before its fail-closed gate. A
+         * refused dispatch has not fetched/executed an instruction. */
+        if (PcPortMipsInterpreterDisabled()) {
+            m->disabled_dispatches++;
+        } else {
+            m->interpreted_instructions++;
+            if (state->call) {
+                m->interpreted_calls++;
+                cpu_meter_count_target(target);
+            }
         }
     } else if (result > 0) {
         if (kind == CPU_METER_KIND_RESULTS)
@@ -241,12 +250,14 @@ static void cpu_meter_end_battle(const char *how)
     fprintf(stderr,
             "[xeno-port][cpu-fallback] battle=%u end=%s "
             "interpreted_instructions=%llu interpreted_calls=%llu "
+            "disabled_dispatches=%llu "
             "interpreted_targets=%u untracked_calls=%llu "
             "native_main_exe_calls=%llu native_overlay_calls=%llu "
             "native_results_calls=%llu native_file1_calls=%llu "
             "native_call_share=%.1f%%\n",
             m->battle, how, (unsigned long long)m->interpreted_instructions,
-            (unsigned long long)m->interpreted_calls, m->distinct_targets,
+            (unsigned long long)m->interpreted_calls,
+            (unsigned long long)m->disabled_dispatches, m->distinct_targets,
             (unsigned long long)m->untracked_calls,
             (unsigned long long)m->native_main_exe_calls,
             (unsigned long long)m->native_overlay_calls,
