@@ -2454,15 +2454,11 @@ s32 func_8003014C(s32* pData) {
 #endif
 }
 
-/* Closest C so far (3 words off, only where the -1 loop constant is
- * scheduled): `volatile u8 unused[1];` for retail's 8-byte frame,
- * `i = count - 1;` before `if (count != 0)`, a separate
- * `s16* pIndex = (s16*)(i * 2 + (uintptr_t)pIndices);`, offsets added as
- * `idx + (uintptr_t)pSrc/pDst`, and `do { ... } while (--i != -1);`. */
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_800301C8);
-#else
+/* Retail arm matches (2026-10-03): pIndices[i] inside the loop is the
+ * strength-reduced giv whose init lands after the hoisted -1, so its pointer
+ * form must not be pre-computed; integer adds keep retail's addu order. */
 void func_800301C8(u8* pDst, u8* pSrc, s32 count, s16* pIndices) {
+#ifdef XENO_PC_PORT
     s32 i;
     if (count == 0) return;
     pIndices += count - 1;
@@ -2475,8 +2471,27 @@ void func_800301C8(u8* pDst, u8* pSrc, s32 count, s16* pIndices) {
         *(u16*)(d + 4) = *(u16*)(s + 4);
         pIndices--;
     }
-}
+#else
+    u8 unused[8]; /* retail frame has 8 bytes of locals no code touches */
+    s32 i;
+    s32 s;
+    s32 d;
+
+    i = count - 1;
+    if (count != 0) {
+        do {
+            /* integer adds: pointer + int would swap the addu operands */
+            s32 idx = pIndices[i] * 8;
+            s = idx + (s32)pSrc;
+            d = idx + (s32)pDst;
+            *(u16*)d = *(u16*)s;
+            *(u16*)(d + 2) = *(u16*)(s + 2);
+            *(u16*)(d + 4) = *(u16*)(s + 4);
+            i--;
+        } while (i != -1);
+    }
 #endif
+}
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80030228);
