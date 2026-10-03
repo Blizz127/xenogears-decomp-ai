@@ -1691,7 +1691,7 @@ void func_800831D0(SVECTOR* out, s32* in) {
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800831F4);
 #else
-void func_800831F4(void* pSpriteData, u8* pActor, s32 arg2, s32 flags) {
+void func_800831F4(void* pSpriteData, u8* pActor, void* pFieldActor, s32 flags) {
     u32 val30 = *(u32*)(pActor + 0x30);
     u32 val38 = *(u32*)(pActor + 0x38);
     if (val30 != 0 || val38 != 0) {
@@ -1706,7 +1706,7 @@ void func_800831F4(void* pSpriteData, u8* pActor, s32 arg2, s32 flags) {
             newAngle &= 0xFFF;
             *(u16*)(pActor + 0x104) = newAngle;
             *(u16*)(pActor + 0x106) = newAngle;
-            func_80081F80(pSpriteData, *(s16*)(pActor + 0x104), pActor);
+            func_80081F80(pSpriteData, *(s16*)(pActor + 0x104), pFieldActor);
             {
                 u16 final = *(u16*)(pActor + 0x106) | 0x8000;
                 *(u16*)(pActor + 0x104) = final;
