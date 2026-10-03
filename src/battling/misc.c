@@ -2138,7 +2138,23 @@ INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80083310);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8008369C);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80083738);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80083B54);
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80083BB4);
+void ClearImage(s16 *, s32, s32, s32); /* extern */
+
+void func_80083BB4(s32 arg0) {
+    struct { s16 x,y,w,h; } rect;
+
+    rect.x = 0;
+    rect.y = 0;
+    if (arg0 != 0) {
+        rect.w = 0x280;
+    } else {
+        rect.w = 0x140;
+    }
+    rect.h = 0x1E0;
+    ClearImage(&rect.x, 0, 0, 0);
+    DrawSync(0);
+}
+
 extern s32 D_80092794;
 extern s32 D_8009294C;
 void func_8007A21C(s32);
@@ -2469,7 +2485,15 @@ void func_80086E24(void) {
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80086E70);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80086FF8);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80087068);
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_800875EC);
+extern u8 D_8009A2F8[];
+void func_80085EC8(void*);
+void func_800875EC(void) {
+    struct Record { u32 words[0xC4]; };
+    struct Record* record = (struct Record*)D_8009A2F8;
+    func_80085EC8(record);
+    record[1] = record[0];
+}
+
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80087650);
 extern u8 D_80091834[];
 extern u8 D_800918B4[];
@@ -2632,7 +2656,39 @@ void func_80088308(void) {
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8008832C);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_800884E0);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8008859C);
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80088658);
+s32 SquareRoot0(s32);                               /* extern */
+s32 VectorNormalS(void *, void *);    /* extern */
+s32 func_8002DC9C(s16, s16, s16);                   /* extern */
+
+void func_80088658(void *arg0, void* arg1) {
+    struct { s32 x,y,z,pad; } vector;
+    s16 temp_a0;
+    s16 temp_a1;
+    s16 temp_a2;
+    s32 temp_lo;
+    s32 temp_lo_2;
+    s32 temp_v0;
+    s32 var_v0;
+
+    temp_a0 = *(s16 *)((s8*)(arg0) + 0);
+    vector.x = (s32) temp_a0;
+    temp_a1 = *(s16 *)((s8*)(arg0) + 2);
+    vector.y = (s32) temp_a1;
+    temp_a2 = *(s16 *)((s8*)(arg0) + 4);
+    vector.z = (s32) temp_a2;
+    var_v0 = func_8002DC9C(temp_a0, temp_a1, temp_a2);
+    if (var_v0 < 0) {
+        var_v0 = -var_v0;
+    }
+    temp_v0 = SquareRoot0(var_v0);
+    temp_lo = vector.x / temp_v0;
+    temp_lo_2 = vector.y / temp_v0;
+    vector.x = temp_lo;
+    vector.y = temp_lo_2;
+    vector.z = vector.z / temp_v0;
+    VectorNormalS(&vector, arg1);
+}
+
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_800886FC);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80088754);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_800887A4);
