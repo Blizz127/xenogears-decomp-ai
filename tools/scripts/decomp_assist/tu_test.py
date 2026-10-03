@@ -58,17 +58,25 @@ if pre[-2].strip() == '#ifndef XENO_PC_PORT' and s[en:].startswith('\n#else\n'):
     en = end
     ported = True
     body = '#ifndef XENO_PC_PORT\n' + body + '\n#endif\n'
-s = s[:st] + body + s[en:]
-edited = s
+edited = s[:st] + body + s[en:]
+# A splat-only INCLUDE_ASM list can sit inside #if 0 in an include-wrapper
+# TU. Comparing its already-defined real function would falsely admit a draft
+# that never reached the compiler. Require the replacement site to be active.
+probe_marker = 'xeno_tu_candidate_site_is_active'
+s = s[:st] + 'extern int ' + probe_marker + ';\n' + body + s[en:]
 # the TU in the matching build: drop other INCLUDE_ASM bodies (SKIP_ASM does that)
 pre_ = os.environ.get('XENO_CCT_PREFIX', '_tut')
 c_file, i_file, s_file, o_file = (os.path.join(CACHE, pre_ + e) for e in ('.c', '.i', '.s', '.o'))
+if os.path.exists(o_file):
+    os.remove(o_file)  # Never leave an earlier successful probe after a failure.
 open(c_file, 'w').write(s)
 tc = toolchain(ov, seg if '/' not in tu[len(f'src/{ov}/'):] else tu[len(f'src/{ov}/'):-2])
 p = subprocess.run(['tools/gcc-2.7.2-psx/cpp', '-Iinclude', '-I', os.path.dirname(tu), '-D_LANGUAGE_C', '-DSKIP_ASM',
                     '-P', '-undef', '-lang-c', '-nostdinc', c_file, i_file], capture_output=True, text=True)
 if p.returncode:
     sys.exit(p.stderr[-2000:])
+if probe_marker not in open(i_file).read():
+    sys.exit('inactive INCLUDE_ASM site: candidate was preprocessed out; inspect the included source')
 p = subprocess.run([tc['cc1']] + tc['cc1_flags'] + ['-o', s_file, i_file], capture_output=True, text=True)
 if p.returncode:
     sys.exit('cc1-fail: ' + '\n'.join(p.stderr.strip().split('\n')[-5:]))

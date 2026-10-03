@@ -55,7 +55,19 @@ void func_800BAEB8(s32 a0) {
     }
 }
 #else
-INCLUDE_ASM("asm/battle/nonmatchings/main111", func_800BAEB8);
+void func_800BAEB8(s32 arg0) {
+    s32 temp_s0;
+    u8 *base = D_800C3EB0;
+    void *temp_s1;
+
+    temp_s1 = *(void **)((s8*)(((arg0 * 4) + base)) + 0x8C8C);
+    if (*(s8 *)((s8*)(temp_s1) + 0xAF) != 0x15) {
+        temp_s0 = (*(u8 *)((s8*)(((arg0 * 0x1C) + base)) + 0xA) != 0) << 0xB;
+        func_800223B0(temp_s1, temp_s0);
+        func_80021FE0(temp_s1, temp_s0);
+    }
+}
+
 #endif
 #ifndef XENO_PC_PORT
 extern u8* D_800D2D28;

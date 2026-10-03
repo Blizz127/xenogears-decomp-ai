@@ -1032,7 +1032,31 @@ void SoundTransferWdsPart(u8* pData, s32 size) {
     g_SoundWdsRemainingBytes -= transferSize;
 }
 #else
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", SoundTransferWdsPart);
+s32 SoundTransferWdsPart__ret(u8 *, s32) asm("SoundTransferWdsPart");
+
+s32 SoundTransferWdsPart__ret(u8 *arg0, s32 arg1) {
+    s32 temp_s0;
+    s32 temp_s2;
+    s32 temp_v0;
+    s32 var_v1;
+
+    temp_s2 = g_SoundWdsRemainingBytes;
+    if (temp_s2 == 0) {
+        return 0;
+    }
+    var_v1 = temp_s2;
+    if (arg1 < temp_s2) {
+        var_v1 = arg1;
+    }
+    arg1 = var_v1;
+    temp_s0 = g_SoundWdsCurSpuAddress;
+    SoundQueueSpuWriteCommand(temp_s0, arg0, arg1, 0);
+    temp_v0 = temp_s2 - arg1;
+    g_SoundWdsCurSpuAddress = temp_s0 + arg1;
+    g_SoundWdsRemainingBytes = temp_v0;
+    return temp_v0;
+}
+
 #endif
 
 void SoundFreeWdsEntry(SoundWDSEntry* pTargetEntry) {
@@ -3086,10 +3110,9 @@ void func_8003AE84(AudioManager* manager) {
     }
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003AF24);
-#else
+
 void func_8003AF24(void* pManager, s32 arg1) {
+#ifdef XENO_PC_PORT
     u16 flags;
     s16 vol;
     DisableEvent(g_unk_SoundEvent);
@@ -3103,8 +3126,23 @@ void func_8003AF24(void* pManager, s32 arg1) {
     *(u16*)((u8*)pManager + 0x6C) = 0;
     *(s32*)((u8*)pManager + 0x64) = 0x7F000000;
     *(s32*)((u8*)pManager + 0x54) = vol * 0x7F00;
-}
+#else
+    s32 event = g_unk_SoundEvent;
+    register s32 scale asm("$2");
+    s32 volume;
+    *(s16 *)((s8*)(pManager) + 0x1E) = arg1;
+    *(u16 *)((s8*)(pManager) + 0x10) = (u16) (*(u16 *)((s8*)(pManager) + 0x10) | 0x20);
+    DisableEvent(event);
+    SoundReleaseAllVoices(pManager);
+    EnableEvent(g_unk_SoundEvent);
+    volume = *(s16 *)((u8 *)pManager + 0x5A);
+    scale = 0x7F00;
+    *(s16 *)((s8*)(pManager) + 0x6E) = scale;
+    *(s16 *)((s8*)(pManager) + 0x6C) = 0;
+    *(s32 *)((s8*)(pManager) + 0x64) = 0x7F000000;
+    *(s32 *)((s8*)(pManager) + 0x54) = volume * scale;
 #endif
+}
 
 //----------------------------------------------------------------------------------------------------------------------
 void func_8003AFA0(AudioManager* manager) {
@@ -5233,7 +5271,35 @@ u8* func_8003DC50(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudio
     return p + 3;
 }
 #else
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003DC50);
+void *func_8003DC50(void *arg0, s32 arg1, void *arg2) {
+    s32 byte2;
+    s32 var_a1;
+    s8 temp_a0;
+    s16 temp_s1;
+
+    temp_a0 = *(s8 *)((s8*)(arg0) + 1);
+    temp_s1 = *(u8 *)((s8*)(arg0) + 0);
+    if ((temp_a0 != 0) && (temp_s1 != 0)) {
+        var_a1 = temp_s1 * temp_s1;
+        if (var_a1 < 0) {
+            var_a1 += 0x3F;
+        }
+        temp_s1 = temp_s1 + (var_a1 >> 6);
+        *(s32 *)((s8*)(arg2) + 0x104) = func_8003E290(temp_a0 << 0x18, temp_s1, 2);
+        *(s16 *)((s8*)(arg2) + 0x10A) = temp_s1;
+        byte2 = *(u8 *)((u8 *)arg0 + 2);
+        *(s16 *)((s8*)(arg2) + 0x112) = 0x400;
+        *(s32 **)((s8*)(arg2) + 0xF8) = &func_8003F240;
+        *(s8 *)((s8*)(arg2) + 0x115) = 2;
+        *(s8 *)((s8*)(arg2) + 0x114) = 1;
+        *(s16 *)((s8*)(arg2) + 0x116) = 3;
+        *(s16 *)((s8*)(arg2) + 0x10E) = (s16) (byte2 * 4);
+        *(u16 *)((s8*)(arg2) + 0xCE) = (u16) (*(u16 *)((s8*)(arg2) + 0xCE) | 2);
+        func_8003E3E0(arg2 + 0xF8);
+    }
+    return arg0 + 3;
+}
+
 #endif
 
 // Seq cmd 0xE5: prime envelope object 1 (method from the D_800508A4
@@ -5367,7 +5433,35 @@ u8* func_8003DF78(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudio
     return p + 3;
 }
 #else
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003DF78);
+void *func_8003DF78(void *arg0, s32 arg1, void *arg2) {
+    s32 byte2;
+    s32 var_a1;
+    s8 temp_a0;
+    s16 temp_s1;
+
+    temp_a0 = *(s8 *)((s8*)(arg0) + 1);
+    temp_s1 = *(u8 *)((s8*)(arg0) + 0);
+    if ((temp_a0 != 0) && (temp_s1 != 0)) {
+        var_a1 = temp_s1 * temp_s1;
+        if (var_a1 < 0) {
+            var_a1 += 0x3F;
+        }
+        temp_s1 = temp_s1 + (var_a1 >> 6);
+        *(s32 *)((s8*)(arg2) + 0x124) = func_8003E290(temp_a0 << 0x18, temp_s1, 3);
+        *(s16 *)((s8*)(arg2) + 0x12A) = temp_s1;
+        byte2 = *(u8 *)((u8 *)arg0 + 2);
+        *(s16 *)((s8*)(arg2) + 0x132) = 0x400;
+        *(s32 **)((s8*)(arg2) + 0x118) = &func_8003F2A0;
+        *(s8 *)((s8*)(arg2) + 0x135) = 3;
+        *(s8 *)((s8*)(arg2) + 0x134) = 2;
+        *(s16 *)((s8*)(arg2) + 0x136) = 3;
+        *(s16 *)((s8*)(arg2) + 0x12E) = (s16) (byte2 * 4);
+        *(u16 *)((s8*)(arg2) + 0xCE) = (u16) (*(u16 *)((s8*)(arg2) + 0xCE) | 4);
+        func_8003E3E0(arg2 + 0x118);
+    }
+    return arg0 + 3;
+}
+
 #endif
 
 // Seq cmd 0xED: prime envelope object 2 (method from the D_800508A4
