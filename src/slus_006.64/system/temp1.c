@@ -392,10 +392,8 @@ void AnimScriptTick(void* pSpriteData) {
     }
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM(TEMP1_ASM, func_80023290);
-#else
 void func_80023290(u8* pSprite, s32 animType) {
+#ifdef XENO_PC_PORT
     u32 flags3C;
     animType &= 7;
     flags3C = *(u32*)(pSprite + 0x3C);
@@ -417,8 +415,34 @@ void func_80023290(u8* pSprite, s32 animType) {
             func_8001F6B0(pSprite);
         }
     }
-}
+#else
+    extern void func_8001F6B0(void*);
+    register u32 value asm("$2");
+    register u32 bits asm("$3");
+    bits = ~0xE0;
+    value = *(u32*)((u8*)pSprite + 0x3C);
+    animType &= 7;
+    value &= bits;
+    bits = animType << 5;
+    *(u32*)((u8*)pSprite + 0x3C) = value | bits;
+    if (animType) value = *(u8*)((u8*)pSprite + 0x2B) | 2;
+    else value = *(u8*)((u8*)pSprite + 0x2B) & 0xFD;
+    *(u8*)((u8*)pSprite + 0x2B) = value;
+    value = *(u32*)((u8*)pSprite + 0x40);
+    value = ((value >> 13) & 15) - 8;
+    if (value < 2U) {
+        animType = *(u32*)((u8*)pSprite + 0x3C);
+        value = ((u32)animType >> 5) & 7;
+        if (value) {
+            bits = ~0xE0;
+            bits = (u32)animType & bits;
+            value = ((value - 1) & 7) << 5;
+            bits |= value;
+            *(u32*)((u8*)pSprite + 0x3C) = bits;
+        }
+    } else func_8001F6B0(pSprite);
 #endif
+}
 
 void func_80023340(void* pSpriteData, s32 count) {
 #ifdef XENO_PC_PORT
