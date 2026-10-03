@@ -2080,10 +2080,9 @@ void func_8009B884(void) {
 }
 
 /* Opcode 0xB6 — scripted camera yaw to 8-way facing (instant if D_800ADB1C==0). */
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009B8E4);
-#else
+
 void func_8009B8E4(void) {
+#ifdef XENO_PC_PORT
     s32 facing = FieldScriptVMGetArgument(1);
     s32 duration = FieldScriptVMGetArgument(3);
 
@@ -2100,8 +2099,25 @@ void func_8009B8E4(void) {
     } else {
         D_800B00C0 = 1;
     }
+#else
+    s32 temp_a1;
+    s32 temp_s0;
+    s16 temp_v0;
+
+    temp_s0 = FieldScriptVMGetArgument(1);
+    temp_a1 = FieldScriptVMGetArgument(3);
+    if (D_800ADB1C == 0) {
+        temp_v0 = (temp_s0 + 4) & 7;
+        g_Scene_s16[0x56 / 2] = (s16) (temp_v0 << 9);
+        g_Scene_s32[0x7C / 4] = (s32) (temp_v0 << 9);
+        g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
+    } else if (g_Scene_s16[0x66 / 2] == 0) {
+        func_8009B708(temp_s0, temp_a1);
+        *(u16 *)((s8*)(g_FieldScriptVMCurActor) + 0xCC) = (u16) (*(u16 *)((s8*)(g_FieldScriptVMCurActor) + 0xCC) + 5);
+    }
+    D_800B00C0 = 1;
+#endif
 }
-#endif /* XENO_PC_PORT */
 
 void func_8009B9A0(void) {
     if (g_Scene_s16[0x66 / 2] == 0) {

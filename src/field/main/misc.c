@@ -2751,10 +2751,8 @@ void func_8008D078(void) {
  * the VM then re-dispatched the operand bytes as a bogus top-level dialog opcode,
  * opening a garbage text box (the Lahan-intro "garbled dialog"). The IP += 3 here
  * is the load-bearing fix. */
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008D0F4);
-#else
 void func_8008D0F4(void) {
+#ifdef XENO_PC_PORT
     s32 scale = FieldScriptVMGetArgument(1);
     *(s16*)((u8*)(uintptr_t)g_FieldActors[D_800AFD1C].pSpriteData + 0x2C) = (scale * 3) >> 2;
     g_FieldScriptVMCurActor->scaleX = scale;
@@ -2762,8 +2760,16 @@ void func_8008D0F4(void) {
     g_FieldScriptVMCurActor->scaleZ = scale;
     func_80072254(D_800AFD1C);
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
+#else
+    s32 scale = FieldScriptVMGetArgument(1);
+    ((SpriteData *)(uintptr_t)g_FieldActors[D_800AFD1C].pSpriteData)->scale = (u32)(scale * 3) >> 2;
+    g_FieldScriptVMCurActor->scaleX = scale;
+    g_FieldScriptVMCurActor->scaleY = scale;
+    g_FieldScriptVMCurActor->scaleZ = scale;
+    func_80072254(D_800AFD1C);
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
+#endif
 }
-#endif /* XENO_PC_PORT */
 
 extern s32 D_800AFD1C;
 

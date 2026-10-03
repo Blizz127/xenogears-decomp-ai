@@ -2986,10 +2986,9 @@ extern s32 D_800B06A0;
 extern void* D_800B235C;
 extern void func_80039EC4(s32 a0);
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80085678);
-#else
+
 void func_80085678(void) {
+#ifdef XENO_PC_PORT
     u16* pTable = D_800AE060;
     if (D_800C3A38 == 0xFF) return;
     while (1) {
@@ -3005,8 +3004,27 @@ void func_80085678(void) {
             *(u32*)(&D_800C3A64) = D_800C3A64 + 1;
         }
     }
+#else
+    void func_80039EC4__ret(s32, s32) asm("func_80039EC4");
+    s32 temp_a1;
+    register u8 *base asm("$16");
+    register u8 *values asm("$17");
+    u16 temp_a1_2;
+
+    if (D_800C3A38 != 0xFF) {
+        base = (u8 *)D_800AE060;
+        values = base + 2;
+loop_2:
+        temp_a1 = D_800C3A64 * 4;
+        if (D_800B06A0 >= (*(u16 *)(temp_a1 + (u32)base) + D_800C3A2C)) {
+            temp_a1_2 = *(u16 *)(temp_a1 + (u32)values);
+            func_80039EC4__ret((temp_a1_2 & 0xFF) | (*(u16 *)((s8*)(D_800B235C) + 0x14) << 0x10), (temp_a1_2 >> 7) & 0xE);
+            D_800C3A64 += 1;
+            goto loop_2;
+        }
+    }
+#endif
 }
-#endif /* XENO_PC_PORT */
 
 extern s16 D_800C3A38;
 extern void* D_800B235C;

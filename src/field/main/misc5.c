@@ -1870,10 +1870,9 @@ extern u32 D_800AFC70;
 // Re-pin the 0x8000-byte persistent buffer under a new heap user (only while
 // D_800ADB34 marks it active, e.g. a pause-menu background snapshot): alloc
 // a fresh block under HEAP_USER_YOSI, copy the old contents over, free the old.
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A90B4);
-#else
+
 void func_800A90B4(s32 pinFlag) {
+#ifdef XENO_PC_PORT
     void* pNew;
 
     if (D_800ADB34 == 1) {
@@ -1897,8 +1896,29 @@ void func_800A90B4(s32 pinFlag) {
         HeapFree((void*)(uintptr_t)D_800AFC70);
         D_800AFC70 = (u32)(uintptr_t)pNew;
     }
+#else
+    register u32 temp_a3 asm("$7");
+    void *temp_v0;
+    void *var_a2;
+    register void *var_t0 asm("$8");
+
+    if (D_800ADB34 == 1) {
+        HeapChangeCurrentUser(8, 0);
+        temp_v0 = HeapAlloc(0x8000, pinFlag);
+        var_t0 = temp_v0;
+        var_a2 = D_800AFC70;
+        temp_a3 = 0x8000;
+        temp_a3 = (u32)var_a2 + temp_a3;
+        do {
+            *(VECTOR *)var_t0 = *(VECTOR *)var_a2;
+            var_a2 += 0x10;
+            var_t0 += 0x10;
+        } while ((u32)var_a2 != temp_a3);
+        HeapFree(D_800AFC70);
+        D_800AFC70 = temp_v0;
+    }
+#endif
 }
-#endif /* XENO_PC_PORT */
 
 /* Matches, but g_FieldStoredImageDest seems to be part of some struct which
  * needs recovery first. */
