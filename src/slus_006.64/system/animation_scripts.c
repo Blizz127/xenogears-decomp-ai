@@ -88,10 +88,8 @@ extern void AnimScriptStackPushU8(SpriteData* pSpriteData, u8 value);
 extern int rand(void);
 extern s32 func_80022CAC(void* pSpriteData, s32 value);
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", func_8001FBA4);
-#else
 void* func_8001FBA4(SpriteData* pSpriteData, u8* pIndex) {
+#ifdef XENO_PC_PORT
     u8* pData = (u8*)pSpriteData;
     u8 index = *pIndex;
     if (!(index & 0x80)) {
@@ -99,8 +97,26 @@ void* func_8001FBA4(SpriteData* pSpriteData, u8* pIndex) {
         return pData + 0x8E + (s8)pData[0x8C] + signedIndex;
     }
     return (void*)(uintptr_t)(AnimationRead32(pData + 0x88) + (index & 0x7F));
-}
+#else
+    register u32 index asm("$5") = *pIndex;
+    register u32 value asm("$2");
+    register s32 other asm("$3");
+    u8* data = (u8*)pSpriteData;
+    if (index & 0x80) {
+        value = index & 0x7F;
+        other = *(u32*)(data + 0x88);
+        value = other + value;
+    } else {
+        other = index << 24;
+        value = *(s8*)(data + 0x8C);
+        other >>= 24;
+        value += other;
+        value += 0x8E;
+        value = (u32)data + value;
+    }
+    return (void*)value;
 #endif
+}
 
 extern void func_80022CDC(void* pSpriteData);
 extern s32 D_80059198;
