@@ -887,6 +887,8 @@ PORT_SOURCES=(
     pc_port/src/battle_mips_adapter.c
     pc_port/src/battle_mips_runtime.c
     pc_port/src/battle_results_host.c
+    pc_port/src/battle_state_hash.c # TEST TOOLING: opt-in battle-frame input/hash recorder
+    pc_port/src/battle_results_trace.c # TEST TOOLING: opt-in entry/render/return snapshots
     pc_port/src/guest_prim_link.c
     pc_port/src/model_prim_link.c
     pc_port/src/model_prim_ed20.c

@@ -4,12 +4,18 @@
 Adapted from assists_test.py at ebbeb468; no assists implementation imported.
 A returned battle does not establish victory, native execution or parity.
 
+XENO_RESULTS_DIRECT_FIELD=1 selects the map-1 test bootstrap instead of a
+checkpoint. Its previously observed empty-party RESULTS route is diagnostic
+only, not a valid victory or useful playable-slice fixture.
+
 Each run: boot -> quick-load the field-14 checkpoint ($XENO_ASSISTS_CKPT) ->
 cheat console `battle <id>` -> the battle runs with battle-frame-keyed pad
 presses (XENO_BATTLE_TEST_PAD, battle_state_hash.c) -> wait for battle.bin to
 return -> stop.  battle_state_hash.c logs, per battle frame, a CRC of the
 battle state and g_GameState, every damage row, the end-of-battle module call
-and every guest store into the party records / gold (the rewards).
+and decoded guest stores into party records / gold. Decoded stores omit native
+writes and are not a parity metric. battle_results_trace.c separately snapshots
+bus-visible memory at RESULTS entry, renders and the observed return.
 
   battle_results_route_driver.py probe BINARY OUT NAME BATTLE_ID [ENV=VALUE ...]
   battle_results_route_driver.py summary STATE_LOG
@@ -38,10 +44,15 @@ class Port:
         env.update(SDL_VIDEODRIVER='offscreen', EGL_PLATFORM='surfaceless',
                    ALSOFT_DRIVERS='null', XENO_NO_DIALOG='1', XENO_MODS_ENABLED='0',
                    XENO_CHEATS_CONSOLE='1', XENO_DEV_MENU='1',
-                   XENO_QUICKSAVE_PATH=os.environ['XENO_ASSISTS_CKPT'],
                    XENO_BATTLE_STATE_HASH_LOG=os.path.join(out, 'state.log'),
                    XENO_BATTLE_TEST_PAD=PAD)
         env.update(env_extra)
+        direct_field = env_extra.get('XENO_RESULTS_DIRECT_FIELD') == '1'
+        if direct_field:
+            env.update(XENO_FIELD_TEST='1', XENO_KERNEL_SEL='0', XENO_FIELD_MAP='1')
+        snapshots = os.path.join(out, 'results-snapshots')
+        os.makedirs(snapshots, exist_ok=True)
+        env['XENO_BATTLE_RESULTS_SNAPSHOT_DIR'] = snapshots
         # Test fixture files are private to this run, even if inherited
         # environment variables point at the owner's settings or saves.
         for k in ('DISPLAY', 'WAYLAND_DISPLAY', 'XAUTHORITY'):
@@ -50,11 +61,12 @@ class Port:
                           ('XDG_STATE_HOME', 'state'), ('XENO_MEMCARD_DIR', 'memcards')):
             env[key] = os.path.join(out, leaf)
             os.makedirs(env[key], exist_ok=True)
-        checkpoint = os.path.abspath(os.environ['XENO_ASSISTS_CKPT'])
         private_checkpoint = os.path.join(out, 'checkpoint.xgqs')
-        if checkpoint == private_checkpoint:
-            raise ValueError('checkpoint input must be outside the run output')
-        shutil.copyfile(checkpoint, private_checkpoint)
+        if not direct_field:
+            checkpoint = os.path.abspath(os.environ['XENO_ASSISTS_CKPT'])
+            if checkpoint == private_checkpoint:
+                raise ValueError('checkpoint input must be outside the run output')
+            shutil.copyfile(checkpoint, private_checkpoint)
         env['XENO_QUICKSAVE_PATH'] = private_checkpoint
         config = os.path.join(out, 'config.ini')
         Path(config).write_text('[enhancements]\n')
@@ -127,16 +139,17 @@ def run_battle(binary, out, battle_id, env_extra, battle_timeout=600):
             return 'fail', 'console not ready'
         if p.wait_for('FieldLoad begin field=', 300) is None:
             return 'fail', 'no field loaded'
-        for _ in range(60):
-            n = p.n()
-            p.send('load')
-            if p.wait_for('[xeno-port][quick] loading', 5, n) is not None:
-                break
-            time.sleep(5)
-        else:
-            return 'fail', 'load not accepted'
-        if p.wait_for('FieldLoad begin field=14', 180) is None:
-            return 'fail', 'field 14 not restored'
+        if env_extra.get('XENO_RESULTS_DIRECT_FIELD') != '1':
+            for _ in range(60):
+                n = p.n()
+                p.send('load')
+                if p.wait_for('[xeno-port][quick] loading', 5, n) is not None:
+                    break
+                time.sleep(5)
+            else:
+                return 'fail', 'load not accepted'
+            if p.wait_for('FieldLoad begin field=14', 180) is None:
+                return 'fail', 'field 14 not restored'
         time.sleep(5)
         n = p.n()
         p.send('battle %d' % battle_id)

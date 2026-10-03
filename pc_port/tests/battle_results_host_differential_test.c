@@ -1532,6 +1532,12 @@ static void gate_controls(const LeafSpec *spec)
     CONTROL("force_interpret interprets", dispatch(target) == 0);
     rt.force_interpret = 0;
 
+    CONTROL("RESULTS-only control set", setenv("XENO_BATTLE_RESULTS_FORCE_INTERPRET", "1", 1) == 0);
+    CONTROL("RESULTS-only control interprets", dispatch(target) == 0);
+    CONTROL("RESULTS-only control does not force all bridges", rt.force_interpret == 0);
+    CONTROL("RESULTS-only control clear", unsetenv("XENO_BATTLE_RESULTS_FORCE_INTERPRET") == 0);
+    CONTROL("RESULTS adopts after control clears", dispatch(target) == 1);
+
     g_ActiveBattleRuntime = NULL;
     CONTROL("no active runtime interprets", dispatch(target) == 0);
     g_ActiveBattleRuntime = &rt;

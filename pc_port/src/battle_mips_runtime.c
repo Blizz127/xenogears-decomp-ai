@@ -4,7 +4,11 @@
 /* Host hooks: weak so the tests that #include/link this runtime without the
  * port's god_mode.c / game_overrides.c still link. */
 #pragma weak PcPort_GodModeBeforeGuest
+#pragma weak PcPort_BattleStateHashBeforeGuest
+#pragma weak PcPort_BattleResultsTraceBeforeGuest
 #include "battle_mips_adapter.h"
+void PcPort_BattleStateHashBeforeGuest(PcPortMipsCpu*, uint32_t);
+void PcPort_BattleResultsTraceBeforeGuest(PcPortMipsCpu*, uint32_t);
 #include "battle_mips_runtime_internal.h"
 #include "psx_memory.h"
 #include "psyq/libgpu.h"
@@ -1158,6 +1162,12 @@ static int runtime_bridge(void *opaque, PcPortMipsCpu *cpu, uint32_t target)
     PcPortMipsCpu *previous = runtime->bridge_cpu;
     CpuMeterBridgeState meter;
     runtime->bridge_cpu = cpu;
+    {
+        void (*volatile hash_hook)(PcPortMipsCpu*, uint32_t) = PcPort_BattleStateHashBeforeGuest;
+        void (*volatile results_hook)(PcPortMipsCpu*, uint32_t) = PcPort_BattleResultsTraceBeforeGuest;
+        if (hash_hook) hash_hook(cpu, target);
+        if (results_hook) results_hook(cpu, target);
+    }
     {
         void (*volatile god_hook)(PcPortMipsCpu*, uint32_t) = PcPort_GodModeBeforeGuest;
         if (god_hook)

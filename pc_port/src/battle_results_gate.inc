@@ -214,6 +214,13 @@ static int results_try_host(BattleMipsRuntime *runtime, PcPortMipsCpu *cpu,
     }
     if (kResultsLeaves[index].name == NULL)
         return 0;
+    /* Route reference control: disable ONLY RESULTS adoption. Other overlay
+     * and main-executable bridges keep their ordinary production behavior. */
+    {
+        const char *control = getenv("XENO_BATTLE_RESULTS_FORCE_INTERPRET");
+        if (control && control[0] && strcmp(control, "0") != 0)
+            return 0;
+    }
     results_bind();
     if (g_ResultsHosts[index] == NULL)
         return 0;
