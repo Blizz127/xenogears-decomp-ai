@@ -372,26 +372,22 @@ void func_800924D4(s32 index, s32 component, s32 value) {
     switch (component) {
         case 0:
             entry = (u32*)(FIELD_COLLISION_FLAGS + index * 4);
-            *entry = (*entry & ~0xFFu) | (value & 0xFF);
+            *entry = (*entry & ~0xFFu) | (u32)value;
             break;
         case 1:
             entry = (u32*)(FIELD_COLLISION_FLAGS + index * 4);
             mask = 0xFFFF00FF;
-            *entry = (*entry & mask) | ((value & 0xFF) << 8);
+            *entry = (*entry & mask) | ((u32)value << 8);
             break;
         case 2:
             entry = (u32*)(FIELD_COLLISION_FLAGS + index * 4);
             mask = 0xFF00FFFF;
-            *entry = (*entry & mask) | ((value & 0xFF) << 16);
+            *entry = (*entry & mask) | ((u32)value << 16);
             break;
         case 3:
             entry = (u32*)(FIELD_COLLISION_FLAGS + index * 4);
             mask = 0x00FFFFFF;
-#ifdef XENO_PC_PORT
-            *entry = (*entry & mask) | (((u32)value & 0xFFu) << 24);
-#else
-            *entry = (*entry & mask) | ((value & 0xFF) << 24);
-#endif
+            *entry = (*entry & mask) | ((u32)value << 24);
             break;
     }
 #else
