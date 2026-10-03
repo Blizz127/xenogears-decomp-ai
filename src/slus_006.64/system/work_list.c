@@ -481,7 +481,22 @@ void WorkListsDeleteTasks(WorkListEntry* pTasks) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/work_list", WorkListsAddTasks);
+WorkListEntry* WorkListsAddTasks__ret(u32 size, void* owner, void* timerCb, void* workCb, void* freeCb) asm("WorkListsAddTasks");
+WorkListEntry* WorkListsAddTasks__ret(u32 size, void* owner, void* timerCb, void* workCb, void* freeCb) {
+    WorkListEntry* entry;
+    WorkListEntry* work;
+    entry = HeapAlloc(size, D_800591AF);
+    TimerWorkListAddTask(owner, entry);
+    work = (WorkListEntry*)((u8*)entry + 0x1C);
+    WorkListAddTask(entry, work);
+    TimerWorkListSetTaskCallback(entry, timerCb);
+    WorkListSetTaskCallback(work, workCb);
+    if (freeCb != NULL) WorkListTaskSetOnFreeCallback(entry, freeCb);
+    else WorkListTaskSetOnFreeCallback(entry, &WorkListsDeleteTasks);
+    entry->unk4 = entry;
+    entry[1].unk4 = entry;
+    return entry;
+}
 #else
 WorkListEntry* WorkListsAddTasks(void* timerData, void* timerCb, void* workCb, void* onFreeCb) {
     WorkListEntry* pEntry;
