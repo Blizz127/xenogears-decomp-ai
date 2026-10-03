@@ -156,3 +156,72 @@ No cleanup, cap change or new submission was performed; the coordinator has
 the exact build/capture request and narrow disk margin. Retain the binary retail-data
 blocker (19 runs / 25,068 bytes), all guards and separate native/runtime/matching
 evidence. No publication is authorized by this work.
+
+
+## Legitimate fixture and executed field roundtrip
+
+The hybrid reference route `reference-keyboard-fixture-1800` finished normally
+in 1191.64 seconds. Actual field-14 load and free control (scenario 6,
+`canRun=1`, owner `0xff`, `b21d0=0`) preceded a successful ordinary F11 save.
+The earlier heartbeat map 14 was only the pending battle destination; it was
+not evidence of field entry. The reference executed 99,792,373 interpreted
+instructions and is explicitly not native proof.
+
+The immutable earned fixture SHA256 is
+`0fa6e67662ef361831f509fed95a4d9c9c2c60e44f647c6dfe4f27beeee8936d`.
+Its private `fixture-provenance.json` retains route, launch, exit, capture and
+save identities. No synthetic save or scene-control bypass was used.
+
+`disabled-field14-roundtrip` and `reference-field14-roundtrip` each passed the
+same functional sequence with the retained production binary from `3a73eecc`
+(SHA256 `d3717bde1c0b2a7ae2c1a3b3891012d76e539f2bf6c148f0594c64fd25e4f6c9`):
+
+1. Load the earned fixture through F12 at title; map 14, scenario 6,
+   position `(115,0,-455)`, nonempty party, free control.
+2. Move right with ordinary keyboard input to `(146,0,-488)`.
+3. Successfully save with F11; move away with left input.
+4. Reload with F12 and require the exact saved position `(146,0,-488)`.
+
+Both exited 0 (57.22 / 57.38 seconds); neither logged a stub or disabled-target
+refusal. The disabled run used `XENO_DISABLE_CPU_INTERPRETER=1`, console and
+devmenu disabled. The executable predates the new whole-process counters, so
+these receipts cannot establish their zero values.
+
+Private `field14-comparison.json` preserves the complete comparison. Saved
+position (including fractional bits), rotation, scenario, gold 100,
+party `[0,255,255]`, characters and inventory agree. One game-state byte differs
+at offset `0x193c`: 42 versus 43. This is script variable address `0xC`, named
+`SCRIPT_VAR_SYSTEM_TIME_LOW` (seconds/minutes); `virtual_machine.c` writes it
+from the game clock. The difference remains recorded, not normalized away.
+The moved screenshots are pixel-identical. Entry images differ at 185,706 of
+307,200 pixels; restored images differ at 876 pixels. Equal wall-clock left
+holds produced different move-away positions. Thus visual and timing parity
+are not established. A bounded follow-up waits for three consecutive neutral
+position/camera/control samples before captures to investigate synchronization.
+This does not make wall-clock keyboard input deterministic.
+
+Full accepted native playable slices remain **0**. This is real functional
+field progress with the interpreter disabled, pending production counters,
+visual/timing comparison and audio evidence (these local runs use null audio).
+The battle-entry refusal and larger native-conversion milestone remain open.
+Matching counts and tested battle-body inventory are unchanged.
+
+The committed abort-counter fix `d150eb7a` also emits and flushes a distinct
+`[cpu-execution-refusal]` snapshot before abort; normal atexit reports cannot
+survive SIGABRT. O0/O2/UBSan mechanism tests cover that negative control.
+The exact cached incremental build plan and guard-input addendum are retained
+under private `incremental-plan/`. Shared submission remains on coordinator
+hold; no cleanup, cap change, duplicate job or publication was performed.
+
+The settled follow-up pair also passed functionally (exit 0, 40.62 / 40.37
+seconds). Entry-image difference fell to 113 / 307,200 pixels after three
+matching neutral samples. This supports a synchronization issue in the first
+captures, but does not establish exact visual parity. Movement remained
+nondeterministic: the same 0.6-second right hold ended at `(184,0,-491)` versus
+`(189,0,-491)`. Each save/reload restored its own exact position. Moved/restored
+images therefore compare different camera/player states (113,250 differing
+pixels) and are not a same-state visual test. Raw results remain under
+`disabled-field14-settled`, `reference-field14-settled` and
+`field14-settled-comparison.json`. Both processes are terminal; no local game
+job remains. The next test needs frame-scheduled input and synchronized capture
+without changing state, guards or fixture provenance.
