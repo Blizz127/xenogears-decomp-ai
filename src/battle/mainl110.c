@@ -22,7 +22,32 @@ void func_800B9C00(void *arg0, s32 arg1) {
 
 INCLUDE_ASM("asm/battle/nonmatchings/mainl110", func_800B9C78);
 INCLUDE_ASM("asm/battle/nonmatchings/mainl110", func_800B9F78);
-INCLUDE_ASM("asm/battle/nonmatchings/mainl110", func_800BA4E0);
+extern u8 D_800591AC__array[] asm("D_800591AC");
+extern s32 D_80059464__array[] asm("D_80059464");
+extern u8 D_800C3EB0[];
+
+void func_800BA4E0(s32 arg0) {
+    s32 temp_a0;
+    u8 *base;
+
+    D_80059464__array[0] = 0;
+    D_800591AC__array[0] = 0;
+    func_800B136C();
+    base = D_800C3EB0;
+    if (*(u8 *)((s8*)(((arg0 * 0x1C) + base)) + 8) != 0) {
+        func_800B8D7C();
+        func_800BFBA0();
+    } else if (arg0 < 3) {
+        temp_a0 = *(s32 *)((s8*)(((arg0 * 4) + base)) + 0x8C8C);
+        if (temp_a0 != 0) {
+            func_800BF2B8(temp_a0);
+        }
+    } else {
+        func_800B8D7C();
+    }
+    func_800BC454(0xC0);
+}
+
 
 #ifndef XENO_PC_PORT
 void func_800BA59C(void *arg0, s16 arg1) {

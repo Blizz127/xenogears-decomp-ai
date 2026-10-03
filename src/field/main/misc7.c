@@ -1687,10 +1687,9 @@ void func_8009AE0C(void) {
 }
 
 /* Start SCRZ (scene+0x68) lerp to target over `duration` frames. */
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009AE3C);
-#else
+
 void func_8009AE3C(s32 targetScrZ, s32 duration) {
+#ifdef XENO_PC_PORT
     s32 curScrZ;
     s32 delta;
     s32* pFlags;
@@ -1711,8 +1710,20 @@ void func_8009AE3C(s32 targetScrZ, s32 duration) {
 
     pFlags = (s32*)((u8*)&g_Scene + 0x48);
     *pFlags &= ~0x2000;
+#else
+    if (duration != 0) {
+        g_Scene_s16[0x80 / 2] = duration;
+        g_Scene_s32[0x48 / 4] = (s32) (g_Scene_s32[0x48 / 4] | 0x10);
+        g_Scene_s32[0x84 / 4] = (s32) (g_Scene_s32[0x68 / 4] << 0x10);
+        g_Scene_s32[0x88 / 4] = (s32) ((s32) -((g_Scene_s32[0x68 / 4] - targetScrZ) << 0x10) / duration);
+    } else {
+        g_Scene_s32[0x68 / 4] = targetScrZ;
+        g_Scene_s16[0x80 / 2] = 0;
+        D_800B21D8[0] += 2;
+    }
+    g_Scene_s32[0x48 / 4] = (s32) (g_Scene_s32[0x48 / 4] & 0xDFFF);
+#endif
 }
-#endif /* XENO_PC_PORT */
 
 extern s32 D_8005A444[];
 extern s16 D_800B2348;

@@ -2684,10 +2684,8 @@ void func_8008CED0(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 3;
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008CF3C);
-#else
 s32 func_8008CF3C(s32 a0) {
+#ifdef XENO_PC_PORT
     switch (a0) {
     case 0xFF:
         return g_GamePartyMembers[2];
@@ -2699,8 +2697,15 @@ s32 func_8008CF3C(s32 a0) {
         return 0xFF;
     }
     return a0;
+#else
+    register s32 result asm("$2");
+    if (a0 == 0xFF) result = g_GamePartyMembers[2];
+    else if (a0 == 0xFE) result = g_GamePartyMembers[1];
+    else if (a0 == 0xFD) result = g_GamePartyMembers[0];
+    else { result = 0xFF; if (a0 != 0xFC) result = a0; }
+    return result;
+#endif
 }
-#endif /* XENO_PC_PORT */
 
 void func_8008CF9C(void) {
     g_FieldScriptVMCurActor->faceId = func_8008CF3C(FieldScriptVMGetArgument(1));

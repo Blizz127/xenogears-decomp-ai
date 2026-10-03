@@ -2429,7 +2429,30 @@ void func_8003A094(SoundFile* pFile) {
     } while (count != 0);
 }
 #else
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A094);
+void func_8003A094(void *arg0) {
+    s16 temp_s4;
+    s32 var_s3;
+    u16 *var_s1;
+    void *temp_s2;
+    register void *var_s0 asm("$16");
+
+    var_s3 = D_80059478;
+    temp_s2 = D_800595D8;
+    temp_s4 = *(s16 *)((s8*)(arg0) + 0x14);
+    var_s1 = temp_s2 + 0x94;
+    var_s0 = temp_s2 + 0xBB;
+    do {
+        var_s3 -= 1;
+        if ((*var_s1 & 1) && (*(s16 *)((s8*)(var_s0) + -0x1D) == temp_s4)) {
+            *var_s1 = 0;
+            *(s32 *)((s8*)(temp_s2) + 0x48) = (s32) (~(1 << *(u8 *)((s8*)(var_s0) + -0x21)) & *(s32 *)((s8*)(temp_s2) + 0x48));
+            SoundReleaseVoiceFromChannel((u8 *)var_s1 + 0x30, *(u8 *)((s8*)(var_s0) + 0));
+        }
+        var_s0 += 0x158;
+        var_s1 = (u16 *)((u8 *)var_s1 + 0x158);
+    } while (var_s3 != 0);
+}
+
 #endif
 
 #ifdef XENO_PC_PORT
