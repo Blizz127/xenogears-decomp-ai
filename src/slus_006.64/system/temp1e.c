@@ -376,11 +376,9 @@ void func_8002541C(u8* pEntry) {
 #endif
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM(TEMP1E_ASM, func_80025544);
-#else
 /* Retail 80025544..80025710: projected square TILE followed by draw mode. */
 void func_80025544(u8* pEntry) {
+#ifdef XENO_PC_PORT
     u8* pSprite = SpriteRenderAddress(*(u32*)(pEntry + 0x04));
     u16 size;
     u32 cursor, next, otOffset, otAddress, color;
@@ -447,8 +445,73 @@ void func_80025544(u8* pEntry) {
 #else
     AddPrim(SpriteRenderAddress(otAddress + otOffset), pMode);
 #endif
-}
+#else
+    int abs(int);
+    SVECTOR pos,copy;
+    SVECTOR screen;
+    long other,flag;
+    register s32 dimension asm("$17");
+    s32 depth;
+    s32 offset;
+    register u32 originX asm("$4");
+    register s32 value asm("$2");
+    register u32 mask asm("$3");
+    register u8* ot asm("$4");
+    register u8* sprite asm("$18");
+    register u8* tile asm("$19");
+    u8* mode;
+    register u8* next asm("$3");
+    sprite=*(u8**)(pEntry+4);
+    if (*(u16*)(sprite+0x34)==0) {
+        dimension=*(u16*)(sprite+0x36);
+        tile=g_GfxCurWorkBuffer;
+        next=tile+16;
+        if ((u32)next<(u32)g_GfxCurWorkBufferEnd) {
+            value=*(s16*)(sprite+2);pos.vx=value;
+            value=*(s16*)(sprite+6);pos.vy=value;
+            value=*(s16*)(sprite+10);
+            g_GfxCurWorkBuffer=next;pos.vz=value;
+            SetRotMatrix(&D_8004FBB8);SetTransMatrix(&D_8004FBB8);
+            copy=pos;
+            copy.vx+=dimension;
+            value=RotTransPers3(&pos,&copy,&pos,(long*)(tile+8),(long*)&screen,&other,&flag,&flag);
+            depth=value>>D_80050100;
+            *(s16*)(sprite+0x2E)=depth;
+            mask=(s32)screen.vx;
+            value=*(s16*)(tile+8);
+            originX=*(u16*)(tile+8);
+            dimension=mask-value;
+            if(dimension==0)dimension=1;
+            dimension=abs(dimension);
+            mode=tile;
+            value=dimension/2;
+            mask=*(u16*)(mode+10);
+            originX-=value;
+            *(u16*)(mode+8)=originX;
+            mask-=value;
+            *(u16*)(mode+10)=mask;
+            mask=*(u32*)(sprite+0x28);
+            value=3;mode[3]=value;
+            *(u32*)(mode+4)=mask;
+            ot=(u8*)g_GfxCurOT;
+            offset=depth*4;
+            *(u16*)(mode+14)=dimension;
+            *(u16*)(mode+12)=dimension;
+            AddPrim(ot+offset,mode);
+            mode=g_GfxCurWorkBuffer;next=mode+8;
+            if((u32)next<(u32)g_GfxCurWorkBufferEnd) {
+                g_GfxCurWorkBuffer=next;
+                mask=0xE1000000;mode[3]=1;
+                ot=(u8*)g_GfxCurOT;
+                value=*(u32*)(sprite+0x3C);ot+=offset;
+                value&=0x60;value|=mask;
+                *(u32*)(mode+4)=value;
+                AddPrim(ot,mode);
+            }
+        }
+    }
 #endif
+}
 
 void func_80025710(void) {}
 
