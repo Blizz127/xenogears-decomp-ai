@@ -9,7 +9,17 @@ void func_800BA59C(void *arg0, s16 arg1);
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/mainl110", func_800B9C00);
+extern u8* D_800C3610[];
+
+void func_800B9C00(void *arg0, s32 arg1) {
+    *(s32 *)((s8*)(arg0) + 0) = (s32) (*(s16 *)((s8*)(arg0) + 0xA0) << 0x10);
+    *(s32 *)((s8*)(arg0) + 8) = (s32) (*(s16 *)((s8*)(arg0) + 0xA4) << 0x10);
+    *(s8 *)((s8*)(D_800C3610[0]) + 0x48) = 1;
+    func_800BF0B4(4);
+    func_800245D8(arg0, *(s8 *)((s8*)(arg0) + 0xB0));
+    func_800B9B54(arg0, arg1);
+}
+
 INCLUDE_ASM("asm/battle/nonmatchings/mainl110", func_800B9C78);
 INCLUDE_ASM("asm/battle/nonmatchings/mainl110", func_800B9F78);
 INCLUDE_ASM("asm/battle/nonmatchings/mainl110", func_800BA4E0);

@@ -91,12 +91,20 @@ name = "BattleLiteral"
 # bodies use maspsx's lui/ori form, but a handful of retail bodies encode the
 # constant as `addiu $r,$zero,K` exactly like gas does when maspsx leaves `li`
 # alone.  Only the addiu-flavoured TUs (named `mainl*`) select this preset; it
-# changes nothing but the li expansion.
+# changes nothing but the li expansion.  Listed per TU: gears takes the first
+# preset whose key matches (table order, not longest key), so a "battle/mainl"
+# prefix here would shadow BattleCdk's mainl110 entry below.
 build_variables = {
     maspsx_flags = "--dont-expand-li --use-comm-section --run-assembler"
 }
 paths = [
-    "battle/mainl",
+    "src/battle/mainl81.",
+    "src/battle/mainl92.",
+    "src/battle/mainl94.",
+    "src/battle/mainl98.",
+    "src/battle/mainl109.",
+    "src/battle/mainl115.",
+    "src/battle/mainl133.",
 ]
 
 [[build_preset]]
@@ -203,6 +211,12 @@ name = "BattleCdk"
 # main87, main90, mainasm_4F3C4 and main101 are CDK code too: their
 # drafts (func_800B5FBC, func_800B6518, func_800BEEB4, func_800B81BC, ...)
 # match only here.
+# mainl110 and main111 (2026-10-03): their retail has 30 compiler-split
+# %hi/%lo loads (the lui hoisted into another register away from its %lo
+# use), which only the CDK cc1 emits; func_800B9C00 matches only here and
+# the TUs' existing bodies (func_800BA59C, func_800BA8F4, func_800BAC50,
+# func_800BAF40) still match.  BattleLiteral lists its mainl TUs
+# explicitly so this entry is the only match for mainl110.
 build_variables = {
     gcc = "gcc-2.7.2-cdk-psx",
     maspsx_flags = "--dont-expand-li --use-comm-section --run-assembler"
@@ -213,6 +227,8 @@ paths = [
     "src/battle/main90.",
     "src/battle/mainasm_4F3C4.",
     "src/battle/main101.",
+    "src/battle/mainl110.",
+    "src/battle/main111.",
 ]
 
 [[build_preset]]

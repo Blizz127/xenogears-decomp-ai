@@ -78,9 +78,11 @@ def load_gears_toml():
 def toolchain(ov, seg):
     """cc1, cc1 flags and maspsx flags for src/<ov>/<seg>.c, resolved from
     gears.toml the way gears does: the Default preset's build_variables,
-    overridden by the preset whose path key ({binary} expanded) is a
-    substring of the TU path (the longest key wins, so the result does not
-    depend on table order).  XENO_CC1 / XENO_GP_FLAG still override."""
+    overridden by the first preset (table order) whose path key ({binary}
+    expanded) is a substring of the TU path.  Verified against build.ninja
+    2026-10-03: a "battle/mainl" prefix listed before a "src/battle/mainl110."
+    key won for mainl110, so keep keys unambiguous rather than relying on
+    length.  XENO_CC1 / XENO_GP_FLAG still override."""
     cfg = load_gears_toml()
     binary = cfg['compilation']['binary']
     presets = cfg.get('build_preset', [])
@@ -90,7 +92,7 @@ def toolchain(ov, seg):
     for p in presets:
         for key in p.get('paths', []):
             k = key.replace('{binary}', binary)
-            if k in tu and (best is None or len(k) > len(best[0])):
+            if k in tu and best is None:
                 best = (k, p)
     name = 'Default'
     if best:
