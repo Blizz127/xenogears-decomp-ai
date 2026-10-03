@@ -12,7 +12,26 @@ void func_800BAC50(void *arg0);
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/battle/nonmatchings/main111", func_800BA984);
 INCLUDE_ASM("asm/battle/nonmatchings/main111", func_800BAB0C);
-INCLUDE_ASM("asm/battle/nonmatchings/main111", func_800BABDC);
+void func_800BABDC__ret(u8* arg0) asm("func_800BABDC");
+
+void func_800BABDC__ret(u8* arg0) {
+    register s32 temp_v0 asm("$2");
+    register void *temp_s1 asm("$17");
+    register u8* task asm("$16");
+
+    temp_s1 = arg0 + 0x38;
+    temp_v0 = *(s32 *)((s8*)(*(void **)((s8*)(temp_s1) + 0x20)) + 0x2C);
+    task = arg0;
+    if (temp_v0 != 0) {
+        HeapFree(temp_v0);
+    }
+    func_8001CE74(task);
+    func_8001D3F4(temp_s1);
+    WorkListRemoveTask(task + 0x1C);
+    TimerWorkListRemoveTask(task);
+    HeapFree(task);
+}
+
 
 #ifndef XENO_PC_PORT
 void func_800BAC50(void *arg0) {
