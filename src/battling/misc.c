@@ -1977,7 +1977,30 @@ void func_80081094(void *arg0, s32 arg1, s32 arg2) {
     *(s16 *)((s8*)(arg0) + 0x2E) = (0x140 - temp_v0) / 2;
 }
 
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80081100);
+extern s32 D_80095510;
+extern s32 D_80095540;
+
+void func_80081100(s32 arg0, s32 arg1) {
+    struct { s16 x,y,w,h; } rect;
+
+    if (arg1 == 0) {
+        if (arg0 != *(u8*)&D_8009273C) {
+            D_8009273C = arg0;
+            func_80081094(&D_80095510, arg0, 0);
+            goto block_5;
+        }
+    } else if (arg0 != *(u8*)&D_80092740) {
+        D_80092740 = arg0;
+        func_80081094(&D_80095540, arg0, 1);
+block_5:
+        rect.x = 0x140;
+        rect.y = 0x30;
+        rect.w = 0x42;
+        rect.h = 0xD;
+        LoadImage(&rect, D_80095510);
+    }
+}
+
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_800811AC);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_800812BC);
 extern s32 D_80092700;
@@ -2534,7 +2557,39 @@ void func_80087830(void) {
 }
 
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_800878DC);
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80087AB0);
+extern u16 D_800927D4;
+extern u16 D_800927D8;
+extern u8 D_800927DC;
+extern u8 D_800927E0;
+
+void func_80087AB0(void *arg0) {
+    struct Packet { u32 tag, color; s16 x0,y0; u16 uv0,clut; s16 x1,y1; u16 uv1,tpage; s16 x2,y2; u16 uv2,pad2; s16 x3,y3; u16 uv3,pad3; };
+    s32 u, v;
+    s32 temp_a1;
+    s32 temp_v0;
+    s32 temp_v1;
+    void *var_a3;
+    void *var_t0;
+
+    var_t0 = arg0 + 0x162C;
+    *(s32 *)((s8*)(arg0) + 0x1608) = 0x2C101010;
+    *(s8 *)((s8*)(arg0) + 0x1607) = 9;
+    *(u8 *)((s8*)(arg0) + 0x160B) = (u8) (*(u8 *)((s8*)(arg0) + 0x160B) | 2);
+    var_a3 = arg0 + 0x1604;
+    ((struct Packet*)((u8*)arg0 + 0x1604))->clut = (u16) D_800927D8;
+    ((struct Packet*)((u8*)arg0 + 0x1604))->tpage = (u16) D_800927D4;
+    u = D_800927DC;
+    v = D_800927E0;
+    temp_v1 = v << 8;
+    ((struct Packet*)((u8*)arg0 + 0x1604))->uv0 = (s16) (u | temp_v1);
+    temp_a1 = u + 0x3F;
+    temp_v0 = (v + 0x3F) << 8;
+    ((struct Packet*)((u8*)arg0 + 0x1604))->uv1 = (s16) (temp_a1 | temp_v1);
+    ((struct Packet*)((u8*)arg0 + 0x1604))->uv2 = (s16) (u | temp_v0);
+    ((struct Packet*)((u8*)arg0 + 0x1604))->uv3 = (s16) (temp_a1 | temp_v0);
+    *(struct Packet*)((u8*)arg0 + 0x162C) = *(struct Packet*)((u8*)arg0 + 0x1604);
+}
+
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80087B74);
 extern s32 D_800928F8;
 extern s32 D_8009A988;
