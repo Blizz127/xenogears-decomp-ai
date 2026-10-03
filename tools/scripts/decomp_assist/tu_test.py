@@ -78,9 +78,13 @@ subprocess.run(['python3', 'tools/maspsx/maspsx.py'] + tc['maspsx_flags'] + ['-o
                capture_output=True, stdin=subprocess.DEVNULL)
 asm = glob.glob(f'asm/{ov}/**/{name}.s', recursive=True)[0]
 ins = []
+in_func = False  # only the function's own .text words: a .rodata jump table in the same file is not code
 for line in open(asm):
+    if re.match(r'\s*glabel ', line) or line.startswith('.section'):
+        in_func = bool(re.match(r'\s*glabel ' + re.escape(name) + r'\b', line))
+        continue
     mm = re.match(r'\s*/\* ([0-9A-F]+) ([0-9A-F]{8}) ([0-9A-F]{8}) \*/\s+(\S+)\s*(.*)', line)
-    if mm:
+    if mm and in_func:
         word = int.from_bytes(bytes.fromhex(mm[3]), 'little')
         mask = 0xFFFFFFFF
         if '%hi(' in mm[5] or '%lo(' in mm[5] or '%gp_rel' in mm[5]:

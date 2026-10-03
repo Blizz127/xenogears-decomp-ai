@@ -30,9 +30,13 @@ retail = []
 asm = glob.glob(f'asm/{ov}/**/{name}.s', recursive=True)
 if not asm:
     sys.exit(f'no asm for {name} under asm/{ov}')
+in_func = False  # only the function's own .text words: a .rodata jump table in the same file is not code
 for line in open(asm[0]):
+    if re.match(r'\s*glabel ', line) or line.startswith('.section'):
+        in_func = bool(re.match(r'\s*glabel ' + re.escape(name) + r'\b', line))
+        continue
     m = re.match(r'\s*/\* ([0-9A-F]+) ([0-9A-F]{8}) ([0-9A-F]{8}) \*/\s+(\S+)\s*(.*)', line)
-    if not m:
+    if not m or not in_func:
         continue
     word = int.from_bytes(bytes.fromhex(m[3]), 'little')
     mask = 0xFFFFFFFF
