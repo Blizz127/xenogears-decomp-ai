@@ -26,6 +26,7 @@ static int write_word(void *opaque, uint32_t address, unsigned width, uint32_t v
 static int native_call(void *opaque, PcPortMipsCpu *cpu, uint32_t target)
 {
     (void)opaque;
+    if (target == 0x3000u) return -1;
     if (target != 0x2000u) return 0;
     cpu->gpr[2] = 17u;
     return 1;
@@ -40,9 +41,17 @@ static void init(PcPortMipsCpu *cpu, int native)
     cpu->gpr[31] = 0xfffffffcu;
     reads = writes = 0;
 }
-int main(void)
+int main(int argc, char **argv)
 {
     PcPortMipsCpu cpu;
+    PcPortMipsExecutionStats stats;
+    int stats_off = argc == 2 && strcmp(argv[1], "--off") == 0;
+    assert(setenv("XENO_CPU_EXECUTION_STATS", stats_off ? "0" : "1", 1) == 0);
+    PcPortMipsExecutionStatsInit();
+    PcPortMipsExecutionStatsInit(); /* Must not register duplicate exit reports. */
+    stats = PcPortMipsExecutionStatsGet();
+    assert(stats.entries == 0 && stats.interpreted_instructions == 0);
+    if (argc == 2 && strcmp(argv[1], "--empty") == 0) return 0;
     assert(unsetenv("XENO_DISABLE_CPU_INTERPRETER") == 0);
     init(&cpu, 0);
     assert(PcPortMipsRun(&cpu, 0x1000u, 0xfffffffcu, 20) == PC_PORT_MIPS_HALTED);
@@ -61,9 +70,18 @@ int main(void)
     assert(PcPortMipsRun(&cpu, 0x2000u, 0xfffffffcu, 20) == PC_PORT_MIPS_HALTED);
     assert(cpu.gpr[2] == 17u && cpu.steps == 0 && reads == 0 && writes == 0);
     init(&cpu, 1);
+    assert(PcPortMipsRun(&cpu, 0x3000u, 0xfffffffcu, 20) == PC_PORT_MIPS_UNRESOLVED_CALL);
+    assert(cpu.steps == 0 && reads == 0 && writes == 0);
+    init(&cpu, 1);
     cpu.gpr[31] = 0x1000u;
     assert(PcPortMipsRun(&cpu, 0x2000u, 0xfffffffcu, 20) == PC_PORT_MIPS_INTERPRETER_DISABLED);
     assert(cpu.gpr[2] == 17u && cpu.steps == 0 && reads == 0 && writes == 0);
+    stats = PcPortMipsExecutionStatsGet();
+    assert(stats.entries == (stats_off ? 0u : 6u));
+    assert(stats.native_bridges == (stats_off ? 0u : 2u));
+    assert(stats.interpreted_instructions == (stats_off ? 0u : 6u));
+    assert(stats.disabled_refusals == (stats_off ? 0u : 2u));
+    assert(stats.unresolved_bridges == (stats_off ? 0u : 1u));
     puts("CPU INTERPRETER DISABLED gate PASS; gameplay coverage not tested");
     return 0;
 }

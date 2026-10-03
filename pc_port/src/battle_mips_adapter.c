@@ -1,10 +1,40 @@
 #include "battle_mips_adapter.h"
 
 #include <limits.h>
+#include <inttypes.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+static PcPortMipsExecutionStats execution_stats;
+static int execution_stats_enabled = -1;
+
+PcPortMipsExecutionStats PcPortMipsExecutionStatsGet(void)
+{
+    return execution_stats;
+}
+
+static void execution_stats_report(void)
+{
+    fprintf(stderr, "[xeno-port][cpu-execution] entries=%" PRIu64
+            " native_bridges=%" PRIu64 " interpreted_instructions=%" PRIu64
+            " disabled_refusals=%" PRIu64 " unresolved_bridges=%" PRIu64 "\n",
+            execution_stats.entries, execution_stats.native_bridges,
+            execution_stats.interpreted_instructions,
+            execution_stats.disabled_refusals, execution_stats.unresolved_bridges);
+}
+
+void PcPortMipsExecutionStatsInit(void)
+{
+    const char *value;
+    if (execution_stats_enabled >= 0)
+        return;
+    value = getenv("XENO_CPU_EXECUTION_STATS");
+    execution_stats_enabled = value && value[0] && strcmp(value, "0") != 0;
+    if (execution_stats_enabled && atexit(execution_stats_report) != 0)
+        fprintf(stderr, "[xeno-port][cpu-execution] exit report registration failed\n");
+}
 
 int PcPortMipsInterpreterDisabled(void)
 {
@@ -419,6 +449,10 @@ int PcPortMipsRun(PcPortMipsCpu *cpu, uint32_t entry, uint32_t halt_pc,
     uint64_t start_steps = cpu->steps;
     int interpreter_disabled = PcPortMipsInterpreterDisabled();
 
+    PcPortMipsExecutionStatsInit();
+    if (execution_stats_enabled)
+        execution_stats.entries++;
+
     cpu->pc = entry;
     cpu->next_pc = entry + 4u;
     cpu->error[0] = '\0';
@@ -438,20 +472,28 @@ int PcPortMipsRun(PcPortMipsCpu *cpu, uint32_t entry, uint32_t halt_pc,
 
         if (cpu->bus.bridge != NULL) {
             bridge_rc = cpu->bus.bridge(cpu->bus.opaque, cpu, cpu->pc);
-            if (bridge_rc < 0)
+            if (bridge_rc < 0) {
+                if (execution_stats_enabled)
+                    execution_stats.unresolved_bridges++;
                 return cpu_error(cpu, PC_PORT_MIPS_UNRESOLVED_CALL,
                                  "unresolved call target 0x%08x", cpu->pc);
+            }
             if (bridge_rc > 0) {
+                if (execution_stats_enabled)
+                    execution_stats.native_bridges++;
                 cpu->pc = cpu->gpr[31];
                 cpu->next_pc = cpu->pc + 4u;
                 continue;
             }
         }
 
-        if (interpreter_disabled)
+        if (interpreter_disabled) {
+            if (execution_stats_enabled)
+                execution_stats.disabled_refusals++;
             return cpu_error(cpu, PC_PORT_MIPS_INTERPRETER_DISABLED,
                              "CPU interpreter disabled: unconverted target 0x%08x",
                              cpu->pc);
+        }
         if (mem_read(cpu, cpu->pc, 4, &instruction) != 0)
             return PC_PORT_MIPS_FAULT;
 
@@ -465,6 +507,8 @@ int PcPortMipsRun(PcPortMipsCpu *cpu, uint32_t entry, uint32_t halt_pc,
         following_pc = cpu->next_pc;
         cpu->next_pc = following_pc + 4u;
         cpu->steps++;
+        if (execution_stats_enabled)
+            execution_stats.interpreted_instructions++;
 
         /* execute_one reports the address of the current instruction through
          * cpu->pc, so temporarily expose it while retaining the pipeline PCs. */

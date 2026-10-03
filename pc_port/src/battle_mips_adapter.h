@@ -56,6 +56,17 @@ void PcPortMipsCpuInit(PcPortMipsCpu *cpu, const PcPortMipsBus *bus);
 /* Diagnostic acceptance mode, off by default. Native bridges remain allowed;
  * an unconverted instruction is refused before fetch/execute. Not a conversion. */
 int PcPortMipsInterpreterDisabled(void);
+/* Optional process-wide adapter counters. Counts execution attempts, not game
+ * coverage. Initialize at startup so a run without adapter calls reports zero. */
+typedef struct PcPortMipsExecutionStats {
+    uint64_t entries;
+    uint64_t native_bridges;
+    uint64_t interpreted_instructions;
+    uint64_t disabled_refusals;
+    uint64_t unresolved_bridges;
+} PcPortMipsExecutionStats;
+void PcPortMipsExecutionStatsInit(void);
+PcPortMipsExecutionStats PcPortMipsExecutionStatsGet(void);
 int PcPortMipsRun(PcPortMipsCpu *cpu, uint32_t entry, uint32_t halt_pc,
                   uint64_t max_steps);
 

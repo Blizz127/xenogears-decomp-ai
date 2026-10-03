@@ -1217,6 +1217,7 @@ static void PcPort_LoadSystemTextData(void) {
 
 int main(int argc, char** argv) {
     { extern void PcPort_LogInit(void); PcPort_LogInit(); }
+    PcPortMipsExecutionStatsInit();
     if (PcPortMipsInterpreterDisabled())
         fprintf(stderr, "[xeno-port][native-check] CPU interpreter disabled; "
                         "unconverted instruction paths fail closed\n");
