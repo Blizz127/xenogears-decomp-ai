@@ -52,6 +52,13 @@ int main(int argc, char **argv)
     stats = PcPortMipsExecutionStatsGet();
     assert(stats.entries == 0 && stats.interpreted_instructions == 0);
     if (argc == 2 && strcmp(argv[1], "--empty") == 0) return 0;
+    if (argc == 2 && strcmp(argv[1], "--abort-disabled") == 0) {
+        assert(setenv("XENO_DISABLE_CPU_INTERPRETER", "1", 1) == 0);
+        init(&cpu, 0);
+        assert(PcPortMipsRun(&cpu, 0x1000u, 0xfffffffcu, 20) == PC_PORT_MIPS_INTERPRETER_DISABLED);
+        assert(cpu.steps == 0 && reads == 0 && writes == 0);
+        abort(); /* Production failure path does not run atexit callbacks. */
+    }
     assert(unsetenv("XENO_DISABLE_CPU_INTERPRETER") == 0);
     init(&cpu, 0);
     assert(PcPortMipsRun(&cpu, 0x1000u, 0xfffffffcu, 20) == PC_PORT_MIPS_HALTED);

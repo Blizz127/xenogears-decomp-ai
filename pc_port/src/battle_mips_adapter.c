@@ -15,14 +15,19 @@ PcPortMipsExecutionStats PcPortMipsExecutionStatsGet(void)
     return execution_stats;
 }
 
-static void execution_stats_report(void)
+static void execution_stats_write(const char *kind)
 {
-    fprintf(stderr, "[xeno-port][cpu-execution] entries=%" PRIu64
+    fprintf(stderr, "[xeno-port][%s] entries=%" PRIu64
             " native_bridges=%" PRIu64 " interpreted_instructions=%" PRIu64
             " disabled_refusals=%" PRIu64 " unresolved_bridges=%" PRIu64 "\n",
-            execution_stats.entries, execution_stats.native_bridges,
+            kind, execution_stats.entries, execution_stats.native_bridges,
             execution_stats.interpreted_instructions,
             execution_stats.disabled_refusals, execution_stats.unresolved_bridges);
+}
+
+static void execution_stats_report(void)
+{
+    execution_stats_write("cpu-execution");
 }
 
 void PcPortMipsExecutionStatsInit(void)
@@ -488,8 +493,12 @@ int PcPortMipsRun(PcPortMipsCpu *cpu, uint32_t entry, uint32_t halt_pc,
         }
 
         if (interpreter_disabled) {
-            if (execution_stats_enabled)
+            if (execution_stats_enabled) {
                 execution_stats.disabled_refusals++;
+                /* Production callers abort on this error, bypassing atexit. */
+                execution_stats_write("cpu-execution-refusal");
+                fflush(stderr);
+            }
             return cpu_error(cpu, PC_PORT_MIPS_INTERPRETER_DISABLED,
                              "CPU interpreter disabled: unconverted target 0x%08x",
                              cpu->pc);
