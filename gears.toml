@@ -229,6 +229,7 @@ paths = [
     "src/battle/main101.",
     "src/battle/mainl110.",
     "src/battle/main111.",
+    "src/battle_command_file1/after_controller_cdk.",
 ]
 
 [[build_preset]]
@@ -269,11 +270,16 @@ paths = [
 name = "Bcf1Gcc263"
 # battle_command_file1 (archive 0x20 file 1) is gcc 2.6.3 (psx) code: 23 of its
 # INCLUDE_ASM bodies match only under 2.6.x, and the TUs stay byte-exact as a
-# whole under it.
+# whole under it.  Listed per TU so the CDK-compiled tail
+# (after_controller_cdk, BattleCdk above) is matched by exactly one preset.
 build_variables = {
     gcc = "gcc-2.6.3-psx"
 }
-paths = [ "src/battle_command_file1/" ]
+paths = [
+    "src/battle_command_file1/before_controller.",
+    "src/battle_command_file1/message_controller.",
+    "src/battle_command_file1/after_controller.",
+]
 
 [[build_preset]]
 name = "BattleGcc263Div"
