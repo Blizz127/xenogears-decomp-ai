@@ -3464,10 +3464,8 @@ void func_800863E8(s32 actorIdx) {
 }
 #endif /* XENO_PC_PORT */
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80086470);
-#else
 s32 func_80086470(s32 a0, s32 a1) {
+#ifdef XENO_PC_PORT
     s32 i;
     if (a0 == -1) {
         return -1;
@@ -3478,20 +3476,42 @@ s32 func_80086470(s32 a0, s32 a1) {
         }
     }
     return -1;
-}
-#endif /* XENO_PC_PORT */
-
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800864B4);
 #else
+    s32 i;
+    s32 offset;
+
+    if (a0 == -1) {
+        return -1;
+    }
+    /* Byte offset into the 6-byte rows: an element index would be
+     * strength-reduced into a pointer walk; retail keeps sym + offset. */
+    for (i = 0, offset = 0; i < 3; i++, offset += 6) {
+        if (*(u16*)((u8*)D_800AFE88 + offset) == a1) {
+            return i;
+        }
+    }
+    return -1;
+#endif
+}
+
 void func_800864B4(void) {
+#ifdef XENO_PC_PORT
     s32 i;
     for (i = 0; i < 3; i++) {
         D_800AFE88[i * 3] = 0xFFFF;
         D_800AFE8A[i * 3] = 0xFFFF;
     }
+#else
+    s32 i;
+    s32 offset;
+
+    for (i = 0; i < 3; i++) {
+        offset = i * 6;
+        *(u16*)((u8*)D_800AFE88 + offset) = 0xFFFF;
+        *(u16*)((u8*)D_800AFE8A + offset) = 0xFFFF;
+    }
+#endif
 }
-#endif /* XENO_PC_PORT */
 
 extern s16 D_800B233C;
 extern void func_8003A20C(s32);

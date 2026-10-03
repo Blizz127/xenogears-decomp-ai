@@ -435,7 +435,32 @@ void func_8008AC8C(void) {
 }
 
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008ACB8);
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008AE1C);
+void AddPrim(void *ot, void *p);
+void AddPrims(void *ot, void *p0, void *p1);
+void func_800453E8(void *, s32);
+void func_8004546C(void *, s32);
+extern s32 D_80092868;
+extern s32 D_80092938;
+
+void func_8008AE1C(void *arg0) {
+    void *temp_v0;
+
+    func_8008AC7C((s32)arg0);
+    temp_v0 = (void *)((D_800928A0 * 4) + (s32)arg0);
+    AddPrims((void *)D_80092938, *(void **)((s8*)(temp_v0) + 0xC), *(void **)((s8*)(temp_v0) + 4));
+    if (!(*(u8 *)((s8*)(arg0) + 0x16) & 4)) {
+        func_800453E8(arg0 + ((D_800928A0 * 0xC) + 0x18), D_80092868);
+    }
+    if (!(*(u8 *)((s8*)(arg0) + 0x16) & 8)) {
+        func_8004546C(arg0 + ((D_800928A0 * 0xC) + 0x30), D_80092868 + 8);
+    }
+    if (*(u8 *)((s8*)(arg0) + 0x16) & 0x10) {
+        AddPrim((void *)D_80092938, arg0 + ((D_800928A0 * 0x10) + 0x48));
+    }
+    AddPrim((void *)D_80092938, arg0 + ((D_800928A0 * 0xC) + 0x30));
+    AddPrim((void *)D_80092938, arg0 + ((D_800928A0 * 0xC) + 0x18));
+}
+
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008AF6C);
 
 void func_8008B070(s32 arg0) {
@@ -503,8 +528,34 @@ void *func_8008BA2C(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
 void func_8008BAE0(s32 arg0) {
     HeapFree(arg0);
 }
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008BB00);
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008BB1C);
+extern s32 D_80096D88;
+extern s32 D_80096D8C;
+
+/* Hand-written in retail (context-switch module, see func_8008BB1C): reads the
+ * saved pair into $t0/$t1, so both temporaries are pinned. */
+void func_8008BB00(s32 *arg0) {
+    register s32 t0 asm("$8");
+    register s32 t1 asm("$9");
+
+    t0 = D_80096D88;
+    t1 = D_80096D8C;
+    arg0[0] = t0;
+    arg0[1] = t1;
+}
+
+/* Retail is hand-written: it belongs to the context-switch module with
+ * func_8008BB00 / func_8008BB3C / func_8008BC04 (which save $k0/$k1/$sp into
+ * D_80096D88). gcc 2.7.2 copies through $v0 (two scalars) or $v0/$v1 (an
+ * 8-byte struct, move_by_pieces), never $t0, so the temporary is pinned. */
+void func_8008BB1C(s32 *arg0) {
+    register s32 t asm("$8");
+
+    t = arg0[0];
+    D_80096D88 = t;
+    t = arg0[1];
+    D_80096D8C = t;
+}
+
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008BB3C);
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008BC04);
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008BCC8);
@@ -728,8 +779,45 @@ void func_8008E0C8(void) {
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008E120);
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008E2B8);
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008E3CC);
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008E620);
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008E67C);
+void func_80039FF8();
+/* D_80096EA0: 4 x 0x24-byte sound slots (+1 active, +2 voice, +3 owner,
+ * +4 u16 age, +8 sound id, +0xC voice mask, +0x10 VECTOR pos, +0x20 pos src). */
+extern u8 D_80096EA0[];
+
+void func_8008E620(void) {
+    s32 mask;
+    u32 i;
+    u8 *slot;
+
+    mask = 0x300;
+    func_80039FF8();
+    for (i = 0; i < 4; i++) {
+        slot = D_80096EA0 + i * 0x24;
+        *(s32 *)(slot + 0xC) = mask;
+        mask <<= 2;
+        slot[1] = 0;
+        *(s16 *)(slot + 4) = 0;
+        slot[2] = i * 2;
+    }
+}
+
+extern u8 D_80096EA0[];
+
+void func_8008E67C(void) {
+    if (*(u16 *)(D_80096EA0 + 4) != 0xFFFF) {
+        *(u16 *)(D_80096EA0 + 4) += 1;
+    }
+    if (*(u16 *)(D_80096EA0 + 0x28) != 0xFFFF) {
+        *(u16 *)(D_80096EA0 + 0x28) += 1;
+    }
+    if (*(u16 *)(D_80096EA0 + 0x4C) != 0xFFFF) {
+        *(u16 *)(D_80096EA0 + 0x4C) += 1;
+    }
+    if (*(u16 *)(D_80096EA0 + 0x70) != 0xFFFF) {
+        *(u16 *)(D_80096EA0 + 0x70) += 1;
+    }
+}
+
 
 void func_8008E6F8(void *arg0) {
     s32 *var_v0;
@@ -758,8 +846,33 @@ void func_8008E6F8(void *arg0) {
 
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008E78C);
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008E8B0);
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008EADC);
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008EB4C);
+s32 func_8003A5D0(s32);
+extern u8 D_80096EA0[];
+
+void func_8008EADC(void) {
+    s32 i;
+    u8 *slot;
+
+    for (i = 0; i < 4; i++) {
+        slot = D_80096EA0 + i * 0x24;
+        if (!(func_8003A5D0(*(s32 *)(slot + 8)) & *(s32 *)(slot + 0xC))) {
+            slot[1] = 0;
+        }
+    }
+    func_8008E67C();
+}
+
+/* D_80059488 is the VSync frame counter. Retail schedules its load right
+ * after `lui $a0` (ahead of the addu), which only a volatile-declared extern
+ * reproduces; a `*(volatile s32 *)&D_80059488` cast at the site does not. */
+extern volatile s32 D_80059488;
+
+void func_8008EB4C(s32 arg0) {
+    if (arg0 != 0) {
+        func_8008E78C(arg0 + 0x60000, 0, 0, D_80059488);
+    }
+}
+
 void func_8008EB88(void *arg0, s32 arg1, s32 arg2, s32 arg3) {
     if (arg1 != 0) {
         func_8008E78C(arg1 + 0x60000, arg3, arg2,
@@ -767,7 +880,22 @@ void func_8008EB88(void *arg0, s32 arg1, s32 arg2, s32 arg3) {
     }
 }
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008EBD0);
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008ECEC);
+void func_8003A20C(s32);
+extern u8 D_80096EA0[];
+
+void func_8008ECEC(s32 arg0) {
+    s32 i;
+    u8 *slot;
+
+    for (i = 0; i < 4; i++) {
+        slot = D_80096EA0 + i * 0x24;
+        if (slot[1] != 0 && slot[3] == (arg0 & 0xFF)) {
+            func_8003A20C(slot[2]);
+            slot[1] = 0;
+        }
+    }
+}
+
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008ED6C);
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008EE1C);
 
@@ -829,7 +957,18 @@ s32 func_8008F570(void *arg0) {
     return 0x1000 - *(s16 *)((s8*)(arg0) + 0xBE);
 }
 
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008F580);
+s32 func_8008F580(void *arg0) {
+    s16 temp_v1;
+    s32 temp_a1;
+
+    temp_a1 = *(s32 *)((s8*)(*(void **)((s8*)(arg0) + 0x15FC)) + 0x24);
+    temp_v1 = *(s16 *)((s8*)(arg0) + 0xB6);
+    if ((temp_a1 - 0x200) >= temp_v1) {
+        return 2;
+    }
+    return temp_a1 >= temp_v1;
+}
+
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008F5B4);
 
 s32 func_8008F720(void *arg0, s32 arg1) {
@@ -970,7 +1109,53 @@ void func_80090C88(void *arg0) {
     *(s32 *)((s8*)(temp_a0) + 0x1C) = (s32) *(u8 *)((s8*)(temp_v1) + 9);
 }
 
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_80090CC0);
+void func_80076424(void *arg0);
+/* Retail passes a second argument to these two one-parameter functions
+ * (a1 = the AI block / 0); the TU prototypes take one, so call aliases. */
+s32 func_8008F570__2arg(void *, void *) asm("func_8008F570");
+void func_80090504__2arg(void *, s32) asm("func_80090504");
+/* D_80096F30 / D_80096F64: the two 0x34-byte battling AI blocks. */
+extern u8 D_80096F30[];
+extern u8 D_80096F64[];
+extern u8 D_80099D98[];
+
+void func_80090CC0(void *arg0) {
+    u8 *ai;
+
+    ai = D_80096F30;
+    if (*(s32 *)((s8*)(arg0) + 0xD0) & 0x08000000) {
+        ai = D_80096F64;
+    }
+    *(u8 **)((s8*)(arg0) + 0x15FC) = ai;
+    *(s8 *)(ai + 6) = 0x10;
+    *(void **)(ai + 0) = arg0;
+    *(s16 *)(ai + 4) = 0;
+    *(s8 *)(ai + 7) = 0xA;
+    *(s16 *)(ai + 0xA) = 0;
+    *(s16 *)(ai + 0xC) = 0;
+    *(s8 *)(ai + 8) = 0;
+    *(s8 *)(ai + 9) = 0;
+    *(s32 *)((s8*)(arg0) + 0x48) = 0;
+    *(s32 *)(ai + 0x24) = func_8008F570__2arg(arg0, ai);
+    *(u8 *)(ai + 0xF) = D_80099D98[0];
+    func_80090C88(arg0);
+    switch (rand() % 3) {
+    case 0:
+        func_8008FC7C(arg0);
+        break;
+    case 1:
+        func_80090174(arg0);
+        break;
+    case 2:
+        func_80090894(arg0, 0);
+        break;
+    case 3:
+        func_80090504__2arg(arg0, 0);
+        break;
+    }
+    func_80076424(arg0);
+}
+
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_80090E10);
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_80090F38);
 #endif
