@@ -594,10 +594,8 @@ extern u16 D_8004FD80[];
 extern void func_800B1F6C();
 extern MATRIX D_8004FDA0;
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM(TEMP1E_ASM, func_800257F0);
-#else
 void func_800257F0(u8* pArg) {
+#ifdef XENO_PC_PORT
     u8* pSprite = *(u8**)(pArg + 4);
     u8* pData;
     MATRIX matA;
@@ -668,8 +666,71 @@ void func_800257F0(u8* pArg) {
     if (*(s32*)(pSprite + 0x3C) < 0) {
         SetGeomOffset(geomX, geomY);
     }
-}
+#else
+    MATRIX comp;
+    VECTOR trans;
+    MATRIX lightRotation;
+    MATRIX lightMatrix;
+    s32 geomX;
+    s32 geomY;
+    register void *matrix asm("$4");
+    s32 savedShift;
+    s32 flags;
+    void *sprite;
+    void *data;
+    void *normalData;
+
+    sprite = *(void **)((s8*)(pArg) + 4);
+    func_80022038(sprite);
+    if (*(s32 *)((s8*)(*(void **)((s8*)(sprite) + 0x20)) + 0x34) != 0) {
+        if (((u32) *(u32 *)((s8*)(sprite) + 0x40) >> 1) & 1) {
+            PushMatrix();
+            *(u16 *)((s8*)(D_8004FD80) + 0) = (u16) *(u16 *)((s8*)(*(void **)((s8*)(sprite) + 0x20)) + 0x4C);
+            *(u16 *)((s8*)(D_8004FD80) + 6) = (u16) *(u16 *)((s8*)(*(void **)((s8*)(sprite) + 0x20)) + 0x4E);
+            *(u16 *)((s8*)(D_8004FD80) + 0xC) = (u16) *(u16 *)((s8*)(*(void **)((s8*)(sprite) + 0x20)) + 0x50);
+            RotMatrix(*(void **)((s8*)(sprite) + 0x20) + 0x44, &lightRotation);
+            MulMatrix0(&lightRotation, *(void **)((s8*)(sprite) + 0x20) + 0xC, &lightRotation);
+            MulMatrix0(&D_8004FDA0, &lightRotation, &lightMatrix);
+            SetBackColor(0x20, 0x20, 0x20);
+            SetColorMatrix(D_8004FD80);
+            SetLightMatrix(&lightMatrix);
+            PopMatrix();
+        }
+        trans.vx = (s32) *(s16 *)((s8*)(sprite) + 2);
+        trans.vy = (s32) *(s16 *)((s8*)(sprite) + 6);
+        trans.vz = (s32) *(s16 *)((s8*)(sprite) + 0xA);
+        TransMatrix(*(void **)((s8*)(sprite) + 0x20) + 0xC, &trans);
+        if (!(*(u8 *)((s8*)(sprite) + 0x3F) & 1)) {
+            CompMatrix(&D_8004FBB8, *(void **)((s8*)(sprite) + 0x20) + 0xC, &comp);
+            SetRotMatrix(&comp);
+            matrix = &comp;
+        } else {
+            SetRotMatrix(*(void **)((s8*)(sprite) + 0x20) + 0xC);
+            matrix = *(void **)((s8*)(sprite) + 0x20) + 0xC;
+        }
+        SetTransMatrix(matrix);
+        flags = *(s32 *)((s8*)(sprite) + 0x3C);
+        if (flags < 0) {
+            ReadGeomOffset(&geomX, &geomY);
+            SetGeomOffset(0xA0, 0x70);
+            flags = *(s32 *)((s8*)(sprite) + 0x3C);
+        }
+        if (((u32)flags >> 25) & 1) {
+            savedShift = D_80050100;
+            data = *(void **)((s8*)(sprite) + 0x20);
+            D_80050100 = 0x10;
+            ((void (*)())func_800B1F6C)(*(s32 *)((s8*)(data) + 0x34), *(s32 *)((s8*)(((g_GfxCurContext * 4) + data)) + 0x2C), g_GfxCurOT, 0, 0xFEC, (u8) *(s32 *)((s8*)(sprite) + 0x3C) >> 5);
+            D_80050100 = savedShift;
+        } else {
+            normalData = *(void **)((s8*)(sprite) + 0x20);
+            ((void (*)())func_800B1F6C)(*(s32 *)((s8*)(normalData) + 0x34), *(s32 *)((s8*)(((g_GfxCurContext * 4) + normalData)) + 0x2C), g_GfxCurOT, 0, (s32) *(s16 *)((s8*)(sprite) + 0x30), (u8) *(s32 *)((s8*)(sprite) + 0x3C) >> 5);
+        }
+        if (*(s32 *)((s8*)(sprite) + 0x3C) < 0) {
+            SetGeomOffset(geomX, geomY);
+        }
+    }
 #endif
+}
 
 extern s32 D_80050100;
 extern void func_800B1F6C(void* a, void* b, u_long* ot, s32 c, s32 d, s32 e, s32 f);
