@@ -151,10 +151,12 @@ def func_words(obj, name):
     if not sym:
         return None
     off, size = int(sym[0][0], 16), int(sym[0][1], 16)
-    tmp = os.path.join(CACHE, '_text.bin')
-    os.makedirs(CACHE, exist_ok=True)
+    # Per-object temp name: a shared `_text.bin` raced when several m2c_try
+    # runs shared one cache (one worker read another's .text and mis-scored).
+    tmp = obj + '.text.bin'
     subprocess.run(['mips-linux-gnu-objcopy', '-O', 'binary', '-j', '.text', obj, tmp])
     data = open(tmp, 'rb').read()
+    os.unlink(tmp)
     return size, [int.from_bytes(data[off + 4 * i:off + 4 * i + 4], 'little') for i in range(size // 4)]
 
 
