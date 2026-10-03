@@ -192,9 +192,77 @@ void func_80094C78(void) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80094D24);
+extern u16 D_800C3AA4[];
+
+void func_80094D24(void) {
+    u8 i;
+    u8 cnt1;
+    u8 cnt2;
+    u16 f;
+    u8 *p;
+
+    cnt1 = 0;
+    for (i = 0; i < 3; i++) {
+        if (*(u16 *)((u8 *)((s32)D_800C34B0 - (-(i * 0x170))) + 0x7C) & 0xC000) {
+            cnt1++;
+        }
+    }
+    cnt2 = 0;
+    for (i = 0; i < 3; i++) {
+        if (*(u16 *)((u8 *)((s32)D_800C34B0 - (-(i * 0x170))) + 0x7C) & 2) {
+            cnt2++;
+        }
+    }
+    if (cnt1 == 1 && cnt2 == 2) {
+        for (i = 0; i < 3; i++) {
+            p = (u8 *)((s32)D_800C34B0 - (-(i * 0x170)));
+            f = ((u16 *)p)[0x3E];
+            if (f & 2) {
+                ((u16 *)p)[0x3E] = f & 0xFFFD;
+                ((u16 *)p)[0x3D] = D_800C3AA4[i];
+            }
+        }
+    }
+    if (cnt1 == 2 && cnt2 == 1) {
+        for (i = 0; i < 3; i++) {
+            p = (u8 *)((s32)D_800C34B0 - (-(i * 0x170)));
+            f = ((u16 *)p)[0x3E];
+            if (f & 2) {
+                ((u16 *)p)[0x3E] = f & 0xFFFD;
+                ((u16 *)p)[0x3D] = D_800C3AA4[i];
+            }
+        }
+    }
+}
+
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80094EE4);
-INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80095690);
+extern u8* D_800C3E34;
+extern u8 D_800CCE42[];
+
+void func_80095690(void) {
+    s16 temp_lo;
+    s16 var_a1;
+    u16 temp_a2;
+
+    temp_lo = *(u8 *)((s8*)(D_800C3E00) + 0x5B) * *(u8 *)((s8*)(D_800C3DFC) + 0x11);
+    var_a1 = temp_lo;
+    if (*(u16 *)((s8*)(D_800C3E00) + 0x8A) & 0x2000) {
+        var_a1 = temp_lo * 2;
+    }
+    temp_a2 = *(u16 *)((s8*)(D_800C3E34) + 0x8C) | *(u16 *)((s8*)(D_800C3E34) + 0x8E);
+    if (temp_a2 & 0x100) {
+        var_a1 = (var_a1 * 7) / 10;
+    }
+    if (temp_a2 & 0x200) {
+        var_a1 = (var_a1 * 0xD) / 10;
+    }
+    if (D_800CCE42[D_800C3E50 * 0x170] & 0x80) {
+        var_a1 = 0;
+    }
+    *(s8 *)((s8*)((D_800C34B0 + D_800C3E50)) + 0x5FA0) = 2;
+    *(s32 *)((s8*)(((D_800C3E50 * 4) + D_800C34B0)) + 0x5F6C) = (s32) var_a1;
+}
+
 #endif
 #ifndef XENO_PC_PORT
 extern u8 D_800CCD3E[];

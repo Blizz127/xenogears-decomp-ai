@@ -109,7 +109,30 @@ void func_800AA320(s16 arg0, s16 arg1, s32 arg2) {
 }
 
 INCLUDE_ASM("asm/battle/nonmatchings/main70", func_800AA384);
-INCLUDE_ASM("asm/battle/nonmatchings/main70", func_800AA454);
+s32 func_800AF400();                                /* extern */
+
+void func_800AA454(u16 arg0, u16 arg1, s32 arg2) {
+    u32 idx;
+    u16 temp_s2;
+    u16 temp_s3;
+    u8 *rec1;
+    register u8 *rec2 asm("$4");
+
+    idx = arg0 & 0xFFFF;
+    temp_s2 = D_800C3D40;
+    temp_s3 = D_800C3E30;
+    rec1 = (u8 *)D_800D3368[idx];
+    D_800C3D40 = arg0;
+    D_800C3E30 = arg1;
+    rec1[0x35] = 0;
+    if ((D_800D3368[idx] != 0) && (idx != func_800AF400())) {
+        rec2 = (u8 *)D_800D3368[idx];
+        func_800AA934(rec2, rec2, (s32)&D_800C3D0C, arg2);
+    }
+    D_800C3D40 = temp_s2;
+    D_800C3E30 = temp_s3;
+}
+
 
 #ifndef XENO_PC_PORT
 s32 func_800AA514(s16 arg0, s16 arg1, s32 arg2) {
@@ -127,7 +150,24 @@ s32 func_800AA514(s16 arg0, s16 arg1, s32 arg2) {
 
 #endif /* XENO_PC_PORT excludes the other main70 matching bodies above. */
 
-INCLUDE_ASM("asm/battle/nonmatchings/main70", func_800AA564);
+#ifndef XENO_PC_PORT
+s32 func_800AF400();                                /* extern */
+
+void func_800AA564(u8 *arg0, s16 arg1, s16 arg2, s32 arg3) {
+    u32 idx;
+    u8 *rec;
+
+    idx = (u16)arg1;
+    rec = (u8 *)D_800D3368[idx];
+    D_800C3D40 = arg1;
+    D_800C3E30 = arg2;
+    rec[0x35] = 0;
+    if ((D_800D3368[idx] != 0) && (idx != func_800AF400())) {
+        func_800AA934((u8 *)D_800D3368[idx], arg0, (s32)&D_800C3D0C, arg3);
+    }
+}
+#endif
+
 #ifndef XENO_PC_PORT
 extern u32 D_800D3368[];
 #define BATTLE_600_SLOT(index) D_800D3368[index]
@@ -172,7 +212,33 @@ s32 func_800AA600(s32 index) {
     return result;
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/main70", func_800AA650);
+#ifndef XENO_PC_PORT
+s32 func_800AA650(s32 arg0) {
+    register s32 mid asm("$2");
+    u32 p;
+    s32 a;
+    s32 b;
+    s32 result;
+
+    p = D_800D3368[arg0];
+    result = 0;
+    if (p != 0) {
+        if (*(u16 *)(p + 0x4A) & 8) {
+            a = *(s16 *)(p + 0x26);
+            b = *(s16 *)(*(u32 *)(p + 4) + 0x4C);
+        } else {
+            a = *(s16 *)(p + 0x28);
+            b = *(s16 *)(*(u32 *)(p + 4) + 0x50);
+        }
+        mid = *(s16 *)(D_800D3368[arg0] + 0x1C) * b;
+        mid >>= 12;
+        result = a * mid;
+        result >>= 12;
+    }
+    return result;
+}
+#endif
+
 #undef BATTLE_600_SLOT
 #undef BATTLE_600_U32
 #undef BATTLE_600_S16

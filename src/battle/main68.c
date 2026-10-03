@@ -168,7 +168,32 @@ void func_800A4820(void) {
 
 INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A48EC);
 INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A4B3C);
-INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A4CF8);
+s32 func_800AA650(s32);
+void func_800B10EC(s32, s32, s32, s32);
+extern u8 D_800D2FC8[];
+extern u8 D_800D2FD0[];
+
+void func_800A4CF8(s32 arg0) {
+    u16 *p;
+    s32 i;
+    u16 x;
+    u16 z;
+    u16 h;
+    u8 pad[8];
+
+    p = *(u16 **)D_800D2FD0;
+    i = 0;
+    if (*(s16 *)D_800D2FC8 > 0) {
+        do {
+            x = *p++;
+            z = *p++;
+            h = *p++;
+            func_800B10EC(arg0, (s16)x, (s16)z, func_800AA650(arg0) + (s16)h);
+            i++;
+        } while (i < *(s16 *)D_800D2FC8);
+    }
+}
+
 INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A4DB8);
 #endif
 

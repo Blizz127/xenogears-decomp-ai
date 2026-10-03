@@ -51,7 +51,24 @@ void func_800B0164(u8* pool, s32 index, u8 a, u8 b, u16 p0, u16 p1, u16 p2, u16 
 }
 
 INCLUDE_ASM("asm/battle/nonmatchings/main74", func_800B026C);
-INCLUDE_ASM("asm/battle/nonmatchings/main74", func_800B0AB4);
+extern u8* D_800658C8;
+
+s32 func_800B0AB4(void *arg0) {
+    register s32 var_v0 asm("$2");
+    s16 temp_a0;
+    s16 temp_a2;
+
+    temp_a2 = *(s16 *)((s8*)(arg0) + 0);
+    var_v0 = 0;
+    if ((*(s16 *)((s8*)(D_800658C8) + 0x34E) < temp_a2) && (temp_a2 < *(s16 *)((s8*)(D_800658C8) + 0x34C))) {
+        temp_a0 = *(s16 *)((s8*)(arg0) + 4);
+        if (temp_a0 > *(s16 *)((s8*)(D_800658C8) + 0x350)) {
+            var_v0 = temp_a0 < *(s16 *)((s8*)(D_800658C8) + 0x352);
+        }
+    }
+    return var_v0;
+}
+
 INCLUDE_ASM("asm/battle/nonmatchings/main74", func_800B0B14);
 INCLUDE_ASM("asm/battle/nonmatchings/main74", func_800B0D70);
 INCLUDE_ASM("asm/battle/nonmatchings/main74", func_800B0FF4);

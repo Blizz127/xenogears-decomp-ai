@@ -9,9 +9,71 @@ void func_80099CF0(void *arg0, void *arg1, void *arg2);
 INCLUDE_ASM("asm/battle/nonmatchings/main53", func_80097D5C);
 INCLUDE_ASM("asm/battle/nonmatchings/main53", func_8009892C);
 INCLUDE_ASM("asm/battle/nonmatchings/main53", func_80098AF8);
-INCLUDE_ASM("asm/battle/nonmatchings/main53", func_80098C6C);
+void func_80097D08();                            /* extern */
+extern u8* D_800C34B0;
+extern u16 D_800D220E[];
+extern s16 D_800D2C98;
+extern u16 D_800D2C9E;
+
+void func_80098C6C(s32 arg0) {
+    s32 var_s0;
+    s32 var_s1;
+
+    func_80097D08();
+    var_s1 = 1;
+    var_s0 = 0;
+    do {
+        if (var_s1 & *(u16 *)(D_800C34B0 + 0x5FAC)) {
+            func_80098D2C(var_s0 & 0xFF, arg0 & 0xFF);
+        }
+        var_s1 <<= 1;
+        var_s0 += 1;
+    } while ((u32) (var_s0 & 0xFF) < 0xBU);
+    *(u16 *)(D_800C34B0 + 0x5FB0) = D_800D220E[(arg0 & 0xFF) * 8];
+    if (D_800D2C9E & 0x8000) {
+        D_800D2C98 = 0xC2;
+    }
+}
+
 INCLUDE_ASM("asm/battle/nonmatchings/main53", func_80098D2C);
-INCLUDE_ASM("asm/battle/nonmatchings/main53", func_80099498);
+extern u8 D_800C34AD;
+extern u8* D_800C34B0;
+
+s32 func_80099498(void) {
+    u8 i;
+    u8 count;
+    s32 result;
+
+    result = 0;
+    switch (D_800C34AD) {
+    case 2:
+        count = 0;
+        for (i = 0; i < 3; i++) {
+            if (*(u16 *)((u8 *)((s32)D_800C34B0 - (-(i * 0x170))) + 0x7C) & 0xC002) {
+                count++;
+            }
+        }
+        if (count == 0) {
+            result = 1;
+        }
+        break;
+    case 3:
+        count = 0;
+        for (i = 0; i < 3; i++) {
+            if (*(u16 *)((u8 *)((s32)D_800C34B0 - (-(i * 0x170))) + 0x7C) & 0xC002) {
+                count++;
+            }
+        }
+        if (count != 2) {
+            result = 1;
+        }
+        break;
+    case 1:
+        break;
+    }
+    return result;
+}
+
 INCLUDE_ASM("asm/battle/nonmatchings/main53", func_800995A0);
 INCLUDE_ASM("asm/battle/nonmatchings/main53", func_80099890);
 
