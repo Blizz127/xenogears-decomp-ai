@@ -1340,7 +1340,13 @@ s32 func_8007CD14(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
 
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007CD44);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007CF78);
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007D068);
+void func_8007E3CC(void*);
+void func_8007D068(void* arg0) {
+    struct Vector { s32 x,y,z,pad; };
+    *(struct Vector*)0x1F800000 = *(struct Vector*)&D_80096FA8;
+    func_8007E3CC(arg0);
+}
+
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007D0B4);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007D190);
 s32 func_8007D25C(s32 arg0) {
@@ -1932,7 +1938,24 @@ void func_80080AA0(s32 arg0) {
     }
 }
 
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80080AE8);
+void func_8007313C(s32, s32);                    /* extern */
+
+void func_80080AE8(void) {
+    struct { s16 x,y,w,h; } rect;
+    register s32 width asm("$3");
+
+    if (D_80092760 != 0) {
+        DrawSync(0);
+        width = 0x140;
+        rect.x = width;
+        rect.y = 0x100;
+        rect.w = width;
+        rect.h = 0xDA;
+        func_8007313C(D_80092760, D_80092760 + 0x21E80);
+        LoadImage(&rect.x, D_80092760);
+    }
+}
+
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80080B58);
 
 void func_80080C48(s32 arg0) {
@@ -2137,7 +2160,12 @@ void func_800832C0(s32 arg0) {
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80083310);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8008369C);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80083738);
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80083B54);
+void func_80083B54(void* arg0, void* arg1) {
+    struct Vector { s32 x, y, z, pad; };
+    *(struct Vector*)arg0 = *(struct Vector*)D_8009871C;
+    *(struct Vector*)arg1 = *(struct Vector*)D_8009867C;
+}
+
 void ClearImage(s16 *, s32, s32, s32); /* extern */
 
 void func_80083BB4(s32 arg0) {
