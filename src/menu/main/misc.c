@@ -2926,7 +2926,36 @@ u8 func_801CB8AC(u8 arg0) {
 extern u8 D_801EA6D0[];
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CB9E8);
+/* Retail arm (s32 parameters, masked explicitly): with u8 parameters gcc 2.6.3
+ * attaches the idx mask to its use and moves it after the row-base load. */
+s32 func_801CB9E8(s32 arg0, s32 arg1) {
+    s32 startIdx;
+    s32 idx;
+    s32 i;
+    s32 result;
+    u8 (*rows)[0x10];
+    u8* pEntry;
+
+    startIdx = arg1 & 0xFF;
+    result = 0;
+    if (startIdx == 0xFF) {
+        i = 0;
+        idx = arg0 & 0xFF;
+        rows = (u8 (*)[0x10])D_801EA6D0;
+        pEntry = rows[idx];
+        do {
+            if (*pEntry == 0) {
+                result = i;
+                goto done;
+            }
+            i += 1;
+            pEntry += 1;
+        } while (i < 0xF);
+done:
+        return result & 0xFF;
+    }
+    return startIdx;
+}
 #else
 u8 func_801CB9E8(u8 idx, u8 startIdx) {
     s32 result = 0;
