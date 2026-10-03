@@ -2984,7 +2984,7 @@ extern s32 D_800C3A64;
 extern u16 D_800C3A2C;
 extern s32 D_800B06A0;
 extern void* D_800B235C;
-extern void func_80039EC4(s32 a0);
+extern void func_80039EC4(s32 a0, s32 channel);
 
 
 void func_80085678(void) {
@@ -2999,8 +2999,9 @@ void func_80085678(void) {
             u16 data = pTable[idx * 2 + 1];
             u32 lo = data & 0xFF;
             u32 hi = (data >> 7) & 0xE;
-            u32 param = lo | (*(u16*)(*(u32*)((u8*)D_800B235C + 0x14)) << 16);
-            func_80039EC4(param);
+            /* The WDS bank ID is inline; channel bits are a separate ABI argument. */
+            u32 param = lo | ((u32)*(u16*)((u8*)D_800B235C + 0x14) << 16);
+            func_80039EC4(param, hi);
             *(u32*)(&D_800C3A64) = D_800C3A64 + 1;
         }
     }
