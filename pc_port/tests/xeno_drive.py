@@ -63,7 +63,8 @@ class Session:
         self.proc = subprocess.Popen(['nice', '-n', os.environ.get('NICE', '10'), BIN], cwd=ROOT, env=env,
                                      stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         self.lines, self.lock = [], threading.Lock()
-        threading.Thread(target=self._reader, daemon=True).start()
+        self.reader_thread = threading.Thread(target=self._reader, daemon=True)
+        self.reader_thread.start()
 
     def _reader(self):
         for raw in self.proc.stdout:
@@ -163,6 +164,11 @@ class Session:
                 self.proc.wait()
         self.xv.terminate()
         self.xv.wait()
+        # Exit counters can be the last bytes in stdout. Drain them before
+        # closing the receipt or allowing callers to inspect the final lines.
+        self.reader_thread.join(timeout=5)
+        if self.reader_thread.is_alive():
+            raise RuntimeError('runtime output reader did not reach EOF')
         self.log.close()
 
 

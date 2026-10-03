@@ -261,3 +261,22 @@ vblank ticks 6000–6019 / 7200–7219. Its startup worker-affinity exception is
 retained as described above. A sequential reference comparison of that exact
 schedule is pending; no visual/audio/timing or process-counter acceptance is
 claimed from the disabled result alone.
+
+The sequential `reference-field14-frames-cpu1` completed with exit 0 in
+147.46 seconds. Its right movement ended at `(132,0,-478)`, compared with
+`(125,0,-471)` in disabled mode; left ended at `(111,0,-457)`, compared with
+`(100,0,-447)`. Both restored their own saved positions exactly. Thus the
+identical dispatched-vblank schedule still does not establish identical
+field-update timing. The complete results and saved-state/image comparison
+are in `field14-frames-cpu1-comparison.json`. Both processes are terminal.
+Do not repeat the same raw schedule as if it resolved this mismatch.
+
+A harness shutdown race was also identified: `Session.close` waited for the
+child process but closed its log without joining the output-reader thread.
+That could drop the final process-counter receipt. Shutdown now waits up to
+five seconds for reader EOF before closing the log, and fails explicitly if
+EOF is absent. A delayed-reader test with a real child emitting its final
+receipt on SIGTERM passes with the fix. The original close sequence is a
+negative control and reproducibly raises `I/O operation on closed file`.
+This is harness lifecycle evidence, not gameplay or production-counter proof;
+the completed game runs predate this harness fix.
