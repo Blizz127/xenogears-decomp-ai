@@ -1983,11 +1983,9 @@ extern u8 D_800591B3;
 
 extern s32 func_8001EE68(void*);
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", func_80022224);
-#else
 // Set animation package
 void func_80022224(SpriteAnimPackage* pAnimPackage, void* pAnimPackageFile, SVEC2 tex, SVEC2 clut, u32 arg4) {
+#ifdef XENO_PC_PORT
     u8* pPackage = (u8*)pAnimPackage;
     u8* pFile = pAnimPackageFile;
 
@@ -2004,8 +2002,30 @@ void func_80022224(SpriteAnimPackage* pAnimPackage, void* pAnimPackageFile, SVEC
             D_800591B3 = numAnimations;
         }
     }
-}
+#else
+    register u8* package asm("$8") = (u8*)pAnimPackage;
+    u8* file = pAnimPackageFile;
+    register u32 value asm("$2");
+    register u32 enabled asm("$3");
+    *(SVEC2*)(package + 4) = tex;
+    *(SVEC2*)(package + 8) = clut;
+    value = *(u32*)(file + 0xC);
+    value += (u32)file;
+    *(u32*)(package + 0xC) = value;
+    value = *(u32*)(file + 8);
+    enabled = D_800591AD;
+    value += (u32)file;
+    *(u32*)(package + 0) = value;
+    value = *(u32*)(file + 4);
+    D_800591B0 = 0;
+    value += (u32)file;
+    *(u32*)(package + 0x10) = value;
+    if (enabled != 0) {
+        value = (*(u16*)value >> 6) & 0x3F;
+        if (value != 0) D_800591B3 = value;
+    }
 #endif
+}
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", func_800222BC);
