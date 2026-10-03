@@ -338,7 +338,29 @@ s32 func_80023124(s32 pointA, s32 pointB) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM(TEMP1_ASM, func_80023170);
+void func_80023170__ret(void*,s32,s32,s32) asm("func_80023170");
+void func_8001D2B0(void*,s32);
+void func_80023170__ret(void* arg0,s32 arg1,s32 arg2,s32 arg3) {
+    register u32 mask9 asm("$9") = 0xFFCFFFFF;
+    register u32 mask8 asm("$8") = 0xFFF1FFFF;
+    register u32 value asm("$2") = ~0x10;
+    register u32 flags asm("$3");
+    arg3 = (arg3 & 1) << 4;
+    arg2 = (arg2 & 1) << 3;
+    flags = *(u32*)((u8*)arg0 + 0x3C);
+    *(u16*)((u8*)arg0 + 0x9E) = 0;
+    flags &= value;
+    flags |= arg3;
+    value = ~8;
+    flags &= value;
+    value = *(u32*)((u8*)arg0 + 0xA8);
+    flags |= arg2;
+    *(u32*)((u8*)arg0 + 0x3C) = flags;
+    value &= mask9;
+    value &= mask8;
+    *(u32*)((u8*)arg0 + 0xA8) = value;
+    func_8001D2B0(arg0,arg1);
+}
 #else
 void func_80023170(void* pSpriteData, s16 animFrame, s32 flagA, s32 flagB) {
     u8* pData = (u8*)pSpriteData;
@@ -348,7 +370,7 @@ void func_80023170(void* pSpriteData, s16 animFrame, s32 flagA, s32 flagB) {
     s32 bitA = (flagA & 1) << 3;
 
     *(u16*)(pData + 0x9E) = 0;
-    flags3C = (flags3C & ~0x30) | bitB;
+    flags3C = (flags3C & ~0x10) | bitB;
     flags3C = (flags3C & ~0x08) | bitA;
     *(u32*)(pData + 0x3C) = flags3C;
 
