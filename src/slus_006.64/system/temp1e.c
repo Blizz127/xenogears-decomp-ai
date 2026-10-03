@@ -178,12 +178,10 @@ static u8* SpriteRenderAddress(uintptr_t address) {
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM(TEMP1E_ASM, func_80025258);
-#else
 /* Retail 80025258..80025418: shared render callback for types 0/5/6/14.
  * Task fields and OT entries remain four bytes on the native host. */
 void func_80025258(u8* pEntry) {
+#ifdef XENO_PC_PORT
     u8* pSprite = SpriteRenderAddress(*(u32*)(pEntry + 0x04));
     u32 flagsB0 = *(u32*)(pSprite + 0xB0);
     s32 depth;
@@ -239,8 +237,49 @@ void func_80025258(u8* pEntry) {
                 SpriteRenderAddress((uintptr_t)g_GfxCurOT) + ((u32)depth << 2));
         }
     }
-}
+#else
+    extern s32 D_80050100;
+    SVECTOR pos;
+    VECTOR trans;
+    long shared, flag;
+    s32 depth,depth2;
+    register u32 flags asm("$3");
+    register u32 range asm("$2");
+    register s32 value asm("$2");
+    u8* sprite;
+    sprite=*(u8**)(pEntry+4);
+    if (!((*(u32*)(sprite+0xB0)>>8)&1) || D_800C3664==0) {
+        value=*(s16*)(sprite+2); pos.vx=value;
+        value=*(s16*)(sprite+6); pos.vy=value;
+        value=*(s16*)(sprite+10); pos.vz=value;
+        SetRotMatrix(&D_8004FBB8);
+        SetTransMatrix(&D_8004FBB8);
+        depth=(RotTransPers(&pos,&shared,&shared,&flag)>>D_80050100)+*(s16*)(sprite+0x30);
+        if(flag&0x8000) depth=0;
+        flags=*(u32*)(sprite+0x3C);
+        *(s16*)(sprite+0x2E)=depth;
+        if((flags>>24)&1) {
+            func_80022038(sprite);
+            trans.vx=*(s16*)(sprite+2);
+            trans.vy=*(s16*)(sprite+6);
+            trans.vz=*(s16*)(sprite+10);
+            TransMatrix((MATRIX*)(*(u8**)(sprite+0x20)+12),&trans);
+            SetRotMatrix((MATRIX*)(*(u8**)(sprite+0x20)+12));
+            SetTransMatrix((MATRIX*)(*(u8**)(sprite+0x20)+12));
+            depth2=0xFFF;
+            if(!((*(u32*)(sprite+0x3C)>>25)&1)) depth2=*(s16*)(sprite+0x30);
+            if((u32)(depth2-1)<0xFFFU) func_8001E3D8(sprite,(u8*)g_GfxCurOT+depth2*4);
+        } else {
+            value=(flags>>29)&1;
+            if(value) {
+                depth=*(s16*)(*(u8**)(sprite+0x70)+0x2E);
+            }
+            range=depth-1;
+            if(range<0xFFFU) func_8001E298(sprite,(u8*)g_GfxCurOT+depth*4);
+        }
+    }
 #endif
+}
 
 extern s32 D_80050100;
 
