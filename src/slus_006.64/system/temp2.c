@@ -1394,15 +1394,13 @@ void func_8002CD24(u8* pSrc) {
     }
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002CD64);
-#else
 /* Gate shared by the textured model buildProcs (func_8002D984/func_8002D0E4):
  * packet-source records whose code byte (+0x3) is a 0xC0-class inline state
  * command dispatch to a state handler and emit no primitive (return 0);
  * anything else emits (return 1). The handlers receive the record pointer
  * (retail keeps pSrc in $a0 across the call) and latch tpage/CLUT state. */
 s32 func_8002CD64(u8* pSrc) {
+#ifdef XENO_PC_PORT
     u8 code = pSrc[0x3];
 
     if ((code & 0xF0) != 0xC0) {
@@ -1417,8 +1415,32 @@ s32 func_8002CD64(u8* pSrc) {
         return 0;
     }
     return 1;
-}
+#else
+    s32 temp_v1;
+    s32 var_v0;
+    u8 temp_a1;
+
+    temp_a1 = *(u8 *)((s8*)(pSrc) + 3);
+    var_v0 = 1;
+    if ((temp_a1 & 0xF0) == 0xC0) {
+        temp_v1 = temp_a1 & 0xFF;
+        switch (temp_v1) {                          /* irregular */
+        case 0xC4:
+            func_8002CCC8(pSrc);
+            return 0;
+        case 0xC8:
+            func_8002CD24(pSrc);
+            var_v0 = 0;
+            /* Duplicate return node #6. Try simplifying control flow for better match */
+            return var_v0;
+        default:
+            return 1;
+        }
+    } else {
+        return var_v0;
+    }
 #endif
+}
 
 /* buildProc for prim 0x00 (lit flat tri template, tag len 4). Byte-identical
  * retail clone of prim 0x08's builder func_8002CF58 below -- only the three
@@ -2400,10 +2422,8 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002FCFC);
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002FF0C);
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8003014C);
-#else
 s32 func_8003014C(s32* pData) {
+#ifdef XENO_PC_PORT
     s32 cur = pData[2];
     s32 target = pData[1];
     s32 step = pData[3];
@@ -2417,8 +2437,22 @@ s32 func_8003014C(s32* pData) {
         pData[2] = cur;
     }
     return pData[2];
-}
+#else
+    if (pData[2] > pData[1]) {
+        pData[2] = pData[2] - pData[3];
+        if (pData[2] < pData[1]) {
+            pData[2] = pData[1];
+        }
+    }
+    if (pData[2] < pData[1]) {
+        pData[2] = pData[2] + pData[3];
+        if (pData[2] > pData[1]) {
+            pData[2] = pData[1];
+        }
+    }
+    return pData[2];
 #endif
+}
 
 /* Closest C so far (3 words off, only where the -1 loop constant is
  * scheduled): `volatile u8 unused[1];` for retail's 8-byte frame,

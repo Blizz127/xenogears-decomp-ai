@@ -650,10 +650,8 @@ void func_800884CC(void) {
 
 extern s32 D_8005A444[];
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_80088508);
-#else
 void func_80088508(void) {
+#ifdef XENO_PC_PORT
     s32 arg5 = FieldScriptVMGetArgument(5);
     s32 slot = D_8005A444[arg5];
     u16 arg1, arg3;
@@ -682,8 +680,27 @@ void func_80088508(void) {
         }
     }
     g_FieldScriptVMCurActor->scriptInstructionPointer += 7;
+#else
+    s32 slot = D_8005A444[FieldScriptVMGetArgument(5)];
+    u8* pSprite;
+    u8* pSub;
+
+    g_FieldScriptMaxInstructionCount += 4;
+    if (slot != 0xFF) {
+        pSprite = (u8*)(uintptr_t)g_FieldActors[slot].pSpriteData;
+        FieldScriptMemoryWriteU16(SCRIPT_IMM_ARG(1), *(u16*)(*(u8**)(pSprite + 0x7C) + 0xC));
+        FieldScriptMemoryWriteU16(SCRIPT_IMM_ARG(2), slot);
+        pSub = *(u8**)(pSprite + 0x7C);
+        if (*(u16*)(pSub + 0xC) != 1) {
+            *(u16*)(pSub + 0xC) = 0;
+        }
+    } else {
+        FieldScriptMemoryWriteU16(SCRIPT_IMM_ARG(1), 0);
+        FieldScriptMemoryWriteU16(SCRIPT_IMM_ARG(2), 0);
+    }
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 7;
+#endif
 }
-#endif /* XENO_PC_PORT */
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008861C);

@@ -170,13 +170,32 @@ unsigned char g_XenoMenuN3aRowFlags[0xE];
 #endif
 
 #if defined(XENO_PC_PORT) || !defined(MENU_PART) /* part 1: misc */
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C531C);
-#else
 /* Nav N2a: dispatch the ten retail menu entries, then run the shared close /
  * cleanup / main-menu-rebuild tail.  Only Items (entry 4) has a real native
  * screen in this slice; the remaining entry points retain their overlay stubs. */
+#ifndef XENO_PC_PORT
+/* Retail-arm declarations: the port-side prototypes above are XENO_PC_PORT-only. */
+void func_8001B970(void);
+void func_801D1EB0(void);
+void func_801D29A8(s32, s32);
+void func_801D3674(void);
+s32 func_801D9808(void);
+s32 func_801D9F98(s32, u8);
+s32 func_801DBE54(void);
+s32 func_801DE29C(s32, s32);
+s32 func_801E0F78(u8, u8);
+s32 func_801E23CC(void);
+s32 func_801E2BE4(void);
+void func_801E3088(s32);
+void func_801E8018();  /* unprototyped: 3- and 4-arg retail call shapes */
+extern u8 D_801E96A4;
+extern u8 D_801E977A;
+extern u8 D_801E9784;
+extern u8 D_801EA530[];
+#endif
+
 s32 func_801C531C(s32 arg0) {
+#ifdef XENO_PC_PORT
     s32 keepMainMenu = 1;
     s32 screenResult = 1;
     s32 entry = (u8)g_Menu->menu1Choice + (arg0 & 0xFF);
@@ -251,8 +270,73 @@ s32 func_801C531C(s32 arg0) {
         fflush(stdout);
     }
     return keepMainMenu;
-}
+#else
+    s32 var_s0;
+    s32 var_s1;
+    u32 temp_v1;
+
+    var_s1 = 1;
+    D_801E977A = 1;
+    temp_v1 = *(u8 *)((s8*)(g_Menu) + 0x336) + (arg0 & 0xFF);
+    var_s0 = 1;
+    switch (temp_v1) {
+    case 7:
+        var_s0 = func_801D9808();
+        break;
+    case 8:
+        if (func_801D9F98(1, 0U) & 0xFF) {
+            D_800594D0 = 2;
+            var_s1 = 0;
+        }
+        break;
+    case 1:
+        var_s0 = func_801D9F98(0, D_801E96A4);
+        break;
+    case 2:
+        var_s0 = func_801E23CC();
+        break;
+    case 3:
+        var_s0 = func_801DE29C(*(u8 *)((s8*)(g_Menu) + 0x4DC), 1);
+        break;
+    case 4:
+        var_s0 = func_801DBE54();
+        break;
+    case 5:
+        var_s0 = func_801E0F78(*(u8 *)((s8*)(g_Menu) + 0x4DC), 1);
+        break;
+    case 6:
+        var_s0 = func_801E2BE4();
+        break;
+    case 9:
+        func_8001B970();
+        /* fallthrough */
+    case 0:
+        var_s0 = 0;
+        var_s1 = 0;
+        break;
+    }
+    *(s8 *)((s8*)(*(void **)((s8*)(g_Menu) + 0x32C)) + 0x4FE6) = 0;
+    if (var_s0 & 0xFF) {
+        func_801D1EB0();
+        if (D_80059460 == 0) {
+            func_801D29A8(1, 0);
+        } else if (D_80059460 == 2) {
+            func_801E8018(8, (u8*)g_Menu + 0x6E0, &D_801EA530, (u8*)*(void **)((s8*)(g_Menu) + 0x33C) + 0xC);
+            *(s8 *)((s8*)(*(void **)((s8*)(g_Menu) + 0x348)) + 0x15B) = 0x4C;
+        }
+    }
+    func_801E3088(arg0 & 0xFF);
+    func_801D3674();
+    *(s8 *)((s8*)(*(void **)((s8*)(g_Menu) + 0x350)) + 0x1192) = 0;
+    *(s8 *)((s8*)(*(void **)((s8*)(g_Menu) + 0x350)) + 0x1193) = 1;
+    *(s8 *)((s8*)(*(void **)((s8*)(g_Menu) + 0x33C)) + 4) = 1;
+    *(s8 *)((s8*)(*(void **)((s8*)(g_Menu) + 0x33C)) + 3) = 1;
+    *(u8 *)((s8*)(g_Menu) + 0x337) = 0xFF;
+    *(s8 *)((s8*)(*(void **)((s8*)(g_Menu) + 0x33C)) + 0xA) = 0;
+    D_801E9784 = 1;
+    return var_s1;
 #endif
+}
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C55A0);
@@ -2698,7 +2782,58 @@ void func_801CADB0(void) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CAE08);
+void func_80039E60(s32);
+
+void func_801CAE08(s32 arg0) {
+    s32 temp_a0;
+    void *temp_a0_2;
+    void *temp_a0_3;
+    void *temp_a0_4;
+    void *temp_v0;
+    void *temp_v1;
+
+    temp_a0 = arg0 & 0xFF;
+    switch (temp_a0) {                              /* irregular */
+    case 0:
+        temp_v1 = *(void **)((s8*)(g_Menu) + 0x33C);
+        if (*(u8 *)((s8*)(temp_v1) + 0x52) != 0) {
+            *(u8 *)((s8*)(temp_v1) + 0x52) = 0U;
+            func_801C7BF4();
+            HeapFree(*(void **)((s8*)(g_Menu) + 0x44C));
+            return;
+        }
+        return;
+    case 1:
+        temp_v0 = HeapAlloc(0x7BC, 0);
+        *(void **)((s8*)(g_Menu) + 0x44C) = temp_v0;
+        bzero(temp_v0, 0x7BC);
+        SetPolyF4((*(s32 *)((s8*)(g_Menu) + 0x308) * 0x18) + *(void **)((s8*)(g_Menu) + 0x44C));
+        *(u8 *)((s8*)(((*(s32 *)((s8*)(g_Menu) + 0x308) * 0x18) + *(void **)((s8*)(g_Menu) + 0x44C))) + 4) = 0xA0;
+        *(u8 *)((s8*)(((*(s32 *)((s8*)(g_Menu) + 0x308) * 0x18) + *(void **)((s8*)(g_Menu) + 0x44C))) + 5) = 0xA0;
+        *(u8 *)((s8*)(((*(s32 *)((s8*)(g_Menu) + 0x308) * 0x18) + *(void **)((s8*)(g_Menu) + 0x44C))) + 6) = 0;
+        func_8002675C(*(s32 *)((s8*)(g_Menu) + 0x2DC), 0x160, *(void **)((s8*)(g_Menu) + 0x44C) + 0x30, *(s32 *)((s8*)(g_Menu) + 0x308), 0xA0, 0x64, 0x1000);
+        func_8002675C(*(s32 *)((s8*)(g_Menu) + 0x2DC), 0x161, *(void **)((s8*)(g_Menu) + 0x44C) + 0x3F0, *(s32 *)((s8*)(g_Menu) + 0x308), 0xA0, 0x64, 0x1000);
+        *(u8 *)((s8*)(*(void **)((s8*)(g_Menu) + 0x44C)) + 0x7B8) = (u8) *(s32 *)((s8*)(g_Menu) + 0x308);
+        *(s8 *)((s8*)(*(void **)((s8*)(g_Menu) + 0x33C)) + 0x52) = 1;
+        *(s32 *)((s8*)(*(void **)((s8*)(g_Menu) + 0x44C)) + 0x7B4) = 8;
+        func_80039E60((*(u16 *)((s8*)(*(void **)((s8*)(g_Menu) + 0x2E4)) + 0x14) << 0x10) | 0xE0);
+        func_80039E60((*(u16 *)((s8*)(*(void **)((s8*)(g_Menu) + 0x2E4)) + 0x14) << 0x10) | 0xE1);
+        func_80039E60((*(u16 *)((s8*)(*(void **)((s8*)(g_Menu) + 0x2E4)) + 0x14) << 0x10) | 0x8F);
+        return;
+    case 2:
+        if (*(u8 *)((s8*)(*(void **)((s8*)(g_Menu) + 0x33C)) + 0x52) != 0) {
+            *(s32 *)((s8*)(*(void **)((s8*)(g_Menu) + 0x44C)) + 0x7B0) = 0x100;
+            temp_a0_2 = *(void **)((s8*)(g_Menu) + 0x44C);
+            *(u8 *)((s8*)(((*(u8 *)((s8*)(temp_a0_2) + 0x7B8) * 0x18) + temp_a0_2)) + 4) = 0;
+            temp_a0_3 = *(void **)((s8*)(g_Menu) + 0x44C);
+            *(u8 *)((s8*)(((*(u8 *)((s8*)(temp_a0_3) + 0x7B8) * 0x18) + temp_a0_3)) + 5) = 0xA0;
+            temp_a0_4 = *(void **)((s8*)(g_Menu) + 0x44C);
+            *(u8 *)((s8*)(((*(u8 *)((s8*)(temp_a0_4) + 0x7B8) * 0x18) + temp_a0_4)) + 6) = 0;
+            *(s8 *)((s8*)(*(void **)((s8*)(g_Menu) + 0x33C)) + 0x52) = 2;
+        }
+        break;
+    }
+}
 #endif
 
 #ifndef XENO_PC_PORT

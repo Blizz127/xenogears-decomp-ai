@@ -156,10 +156,8 @@ extern int FieldScriptVMGetActorIndex(int);
 extern int FieldScriptArgument1(int index, int mask);
 extern int FieldScriptArgument2(int index, int mask);
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80091E98);
-#else
 void func_80091E98(void) {
+#ifdef XENO_PC_PORT
     u8 mask;
     FieldActor* pActor;
     void* pActorData;
@@ -177,8 +175,17 @@ void func_80091E98(void) {
     mask = SCRIPT_READ_U8_REL(6);
     *(s16*)((u8*)pActorData + 0xEE) = (s16)FieldScriptArgument2(4, mask);
     g_FieldScriptVMCurActor->scriptInstructionPointer += 7;
+#else
+    ActorData* pActorData;
+
+    if (FieldScriptVMGetActorIndex(1) != 0xFF) {
+        pActorData = (ActorData*)(uintptr_t)g_FieldActors[FieldScriptVMGetActorIndex(1)].pActorData;
+        pActorData->flags134 = (pActorData->flags134 & ~0x60) | ((FieldScriptArgument1(2, SCRIPT_READ_U8_REL(6)) & 3) << 5);
+        pActorData->unkEE = FieldScriptArgument2(4, SCRIPT_READ_U8_REL(6));
+    }
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 7;
+#endif
 }
-#endif /* XENO_PC_PORT */
 
 /* ---- func_80091F84: VM opcode 0xDB — write clamped value into the actor's
  * animation dispatch table.
