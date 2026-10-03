@@ -364,10 +364,8 @@ u32 func_80092424(s32 index, s32 component) {
     return 0;
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_800924D4);
-#else
 void func_800924D4(s32 index, s32 component, s32 value) {
+#ifdef XENO_PC_PORT
     u32* entry;
     u32 mask;
 
@@ -396,8 +394,23 @@ void func_800924D4(s32 index, s32 component, s32 value) {
 #endif
             break;
     }
+#else
+    switch (component) {
+        case 0:
+            D_800AFB20[index] = (D_800AFB20[index] & 0xFFFFFF00) | value;
+            break;
+        case 1:
+            value = (u32)value << 8; D_800AFB20[index] = (D_800AFB20[index] & 0xFFFF00FF) | value;
+            break;
+        case 2:
+            value = (u32)value << 16; D_800AFB20[index] = (D_800AFB20[index] & 0xFF00FFFF) | value;
+            break;
+        case 3:
+            value = (u32)value << 24; D_800AFB20[index] = (D_800AFB20[index] & 0x00FFFFFF) | value;
+            break;
+    }
+#endif
 }
-#endif /* XENO_PC_PORT */
 
 extern s32 D_800B217C;
 extern s16 D_800B21D6;
@@ -437,10 +450,8 @@ void func_80092768(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80092808);
-#else
 void func_80092808(void) {
+#ifdef XENO_PC_PORT
     u8* actorData = (u8*)g_FieldScriptVMCurActor;
     s16 angle = *(s16*)((u8*)D_800B06B8 + 0x52);
     s32 sinTerm = rsin(angle) * 9;
@@ -455,8 +466,13 @@ void func_80092808(void) {
 
     *(u32*)(actorData + 0x4) |= 0x800;
     *(u16*)(actorData + 0xCC) += 1;
+#else
+    g_FieldScriptVMCurActor->unk60.vx = (u32)(rsin(D_800B06B8->rotation.y) * 9) >> 10;
+    g_FieldScriptVMCurActor->unk60.vz = -(rcos(D_800B06B8->rotation.y) * 36) >> 12;
+    g_FieldScriptVMCurActor->flags |= 0x800;
+    g_FieldScriptVMCurActor->scriptInstructionPointer++;
+#endif
 }
-#endif /* XENO_PC_PORT */
 
 extern FieldActor* D_800B06B8;
 extern long FieldGetVec1Magnitude(long x);
