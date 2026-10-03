@@ -1378,7 +1378,47 @@ void func_8007D65C(s32 arg0, s32 arg1, s32 arg2) {
     }
     func_8007D334(arg0, arg1, arg2);
 }
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007D6B8);
+extern s32 D_800926BC;
+extern s32 D_800926C0;
+extern s32 D_800926C4;
+
+void func_8007D6B8(void) {
+    register s16 *var_a1 asm("$5");
+    register u8 *var_v1 asm("$3");
+    s32 allocation;
+    register s32 tag asm("$8");
+    register s32 color asm("$7");
+    register s32 var_a0 asm("$4");
+    register s32 var_a2 asm("$6");
+
+    D_800926BC = HeapAlloc(0x9F6, 0);
+    D_800926C0 = HeapAlloc(0xBF4, 0);
+    allocation = (s32)HeapAlloc(0xBF4, 0);
+    var_a2 = 0;
+    tag = 2;
+    color = 0x6880B0F0;
+    var_a1 = D_800926BC;
+    var_a0 = 0;
+    D_800926C4 = allocation;
+    var_v1 = (u8*)var_a1 + 4;
+    do {
+        *(s8 *)((s8*)((var_a0 + D_800926C0)) + 3) = tag;
+        *(s32 *)((s8*)((var_a0 + D_800926C0)) + 4) = color;
+        *(s8 *)((s8*)((var_a0 + D_800926C4)) + 3) = tag;
+        var_a2 += 1;
+        *(s32 *)((s8*)((var_a0 + D_800926C4)) + 4) = color;
+        *(s16 *)((s8*)(var_v1) + 0) = 0;
+        *(s16 *)((s8*)(var_v1) + -2) = 0;
+        *var_a1 = 0;
+        *(s8 *)((s8*)(var_v1) + 2) = 0;
+        *(s16 *)((s8*)(var_v1) + 0) = 0;
+        var_v1 += 10;
+        *var_a1 = 0;
+        var_a1 += 5;
+        var_a0 += 0xC;
+    } while (var_a2 < 0xFF);
+}
+
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007D7A8);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007D918);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007DB28);
