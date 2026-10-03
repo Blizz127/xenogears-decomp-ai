@@ -23,6 +23,7 @@
  * func_80076BF0 and func_80076C34 reach retail SetSemiTrans at
  * 0x80043BFC, which this differential bridge cannot resolve.
  */
+    "func_8008ABB8",
     "func_80079934",
     "func_80089B50",
     "func_800A3484",

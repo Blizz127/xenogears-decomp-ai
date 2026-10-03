@@ -94,3 +94,47 @@ Matching remains2962/4464; tested admitted battle-body inventory102 unchanged.
 Neither is native runtime percentage. Retail binary-data blocker19runs/25068bytes
 unchanged. Preserve all matching drafts, source/ROM/data guards and receipts.
 `claude-handoff-receipt.json` pins the six allocator logs and shelved patch.
+
+## Claude resumption 2026-10-03 ~16:10 CT — allocator candidate, partial admission
+
+Claude (archerfish session) took the lane, verified 90da2dd5 clean and the shelved
+patch SHA a19679b1..., applied it in the sole writer and continued verification.
+All runs used docker `xenogears-dev:clang` (gcc 14.2, clang 18.1, rg), `--cpus=2`,
+`nice -n 19`, with archerfish PsyCross and the disc directory mounted read-only
+(the temporary mount point `pc_port/extern/` was removed afterwards). No runner use.
+
+Changes on top of the shelved draft:
+- `battle_results_gate.inc`: `index` in `results_try_host` is `volatile`. GCC 14
+  and 15 both emit -Werror=clobbered there at O2; it is never written after
+  setjmp (false positive). This was pre-existing and made every test that
+  includes the runtime at -O2 -Werror red on gcc >= 14. No warning was disabled.
+- 8008ABB8 typed bridge refuses (returns 0, interpret/refuse) when a load in
+  the jal delay slot is still pending, matching `results_try_host`. All 15
+  static `jal 0x8008ABB8` sites in battle.bin have non-load delay slots
+  (ori a1 / sw s0 / addu a1); indirect jalr callers are not excluded.
+- Test adds a pointer-looking size (0x80100000) through the wrapper entry.
+  FINDING (pre-existing, not fixed): the generic 80031BDC HeapAlloc bridge
+  translates such a size as a pointer (12 failures when tried on that entry).
+  No retail request is >= 2 GiB; recorded as a known limit in the test.
+
+Results (receipts in the private evidence root, SHA256):
+- heap pointer test, candidate: PASS 174 cases at O0, O2 and UBSan (gcc UBSan);
+  negative controls 4/4 killed (wrapper-host-return, raw-host-return,
+  normalize-scalar-return, missing-argument-translation) —
+  `heap-wrapper-candidate-docker-4.log` e441ce00...
+  (earlier: `-clangimg` 2b8bb7f8 O2 clobbered stop; `-2` 0fd0d418 162-case
+  pass before the collision case; `-3` 515edcdf collision finding).
+- Baseline red (18 interpreted steps) is Codex's earlier receipt, not rerun.
+- `run_battle_overlay_leaf_bridge_test.sh` PASS O0/O2/UBSan + always-interpret (76224ad5...).
+- `run_battle_guest_call_test.sh` PASS 204 checks x3 (92fbcd81...).
+- NOT RUN: `run_battle_overlay_host_differential_test.sh` (the allowlist
+  admission prover) and `run_battle_compmatrix_bridge_retail_test.sh` (a9f4a7fb:
+  needs `pc_port/build_native/battle_bridge_map.inc`). Both need a full
+  `build_port.sh` output (stubs.c manifest) that this writer lacks; a port build
+  is coordinator-sequenced.
+
+Status: `func_8008ABB8` is in the allowlist at HEAD but ADMISSION IS INCOMPLETE
+until the differential prover passes after a port build. Do not package HEAD
+until then. No native-coverage increment, no playable-slice claim; opening
+battle 80070F40 interpreter-disabled has not been re-run. Counter build HOLD
+unchanged (pinned 3a73eecc + counter patch, not HEAD).

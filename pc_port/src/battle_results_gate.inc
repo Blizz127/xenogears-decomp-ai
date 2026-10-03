@@ -198,7 +198,9 @@ static int results_try_host(BattleMipsRuntime *runtime, PcPortMipsCpu *cpu,
                             uint32_t target)
 {
     ResultsCall call;
-    size_t index;
+    /* volatile: read in the setjmp failure path; GCC >= 14 -Wclobbered
+     * cannot see that it is never written after setjmp. */
+    volatile size_t index;
     uint32_t v0;
 
     /* Empty allowlist: nothing below runs and dispatch is what it was before

@@ -20,7 +20,7 @@ for name, address, size, expected in [
     assert sha256(image[offset:offset + size]).hexdigest() == expected, name
     pins[name] = {'address': hex(address), 'size': size, 'sha256': expected}
 for name in ['pc_port/src/battle_mips_runtime.c', 'pc_port/src/battle_mips_adapter.c',
-             'pc_port/src/psx_memory.h', 'config/symbol_addrs.slus_006.64.txt',
+             'pc_port/src/psx_memory.h', 'src/battle/main44.c', 'pc_port/src/battle_overlay_host_leaves.inc', 'config/symbol_addrs.slus_006.64.txt',
              'tools/scripts/gen_battle_bridge_map.py', 'pc_port/tests/battle_heap_pointer_retail_test.c',
              'pc_port/tests/run_battle_heap_pointer_retail_test.sh']:
     data = Path(name).read_bytes()
@@ -37,8 +37,15 @@ python3 tools/scripts/gen_battle_bridge_map.py "${bridge_elf[@]}" \
     --symbols linker/undefined_syms_auto.battle.txt \
     --out "$TEST_OUT/battle_bridge_map.inc"
 
+PSYCROSS_ROOT="${PSYCROSS_ROOT:-pc_port/extern/PsyCross}"
+cat > "$TEST_OUT/heap-declarations.h" <<'EOF'
+void *HeapAlloc(int, int);
+void HeapChangeCurrentUser(int, void *);
+int ArchiveDataSync(void);
+void func_800716D8(void);
+EOF
 common=(-fno-pie -DUSE_EXTENDED_PRIM_POINTERS=0 -ffunction-sections -fdata-sections
-    -Ipc_port/extern/PsyCross/include -Ipc_port/extern/PsyCross/include/psx)
+    -I"$PSYCROSS_ROOT/include" -I"$PSYCROSS_ROOT/include/psx" -I"$PSYCROSS_ROOT/../../src")
 failed=0
 for opt in O0 O2 UBSan; do
     flags=(-"$opt")
@@ -47,17 +54,20 @@ for opt in O0 O2 UBSan; do
         name=${source##*/}
         g++ -std=c++17 "${common[@]}" "${flags[@]}" -fpermissive -w \
             -include pc_port/src/port_compat.h \
-            -c "pc_port/extern/PsyCross/src/$source" -o "$TEST_OUT/$opt.$name.o"
+            -c "$PSYCROSS_ROOT/src/$source" -o "$TEST_OUT/$opt.$name.o"
     done
-    gcc -std=gnu17 "${common[@]}" "${flags[@]}" -DXENO_PC_PORT -DSKIP_ASM -D_LANGUAGE_C \
+    "${CC:-gcc}" -std=gnu17 "${common[@]}" "${flags[@]}" -DXENO_PC_PORT -DSKIP_ASM -D_LANGUAGE_C \
+        -Ipc_port/include_shim -Iinclude -Ipc_port/src -include "$TEST_OUT/heap-declarations.h" \
+        -w -c src/battle/main44.c -o "$TEST_OUT/$opt.wrapper.o"
+    "${CC:-gcc}" -std=gnu17 "${common[@]}" "${flags[@]}" -DXENO_PC_PORT -DSKIP_ASM -D_LANGUAGE_C \
         -include assert.h -Ipc_port/include_shim -Iinclude -Ipc_port/src -I"$TEST_OUT" \
         -Wall -Wextra -Werror -c pc_port/tests/battle_heap_pointer_retail_test.c -o "$TEST_OUT/$opt.test.o"
-    gcc -std=gnu17 "${common[@]}" "${flags[@]}" -Wall -Wextra -Werror \
+    "${CC:-gcc}" -std=gnu17 "${common[@]}" "${flags[@]}" -Wall -Wextra -Werror \
         -c pc_port/src/battle_mips_adapter.c -o "$TEST_OUT/$opt.cpu.o"
     clang++ -no-pie "${flags[@]}" -Wl,--gc-sections \
-        -Wl,--export-dynamic-symbol=HeapAlloc -Wl,--export-dynamic-symbol=HeapChangeCurrentUser -Wl,--export-dynamic-symbol=HeapFree \
+        -Wl,--export-dynamic-symbol=func_8008ABB8 -Wl,--export-dynamic-symbol=HeapAlloc -Wl,--export-dynamic-symbol=HeapChangeCurrentUser -Wl,--export-dynamic-symbol=HeapFree \
         -Wl,--section-start=.heap_test_ram=0x0060fe20 -Wl,--section-start=.bss=0x02000000 \
-        "$TEST_OUT/$opt.test.o" "$TEST_OUT/$opt.cpu.o" "$TEST_OUT/$opt.LIBGTE.C.o" \
+        "$TEST_OUT/$opt.test.o" "$TEST_OUT/$opt.wrapper.o" "$TEST_OUT/$opt.cpu.o" "$TEST_OUT/$opt.LIBGTE.C.o" \
         "$TEST_OUT/$opt.INLINE_C.C.o" "$TEST_OUT/$opt.PsyX_GTE.cpp.o" -ldl -o "$TEST_OUT/$opt.test"
     if "$TEST_OUT/$opt.test" > "$TEST_OUT/$opt.log" 2>&1; then
         cat "$TEST_OUT/$opt.log"
@@ -93,7 +103,10 @@ end = source.index('\n    }\n', start) + len('\n    }\n')
 block = source[start:end]
 assert block.count('result = PsxMemory_GuestAddr((void *)result);') == 1
 assert source.count('translate_argument(runtime, raw)') == 2
+wrapper_return = 'PsxMemory_GuestAddr(allocate((int32_t)cpu->gpr[4], (int32_t)cpu->gpr[5]))'
+assert source.count(wrapper_return) == 1
 mutations = {
+    'wrapper-host-return': source.replace(wrapper_return, '(uintptr_t)allocate((int32_t)cpu->gpr[4], (int32_t)cpu->gpr[5])'),
     'raw-host-return': source[:start] + source[end:],
     'normalize-scalar-return': source.replace(start_text, '    {\n'),
     'missing-argument-translation': source.replace('translate_argument(runtime, raw)', '(uintptr_t)raw'),
@@ -105,22 +118,24 @@ for name, mutant in mutations.items():
     manifest['mutants'][name] = sha256(mutant.encode()).hexdigest()
 (out / 'negative-controls.json').write_text(json.dumps(manifest, indent=2) + '\n')
 PY
-for mutant in raw-host-return normalize-scalar-return missing-argument-translation; do
-    gcc -std=gnu17 "${common[@]}" -O2 -DXENO_PC_PORT -DSKIP_ASM -D_LANGUAGE_C \
+for mutant in wrapper-host-return raw-host-return normalize-scalar-return missing-argument-translation; do
+    "${CC:-gcc}" -std=gnu17 "${common[@]}" -O2 -DXENO_PC_PORT -DSKIP_ASM -D_LANGUAGE_C \
         -include assert.h -Ipc_port/include_shim -Iinclude -Ipc_port/src -I"$TEST_OUT" \
         "-DBATTLE_RUNTIME_SOURCE=\"$PWD/$TEST_OUT/$mutant.c\"" \
         -Wall -Wextra -Werror -c pc_port/tests/battle_heap_pointer_retail_test.c -o "$TEST_OUT/$mutant.o"
     clang++ -no-pie -Wl,--gc-sections \
-        -Wl,--export-dynamic-symbol=HeapAlloc -Wl,--export-dynamic-symbol=HeapChangeCurrentUser -Wl,--export-dynamic-symbol=HeapFree \
+        -Wl,--export-dynamic-symbol=func_8008ABB8 -Wl,--export-dynamic-symbol=HeapAlloc -Wl,--export-dynamic-symbol=HeapChangeCurrentUser -Wl,--export-dynamic-symbol=HeapFree \
         -Wl,--section-start=.heap_test_ram=0x0060fe20 -Wl,--section-start=.bss=0x02000000 \
-        "$TEST_OUT/$mutant.o" "$TEST_OUT/O2.cpu.o" "$TEST_OUT/O2.LIBGTE.C.o" \
+        "$TEST_OUT/$mutant.o" "$TEST_OUT/O2.wrapper.o" "$TEST_OUT/O2.cpu.o" "$TEST_OUT/O2.LIBGTE.C.o" \
         "$TEST_OUT/O2.INLINE_C.C.o" "$TEST_OUT/O2.PsyX_GTE.cpp.o" -ldl -o "$TEST_OUT/$mutant.test"
     if "$TEST_OUT/$mutant.test" > "$TEST_OUT/$mutant.log" 2>&1; then
         echo "BATTLE HEAP POINTER FAIL mutant survived: $mutant" >&2
         exit 1
     fi
-    if [ "$mutant" = raw-host-return ]; then
-        rg -q 'BATTLE HEAP POINTER FAIL reservation' "$TEST_OUT/$mutant.log"
+    if [ "$mutant" = wrapper-host-return ]; then
+        rg -q 'BATTLE HEAP POINTER FAIL (reservation|direct)' "$TEST_OUT/$mutant.log"
+    elif [ "$mutant" = raw-host-return ]; then
+        rg -q 'BATTLE HEAP POINTER FAIL (reservation|direct)' "$TEST_OUT/$mutant.log"
     else
         rg -q 'BATTLE HEAP POINTER FAIL roundtrip' "$TEST_OUT/$mutant.log"
     fi

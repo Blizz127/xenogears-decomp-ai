@@ -893,6 +893,7 @@ static BridgeCallCacheSlot *bridge_cache_slot(BattleMipsRuntime *runtime,
     unsigned base = (unsigned)((target * 2654435761u) >> 23) &
                     (BRIDGE_CALL_CACHE_SIZE - 1);
     unsigned i;
+
     for (i = 0; i < 4; i++) {
         BridgeCallCacheSlot *s = &runtime->call_cache[(base + i) &
                                  (BRIDGE_CALL_CACHE_SIZE - 1)];
@@ -1078,6 +1079,23 @@ static int runtime_bridge_call(void *opaque, PcPortMipsCpu *cpu, uint32_t target
         return 1;
     }
 
+    if (resolved->address == 0x8008abb8u) {
+        /* The battle allocator wrapper takes two scalars and returns a host
+         * RAM pointer. Keep its scalar bits out of pointer translation, and
+         * restore the guest return domain before retail stores the result. */
+        void *(*allocate)(int32_t, int32_t) =
+            (void *(*)(int32_t, int32_t))resolved->host;
+        /* A load in the jal delay slot has not landed yet. No static retail
+         * call site does this; leave any indirect one to retail. */
+        if (cpu->load_valid && cpu->load_reg != 0)
+            return 0;
+        cpu_meter_note_kind(CPU_METER_KIND_GENERIC);
+        result = PsxMemory_GuestAddr(allocate((int32_t)cpu->gpr[4], (int32_t)cpu->gpr[5]));
+        cpu->gpr[2] = (uint32_t)result;
+        cpu->gpr[3] = 0;
+        return 1;
+    }
+
     for (i = 0; i < 4; i++) {
         raw = cpu->gpr[4 + i];
         args[i] = is_callback_argument(resolved->name, i)
@@ -1160,7 +1178,7 @@ static int runtime_bridge(void *opaque, PcPortMipsCpu *cpu, uint32_t target)
      * repeated bridge calls in the same tick cannot push duplicate states. */
     { extern void PcPort_PadVblankPump(void); PcPort_PadVblankPump(); }
     PcPortMipsCpu *previous = runtime->bridge_cpu;
-    CpuMeterBridgeState meter;
+    CpuMeterBridgeState meter = {0};
     runtime->bridge_cpu = cpu;
     {
         void (*volatile hash_hook)(PcPortMipsCpu*, uint32_t) = PcPort_BattleStateHashBeforeGuest;
