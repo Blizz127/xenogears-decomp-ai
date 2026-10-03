@@ -457,7 +457,7 @@ void func_80092808(void) {
     *(s16*)(actorData + 0x60) = (s16)(u16)((u32)sinTerm >> 10);
 
     cosTerm = rcos(angle) * 9;
-    zMove = -(cosTerm << 2);
+    zMove = -(cosTerm * 4);
     *(s16*)(actorData + 0x64) = (s16)(zMove >> 12);
 
     *(u32*)(actorData + 0x4) |= 0x800;
