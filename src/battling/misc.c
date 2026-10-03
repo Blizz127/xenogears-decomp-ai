@@ -2525,7 +2525,22 @@ void func_80087830(void) {
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_800878DC);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80087AB0);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80087B74);
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80087E38);
+extern s32 D_800928F8;
+extern s32 D_8009A988;
+void func_80087E38(void *arg0) {
+    s32 count = D_800928F8;
+    register u8 *base asm("$4");
+    s16 *p;
+    if (count < 31) {
+        base = (u8 *)&D_8009A988;
+        p = (s16 *)(base + count * 0x68);
+        p[0] = *(s32 *)arg0;
+        p[1] = *(s32 *)((u8 *)arg0 + 4);
+        p[2] = *(s32 *)((u8 *)arg0 + 8);
+        D_800928F8 = count + 1;
+    }
+}
+
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80087EA0);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8008820C);
 
