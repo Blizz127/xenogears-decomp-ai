@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""tu_test.py OV NAME BODY.c [--write]
+"""tu_test.py OV NAME BODY.c [--write] [--source SOURCE.c --tu WRAPPER.c]
 
 Compile a candidate C definition of NAME *inside its own TU*, on the host,
 without touching the tree: the TU source is read, NAME's INCLUDE_ASM site
@@ -14,7 +14,15 @@ the authority.
 
 --write: on a MATCH, write the edited TU back (BODY.c's `#include "common.h"`
 line dropped), so the verified text is exactly what lands.  Only for plain
-sites: one with a port body is left alone (m2c_insert.py --inner keeps it)."""
+sites: one with a port body is left alone (m2c_insert.py --inner keeps it).
+
+For split sources, --source selects the included source's real site (which may
+use an INCLUDE_ASM path macro), and --tu selects its same-directory wrapper.
+The wrapper must include that source exactly once. The edited source is inlined
+only in the scratch probe, preserving wrapper defines and compiler selection.
+The active-site marker must still survive preprocessing. --write changes only
+the selected source and still refuses sites with native bodies."""
+import argparse
 import glob
 import os
 import re
@@ -24,18 +32,41 @@ import sys
 sys.path.insert(0, os.path.dirname(__file__))
 from assist_common import CACHE, REPO, compare, func_words, toolchain
 
-ov, name, body_path = sys.argv[1], sys.argv[2], os.path.abspath(sys.argv[3])
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('overlay')
+parser.add_argument('name')
+parser.add_argument('body')
+parser.add_argument('--write', action='store_true')
+parser.add_argument('--source', help='included source containing the active candidate site')
+parser.add_argument('--tu', help='wrapper translation unit that directly includes --source')
+args = parser.parse_args()
+if bool(args.source) != bool(args.tu):
+    parser.error('--source and --tu must be supplied together')
+ov, name, body_path = args.overlay, args.name, os.path.abspath(args.body)
 os.chdir(REPO)
 body = open(body_path).read()
-if '--write' in sys.argv:
+if args.write:
     body = re.sub(r'^#include "common.h"\n', '', body, flags=re.M).strip('\n') + '\n'
 site = re.compile(r'INCLUDE_ASM\("(?:\.\./)?asm/' + re.escape(ov) + r'/nonmatchings/([^"]+)", ' + re.escape(name) + r'\);')
 tu = None
-for f in glob.glob(f'src/{ov}/**/*.c', recursive=True):
+if args.source:
+    source_path = os.path.realpath(args.source)
+    wrapper_path = os.path.realpath(args.tu)
+    root = os.path.realpath(f'src/{ov}') + os.sep
+    if not source_path.startswith(root) or not wrapper_path.startswith(root):
+        parser.error('--source and --tu must be under the selected overlay')
+    if os.path.dirname(source_path) != os.path.dirname(wrapper_path) or source_path == wrapper_path:
+        parser.error('--source must be a distinct file in the wrapper directory')
+    site = re.compile(r'INCLUDE_ASM\((?:"[^"\n]+"|[A-Za-z_]\w*), ' + re.escape(name) + r'\);')
+for f in ([args.source] if args.source else glob.glob(f'src/{ov}/**/*.c', recursive=True)):
     s = open(f).read()
     m = site.search(s)
     if m:
-        tu, seg = f, m.group(1)
+        tu = os.path.relpath(args.tu if args.source else f)
+        source = os.path.relpath(f)
+        seg = tu[len(f'src/{ov}/'):-2] if args.source else m.group(1)
+        if args.source and len(list(site.finditer(s))) != 1:
+            sys.exit('explicit source must contain exactly one candidate site')
         break
 if tu is None:
     sys.exit(f'no INCLUDE_ASM site for {name} under src/{ov}')
@@ -64,6 +95,16 @@ edited = s[:st] + body + s[en:]
 # that never reached the compiler. Require the replacement site to be active.
 probe_marker = 'xeno_tu_candidate_site_is_active'
 s = s[:st] + 'extern int ' + probe_marker + ';\n' + body + s[en:]
+if args.source:
+    wrapper = open(tu).read()
+    includes = []
+    for inc in re.finditer(r'^[ \t]*#[ \t]*include[ \t]+"([^"\n]+)"[^\n]*', wrapper, re.M):
+        if os.path.realpath(os.path.join(os.path.dirname(tu), inc.group(1))) == source_path:
+            includes.append(inc)
+    if len(includes) != 1:
+        sys.exit('wrapper must directly include the selected source exactly once')
+    inc = includes[0]
+    s = wrapper[:inc.start()] + '\n' + s + '\n' + wrapper[inc.end():]
 # the TU in the matching build: drop other INCLUDE_ASM bodies (SKIP_ASM does that)
 pre_ = os.environ.get('XENO_CCT_PREFIX', '_tut')
 c_file, i_file, s_file, o_file = (os.path.join(CACHE, pre_ + e) for e in ('.c', '.i', '.s', '.o'))
@@ -177,8 +218,8 @@ if bad == 0 and relbad:
     print(f"{tc['preset']}: code MATCH but {len(relbad)} relocation row(s) differ, first at +{relbad[0][0]:#x}: {relbad[0][1]}")
 else:
     print(f"{tc['preset']}:", 'MATCH' if bad == 0 else (f'diff {bad}/{len(ins)}' if bad > 0 else f'size {got[0]} vs {len(ins) * 4}'))
-if bad == 0 and '--write' in sys.argv and ported:
+if bad == 0 and args.write and ported:
     sys.exit('not written: the site has a port body (use m2c_insert.py --inner)')
-if bad == 0 and '--write' in sys.argv:
-    open(tu, 'w').write(edited)
-    print('wrote', tu)
+if bad == 0 and args.write:
+    open(source, 'w').write(edited)
+    print('wrote', source)
