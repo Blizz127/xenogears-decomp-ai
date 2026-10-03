@@ -244,12 +244,10 @@ void func_80025258(u8* pEntry) {
 
 extern s32 D_80050100;
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM(TEMP1E_ASM, func_8002541C);
-#else
 /* Retail 8002541C..80025540: projected TILE_1 (12-byte packet, tag len 2)
  * followed by an 8-byte draw-mode prim. Sibling of func_80025544. */
 void func_8002541C(u8* pEntry) {
+#ifdef XENO_PC_PORT
     u8* pSprite = SpriteRenderAddress(*(u32*)(pEntry + 0x04));
     u32 cursor, next, otOffset, otAddress, color;
     u8* pTile;
@@ -294,8 +292,50 @@ void func_8002541C(u8* pEntry) {
     pMode[3] = 1;
     *(u32*)(pMode + 4) = 0xE1000000u | (*(u32*)(pSprite + 0x3C) & 0x60u);
     PcPort_AddPrimDomainAware(SpriteRenderAddress(otAddress + otOffset), pMode);
-}
+#else
+    SVECTOR v;
+    long flag;
+    s32 offset,depth;
+    register s32 value asm("$2");
+    register u32 mask asm("$3");
+    register u8* ot asm("$4");
+    u8 *sprite,*tile,*mode,*next;
+    sprite=*(u8**)(pEntry+4);
+    if (*(u16*)(sprite+0x34)==0) {
+        tile=g_GfxCurWorkBuffer;
+        next=tile+12;
+        if ((u32)next<(u32)g_GfxCurWorkBufferEnd) {
+            value=*(s16*)(sprite+2); v.vx=value;
+            value=*(s16*)(sprite+6); v.vy=value;
+            value=*(s16*)(sprite+10);
+            g_GfxCurWorkBuffer=next;
+            v.vz=value;
+            SetRotMatrix(&D_8004FBB8);
+            SetTransMatrix(&D_8004FBB8);
+            depth=RotTransPers(&v,(long*)(tile+8),&flag,&flag)>>D_80050100;
+            *(s16*)(sprite+0x2E)=depth;
+            tile[3]=2;
+            *(u32*)(tile+4)=*(u32*)(sprite+0x28);
+            offset=depth*4;
+            AddPrim((u8*)g_GfxCurOT+offset,tile);
+            mode=g_GfxCurWorkBuffer;
+            next=mode+8;
+            if ((u32)next<(u32)g_GfxCurWorkBufferEnd) {
+                g_GfxCurWorkBuffer=next;
+                mask=0xE1000000;
+                mode[3]=1;
+                ot=(u8*)g_GfxCurOT;
+                value=*(u32*)(sprite+0x3C);
+                ot+=offset;
+                value &= 0x60;
+                value |= mask;
+                *(u32*)(mode+4)=value;
+                AddPrim(ot,mode);
+            }
+        }
+    }
 #endif
+}
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM(TEMP1E_ASM, func_80025544);
