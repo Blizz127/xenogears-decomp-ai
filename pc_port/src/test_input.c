@@ -194,6 +194,12 @@ void PcPort_FieldTestInputMerge(u16 *held_buttons, u16 *pressed_edges,
     uint16_t falling;
     size_t previous_step;
 
+    /* The step-pad clock advances here because this is the one call made
+     * after every FieldPollControllers drain (see PcPort_FieldStepPadApply). */
+    {
+        extern void PcPort_FieldStepPadNoteDrain(void);
+        PcPort_FieldStepPadNoteDrain();
+    }
     if (s_hold_frames != 0u || s_hold_previous != 0u) {
         uint16_t v = s_hold_frames != 0u ? s_hold_value : (uint16_t)0;
         *held_buttons = (u16)(*held_buttons | v);
@@ -388,5 +394,178 @@ void PcPort_WorldTestInputResetForCertificate(void)
     s_world_previous = 0u;
     s_world_enabled = 0;
     s_world_initialized = 0;
+}
+#endif
+
+/* DIAGNOSTIC / TEST TOOLING: XENO_FIELD_STEP_PAD_INPUT ("step:value,...",
+ * first step 0, game CTRL_BTN_* bits) is a field-step-clocked schedule that
+ * presses buttons on the PHYSICAL pad, before ControllerPoll, unlike
+ * XENO_FIELD_TEST_INPUT, which ORs into the accumulators after both control
+ * masks.  Retail remap, edge/repeat derivation, the 16-state FIFO, the
+ * per-state g_FieldControl.controllerBtnMask and the D_800ADB00 mask all
+ * still apply.
+ *
+ * Step k is "after k completed FieldPollControllers drains since arming".
+ * Every vblank state queued between drain k-1 and drain k carries the step-k
+ * value, so drain k sees held == value(k) (ORed with any real pad, then
+ * masked) no matter how many vblanks the field loop spans. A drain that saw
+ * no vblank at all is counted and reported, never filled in.
+ *
+ * XENO_FIELD_STEP_PAD_MAP=<map> arms on the first vblank in that field
+ * (low 12 bits of g_GameSceneMapNum); unset arms on the first vblank.
+ * It refuses to combine with XENO_FIELD_TEST_INPUT or XENO_PAD_TEST_INPUT:
+ * both inject on the same paths and would make the receipt ambiguous. */
+static TestInputStep s_step_pad_steps[FIELD_TEST_INPUT_MAX_STEPS];
+static size_t s_step_pad_count;
+static size_t s_step_pad_current;
+static uint32_t s_step_pad_step;          /* completed drains since arming */
+static uint32_t s_step_pad_vblanks;       /* injections since the last drain */
+static uint32_t s_step_pad_empty;         /* drains that saw no injection */
+static int s_step_pad_map = -1;
+static int s_step_pad_state = -1;         /* -1 unparsed, 0 off, 1 waiting, 2 armed */
+
+static int step_pad_error(const char *reason)
+{
+    fprintf(stderr, "[field-step-pad] invalid XENO_FIELD_STEP_PAD_INPUT: %s\n",
+            reason);
+    s_step_pad_state = 0;
+    return -1;
+}
+
+int PcPort_FieldStepPadInit(void)
+{
+    const char *schedule;
+    const char *cursor;
+    const char *map;
+    uint32_t previous = 0u;
+
+    if (s_step_pad_state >= 0)
+        return 0;
+    s_step_pad_state = 0;
+    schedule = getenv("XENO_FIELD_STEP_PAD_INPUT");
+    if (schedule == NULL)
+        return 0;
+    if (getenv("XENO_FIELD_TEST_INPUT") != NULL)
+        return step_pad_error("XENO_FIELD_TEST_INPUT is also set (post-mask path)");
+    if (getenv("XENO_PAD_TEST_INPUT") != NULL)
+        return step_pad_error("XENO_PAD_TEST_INPUT is also set (vblank-clocked path)");
+    if (*schedule == '\0')
+        return step_pad_error("empty schedule");
+
+    cursor = schedule;
+    while (*cursor != '\0') {
+        char *end;
+        unsigned long step;
+        unsigned long value;
+
+        if (s_step_pad_count == FIELD_TEST_INPUT_MAX_STEPS)
+            return step_pad_error("too many step/value pairs");
+        errno = 0;
+        step = strtoul(cursor, &end, 10);
+        if (errno != 0 || end == cursor || *end != ':' || step > UINT32_MAX)
+            return step_pad_error("invalid step boundary");
+        cursor = end + 1;
+        errno = 0;
+        value = strtoul(cursor, &end, 0);
+        if (errno != 0 || end == cursor || value > UINT16_MAX)
+            return step_pad_error("invalid input value");
+        if (*end != '\0' && *end != ',')
+            return step_pad_error("expected comma between pairs");
+        if (s_step_pad_count == 0u && step != 0u)
+            return step_pad_error("first step must be zero");
+        if (s_step_pad_count != 0u && step <= previous)
+            return step_pad_error("step boundaries must increase");
+        s_step_pad_steps[s_step_pad_count].frame = (uint32_t)step;
+        s_step_pad_steps[s_step_pad_count].value = (uint16_t)value;
+        s_step_pad_count++;
+        previous = (uint32_t)step;
+        if (*end == '\0')
+            break;
+        cursor = end + 1;
+        if (*cursor == '\0')
+            return step_pad_error("trailing comma");
+    }
+
+    map = getenv("XENO_FIELD_STEP_PAD_MAP");
+    if (map != NULL) {
+        char *end;
+        long parsed;
+
+        errno = 0;
+        parsed = strtol(map, &end, 0);
+        if (errno != 0 || end == map || *end != '\0' || parsed < 0 || parsed > 0xFFF)
+            return step_pad_error("XENO_FIELD_STEP_PAD_MAP must be 0..0xFFF");
+        s_step_pad_map = (int)parsed;
+    }
+    s_step_pad_state = 1;
+    fprintf(stderr, "[field-step-pad] enabled steps=%zu map=%d\n",
+            s_step_pad_count, s_step_pad_map);
+    return 0;
+}
+
+/* Once per dispatched vblank, after the real pad has been read into the
+ * buffer and before ControllerPoll derives state from it.  `pad` is the
+ * controller-1 buffer (active-low button bytes at +2/+3), `to_physical`
+ * undoes the retail remap the way PcPort_PadTestGameToPhysical does. */
+int PcPort_FieldStepPadApply(unsigned char *pad,
+                             unsigned short (*to_physical)(unsigned short),
+                             int map)
+{
+    unsigned short value;
+    size_t previous;
+
+    if (s_step_pad_state < 0 && PcPort_FieldStepPadInit() != 0)
+        return -1;
+    if (s_step_pad_state == 1 && (s_step_pad_map < 0 || (map & 0xFFF) == s_step_pad_map)) {
+        s_step_pad_state = 2;
+        fprintf(stderr, "[field-step-pad] armed map=%d step=0 held=0x%04x\n",
+                map & 0xFFF, (unsigned int)s_step_pad_steps[0].value);
+    }
+    if (s_step_pad_state != 2)
+        return 0;
+
+    previous = s_step_pad_current;
+    while (s_step_pad_current + 1u < s_step_pad_count &&
+           s_step_pad_step >= s_step_pad_steps[s_step_pad_current + 1u].frame)
+        s_step_pad_current++;
+    value = s_step_pad_steps[s_step_pad_current].value;
+    if (s_step_pad_current != previous)
+        fprintf(stderr, "[field-step-pad] step=%u held=0x%04x\n",
+                s_step_pad_step, (unsigned int)value);
+    value = to_physical(value);
+    pad[0x2] &= (unsigned char)~(unsigned char)(value >> 8);
+    pad[0x3] &= (unsigned char)~(unsigned char)(value & 0xFF);
+    s_step_pad_vblanks++;
+    return 0;
+}
+
+/* Once per FieldPollControllers, after its drain. */
+void PcPort_FieldStepPadNoteDrain(void)
+{
+    if (s_step_pad_state != 2)
+        return;
+    if (s_step_pad_vblanks == 0u) {
+        s_step_pad_empty++;
+        fprintf(stderr, "[field-step-pad] step=%u drained no vblank (empty=%u)\n",
+                s_step_pad_step, s_step_pad_empty);
+    }
+    s_step_pad_vblanks = 0u;
+    s_step_pad_step++;
+}
+
+/* Receipt for drivers: completed steps and empty drains since arming. */
+void PcPort_FieldStepPadCounts(unsigned *steps, unsigned *empty)
+{
+    *steps = s_step_pad_step;
+    *empty = s_step_pad_empty;
+}
+
+#if defined(XENO_TEST_INPUT_CERTIFICATE)
+void PcPort_FieldStepPadResetForCertificate(void)
+{
+    s_step_pad_count = s_step_pad_current = 0u;
+    s_step_pad_step = s_step_pad_vblanks = s_step_pad_empty = 0u;
+    s_step_pad_map = -1;
+    s_step_pad_state = -1;
 }
 #endif

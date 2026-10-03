@@ -1758,6 +1758,19 @@ void PcPort_PrepareControllerPoll(void)
     extern void PsyX_UpdateInput(void);
     PsyX_UpdateInput();
     PcPort_PadTestInputInject();
+    {
+        /* XENO_FIELD_STEP_PAD_INPUT (test_input.c): field-step-clocked
+         * presses on the physical pad, so every control mask still applies.
+         * An invalid schedule stops the run instead of running without it. */
+        extern int PcPort_FieldStepPadApply(unsigned char *,
+                                            unsigned short (*)(unsigned short), int);
+        extern unsigned char g_C1Buffer[];
+        extern int g_GameSceneMapNum;
+
+        if (PcPort_FieldStepPadApply(g_C1Buffer, PcPort_PadTestGameToPhysical,
+                                     g_GameSceneMapNum) != 0)
+            exit(EXIT_FAILURE);
+    }
     PcPort_PadOnControl();
     PcPort_ForcedMenuNav();
 }
