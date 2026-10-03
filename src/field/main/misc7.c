@@ -2111,10 +2111,8 @@ void func_8009BA0C(void) {
     }
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc7", func_8009BA7C);
-#else
 void func_8009BA7C(void) {
+#ifdef XENO_PC_PORT
     s32 angle;
     s32 scrZ;
 
@@ -2130,5 +2128,23 @@ void func_8009BA7C(void) {
     SetGeomScreen(scrZ);
 
     g_FieldScriptVMCurActor->scriptInstructionPointer += 7;
+#else
+    s32 t;
+    s16 angle;
+    s32 scrZ;
+
+    *(s16*)((u8*)&g_Scene + 0x6C) = FieldScriptVMGetArgument(3);
+
+    t = (FieldScriptVMGetArgument(1) + 4) & 7;
+    angle = t << 9;
+    *(s32*)((u8*)&g_Scene + 0x7C) = angle;
+    *(s16*)((u8*)&g_Scene + 0x56) = t << 9;
+    *(s32*)((u8*)&g_Scene + 0x60) = angle << 16;
+
+    scrZ = FieldScriptVMGetArgument(5);
+    *(s32*)((u8*)&g_Scene + 0x68) = scrZ;
+    SetGeomScreen(scrZ);
+
+    g_FieldScriptVMCurActor->scriptInstructionPointer += 7;
+#endif
 }
-#endif /* XENO_PC_PORT */

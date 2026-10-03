@@ -1650,10 +1650,9 @@ void* func_80039024(s32 size) {
     }
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", SoundHeapFree);
-#else
+
 void SoundHeapFree(void* pMemory) {
+#ifdef XENO_PC_PORT
     SoundHeapBlockHeader* pBlock;
     SoundHeapBlockHeader* pPrevious;
     SoundHeapBlockHeader* pTarget;
@@ -1672,8 +1671,30 @@ void SoundHeapFree(void* pMemory) {
         pPrevious->pNext = pTarget->pNext;
     }
     EnableEvent(g_unk_SoundEvent);
-}
+#else
+    void *temp_s0;
+    register void *temp_s1 asm("$17");
+    register void *var_v0 asm("$2");
+    void *var_v1;
+
+    temp_s0 = g_SoundHeapHead;
+    temp_s1 = pMemory;
+    DisableEvent(g_unk_SoundEvent);
+    temp_s1 -= 0x10;
+    var_v0 = temp_s0;
+    var_v1 = NULL;
+    if (temp_s0 != temp_s1) {
+        do {
+            var_v1 = var_v0;
+            var_v0 = *(void **)((s8*)(var_v1) + 0xC);
+        } while (var_v0 != temp_s1);
+    }
+    if (var_v1 != NULL) {
+        *(s32 *)((s8*)(var_v1) + 0xC) = (s32) *(s32 *)((s8*)(temp_s1) + 0xC);
+    }
+    EnableEvent(g_unk_SoundEvent);
 #endif
+}
 
 s32 func_800391CC(void) {
     void* pBlock = g_SoundHeapHead;
@@ -3532,11 +3553,9 @@ s32 SoundRemoveAudioManagerFromList(AudioManager* manager) {
     return 0;
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003BB08);
-#else
 //----------------------------------------------------------------------------------------------------------------------
 void func_8003BB08(u16 mask, void* pData) {
+#ifdef XENO_PC_PORT
     u16* pEntry = (u16*)((u8*)pData + 0x94);
     s32 count = *(u8*)((u8*)pData + 0x14);
     while (count-- != 0) {
@@ -3545,8 +3564,18 @@ void func_8003BB08(u16 mask, void* pData) {
         }
         pEntry += 0xAC; /* stride 0x158 / 2 */
     }
-}
+#else
+    u8 *p = (u8 *)pData + 0x94;
+    s32 count = *(u8 *)((u8 *)pData + 0x14);
+    do {
+        count--;
+        if (*(u16 *)p != 0) {
+            *(u16 *)p = mask | *(u16 *)p;
+        }
+        p += 0x158;
+    } while (count != 0);
 #endif
+}
 
 //----------------------------------------------------------------------------------------------------------------------
 s32 SoundCalculateAudioManagerSize(s32 elementCount) {
@@ -4560,7 +4589,24 @@ u8* func_8003D1BC(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudio
     return p + 2;
 }
 #else
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D1BC);
+void *func_8003D1BC(void *arg0, void *arg1) {
+    s16 temp_a0_2;
+    s32 temp_v0;
+    u8 temp_a0;
+    u8 temp_a3;
+
+    temp_a0 = *(u8 *)((s8*)(arg0) + 0);
+    temp_a3 = *(u8 *)((s8*)(arg0) + 1);
+    temp_a0_2 = temp_a0 << 5;
+    temp_v0 = (temp_a3 << 0x18) - *(s32 *)((s8*)(arg1) + 0x70);
+    if ((temp_a0_2 != 0) && (temp_v0 != 0)) {
+        *(s16 *)((s8*)(arg1) + 0x78) = (s16) (temp_a0 << 5);
+        *(s16 *)((s8*)(arg1) + 0x7A) = (s16) (temp_a3 << 8);
+        *(s32 *)((s8*)(arg1) + 0x74) = (s32) (temp_v0 / temp_a0_2);
+    }
+    return arg0 + 2;
+}
+
 #endif
 
 u8* SoundScriptSetUnk62(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {
@@ -5061,7 +5107,25 @@ u8* func_8003DBE4(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudio
     return p + 3;
 }
 #else
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003DBE4);
+void *func_8003DBE4(void *arg0, s32 arg1, void *arg2) {
+    s32 temp_v0;
+    s16 temp_t0;
+    s32 temp_v1;
+
+    temp_v1 = *(u8 *)((s8*)(arg0) + 0) << 24;
+    temp_t0 = *(u8 *)((s8*)(arg0) + 1);
+    temp_v0 = (*(u8 *)((s8*)(arg0) + 2) << 0x18) - temp_v1;
+    if ((temp_v0 != 0) && (temp_t0 != 0)) {
+        *(s16 *)((s8*)(arg2) + 0x82) = (s16) (temp_v1 >> 16);
+        *(s16 *)((s8*)(arg2) + 0x80) = (s16) temp_t0;
+        *(u16 *)((s8*)(arg2) + 4) = (u16) ((*(u16 *)((s8*)(arg2) + 4) | 0x100) & 0xFFF7);
+        *(s32 *)((s8*)(arg2) + 0x7C) = (s32) (temp_v0 / (s32) temp_t0);
+    } else {
+        *(u16 *)((s8*)(arg2) + 4) = (u16) (*(u16 *)((s8*)(arg2) + 4) & 0xFEFF);
+    }
+    return arg0 + 3;
+}
+
 #endif
 
 // Seq cmd 0xE4: prime envelope object 1 (direct method) -- rate =

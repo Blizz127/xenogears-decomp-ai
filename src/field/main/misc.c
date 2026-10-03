@@ -728,10 +728,18 @@ void func_80088508(void) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008861C);
-#else
-void func_8008861C(void)
-{
+/* func_8008861C: the bank index is read as a plain (non-struct) s32 so the
+ * struct-field stores below do not invalidate it (one lw per iteration), and
+ * the +0x32 store goes through a computed pointer (addu off,base then 0x32(v0))
+ * while the +0x30 store folds into sym+0x30(off).  D_800B2384 is declared only
+ * after this site (as ParticleBankHandle), so this body reaches it through an
+ * asm alias with the same 16-byte (non-gp-small) shape. */
+struct func_8008861C_handle { int bankIndex; u8 unk4[0xC]; };
+extern struct func_8008861C_handle D_800B2384__8861C asm("D_800B2384");
+
+#endif
+void func_8008861C(void) {
+#ifdef XENO_PC_PORT
     s32 i;
     u8* pBanks = (u8*)g_FieldDefaultParticleBanks;
     for (i = 0; i < 8; i++) {
@@ -739,8 +747,21 @@ void func_8008861C(void)
         *(u16*)(pEntry + 0x32) = 0;
         *(u16*)(pEntry + 0x30) = 0;
     }
+#else
+    s32 i;
+    s32 off;
+    u8* p;
+
+    i = 0;
+    do {
+        off = i * 4 + *(s32*)&D_800B2384__8861C * 0x78;
+        i++;
+        p = (u8*)g_FieldDefaultParticleBanks + off;
+        *(s16*)(p + 0x32) = 0;
+        *(s16*)((u8*)g_FieldDefaultParticleBanks + 0x30 + off) = 0;
+    } while (i < 8);
+#endif
 }
-#endif /* XENO_PC_PORT */
 
 extern s32 D_800B2374;
 extern s32 D_800B2378;

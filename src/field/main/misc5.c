@@ -889,10 +889,8 @@ extern s32 D_800ADB74;
 extern s32 D_800AFE74;
 extern s16 D_800C3A36;
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A7120);
-#else
 void func_800A7120(u16 arg0, s32 arg1, u16 arg2) {
+#ifdef XENO_PC_PORT
     D_800B06A0 = arg0;
     D_800B00E4 = 0;
     if (arg2 == 0) {
@@ -907,8 +905,23 @@ void func_800A7120(u16 arg0, s32 arg1, u16 arg2) {
             g_FieldCurRenderContext->dispEnv.isrgb24 = 1;
         }
     }
+#else
+    D_800B06A0 = arg0;
+    D_800B00E4 = 0;
+    if (arg2 == 0) {
+        D_800ADB78 = 1;
+    } else {
+        D_800ADB78 = 0;
+    }
+    if (D_800ADB74 == 0 && D_800AFE74 == 0) {
+        DrawSync(0);
+        g_FieldCurRenderContext = &g_FieldRenderContexts[D_800ADB78];
+        if (D_800C3A36 == 1) {
+            g_FieldRenderContexts[D_800ADB78 & 1].dispEnv.isrgb24 = 1;
+        }
+    }
+#endif
 }
-#endif /* XENO_PC_PORT */
 
 void func_800A7120(u16 arg0, s32 arg1, u16 arg2);
 

@@ -1002,7 +1002,54 @@ extern u8 D_800ADFB8[];
 extern void func_801E8330(s32 objSlot, s32 unused, s32 animValue);
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800821F4);
+/* func_800821F4: retail treats animIndex as a full int (no sign-extension on entry
+ * or at the func_800245D8 call), so the definition and that call go through
+ * asm aliases with s32 parameters (the TU prototypes say s16; changing both TU
+ * prototypes to s32 is the clean alternative).  D_800B2346 is not gp-small (its
+ * address is kept in s2 and the anim-state base is s2-0x162, recomputed into a
+ * fresh temp after each func_801E8330 call); actorData+0x4C is re-read after
+ * each &= ~0x800 store (offset-0 store invalidates memory). */
+extern s16 D_800B2346__a[] asm("D_800B2346");
+void func_800245D8__i(void* pSpriteData, s32 animIndex) asm("func_800245D8");
+void func_800821F4__i(void* pSpriteData, s32 animIndex, void* pFieldActor) asm("func_800821F4");
+
+void func_800821F4__i(void* pSpriteData, s32 animIndex, void* pFieldActor) {
+    u8* actor = pFieldActor;
+    u8* actorData;
+    u8* animState1;
+    u8* animState2;
+    u32 flags4;
+
+    if (*(u16*)(actor + 0x58) & 0x40) {
+        if (animIndex != 3 && D_800B2344 == 0) {
+            *(u32*)(uintptr_t)*(u32*)(actor + 0x4C) &= ~0x800;
+        }
+        if (animIndex == 0xFF) {
+            animIndex = 0;
+        }
+        if (animIndex != D_800B2346__a[0]) {
+            *(u32*)(uintptr_t)*(u32*)(actor + 0x4C) &= ~0x800;
+        }
+        actorData = (u8*)(uintptr_t)*(u32*)(actor + 0x4C);
+        flags4 = *(u32*)(actorData + 4);
+        if (!(flags4 & 0x2000)) {
+            if (!(flags4 & 0x01000000)) {
+                func_800245D8__i(pSpriteData, animIndex);
+            }
+            return;
+        }
+        if (animIndex < 0x10) {
+            func_801E8330((*(u32*)(actorData + 0x12C) >> 13) & 7, 0, D_800ADFB8[animIndex]);
+            animState1 = (u8*)D_800B2346__a - 0x162;
+            *(s16*)(((*(u32*)((u8*)(uintptr_t)*(u32*)(actor + 0x4C) + 0x12C) >> 12) & 0xE) + animState1) = D_800ADFB8[animIndex];
+        } else {
+            animIndex -= 0x10;
+            func_801E8330((*(u32*)(actorData + 0x12C) >> 13) & 7, 0, animIndex);
+            animState2 = (u8*)D_800B2346__a - 0x162;
+            *(s16*)(((*(u32*)((u8*)(uintptr_t)*(u32*)(actor + 0x4C) + 0x12C) >> 12) & 0xE) + animState2) = animIndex;
+        }
+    }
+}
 #else
 void func_800821F4(void* pSpriteData, s16 animIndex, void* pFieldActor) {
     u8* actor = pFieldActor;

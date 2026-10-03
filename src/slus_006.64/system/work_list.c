@@ -574,11 +574,10 @@ void func_8001D2B0(void* pSpriteData, s16 frameIndex) {
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/work_list", func_8001D3F4);
-#else
 // Unlink SpriteData entry from list
+
 void func_8001D3F4(u8* pTarget) {
+#ifdef XENO_PC_PORT
     u8* pPrev = NULL;
     u8* pCur = (u8*)(uintptr_t)D_80059190;
     while (pCur != NULL) {
@@ -597,8 +596,28 @@ void func_8001D3F4(u8* pTarget) {
         pNext = *(u32*)(*(u32*)(pCur + 0x20) + 0x38);
         pCur = (u8*)(uintptr_t)pNext;
     }
-}
+#else
+    void *var_a1;
+    void *var_a2;
+
+    var_a1 = D_80059190;
+    var_a2 = NULL;
+    if (var_a1 != NULL) {
+        do {
+            if (var_a1 == pTarget) {
+                if (var_a2 != NULL) {
+                    *(void **)((s8*)(*(void **)((s8*)(var_a2) + 0x20)) + 0x38) = (void *) *(void **)((s8*)(*(void **)((s8*)(var_a1) + 0x20)) + 0x38);
+                } else {
+                    D_80059190 = *(void **)((s8*)(*(void **)((s8*)(var_a1) + 0x20)) + 0x38);
+                }
+            } else {
+                var_a2 = var_a1;
+            }
+            var_a1 = *(void **)((s8*)(*(void **)((s8*)(var_a1) + 0x20)) + 0x38);
+        } while (var_a1 != NULL);
+    }
 #endif
+}
 
 void func_8001D468(void) {
     u8* pEntry = (u8*)(uintptr_t)D_80059190;

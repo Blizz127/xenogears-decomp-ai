@@ -35,7 +35,20 @@
 extern s32 D_8004F308, D_8004F324, D_800ADC18;
 extern int func_80085C90(int);
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_80078B5C);
+/* func_80078B5C: the unfilled beqz delay slot before the epilogue means v0 is
+ * live at exit: retail defined this as returning int (no return statement).
+ * The TU declares it void, so the definition goes through an asm alias. */
+s32 func_80078B5C__s(void) asm("func_80078B5C");
+
+s32 func_80078B5C__s(void) {
+    rand();
+    if (D_8004F308 == -1) {
+        D_8004F308 = func_80085C90(D_8004F324);
+    }
+    if (D_800ADC18 != 0) {
+        D_800ADC18 -= 1;
+    }
+}
 #else
 void func_80078B5C(void) {
     rand();
@@ -1397,7 +1410,26 @@ void FieldSetMousePosition(int mouseIndex, int xMovement, int yMovement) {
 extern void func_8007AF74(s32 mouseIndex);
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007AE78);
+/* func_8007AE78: returns int in retail (v0 live at the epilogue: the bnez delay
+ * slot stays empty); misc4.c has no earlier declaration, misc2.c declares it void
+ * (harmless).  Controller pointer via ((s8**)&g_pFieldControllerBuffer1)[i]. */
+
+s32 func_8007AE78__ret(s32 mouseIndex, s32* pOut) asm("func_8007AE78");
+
+s32 func_8007AE78__ret(s32 mouseIndex, s32* pOut) {
+    s8* pController;
+
+    func_8007AF74(mouseIndex);
+    pOut[0] = g_FieldMousePositionsX[mouseIndex] / g_FieldMouseSpeedX;
+    pOut[1] = g_FieldMousePositionsY[mouseIndex] / g_FieldMouseSpeedY;
+    pOut[2] = -0x100;
+    pOut[3] = ((s8**)&g_pFieldControllerBuffer1)[mouseIndex][4];
+    pOut[4] = ((s8**)&g_pFieldControllerBuffer1)[mouseIndex][5];
+    pController = ((s8**)&g_pFieldControllerBuffer1)[mouseIndex];
+    if (pController[0] == 0 && pController[1] == 0x12) {
+        pOut[2] = ~pController[3] & 0xC;
+    }
+}
 #else
 void func_8007AE78(s32 mouseIndex, void* out) {
     s32* pOut = out;
