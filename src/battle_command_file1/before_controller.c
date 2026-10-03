@@ -204,7 +204,12 @@ s32 func_battle_command_file1_801E65FC(s32 arg0, void *arg1) {
     return 5;
 }
 
-INCLUDE_ASM("asm/battle_command_file1/nonmatchings/before_controller", func_battle_command_file1_801E6660);
+s32 func_battle_command_file1_801E6660(s32 arg0, void *arg1) {
+    func_battle_command_file1_801E57F8(arg1, 2, *(u8 *)((s8*)(arg1) + 5), 0);
+    *(s16 *)((s8*)(((((*(u8 *)((s8*)(arg1) + 2) << 8) | *(u8 *)((s8*)(arg1) + 1)) & 0xFFFE) + (*(s32*)&D_800D3278))) + 0x394) = (s16) (*(u16 *)((s8*)((*(s32*)&D_800D3278)) + 0x380) * *(u16 *)((s8*)((*(s32*)&D_800D3278)) + 0x382));
+    return 6;
+}
+
 
 s32 func_battle_command_file1_801E66D8(s32 arg0, void *arg1) {
     func_battle_command_file1_801E57F8(arg1, 2, *(u8 *)((s8*)(arg1) + 5), 0);

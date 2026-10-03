@@ -120,7 +120,52 @@ INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A4348);
 INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A43F8);
 INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A44C0);
 INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A4654);
-INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A4820);
+extern u8 D_800C3E38[];
+extern u8 D_800C3D50[];
+extern void *D_800C3EA0__s_void asm("D_800C3EA0");
+extern u8 D_800C3DA0[];
+extern u8* D_800658C8;
+extern void func_800A9FF0(u32 index);
+extern void func_80027D40(void* p);
+extern void GfxLineScrollFree(void* pLineScroll);
+
+void func_800A4820(void) {
+    u8 *var_s0_2;
+    s32 *var_s0;
+    s32 temp_a0;
+    s32 var_s1;
+    s32 var_s1_2;
+
+    func_800A9FF0(0x1F);
+    *(s32 *)D_800C3E38 = 0;
+    var_s1 = 0;
+    if (D_800658C8 != 0) {
+        HeapFree(D_800658C8);
+    }
+    D_800658C8 = 0;
+    var_s0 = (s32 *)D_800C3D50;
+    do {
+        temp_a0 = *var_s0;
+        var_s1 += 1;
+        if (temp_a0 != 0) {
+            func_80027D40((void *)temp_a0);
+        }
+        *var_s0 = 0;
+        var_s0 += 1;
+    } while (var_s1 < 2);
+    var_s1_2 = 0;
+    if (D_800C3EA0__s_void != 0) {
+        HeapFree(D_800C3EA0__s_void);
+    }
+    D_800C3EA0__s_void = 0;
+    var_s0_2 = D_800C3DA0;
+    do {
+        GfxLineScrollFree(var_s0_2);
+        var_s1_2 += 1;
+        var_s0_2 += 0x18;
+    } while (var_s1_2 < 2);
+}
+
 INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A48EC);
 INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A4B3C);
 INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A4CF8);
