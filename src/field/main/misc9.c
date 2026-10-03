@@ -988,10 +988,9 @@ void func_800AC99C(void) {
 
 #undef AC99C_PACK_ADDR
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800ACB90);
-#else
+
 void func_800ACB90(void) {
+#ifdef XENO_PC_PORT
     RECT rect;
     s32 i;
     u8* pBuf;
@@ -1020,8 +1019,34 @@ void func_800ACB90(void) {
     LoadImage(&rect, pBuf);
     DrawSync(0);
     HeapFree(pBuf);
+#else
+    RECT rect;
+    register s32 fill asm("$4");
+    s32 *var_v0;
+    s32 temp_v0;
+    s32 var_v1;
+
+    FieldLoadTIMWithClut(D_800AF784, 0x380, 0x100, 0, 0x1FF, 0, 0);
+    DrawSync(0);
+    HeapFree(D_800AF784);
+    temp_v0 = HeapAlloc(0x200, 1);
+    fill = -1;
+    var_v1 = 0x7F;
+    var_v0 = temp_v0 + 0x1FC;
+    do {
+        *var_v0 = fill;
+        var_v1 -= 1;
+        var_v0--;
+    } while (var_v1 >= 0);
+    rect.x = 0x3C0;
+    rect.y = 0x100;
+    rect.w = 0x40;
+    rect.h = 4;
+    LoadImage(&rect, temp_v0);
+    DrawSync(0);
+    HeapFree(temp_v0);
+#endif
 }
-#endif /* XENO_PC_PORT */
 
 extern s32 D_8004F300;
 extern void* D_800AF76C;

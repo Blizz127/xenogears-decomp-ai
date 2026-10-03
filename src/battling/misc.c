@@ -1328,7 +1328,12 @@ void func_8007BB7C(void) {
 #endif
 
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007BBA0);
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007C100);
+extern u8 D_800926B8[];
+void func_8007C100(void* arg0) {
+    struct Bytes { u8 bytes[4]; };
+    *(struct Bytes*)D_800926B8 = *(struct Bytes*)arg0;
+}
+
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007C124);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007C280);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007C880);
