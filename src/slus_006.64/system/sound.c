@@ -2594,10 +2594,9 @@ void func_8003A344(s32 slot, s32 volume) {
     } while (count != 0);
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A3B8);
-#else
+
 void func_8003A3B8(s32 pData, s32 pitch, s32 steps) {
+#ifdef XENO_PC_PORT
     u8* pBase = (u8*)(uintptr_t)D_800595D8;
     u8* pEntry = pBase + 0x98;
     s32 count = D_80059478;
@@ -2619,8 +2618,42 @@ void func_8003A3B8(s32 pData, s32 pitch, s32 steps) {
         }
         pEntry += 0x158;
     }
-}
+#else
+    s32 temp_a1;
+    s32 var_a2;
+    s32 temp_v0;
+    s32 quotient;
+    register u8 *base asm("$2");
+    s32 var_t1;
+    u16 *var_t0;
+    register void *var_a3 asm("$7");
+
+    var_a2 = steps;
+    temp_a1 = (u32)pitch << 8;
+    base = (u8*)D_800595D8;
+    var_t1 = D_80059478;
+    var_t0 = (u16*)(base + 0x94);
+    var_a3 = base + 0x98;
+    do {
+        if ((*var_t0 & 1) && (*(s32 *)((s8*)(var_a3) + 4) == pData)) {
+            temp_v0 = temp_a1 - *(s16 *)((s8*)(var_a3) + 0x72);
+            if (temp_v0 != 0) {
+                if (var_a2 == 0) {
+                    var_a2 = 1;
+                }
+                quotient = temp_v0 / var_a2;
+                *(s16 *)((s8*)(var_a3) + 0x8A) = temp_a1;
+                *(s16 *)((s8*)(var_a3) + 0x96) = var_a2;
+                *(u16 *)((s8*)(var_a3) + 0) = (u16) (*(u16 *)((s8*)(var_a3) + 0) | 0x20);
+                *(s16 *)((s8*)(var_a3) + 0x88) = (s16) quotient;
+            }
+        }
+        var_a3 += 0x158;
+        var_t1 -= 1;
+        var_t0 += 0xAC;
+    } while (var_t1 != 0);
 #endif
+}
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A450);

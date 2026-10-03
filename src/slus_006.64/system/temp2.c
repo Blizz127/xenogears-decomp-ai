@@ -1983,14 +1983,12 @@ void func_8002DB84(SVECTOR* v0, SVECTOR* v1, SVECTOR* v2, SVECTOR* outNormal) {
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002DC9C);
-#else
 /* Returns the signed component with the largest absolute value (ties favor
  * x, then y). Used by func_8002DB84 as the range-reduction pivot before
  * normalizing a face normal. asm: abs-compare branch tree in func_8002DC9C.s
  * (the "return 1" edges in the tree are unreachable for real inputs). */
 s32 func_8002DC9C(s32 x, s32 y, s32 z) {
+#ifdef XENO_PC_PORT
     s32 ax = (x < 0) ? -x : x;
     s32 ay = (y < 0) ? -y : y;
     s32 az = (z < 0) ? -z : z;
@@ -2002,8 +2000,22 @@ s32 func_8002DC9C(s32 x, s32 y, s32 z) {
         return y;
     }
     return z;
-}
+#else
+    s32 ax = x, ay = y, az = z;
+    s32 result;
+    if (ax < 0) ax = (s32)(0u - (u32)ax);
+    if (ay < 0) ay = (s32)(0u - (u32)ay);
+    if (az < 0) az = (s32)(0u - (u32)az);
+    if (ax >= ay && ax >= az) return x;
+    if (ay >= ax && ay >= az) return y;
+    result = az < ax;
+    if (!result) {
+        result = az < ay;
+        if (!result) return z;
+    }
+    return result;
 #endif
+}
 
 #ifdef XENO_PC_PORT
 /* TIM resource loader: pList[0] = entry count + 1; pList[1..count] is an offset
