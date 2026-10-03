@@ -264,7 +264,29 @@ void func_80089E74(void) {
     *(s32 *)((s8*)(temp_v0) + 8) = 0;
 }
 
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_80089EB4);
+extern s32 D_80091C2C;
+
+void func_80089EB4(void *arg0) {
+    s32 i;
+    u8 *e;
+
+    if (*(void **)((u8 *)arg0 + 4) != NULL) {
+        HeapFree(*(void **)((u8 *)arg0 + 4));
+    }
+    if (*(void **)((u8 *)arg0 + 8) != NULL) {
+        if (D_80091C2C == 0) {
+            i = *(s16 *)((u8 *)arg0 + 2);
+            while (--i != -1) {
+                e = (u8 *)(i * 0x14 + *(s32 *)((u8 *)arg0 + 8));
+                if (*(s32 *)e != 0) {
+                    HeapFree(*(void **)(e + 4));
+                }
+            }
+        }
+        HeapFree(*(void **)((u8 *)arg0 + 8));
+    }
+}
+
 s32 *func_80089F8C(s32 *arg0) {
     arg0[1] = 1;
     arg0[0] = 0;
@@ -374,7 +396,34 @@ void func_8008A254(void) {
 void func_8008A298(s32 arg0) {
     HeapFree(arg0);
 }
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008A2B8);
+void *func_8008A2B8(u16 count) {
+    u8 *obj;
+    u8 *buf;
+    s32 i;
+
+    HeapSetCurrentContentType(0xC);
+    obj = HeapAlloc(0x68, 0);
+    HeapSetCurrentContentType(0xC);
+    buf = HeapAlloc(count * 8, 0);
+    *(u8 **)(obj + 4) = buf;
+    *(u8 **)(obj + 8) = buf + count * 4;
+    obj[0x16] = 1;
+    obj[0x17] = 0xE;
+    *(s32 *)obj = 0;
+    *(s16 *)(obj + 0x14) = count;
+    *(u8 **)(obj + 0xC) = *(u8 **)(obj + 4) + (count * 4 - 4);
+    *(u8 **)(obj + 0x10) = *(u8 **)(obj + 8) + (count * 4 - 4);
+    for (i = 1; i != count;) {
+        i *= 2;
+        if (i > 0x4000) {
+            obj[0x17] = 0xE;
+            break;
+        }
+        obj[0x17]--;
+    }
+    return obj;
+}
+
 
 void func_8008A3A0(void) {
 
@@ -386,7 +435,65 @@ void func_8008A3A8(void *arg0) {
     HeapFree(arg0);
 }
 
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008A3E0);
+/* func_8008A254 allocates and returns this 0x14-byte block; the TU
+ * prototypes it as void, so the call goes through a returning alias. */
+typedef struct {
+    s32 unk0;
+    s32 unk4;
+    s32 unk8;
+    s16 unkC;
+    s16 unkE;
+    s16 unk10;
+    s16 pad12;
+} BattlingXform;
+BattlingXform *func_8008A254__ret(void) asm("func_8008A254");
+
+void *func_8008A3E0(s32 arg0) {
+    u8 *obj;
+    u8 *n0;
+    u8 *n1;
+    u8 *n2;
+    u8 *n3;
+
+    HeapSetCurrentContentType(9);
+    obj = HeapAlloc(0x28C, 0);
+    n0 = obj + 0x14;
+    n1 = obj + 0xB0;
+    n2 = obj + 0x14C;
+    n3 = obj + 0x1E8;
+    *(s32 *)(obj + 0) = 0;
+    *(u8 **)(obj + 4) = n0;
+    *(u8 **)(obj + 8) = n1;
+    *(u8 **)(obj + 0xC) = n2;
+    *(u8 **)(obj + 0x10) = n3;
+    func_80089B44(n0);
+    func_80089B44(n1);
+    func_80089B44(n2);
+    func_80089B44(n3);
+    func_80089E64(*(void **)(obj + 8), func_8008A254__ret());
+    func_80089E64(*(void **)(obj + 0xC), func_8008A254__ret());
+    func_80089E64(*(void **)(obj + 0x10), func_8008A254__ret());
+    *(s32 *)(*(u8 **)(obj + 8) + 0x38) = *(s32 *)(*(u8 **)(obj + 0xC) + 0x38) = *(s32 *)(*(u8 **)(obj + 0x10) + 0x38) = -2;
+    *(s32 *)(*(u8 **)(obj + 8) + 0x34) = 0;
+    *(s32 *)(*(u8 **)(obj + 8) + 0x3C) = 1;
+    *(s32 *)(*(u8 **)(obj + 0xC) + 0x34) = -1;
+    *(s32 *)(*(u8 **)(obj + 0xC) + 0x3C) = -1;
+    *(s32 *)(*(u8 **)(obj + 0x10) + 0x34) = 1;
+    *(s32 *)(*(u8 **)(obj + 0x10) + 0x3C) = -1;
+    (*(BattlingXform **)(*(u8 **)(obj + 8) + 4))->unkC = (*(BattlingXform **)(*(u8 **)(obj + 8) + 4))->unkE = (*(BattlingXform **)(*(u8 **)(obj + 8) + 4))->unk10 = 0x800;
+    (*(BattlingXform **)(*(u8 **)(obj + 0xC) + 4))->unkC = (*(BattlingXform **)(*(u8 **)(obj + 0xC) + 4))->unkE = (*(BattlingXform **)(*(u8 **)(obj + 0xC) + 4))->unk10 = 0;
+    **(BattlingXform **)(*(u8 **)(obj + 0x10) + 4) = **(BattlingXform **)(*(u8 **)(obj + 0xC) + 4);
+    *(s32 *)(obj + 0x284) = arg0;
+    obj[0x28A] = 0;
+    obj[0x289] = 0;
+    obj[0x288] = 0;
+    obj[0x28A] = 0x10;
+    obj[0x289] = 0x10;
+    obj[0x288] = 0x10;
+    func_8008ABAC(obj + 8);
+    return obj;
+}
+
 
 void func_8008A5BC(void *arg0) {
     HeapFree(*(void **)((s8*)(arg0) + 0xB4));
@@ -461,7 +568,48 @@ void func_8008AE1C(void *arg0) {
     AddPrim((void *)D_80092938, arg0 + ((D_800928A0 * 0xC) + 0x18));
 }
 
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008AF6C);
+/* Retail returns arg0 (v0 = s0 at the end), but the TU prototypes it as
+ * `void func_8008AF6C(s32)`. The definition is given a C name of its own
+ * bound to the retail symbol; alternatively change that TU prototype to
+ * `void *func_8008AF6C(u8 *)` and define it under its own name. */
+void *func_8008AF6C__ret(u8 *arg0) asm("func_8008AF6C");
+
+/* Relocates a loaded block: every stored pointer is rebased by the distance
+ * between its old load address (+0x1C) and arg0. */
+void *func_8008AF6C__ret(u8 *arg0) {
+    s32 delta;
+    s32 sub;
+    s32 *table;
+    u32 i;
+    s32 *p;
+
+    delta = arg0 - *(u8 **)(arg0 + 0x1C);
+    sub = *(s32 *)(arg0 + 0xC);
+    *(u8 **)(arg0 + 0x1C) = arg0;
+    *(s32 *)(arg0 + 0) += delta;
+    *(s32 *)(arg0 + 4) += delta;
+    *(s32 *)(arg0 + 0x10) += delta;
+    *(s32 *)(arg0 + 0x14) += delta;
+    *(s32 *)(arg0 + 0x18) += delta;
+    *(s32 *)(arg0 + 0x20) += delta;
+    *(s32 *)(arg0 + 0x24) += delta;
+    if (sub != 0) {
+        *(s32 *)(arg0 + 0xC) = sub + delta;
+        func_8008A040(sub + delta);
+    }
+    table = *(s32 **)(arg0 + 8);
+    if (table != NULL) {
+        *(s32 **)(arg0 + 8) = (s32 *)((u8 *)table + delta);
+        for (i = 1; i < **(s32 **)(arg0 + 8) + 1; i++) {
+            p = (s32 *)(i * 4 + *(s32 *)(arg0 + 8));
+            if (*p != 0) {
+                *p += delta;
+            }
+        }
+    }
+    return arg0;
+}
+
 
 void func_8008B070(s32 arg0) {
     s32 temp_v0;
@@ -567,7 +715,25 @@ void func_8008C0BC(void *arg0, s32 arg1) {
     *(s32 *)((s8*)(arg0) + 4) = arg1;
 }
 
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008C0CC);
+typedef struct {
+    s32 type;
+    s32 *src;
+    s32 unk8;
+    s32 unkC;
+} BattlingTreeEntry;
+
+void *func_8008C0CC(s32 *arg0) {
+    BattlingTreeEntry *entry;
+
+    HeapSetCurrentContentType(7);
+    entry = HeapAlloc(0x10, 2);
+    entry->type = *arg0;
+    entry->src = arg0;
+    entry->unk8 = D_80092828;
+    entry->unkC = 0;
+    return entry;
+}
+
 
 void func_8008C120(void *arg0) {
     s32 temp_a0_2;
@@ -672,7 +838,35 @@ void func_8008CD54(void) {
 
 }
 
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008CD5C);
+/* GPU TILE primitive (libgpu TILE layout): tag, r0 g0 b0 code, x0 y0, w h. */
+typedef struct {
+    u32 tag;
+    u8 r0;
+    u8 g0;
+    u8 b0;
+    u8 code;
+    s16 x0;
+    s16 y0;
+    s16 w;
+    s16 h;
+} BattlingTile;
+
+void func_8008CD5C(void *arg0, void *arg1) {
+    BattlingTile *tile;
+    s16 h;
+
+    tile = (BattlingTile *)((u8 *)arg0 + 0x10);
+    *((u8 *)tile + 3) = 3;
+    tile->code = 0x62;
+    h = rand() % 2 + 2;
+    tile->h = h;
+    tile->w = h * 2;
+    tile->r0 = *((u8 *)arg1 + 0x74);
+    tile->g0 = *((u8 *)arg1 + 0x75);
+    tile->b0 = *((u8 *)arg1 + 0x76);
+    tile[1] = tile[0];
+}
+
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008CE0C);
 
 void func_8008CED4(void) {
@@ -680,7 +874,17 @@ void func_8008CED4(void) {
 }
 
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008CEDC);
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008CF30);
+long RotTransPers();
+void func_80031870(u32 *pPrim, u32 nextAddr);
+
+void func_8008CF30(void *arg0, u32 *ot) {
+    s32 flag;
+    u8 *prim;
+
+    prim = (u8 *)arg0 + (D_800928A0 * 0xC + 0x10);
+    func_80031870(ot + (RotTransPers(arg0, prim + 8, &flag, &flag) >> 2), (u32)prim);
+}
+
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008CF9C);
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008CFC4);
 
@@ -698,13 +902,161 @@ void func_8008D0A4(void *arg0, void *arg1) {
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008D14C);
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008D208);
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008D304);
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008D3F4);
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008D580);
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008D5C0);
+extern u8 D_80091C74[];
+extern s32 D_80091CC4[];
+extern s32 D_80091CDC;
+
+void *func_8008D3F4(s32 type, s32 arg1) {
+    u8 *obj;
+    s32 *rec;
+
+    HeapSetCurrentContentType(0x15);
+    obj = HeapAlloc(0x7C, 0);
+    *(u16 *)(obj + 0x24) = 0x1000;
+    *(u16 *)(obj + 0x26) = 0x1000;
+    *(u16 *)(obj + 0x28) = 0x1000;
+    *(s16 *)(obj + 0x44) = 1;
+    *(s16 *)(obj + 0x4E) = arg1;
+    *(s16 *)(obj + 2) = 0;
+    *(s16 *)(obj + 4) = 0;
+    *(s16 *)(obj + 6) = 0;
+    *(s16 *)(obj + 0x14) = 0;
+    *(s16 *)(obj + 0x16) = 0;
+    *(s16 *)(obj + 0x18) = 0;
+    *(s16 *)(obj + 0x34) = 0;
+    *(s16 *)(obj + 0x36) = 0;
+    *(s16 *)(obj + 0x38) = 0;
+    *(s16 *)(obj + 0x3C) = 0;
+    *(s16 *)(obj + 0x3E) = 0;
+    *(s16 *)(obj + 0x40) = 0;
+    *(s16 *)(obj + 0) = 0;
+    *(s16 *)(obj + 0x46) = 0;
+    *(s16 *)(obj + 0x48) = 0x100;
+    *(s16 *)(obj + 0x4A) = 0x100;
+    *(s16 *)(obj + 0x2C) = (s16)*(u16 *)(obj + 0x24) / 2;
+    *(s16 *)(obj + 0x2E) = (s16)*(u16 *)(obj + 0x26) / 2;
+    *(s16 *)(obj + 0x30) = (s16)*(u16 *)(obj + 0x28) / 2;
+    *(s32 *)(obj + 0x5C) = D_80091CC4[(s16)arg1];
+    *(s32 *)(obj + 0x60) = D_80091CDC;
+    *(s32 *)(obj + 0x10) = 0;
+    *(s16 *)(obj + 0x66) = type;
+    *(s16 *)(obj + 0x64) = 0;
+    *(s16 *)(obj + 0x6A) = 100;
+    obj[0x74] = 0xFF;
+    obj[0x75] = 0xFF;
+    obj[0x76] = 0xFF;
+    *(s16 *)(obj + 0x68) = 0;
+    rec = (s32 *)(D_80091C74 + *(s16 *)(obj + 0x66) * 16);
+    *(s16 *)(obj + 0xC) = rec[3];
+    *(s32 *)(obj + 0x50) = rec[1];
+    *(s32 *)(obj + 0x54) = rec[2];
+    *(s32 *)(obj + 0x58) = rec[0];
+    return obj;
+}
+
+void func_8008D580(void *arg0) {
+    s32 i;
+    u8 *p;
+
+    p = *(u8 **)((s8*)(arg0) + 0x10);
+    for (i = 0; i < *(s16 *)((s8*)(arg0) + 0xA); i++) {
+        *(s16 *)(p + 6) = 0;
+        p += *(s16 *)((s8*)(arg0) + 0xC);
+    }
+}
+
+/* The 8-byte `vars` area in retail's frame is unused stack. A top-tested
+ * `for (i = 0; i < n; i++)` produces it too (a dead CCmode pseudo gets a
+ * stack slot), but that form flips the s1/s2 allocation of arg0 and i, so
+ * the slot is reproduced with an unused local instead. */
+void func_8008D5C0(void *arg0, s32 arg1) {
+    void (*init)(void *, void *);
+    s32 i;
+    u8 *p;
+    s32 unused[2];
+
+    if (*(void **)((u8 *)arg0 + 0x10) != NULL) {
+        HeapDelayedFree(*(void **)((u8 *)arg0 + 0x10), 3);
+    }
+    *(s16 *)((u8 *)arg0 + 0xA) = arg1;
+    HeapSetCurrentContentType(0x14);
+    p = HeapAlloc(*(s16 *)((u8 *)arg0 + 0xC) * *(s16 *)((u8 *)arg0 + 0xA), 0);
+    init = *(void (**)(void *, void *))((u8 *)arg0 + 0x58);
+    i = 0;
+    *(void **)((u8 *)arg0 + 0x10) = p;
+    if (*(s16 *)((u8 *)arg0 + 0xA) > 0) {
+        do {
+            init(p, arg0);
+            i++;
+            *(s16 *)(p + 6) = 0;
+            p += *(s16 *)((u8 *)arg0 + 0xC);
+        } while (i < *(s16 *)((u8 *)arg0 + 0xA));
+    }
+}
+
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008D680);
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008D980);
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008D9F0);
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008DA48);
+void func_8008D9F0(void *arg0) {
+    s32 v;
+
+    if (*(s16 *)((s8*)(arg0) + 2) > 0) {
+        v = -*(s16 *)((s8*)(arg0) + 0xA) / 2;
+        *(s16 *)((s8*)(arg0) + 0xA) = v;
+        v = (s16)v;
+        if (v < 0) {
+            v = -v;
+        }
+        if (v < 8) {
+            *(s16 *)((s8*)(arg0) + 6) = 0;
+        }
+    }
+}
+
+extern s32 D_8009282C;
+extern s32 D_80092830;
+extern s32 D_80096FA8;
+extern s32 D_80096FAC;
+extern s32 D_80096FB0;
+
+void func_8008DA48(void *arg0, s32 arg1) {
+    void (*update)(void *, s32);
+    s32 i;
+    s32 v;
+    s32 unused[10];
+    u8 *p;
+
+
+    D_8009282C = 0x1F800000;
+    D_80092830 = 0x1F800030;
+    *(s16 *)0x1F800030 = D_80096FA8;
+    *(s16 *)0x1F800032 = D_80096FAC;
+    *(s16 *)0x1F800034 = D_80096FB0;
+    p = *(u8 **)((u8 *)arg0 + 0x10);
+    update = *(void (**)(void *, s32))((u8 *)arg0 + 0x54);
+    for (i = 0; i < *(s16 *)((u8 *)arg0 + 0xA); i++) {
+        if (*(s16 *)(p + 6) != 0) {
+            *(s16 *)(p + 6) -= 1;
+            *(u16 *)(p + 0xA) += *(u16 *)((u8 *)arg0 + 0);
+            *(u16 *)(p + 0) += *(u16 *)(p + 8);
+            *(u16 *)(p + 2) += *(u16 *)(p + 0xA);
+            *(u16 *)(p + 4) += *(u16 *)(p + 0xC);
+            if (*(s16 *)(p + 2) > 0) {
+                v = -*(s16 *)(p + 0xA) * 2 / 3;
+                *(s16 *)(p + 0xA) = v;
+                v = (s16)v;
+                if (v < 0) {
+                    v = -v;
+                }
+                if (v < 4) {
+                    *(s16 *)(p + 6) = 0;
+                }
+            }
+            update(p, arg1);
+        }
+        p += *(s16 *)((u8 *)arg0 + 0xC);
+    }
+}
+
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008DBC0);
 extern void *D_80092834;
 void *func_8008D3F4(s32, s32);
@@ -1018,7 +1370,52 @@ void func_8008FC7C(void *arg0) {
     func_8008F7B8(temp_a0);
 }
 
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008FCC8);
+void func_80090504__2arg(void *, s32) asm("func_80090504");
+
+void func_8008FCC8(void *arg0, void *arg1) {
+    *(s16 *)((u8 *)arg1 + 0xC) = 0;
+    *((u8 *)arg1 + 0xE) = 0;
+    *(s16 *)((u8 *)arg1 + 0xA) = 0;
+    if (func_8008FACC(arg0, arg1) != 0) {
+        return;
+    }
+    if (D_8009284C < 0x200) {
+        if (*(s32 *)((u8 *)arg1 + 0x2C) & 0x1000) {
+            func_80090174(arg0);
+        } else if (*((u8 *)arg1 + 0xF) != 0) {
+            func_80090894(arg0, 1);
+        }
+        if (*(*(u8 **)((u8 *)arg0 + 0xD8) + 0xC5) == 2) {
+            func_8008FBD8(arg0, arg1);
+        }
+        if (*(s16 *)((u8 *)arg0 + 0x1668) + 2 < *(s16 *)((u8 *)arg1 + 0x30)) {
+            func_80090174(arg0);
+        }
+    }
+    if (*(s32 *)(*(u8 **)((u8 *)arg0 + 0xD8) + 0x8F4) < 0x400) {
+        func_80090894(arg0, 3);
+        *((u8 *)arg1 + 0xE) = 1;
+    }
+    switch (*(s32 *)((u8 *)arg1 + 0x20)) {
+    case 0:
+        if (--*(s16 *)((u8 *)arg1 + 4) < 0) {
+            *(s32 *)((u8 *)arg1 + 0x20) += 1;
+        }
+        if (*(*(u8 **)((u8 *)arg0 + 0xD8) + 0xC4) == 0 && (*(s32 *)((u8 *)arg1 + 0x2C) & 0x1000)) {
+            if (func_8008F5B4(arg0, 0) != 0) {
+                func_8008F900(arg0);
+            }
+            func_80090504__2arg(arg0, 0);
+        }
+        break;
+    case 1:
+        if (func_8008F530(arg0, 0) != 0) {
+            func_80090504__2arg(arg0, 0);
+        }
+        break;
+    }
+}
+
 
 void func_8008FE80(s32 arg0) {
     s32 temp_a0;
@@ -1040,9 +1437,39 @@ void func_8008FE80(s32 arg0) {
     }
 }
 
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008FF24);
+void func_8008FF24(void *arg0, void *arg1) {
+
+    if (*(u8 *)((s8*)(*(void **)((s8*)(arg0) + 0xD8)) + 0xC4) == 4) {
+        if ((*(s32 *)((s8*)(arg1) + 0x2C) & 0xA00) == 0x200) {
+            func_8008F900(arg0);
+            *(s16 *)((s8*)(arg1) + 4) = 3;
+        }
+    } else {
+        func_8008FE80((s32)arg0);
+        *(s16 *)((s8*)(arg1) + 4) = (2 - *(u8 *)((s8*)(arg1) + 0xF)) * 20 + (s16)(rand() % 20 + 1);
+    }
+    func_8008F7B8(arg1);
+}
+
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008FFEC);
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_80090174);
+void func_80090174(void *arg0) {
+    u8 *ai;
+
+    ai = *(u8 **)((u8 *)arg0 + 0x15FC);
+    ai[8] = 1;
+    func_8008FF24(arg0, ai);
+    if (ai[0xF] >= 2) {
+        ai[9] = rand() % 8 + 1;
+    } else if (ai[0xF] != 0) {
+        ai[9] = rand() % 6 + 1;
+    } else {
+        ai[9] = rand() % 4 + 1;
+    }
+    *(s16 *)(ai + 0xC) = 0;
+    ai[0xE] = 0;
+    func_8008F7B8(ai);
+}
+
 
 s32 func_80090258(void *arg0, s32 arg1) {
     s32 var_v0;
@@ -1156,6 +1583,35 @@ void func_80090CC0(void *arg0) {
     func_80076424(arg0);
 }
 
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_80090E10);
+void func_80090E10(void *arg0) {
+    u8 *ai;
+
+    if (*(s32 *)((u8 *)arg0 + 0xD0) & 0x40) {
+        ai = *(u8 **)((u8 *)arg0 + 0x15FC);
+        ai[0xF] = D_80099D98[0];
+        switch (ai[8]) {
+        case 0:
+            func_8008FCC8(arg0, ai);
+            break;
+        case 1:
+            func_8009031C(arg0, ai);
+            break;
+        case 2:
+            func_80090990(arg0, ai);
+            break;
+        case 3:
+            func_80090580(arg0, ai);
+            break;
+        }
+        if (ai[0xE] != 0) {
+            *(s32 *)((u8 *)arg0 + 0xD0) |= 0x8000;
+        }
+        if (*(s32 *)(ai + 0x2C) & 0x2000) {
+            *(s32 *)((u8 *)arg0 + 0xD0) |= 2;
+        }
+        func_8008EE1C(arg0, *(s16 *)(ai + 0xA), *(s16 *)(ai + 0xC));
+    }
+}
+
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_80090F38);
 #endif
