@@ -40,7 +40,9 @@ the main executable `slus_006.64`, `field`, `menu`, `shop_menu`, `member_change_
 `movie`, `battle_command_file1` and `world_map`. Every retail function is either byte-exact C or the
 retail assembly (`INCLUDE_ASM`), and the linked result is byte-identical. The pins are never edited.
 
-**Byte-exact matched C: 2,651 / 4,464 functions (59.4%), 381,600 / 1,383,684 code bytes (27.6%).**
+**Byte-exact matched C: 2,704 / 4,464 functions (60.57%), 388,028 / 1,383,684 code bytes (28.04%).**
+Fresh baseline: source `4234d0f6`, runner census on 2026-10-03; see
+[the separated 85% goal metrics](docs/evidence/native-goal-85-20261003.md).
 This is the objdiff report (`make report`, then `tools/scripts/progress_dashboard.py`), built with
 `-DSKIP_ASM`, so a function still carried as `INCLUDE_ASM` counts toward the total and not the matched
 share. objdiff alone is not proof: it can score 100% on a function whose relocated stores are swapped,
@@ -52,16 +54,16 @@ matches and never count in this headline. The current list and reasons are in
 
 | Target | Matched C functions | Matched C bytes | rom-check |
 |---|--:|--:|:-:|
-| Main executable (`slus_006.64`) | 910 / 1,223 | 104,108 / 218,072 | PASS |
-| Field | 638 / 884 | 99,776 / 253,052 | PASS |
+| Main executable (`slus_006.64`) | 911 / 1,223 | 104,244 / 218,072 | PASS |
+| Field | 644 / 884 | 100,504 / 253,052 | PASS |
 | Menu | 175 / 307 | 33,180 / 148,360 | PASS |
 | Shop menu | 104 / 118 | 37,460 / 53,008 | PASS |
 | Member-change menu | 67 / 67 | 24,936 / 24,936 | PASS |
-| Battle | 430 / 857 | 51,332 / 332,316 | PASS |
-| Battling | 130 / 483 | 9,292 / 139,692 | PASS |
+| Battle | 431 / 857 | 51,548 / 332,316 | PASS |
+| Battling | 160 / 483 | 12,376 / 139,692 | PASS |
 | Battle command file 1 | 57 / 105 | 4,564 / 18,940 | PASS |
 | Movie | 15 / 34 | 2,872 / 26,972 | PASS |
-| World map | 125 / 386 | 14,080 / 168,336 | PASS |
+| World map | 140 / 386 | 16,344 / 168,336 | PASS |
 
 Earlier versions of this section reported "2,557 matched C bodies (77.6%)" and "field 878/878". That
 count treated any C body without `INCLUDE_ASM` as matched without checking its bytes, and several
