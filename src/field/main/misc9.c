@@ -237,7 +237,16 @@ void func_800AAF80(void) {
 extern void* g_pGameState;
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800AB328);
+s32 func_800AB328__ret(s32 arg0) asm("func_800AB328");
+s32 func_800AB328__ret(s32 arg0) {
+    s32 i;
+    u8 *p;
+    for (i = 0; i < 0x96; i++) {
+        p = (u8 *)g_pGameState + i;
+        if (p[0x2026] == arg0 && p[0x1F90] != 0) return 0;
+    }
+    return -1;
+}
 #else
 s32 func_800AB328(u8 characterId) {
     u8* pGS = (u8*)g_pGameState;
@@ -552,7 +561,20 @@ void func_800ABEC8(void) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800ABFDC);
+s32 func_800ABFDC__ret(void *arg0, s32 *arg1) asm("func_800ABFDC");
+s32 func_800ABFDC__ret(void *arg0, s32 *arg1) {
+    u16 code;
+    s32 ret;
+    code = *(u8 *)((u8 *)arg0 + 1) | (*(u8 *)arg0 << 8);
+    if ((u16)(code + 0x7AC0) >= 0x340) {
+        *arg1 = 0;
+        ret = Krom2RawAdd(code);
+    } else {
+        *arg1 = 1;
+        ret = code - 0x8540;
+    }
+    return ret;
+}
 #else
 intptr_t func_800ABFDC(u8* pChar, s32* pOutIndex) {
     u16 code = (u16)((u16)pChar[0] << 8) | pChar[1];
@@ -571,7 +593,62 @@ intptr_t func_800ABFDC(u8* pChar, s32* pOutIndex) {
 #endif /* XENO_PC_PORT */
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800AC03C);
+void func_800AC03C__ret(u8 *arg0, u16 *arg1) asm("func_800AC03C");
+void func_800AC03C__ret(u8 *arg0, u16 *arg1) {
+    s32 var_a3;
+    u8 fill;
+    s32 var_a3_2;
+    s32 var_v1;
+    s32 var_v1_2;
+    u8 *var_a0;
+    u8 *var_a2;
+    u8 *var_a2_2;
+    s8 temp_v0;
+    s8 temp_v0_2;
+    u16 *var_a1;
+
+    var_a0 = arg0;
+    var_a1 = arg1;
+    var_a3 = 0;
+    if (var_a1 == (u16 *)-1) {
+        fill = 0xFF;
+        var_a3 = 0x11F;
+        do {
+            *var_a0 = fill;
+            var_a3 -= 1;
+            var_a0 += 1;
+        } while (var_a3 >= 0);
+        return;
+    }
+    do {
+        var_v1 = 7;
+        var_a2 = var_a0;
+loop_5:
+        var_a2 += 1;
+        var_a0 += 1;
+        temp_v0 = -(((s32) *var_a1 >> var_v1) & 1);
+        var_v1 -= 1;
+        *(u8 *)((s8*)(var_a2) + -1) = temp_v0;
+        if (var_v1 >= 0) {
+            goto loop_5;
+        }
+        var_v1_2 = 0xF;
+        var_a2_2 = var_a0;
+loop_7:
+        var_a2_2 += 1;
+        temp_v0_2 = -(((s32) *var_a1 >> var_v1_2) & 1);
+        var_v1_2 -= 1;
+        *(u8 *)((s8*)(var_a2_2) + -1) = temp_v0_2;
+        var_a0 += 1;
+        if (var_v1_2 >= 8) {
+            goto loop_7;
+        }
+        *var_a0++ = 0;
+        *var_a0++ = 0;
+        var_a3 += 1;
+        var_a1 += 1;
+    } while (var_a3 < 0xF);
+}
 #else
 void func_800AC03C(u8* pOut, u16* pData, s32 count) {
     s32 i;

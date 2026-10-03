@@ -234,10 +234,9 @@ void SystemFreeData(void) {
 }
 
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", SystemInitializeFont);
-#else
+
 void SystemInitializeFont(void* pSystemFont) {
+#ifdef XENO_PC_PORT
     if (pSystemFont == NULL) {
         HeapSetCurrentContentType(0x20);
         return;
@@ -252,8 +251,26 @@ void SystemInitializeFont(void* pSystemFont) {
     D_80059358 = *(u16*)((u8*)pSystemFont + 0x0A);
     D_8005935C = (u32)(uintptr_t)((u8*)pSystemFont + *(u16*)((u8*)pSystemFont + 0x02));
     D_80059364 = *(u16*)((u8*)pSystemFont + 0x0C);
-}
+#else
+    s32 offset;
+    s32 count;
+    if (pSystemFont == NULL) {
+        HeapSetCurrentContentType(0x20);
+        return;
+    }
+    HeapPinBlock(pSystemFont);
+    g_SystemFontFile = pSystemFont;
+    D_8005935C = pSystemFont;
+    offset = *(u16 *)((u8 *)pSystemFont + 2);
+    D_8005934C = (s32) *(u16 *)((s8*)(pSystemFont) + 4);
+    D_80059350 = (s32) *(u16 *)((s8*)(pSystemFont) + 6);
+    D_80059354 = (s32) *(u16 *)((s8*)(pSystemFont) + 8);
+    D_80059358 = (s32) *(u16 *)((s8*)(pSystemFont) + 0xA);
+    count = *(u16 *)((u8 *)pSystemFont + 0xC);
+    D_8005935C = pSystemFont + offset;
+    D_80059364 = count;
 #endif
+}
 
 void SystemInitializeData(void* pSystemData) {
     if (pSystemData == 0) {

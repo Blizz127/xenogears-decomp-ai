@@ -1285,7 +1285,21 @@ void SoundSetupCdMix(s32 level) {
     CdMix(&g_SoundCdRomAttenuation);
 }
 #else
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", SoundSetupCdMix);
+void SoundSetupCdMix(s32 level) {
+    register u8 left asm("$2");
+    g_SoundVolumeController.unk_field2 = level;
+    if (g_SoundControlFlags & 0x700) {
+        left = level;
+        level = 0;
+    } else {
+        level >>= 1;
+        left = level;
+    }
+    g_SoundCdRomAttenuation.val0 = g_SoundCdRomAttenuation.val2 = left;
+    g_SoundCdRomAttenuation.val1 = g_SoundCdRomAttenuation.val3 = level;
+    CdMix(&g_SoundCdRomAttenuation);
+}
+
 #endif
 
 //----------------------------------------------------------------------------------------------------------------------
@@ -2472,10 +2486,8 @@ void func_8003A2DC(void) {}
 
 extern s32 D_80059478;
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A2E4);
-#else
 void func_8003A2E4(s32 pData, s32 volume) {
+#ifdef XENO_PC_PORT
     u8* pBase = (u8*)(uintptr_t)D_800595D8;
     u8* pEntry = pBase + 0x96;
     s32 count = D_80059478;
@@ -2488,8 +2500,27 @@ void func_8003A2E4(s32 pData, s32 volume) {
         }
         pEntry += 0x158;
     }
-}
+#else
+    AudioElement *el;
+    register u8 *base asm("$2");
+    register u16 *st asm("$3");
+    s32 count;
+    count = D_80059478;
+    volume <<= 8;
+    base = (u8 *)D_800595D8;
+    el = (AudioElement *)(base + 0x94);
+    st = (u16 *)(base + 0x96);
+    do {
+        if ((el->active_flag & 1) && *(s32 *)(st + 3) == pData) {
+            st[0x3A] = volume;
+            st[0] = 0x100;
+        }
+        el = (AudioElement *)((u8 *)el + 0x158);
+        count--;
+        st += 0xAC;
+    } while (count != 0);
 #endif
+}
 
 // SFX: set the expression volume (el+0x76) of an active field-slot pair;
 // status = 0x100 (volume-dirty).
@@ -2574,10 +2605,8 @@ void func_8003A450(s32 channel, s32 pitch, s32 steps) {
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A4FC);
-#else
 void func_8003A4FC(s32 pData, s32 pan) {
+#ifdef XENO_PC_PORT
     u8* pBase = (u8*)(uintptr_t)D_800595D8;
     u8* pEntry = pBase + 0x96;
     s32 count = D_80059478;
@@ -2590,8 +2619,27 @@ void func_8003A4FC(s32 pData, s32 pan) {
         }
         pEntry += 0x158;
     }
-}
+#else
+    AudioElement *el;
+    register u8 *base asm("$2");
+    register u16 *st asm("$3");
+    s32 count;
+    count = D_80059478;
+    pan <<= 8;
+    base = (u8 *)D_800595D8;
+    el = (AudioElement *)(base + 0x94);
+    st = (u16 *)(base + 0x96);
+    do {
+        if ((el->active_flag & 1) && *(s32 *)(st + 3) == pData) {
+            st[0x39] = pan;
+            st[0] = 0x100;
+        }
+        el = (AudioElement *)((u8 *)el + 0x158);
+        count--;
+        st += 0xAC;
+    } while (count != 0);
 #endif
+}
 
 // SFX: set the pan (el+0x74) of an active field-slot pair; status = 0x100.
 void func_8003A55C(s32 slot, s32 pan) {
@@ -2903,10 +2951,8 @@ void func_8003ABF0(void* source, void* output) {
     *(u16*)((u8*)output + 8) = largeUnits;
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003AC58);
-#else
 u16* func_8003AC58(void* pManager) {
+#ifdef XENO_PC_PORT
     u8* pFlags = (u8*)pManager + 0x94;
     u16 count = *(u8*)((u8*)pManager + 0x14);
     u16* pOutput = (u16*)((u8*)pManager + 0x30);
@@ -2923,8 +2969,37 @@ u16* func_8003AC58(void* pManager) {
     if (minVal == 0xFFFF) minVal = 0;
     *pOutput = minVal;
     return pOutput;
-}
+#else
+    u16 *var_a0;
+    u16 *out;
+    u16 *var_a2;
+    u16 var_a1;
+    u16 var_v1;
+    u16 flags;
+    register u32 step asm("$8");
+
+    var_a2 = pManager + 0x94;
+    var_v1 = *(u8 *)((s8*)(pManager) + 0x14);
+    out = pManager + 0x30;
+    var_a1 = 0xFFFF;
+    step = 0xFFFF;
+    var_a0 = pManager + 0xB4;
+    do {
+        flags = *var_a2;
+        var_a2 = (u16 *)((u8 *)var_a2 + 0x158);
+        if ((flags != 0) && ((u16) *var_a0 < var_a1)) {
+            var_a1 = *var_a0;
+        }
+        var_v1 += step;
+        var_a0 = (u16 *)((u8 *)var_a0 + 0x158);
+    } while (var_v1 & 0xFFFF);
+    if ((var_a1 & 0xFFFF) == 0xFFFF) {
+        var_a1 = 0;
+    }
+    *out = var_a1;
+    return out;
 #endif
+}
 
 /* Returns the data block of the audio manager pTarget (or of the list head
  * when pTarget is NULL: retail skips the search then), or NULL when pTarget
