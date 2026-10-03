@@ -2384,7 +2384,18 @@ void func_800851D4(void) {
     MainLoop(0);
 }
 
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80085264);
+s32 func_80085264(void) {
+    s32 result = 0;
+    if (D_80092794 == 5 || D_80092794 == 7) {
+        result = 1;
+    } else if (D_80092794 == 1) {
+        if (D_800928C8 == 4 && *(u8*)&D_8005061C == 0) {
+            result = 1;
+        }
+    }
+    return result;
+}
+
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_800852C4);
 
 void func_80085E34(void *arg0, void *arg1) {
