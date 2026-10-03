@@ -3409,9 +3409,12 @@ void FieldActorWorldToScreenPosition(s32 actorIndex, s32* outX, s32* outY) {
 
 /* Allocate a free positional SFX slot and start the voice with distance pan. */
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800862CC);
-#else
+/* func_800862CC: slot2 = i * 2 at the top of the hit (its own pseudo, so the
+ * func_80039F9C slot argument is recomputed from i), pan computed before the
+ * func_8003A20C call, explicit (s16) casts on the slot/volume arguments. */
+#endif
 void func_800862CC(s32 soundId, s32 mode, s16 deltaX, s32 distance, s32 actorIndex) {
+#ifdef XENO_PC_PORT
     s32 i;
     s32 volume;
     s32 screenX;
@@ -3440,8 +3443,35 @@ void func_800862CC(s32 soundId, s32 mode, s16 deltaX, s32 distance, s32 actorInd
             break;
         }
     }
+#else
+    s32 i;
+    s32 volume;
+    s32 screenX;
+    s32 screenY;
+    s32 pan;
+    s32 slot2;
+
+    for (i = 0; i < 3; i++) {
+        if (D_800AFE8A[i * 3] == 0xFFFF) {
+            slot2 = i * 2;
+            D_800AFE8A[i * 3] = soundId;
+            D_800AFE88[i * 3] = actorIndex;
+            func_80086078(distance, &volume, mode);
+            FieldActorWorldToScreenPosition(actorIndex, &screenX, &screenY);
+            if (screenX >= 0x141) {
+                screenX = 0x13F;
+            }
+            if (screenX < 0) {
+                screenX = 0;
+            }
+            pan = (screenX * 0x6666) >> 16;
+            func_8003A20C(slot2);
+            func_80039F9C(soundId, (s16)(i * 2), (s16)volume, pan);
+            return;
+        }
+    }
+#endif
 }
-#endif /* XENO_PC_PORT */
 
 /* Release the SPU voice channel bound to actor `actorIdx` in the 3-slot
  * actor->channel table (same table as func_80086470/func_800864F0):
@@ -3520,9 +3550,15 @@ extern void func_8003A20C(s32);
 // (same shape as func_800864B4) and release any of the 4 low D_800B233C
 // channel-mask bits that are still clear, one SPU voice-release call per bit.
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800864F0);
-#else
+/* func_800864F0: first loop is the func_800864B4 byte-offset giv; D_800B233C
+ * is not gp-small in retail (address held in s1 across the calls) and is re-read
+ * from memory each iteration, so it goes through an incomplete-array alias. */
+extern u16 D_800B233C__a[] asm("D_800B233C");
+extern void func_8003A20C(s32);
+
+#endif
 void func_800864F0(void) {
+#ifdef XENO_PC_PORT
     s32 i;
     s16 flags;
 
@@ -3539,8 +3575,23 @@ void func_800864F0(void) {
         flags = (u16)flags >> 1;
     }
     D_800B233C = flags;
+#else
+    s32 i;
+    s32 offset;
+
+    for (i = 0; i < 3; i++) {
+        offset = i * 6;
+        *(u16*)((u8*)D_800AFE8A + offset) = 0xFFFF;
+        *(u16*)((u8*)D_800AFE88 + offset) = 0xFFFF;
+    }
+    for (i = 0; i < 4; i++) {
+        if (!(D_800B233C__a[0] & 1)) {
+            func_8003A20C(i * 2);
+        }
+        D_800B233C__a[0] = D_800B233C__a[0] >> 1;
+    }
+#endif
 }
-#endif /* XENO_PC_PORT */
 
 extern s32 D_800ADBFC;
 extern long FieldGetVec3Magnitude(long, long, long);
@@ -3673,9 +3724,14 @@ extern s16 D_800B2326[];
 extern s16 D_800B2328[];
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80086A1C);
-#else
+/* func_80086A1C: the three outputs are D_800B223C[idx], [idx+3], [idx+6]; retail
+ * addresses them from the D_800B2318 base register (s5-0xDC, -0xD6, -0xD0), so
+ * the source indexed that same symbol with negative halfword offsets.  The step
+ * D_800B2318[idx] is written inline (no pointer temp) so the idx*8 offset is
+ * computed first. */
+#endif
 void func_80086A1C(s32 idx, u8* pSub) {
+#ifdef XENO_PC_PORT
     s32 step = D_800B2318[idx];
     s32 dx, dy, dz, mag;
     s32 remainder;
@@ -3699,8 +3755,20 @@ void func_80086A1C(s32 idx, u8* pSub) {
     *pOutX = (s16)((dx * remainder) >> 16);
     *pOutY = (s16)((dy * remainder) >> 16);
     *pOutZ = (s16)((dz * remainder) >> 16);
+#else
+    s32 dx, dy, dz, rem;
+
+    dx = ((D_800B22E8[idx * 4] - D_800B2300[idx * 4]) << 16) / D_800B2318[idx];
+    dy = ((D_800B22EA[idx * 4] - D_800B2302[idx * 4]) << 16) / D_800B2318[idx];
+    dz = ((D_800B22EC[idx * 4] - D_800B2304[idx * 4]) << 16) / D_800B2318[idx];
+    rem = D_800B2318[idx] - FieldGetVec3Magnitude(D_800B2324[idx * 4] - *(s16*)(pSub + 2),
+                                                  D_800B2326[idx * 4] - *(s16*)(pSub + 6),
+                                                  D_800B2328[idx * 4] - *(s16*)(pSub + 0xA));
+    ((s16*)D_800B2318)[idx - 0x6E] = (dx * rem) >> 16;
+    ((s16*)D_800B2318)[idx - 0x6B] = (dy * rem) >> 16;
+    ((s16*)D_800B2318)[idx - 0x68] = (dz * rem) >> 16;
+#endif
 }
-#endif /* XENO_PC_PORT */
 
 extern s16 D_800B22E2[];
 extern void func_80086A1C(s32 idx, u8* pSub);

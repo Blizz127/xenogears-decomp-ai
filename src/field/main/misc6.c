@@ -1385,9 +1385,16 @@ void func_800A0C4C(void) {
 
 // FieldResetActorPosition, set translation and sprite position of actor based on current actor data position
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_800A0C94);
-#else
+/* func_800A0C94: retail re-reads g_FieldActors once per x/y/z group (three loads)
+ * while keeping the actor pointer and D_800AFD1C*0x5C in registers: that is a
+ * volatile g_FieldActors (as the PC-port header already declares it) read into a
+ * fresh per-group pointer; the address is int+int (off first) and y is read once
+ * for the two final halfword stores. */
+extern FieldActor* volatile g_FieldActors__v asm("g_FieldActors");
+
+#endif
 void func_800A0C94(void) {
+#ifdef XENO_PC_PORT
     u8* actorData = (u8*)g_FieldScriptVMCurActor;
     u8* fieldActor = (u8*)g_FieldActors + D_800AFD1C * 0x5C;
     u8* spriteData = (u8*)(uintptr_t)*(u32*)(fieldActor + 0x04);
@@ -1408,8 +1415,38 @@ void func_800A0C94(void) {
     *(s32*)(spriteData + 0x10) = 0;
     *(s16*)(spriteData + 0x84) = y;
     *(s16*)(actorData + 0x72) = y;
+#else
+    u8* actorData = (u8*)g_FieldScriptVMCurActor;
+    s32 off = D_800AFD1C * 0x5C;
+    u8* fa1;
+    u8* fa2;
+    u8* fa3;
+    u8* spriteData;
+    s16 v;
+    u16 y;
+
+    fa1 = (u8*)(off + (s32)g_FieldActors__v);
+    v = *(s16*)(actorData + 0x22);
+    spriteData = (u8*)(uintptr_t)*(u32*)(fa1 + 0x04);
+    *(s32*)(fa1 + 0x20) = v;
+    *(s32*)(fa1 + 0x40) = v;
+    fa2 = (u8*)(off + (s32)g_FieldActors__v);
+    v = *(s16*)(actorData + 0x26);
+    *(s32*)(fa2 + 0x24) = v;
+    *(s32*)(fa2 + 0x44) = v;
+    fa3 = (u8*)(off + (s32)g_FieldActors__v);
+    v = *(s16*)(actorData + 0x2A);
+    *(s32*)(fa3 + 0x28) = v;
+    *(s32*)(fa3 + 0x48) = v;
+    *(s32*)(spriteData + 0x00) = *(s32*)(actorData + 0x20);
+    *(s32*)(spriteData + 0x04) = *(s32*)(actorData + 0x24);
+    *(s32*)(spriteData + 0x08) = *(s32*)(actorData + 0x28);
+    *(s32*)(spriteData + 0x10) = 0;
+    y = *(u16*)(actorData + 0x26);
+    *(u16*)(spriteData + 0x84) = y;
+    *(u16*)(actorData + 0x72) = y;
+#endif
 }
-#endif /* XENO_PC_PORT */
 
 void func_800A0D3C(void) {
     func_80076AC0(D_800AFD1C, 0, (void*)((*(s32*)(g_FieldSpriteData + 4)) + (s32)g_FieldSpriteData), 0, 0, 0x80, 1);

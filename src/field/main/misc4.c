@@ -54,9 +54,14 @@ extern s32 D_800ADB34;
 extern s32 D_800ADBC4;
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_80078BC8);
-#else
+/* func_80078BC8: after the ArchiveDataSync call retail sets v0 = -1 once (in the
+ * first bnez delay slot) and runs the remaining tests through v1, i.e. the result
+ * variable lives in v0 throughout.  Plain C allocates it to v1 (the short test
+ * temporaries win v0), so the result is pinned with register asm("$2"), the same
+ * register-pin idiom the tree already uses. */
+#endif
 s32 func_80078BC8(void) {
+#ifdef XENO_PC_PORT
     if (D_800ADB2C != 0) {
         return -1;
     }
@@ -73,8 +78,21 @@ s32 func_80078BC8(void) {
         return -1;
     }
     return D_800ADBC4 != 0xFF ? -1 : 0;
+#else
+    s32 sync;
+    register s32 ret asm("$2");
+
+    if (D_800ADB2C != 0) {
+        return -1;
+    }
+    sync = ArchiveDataSync();
+    ret = -1;
+    if (sync == 0 && D_8004F308 == 0 && D_800ADB90 == 0 && D_800ADB34 == 0) {
+        ret = -(D_800ADBC4 != 0xFF);
+    }
+    return ret;
+#endif
 }
-#endif /* XENO_PC_PORT */
 
 extern s16 D_800B2344;
 void func_80078C5C(void) {
@@ -1402,9 +1420,12 @@ void func_8007AE78(s32 mouseIndex, void* out) {
 #endif /* XENO_PC_PORT */
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007AF74);
-#else
+/* func_8007AF74: the controller pointer is ((s8**)&g_pFieldControllerBuffer1)[i]
+ * (Buffer2 follows Buffer1), re-read from the slot for each use, with s8 reads
+ * (lb even for the != 0 test); the X and Y clamps use separate position temps. */
+#endif
 void func_8007AF74(s32 mouseIndex) {
+#ifdef XENO_PC_PORT
     u8* pController = (u8*)(uintptr_t)(mouseIndex ? g_pFieldControllerBuffer2 : g_pFieldControllerBuffer1);
     s32 pos;
 
@@ -1428,8 +1449,32 @@ void func_8007AF74(s32 mouseIndex) {
     } else if (pos < D_800C3A4C) {
         g_FieldMousePositionsY[mouseIndex] = D_800C3A4C;
     }
+#else
+    s32 posX;
+    s32 posY;
+
+    if (((s8**)&g_pFieldControllerBuffer1)[mouseIndex][0] != 0 || ((s8**)&g_pFieldControllerBuffer1)[mouseIndex][1] != 0x12) {
+        return;
+    }
+
+    g_FieldMousePositionsX[mouseIndex] += ((s8**)&g_pFieldControllerBuffer1)[mouseIndex][4];
+    g_FieldMousePositionsY[mouseIndex] += ((s8**)&g_pFieldControllerBuffer1)[mouseIndex][5];
+
+    posX = g_FieldMousePositionsX[mouseIndex];
+    if (posX > D_800C3A50) {
+        g_FieldMousePositionsX[mouseIndex] = D_800C3A50;
+    } else if (posX < D_800C3A44) {
+        g_FieldMousePositionsX[mouseIndex] = D_800C3A44;
+    }
+
+    posY = g_FieldMousePositionsY[mouseIndex];
+    if (posY > D_800C3A54) {
+        g_FieldMousePositionsY[mouseIndex] = D_800C3A54;
+    } else if (posY < D_800C3A4C) {
+        g_FieldMousePositionsY[mouseIndex] = D_800C3A4C;
+    }
+#endif
 }
-#endif /* XENO_PC_PORT */
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007B07C);
@@ -2672,9 +2717,11 @@ void func_8007D818(s32* pVec, VECTOR* pOut) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007D8B4);
-#else
+/* func_8007D8B4: abs via if (v < 0) v = -v (the third on the raw arg), then the
+ * three dominance tests with a final return 0 (store-flag & mask). */
+#endif
 s32 func_8007D8B4(s32 x, s32 y, s32 z) {
+#ifdef XENO_PC_PORT
     s32 ax = x < 0 ? -x : x;
     s32 ay = y < 0 ? -y : y;
     s32 az = z < 0 ? -z : z;
@@ -2684,5 +2731,29 @@ s32 func_8007D8B4(s32 x, s32 y, s32 z) {
         return y;
     }
     return z;
+#else
+    s32 ax = x;
+    s32 ay = y;
+    s32 az = z;
+
+    if (ax < 0) {
+        ax = -ax;
+    }
+    if (ay < 0) {
+        ay = -ay;
+    }
+    if (z < 0) {
+        az = -z;
+    }
+    if (ax >= ay && ax >= az) {
+        return x;
+    }
+    if (ay >= ax && ay >= az) {
+        return y;
+    }
+    if (az >= ax && az >= ay) {
+        return z;
+    }
+    return 0;
+#endif
 }
-#endif /* XENO_PC_PORT */

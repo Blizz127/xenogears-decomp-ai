@@ -1970,9 +1970,14 @@ extern void func_80086BA8(void);
 extern void func_801E7D14(void* sceneData, void* arg1, void* prim, s32 renderContextIndex, s32 arg4);
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_8007520C);
-#else
+/* func_8007520C: D_800B2264 is not gp-small (its address stays in s0 across the
+ * calls) and the second func_801E7D14 argument is that base minus 0x48
+ * (= &D_800B221C, computed from the same register). */
+extern s32 D_800B2264__a[] asm("D_800B2264");
+
+#endif
 void func_8007520C(void) {
+#ifdef XENO_PC_PORT
     if (D_8004F380 != 0) {
         return;
     }
@@ -1990,8 +1995,26 @@ void func_8007520C(void) {
     if (g_FieldSystemMode == 0) {
         func_80281B00(&D_8006FB1C);
     }
+#else
+    if (D_8004F380 != 0) {
+        return;
+    }
+
+    if (D_800B2264__a[0] != 0) {
+        func_80086BA8();
+        SetBackColor(D_800B225C, D_800B225D, D_800B225E);
+        func_801E7D14((u8*)&g_Scene + 0xD4,
+                      (u8*)D_800B2264__a - 0x48,
+                      (u8*)g_FieldCurRenderContext + 0xCC,
+                      g_FieldCurRenderContextIndex,
+                      1);
+    }
+
+    if (g_FieldSystemMode == 0) {
+        func_80281B00(&D_8006FB1C);
+    }
+#endif
 }
-#endif /* XENO_PC_PORT */
 
 extern u8 D_800ADB05;
 extern void func_800250E0(s32 context);

@@ -675,17 +675,29 @@ extern u16 D_800B06A6[];
 extern s32 D_800ADB0C;
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc3", func_80070C84);
-#else
+/* func_80070C84: same byte-offset giv loop as func_800864B4 (offset = i * 6
+ * inside the for), stores through u16. */
+#endif
 void func_80070C84(void) {
+#ifdef XENO_PC_PORT
     s32 i;
     for (i = 0; i < 3; i++) {
         D_800B06A4[i * 3] = 0xFF;
         D_800B06A6[i * 3] = 0xFF;
     }
     D_800ADB0C = 0;
+#else
+    s32 i;
+    s32 offset;
+
+    for (i = 0; i < 3; i++) {
+        offset = i * 6;
+        *(u16*)((u8*)D_800B06A4 + offset) = 0xFF;
+        *(u16*)((u8*)D_800B06A6 + offset) = 0xFF;
+    }
+    D_800ADB0C = 0;
+#endif
 }
-#endif /* XENO_PC_PORT */
 
 /* ---- FieldLoad: parse the raw map file and build the field runtime state -----
  * Port-first functional decompile (control flow mirrors

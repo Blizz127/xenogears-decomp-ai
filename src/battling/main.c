@@ -137,7 +137,44 @@ s32 func_800891C0(s32 arg0) {
 
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_80089210);
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_80089330);
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_80089534);
+void *SetDefDrawEnv();
+void func_80045534(void *, void *);
+void func_800453E8(void *, s32);
+void func_8004546C(void *, s32);
+/* D_8009A0D8: 2 x 0xF8-byte draw buffers: DRAWENV at +0 (tpage +0x14,
+ * dtd +0x16, dfe +0x17, isbg +0x18, dr_env +0x1C), DR_AREA +0xD0,
+ * DR_OFFSET +0xDC. */
+extern u8 D_8009A0D8[];
+
+void func_80089534(s32 w, s32 h) {
+    u16 tpage;
+
+    SetGeomOffset(w / 2, h / 2);
+    SetGeomScreen(0x180);
+    func_8002DFF0(w, h);
+    if (h > 0x100) {
+        SetDefDrawEnv(D_8009A0D8, 0, 0, w, h);
+        SetDefDrawEnv(D_8009A0D8 + 0xF8, 0, 0, w, h);
+        D_8009A0D8[0xF8 + 0x17] = 0;
+        D_8009A0D8[0x17] = 0;
+    } else {
+        SetDefDrawEnv(D_8009A0D8, 0, 0, w, h);
+        SetDefDrawEnv(D_8009A0D8 + 0xF8, 0, 0x100, w, h);
+    }
+    D_8009A0D8[0x16] = D_8009A0D8[0xF8 + 0x16] = 1;
+    D_8009A0D8[0xF8 + 0x18] = 0;
+    D_8009A0D8[0x18] = 0;
+    tpage = GetTPage(0, 2, 0x280, 0);
+    *(u16 *)(D_8009A0D8 + 0xF8 + 0x14) = tpage;
+    *(u16 *)(D_8009A0D8 + 0x14) = tpage;
+    func_80045534(D_8009A0D8 + 0x1C, D_8009A0D8);
+    func_80045534(D_8009A0D8 + 0xF8 + 0x1C, D_8009A0D8 + 0xF8);
+    func_800453E8(D_8009A0D8 + 0xD0, (s32)D_8009A0D8);
+    func_800453E8(D_8009A0D8 + 0xF8 + 0xD0, (s32)(D_8009A0D8 + 0xF8));
+    func_8004546C(D_8009A0D8 + 0xDC, (s32)(D_8009A0D8 + 8));
+    func_8004546C(D_8009A0D8 + 0xF8 + 0xDC, (s32)(D_8009A0D8 + 0xF8 + 8));
+}
+
 
 void func_800896C4(s32 arg0, u32 arg1) {
     SetGeomOffset(arg0 / 2, (s32) (arg1 + (arg1 >> 0x1F)) >> 1);
@@ -165,7 +202,21 @@ void *func_80089C54(void) {
     return func_80089B44(HeapAlloc(0x9C, 0));
 }
 
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_80089C88);
+void func_80089C88(void *parent, void *child) {
+    void *p;
+
+    *(void **)((u8 *)child + 0x8C) = parent;
+    if (*(void **)((u8 *)parent + 0x94) == NULL) {
+        *(void **)((u8 *)parent + 0x94) = child;
+        return;
+    }
+    p = *(void **)((u8 *)parent + 0x94);
+    while (*(void **)((u8 *)p + 0x90) != NULL) {
+        p = *(void **)((u8 *)p + 0x90);
+    }
+    *(void **)((u8 *)p + 0x90) = child;
+}
+
 
 void func_80089CD8(void *arg0) {
     void *temp_v0;
@@ -317,7 +368,16 @@ void func_80089FF8(void *arg0) {
     func_8002CBBC(*(s32 *)((s8*)(arg0) + 0x14));
 }
 
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008A040);
+void func_8002DDE4(s32, s32, s32, s32, s32, s32, s32);
+
+void func_8008A040(s32 arg0) {
+    if (D_80092800 > 0) {
+        func_8002DDE4(arg0, 1, D_80092800, D_80092804, 1, D_80092808, D_8009280C);
+    } else {
+        func_8002DDE4(arg0, 0, 0, 0, 0, 0, 0);
+    }
+}
+
 
 void func_8008A0B4(void *arg0, s8 arg1, s8 arg2, s8 arg3) {
     void *temp_v1;
@@ -514,8 +574,50 @@ void func_8008A62C(void) {
 }
 
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008A63C);
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008A6F8);
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008A78C);
+/* CVECTOR layout (libgte): r, g, b, cd; byte-aligned, so copies use lwl/lwr. */
+typedef struct {
+    u8 r;
+    u8 g;
+    u8 b;
+    u8 cd;
+} BattlingCVec;
+/* Same declaration as func_8008A78C's: 2 x 4-byte colours, one per buffer. */
+extern s32 D_80092818[];
+extern s32 D_80092914;
+
+void func_8008A6F8(BattlingCVec *col) {
+    BattlingCVec *cur;
+
+    cur = (BattlingCVec *)&D_80092818[D_800928A0];
+    if (col->r == cur->r && col->g == cur->g && col->b == cur->b) {
+        D_80092914 = 0;
+    } else {
+        D_80092914 = 1;
+        *cur = *col;
+        cur->cd = 0x20;
+    }
+}
+
+extern s32 D_80092818[];
+
+void func_8008A78C(void *arg0) {
+    u8 *model;
+    s32 idx;
+    s32 n;
+    u8 *prim;
+    s32 val;
+
+    model = *(u8 **)(*(u8 **)((u8 *)arg0 + 4) + 0xC);
+    idx = D_800928A0 * 4;
+    prim = *(u8 **)(idx + (s32)model + 0x10);
+    n = *(s16 *)(model + 2);
+    val = *(s32 *)((u8 *)D_80092818 + idx);
+    while (--n != -1) {
+        *(s32 *)(prim + 4) = val;
+        prim += 0x14;
+    }
+}
+
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008A7E0);
 
 void func_8008ABAC(void *arg0) {
@@ -621,7 +723,32 @@ void func_8008B070(s32 arg0) {
     func_8008AF6C(temp_v0);
 }
 
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008B0D8);
+typedef struct {
+    s32 unk0;
+    s32 unk4;
+    s32 unk8;
+    s16 unkC;
+    s16 unkE;
+    s16 unk10;
+    s16 unk12;
+} BattlingAnimEntry;
+
+void func_8008B0D8(void *arg0) {
+    s32 i;
+    BattlingAnimEntry *e;
+
+    *(s16 *)((u8 *)arg0 + 0x10) = 0;
+    *(s16 *)((u8 *)arg0 + 0x12) = 0;
+    e = *(BattlingAnimEntry **)((u8 *)arg0 + 8);
+    for (i = 0; i < *(s16 *)(*(u8 **)arg0 + 6); i++) {
+        e->unkC = 0;
+        e->unkE = 0;
+        e->unk4 = e->unk0;
+        e->unk10 = 0;
+        e++;
+    }
+}
+
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008B13C);
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008B38C);
 void func_8008B5DC(void *arg0, s32 arg1) {
@@ -706,7 +833,34 @@ void func_8008BB1C(s32 *arg0) {
 
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008BB3C);
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008BC04);
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008BCC8);
+/* VECTOR layout (libgte): vx, vy, vz, pad. Shared by func_8008BCC8 / func_8008E78C. */
+#ifndef BATTLING_VEC_DEFINED
+#define BATTLING_VEC_DEFINED
+typedef struct {
+    s32 vx;
+    s32 vy;
+    s32 vz;
+    s32 pad;
+} BattlingVec;
+#endif
+long VectorNormal();
+void func_8008C3A8(s32, s32, u16);
+extern BattlingVec D_8009A2C8;
+
+void func_8008BCC8(void *arg0, s32 arg1) {
+    BattlingVec dir;
+    s32 unused[4];
+
+    dir.vx = -8;
+    dir.vy = -8;
+    dir.vz = -16;
+    VectorNormal(&dir, &D_8009A2C8);
+    D_8009A2C8.vx <<= 4;
+    D_8009A2C8.vy <<= 4;
+    D_8009A2C8.vz <<= 4;
+    func_8008C3A8(*(s32 *)((u8 *)arg0 + 8), arg1, *(u16 *)((u8 *)arg0 + 2));
+}
+
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008BD70);
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008BE4C);
 
@@ -824,15 +978,175 @@ void func_8008C2E8(void *arg0) {
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008C3A8);
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008C4B0);
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008C620);
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008C7C0);
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008C828);
+/* 8-byte, 2-byte-aligned vector (SVECTOR layout): copies of it compile to
+ * lwl/lwr + swl/swr pairs. Shared by func_8008C7C0 / func_8008C9B8 / func_8008CC2C / func_8008CCB0 / func_8008CF9C. */
+#ifndef BATTLING_SVEC_DEFINED
+#define BATTLING_SVEC_DEFINED
+typedef struct {
+    s16 vx;
+    s16 vy;
+    s16 vz;
+    s16 pad;
+} BattlingSVec;
+#endif
+
+void func_8008C7C0(void *arg0) {
+    *(BattlingSVec *)((u8 *)arg0 + 0x20) = *(BattlingSVec *)arg0;
+    *(BattlingSVec *)((u8 *)arg0 + 0x18) = *(BattlingSVec *)((u8 *)arg0 + 0x20);
+    *(BattlingSVec *)((u8 *)arg0 + 0x10) = *(BattlingSVec *)((u8 *)arg0 + 0x18);
+}
+
+/* GPU LINE_F4 primitive (libgpu LINE_F4 layout): tag, r0 g0 b0 code,
+ * x0 y0 .. x3 y3, pad (0x55555555 terminator). */
+typedef struct {
+    u32 tag;
+    u8 r0;
+    u8 g0;
+    u8 b0;
+    u8 code;
+    s16 x0;
+    s16 y0;
+    s16 x1;
+    s16 y1;
+    s16 x2;
+    s16 y2;
+    s16 x3;
+    s16 y3;
+    u32 pad;
+} BattlingLineF4;
+
+void func_8008C828(void *arg0, void *arg1) {
+    BattlingLineF4 *line;
+
+    line = (BattlingLineF4 *)((u8 *)arg0 + 0x28);
+    *((u8 *)line + 3) = 6;
+    line->code = 0x4C;
+    line->pad = 0x55555555;
+    line->code |= 2;
+    line->r0 = *((u8 *)arg1 + 0x74);
+    line->g0 = *((u8 *)arg1 + 0x75);
+    line->b0 = *((u8 *)arg1 + 0x76);
+    line[1] = line[0];
+}
+
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008C8B4);
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008C9B8);
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008CA00);
+/* 8-byte, 2-byte-aligned vector (SVECTOR layout): copies of it compile to
+ * lwl/lwr + swl/swr pairs. Shared by func_8008C7C0 / func_8008C9B8 / func_8008CC2C / func_8008CCB0 / func_8008CF9C. */
+#ifndef BATTLING_SVEC_DEFINED
+#define BATTLING_SVEC_DEFINED
+typedef struct {
+    s16 vx;
+    s16 vy;
+    s16 vz;
+    s16 pad;
+} BattlingSVec;
+#endif
+
+void func_8008C9B8(void *arg0) {
+    *(BattlingSVec *)((u8 *)arg0 + 0x18) = *(BattlingSVec *)arg0;
+    *(BattlingSVec *)((u8 *)arg0 + 0x10) = *(BattlingSVec *)((u8 *)arg0 + 0x18);
+}
+
+/* GPU LINE_F3 primitive (libgpu LINE_F3 layout): tag, r0 g0 b0 code, x0 y0,
+ * x1 y1, x2 y2, pad (0x55555555 terminator). */
+typedef struct {
+    u32 tag;
+    u8 r0;
+    u8 g0;
+    u8 b0;
+    u8 code;
+    s16 x0;
+    s16 y0;
+    s16 x1;
+    s16 y1;
+    s16 x2;
+    s16 y2;
+    u32 pad;
+} BattlingLineF3;
+
+void func_8008CA00(void *arg0, void *arg1) {
+    BattlingLineF3 *line;
+
+    line = (BattlingLineF3 *)((u8 *)arg0 + 0x20);
+    *((u8 *)line + 3) = 5;
+    line->code = 0x48;
+    line->pad = 0x55555555;
+    line->code |= 2;
+    line->r0 = *((u8 *)arg1 + 0x74);
+    line->g0 = *((u8 *)arg1 + 0x75);
+    line->b0 = *((u8 *)arg1 + 0x76);
+    line[1] = line[0];
+}
+
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008CA84);
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008CC2C);
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008CC54);
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008CCB0);
+/* 8-byte, 2-byte-aligned vector (SVECTOR layout): copies of it compile to
+ * lwl/lwr + swl/swr pairs. Shared by func_8008C7C0 / func_8008C9B8 / func_8008CC2C / func_8008CCB0 / func_8008CF9C. */
+#ifndef BATTLING_SVEC_DEFINED
+#define BATTLING_SVEC_DEFINED
+typedef struct {
+    s16 vx;
+    s16 vy;
+    s16 vz;
+    s16 pad;
+} BattlingSVec;
+#endif
+
+void func_8008CC2C(void *arg0) {
+    *(BattlingSVec *)((u8 *)arg0 + 0x10) = *(BattlingSVec *)arg0;
+}
+
+/* GPU LINE_F2 primitive (libgpu LINE_F2 layout): tag, r0 g0 b0 code, x0 y0, x1 y1. */
+typedef struct {
+    u32 tag;
+    u8 r0;
+    u8 g0;
+    u8 b0;
+    u8 code;
+    s16 x0;
+    s16 y0;
+    s16 x1;
+    s16 y1;
+} BattlingLineF2;
+
+void func_8008CC54(void *arg0, void *arg1) {
+    BattlingLineF2 *line;
+
+    line = (BattlingLineF2 *)((u8 *)arg0 + 0x18);
+    *((u8 *)line + 3) = 3;
+    line->code = 0x42;
+    line->r0 = *((u8 *)arg1 + 0x74);
+    line->g0 = *((u8 *)arg1 + 0x75);
+    line->b0 = *((u8 *)arg1 + 0x76);
+    line[1] = line[0];
+}
+
+/* 8-byte, 2-byte-aligned vector (SVECTOR layout): copies of it compile to
+ * lwl/lwr + swl/swr pairs. Shared by func_8008C7C0 / func_8008C9B8 / func_8008CC2C / func_8008CCB0 / func_8008CF9C. */
+#ifndef BATTLING_SVEC_DEFINED
+#define BATTLING_SVEC_DEFINED
+typedef struct {
+    s16 vx;
+    s16 vy;
+    s16 vz;
+    s16 pad;
+} BattlingSVec;
+#endif
+long RotTransPers3();
+void func_800316C0(u32 *pPrim, u32 nextAddr);
+
+/* Projects a 2-point line (current and previous position) into the LINE_F2
+ * of the current buffer, then links it into the OT. */
+void func_8008CCB0(void *arg0, u32 *ot) {
+    s32 tmp;
+    u8 *prim;
+    s32 z;
+
+    prim = (u8 *)arg0 + (D_800928A0 * 16 + 0x18);
+    z = RotTransPers3(arg0, (u8 *)arg0 + 0x10, &tmp, prim + 8, prim + 0xC, &tmp, &tmp, &tmp);
+    *(BattlingSVec *)((u8 *)arg0 + 0x10) = *(BattlingSVec *)arg0;
+    func_800316C0(ot + (z >> 2), (u32)prim);
+}
+
 
 void func_8008CD54(void) {
 
@@ -873,7 +1187,29 @@ void func_8008CED4(void) {
 
 }
 
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008CEDC);
+/* GPU TILE_1 primitive (libgpu TILE_1 layout): tag, r0 g0 b0 code, x0 y0. */
+typedef struct {
+    u32 tag;
+    u8 r0;
+    u8 g0;
+    u8 b0;
+    u8 code;
+    s16 x0;
+    s16 y0;
+} BattlingTile1;
+
+void func_8008CEDC(void *arg0, void *arg1) {
+    BattlingTile1 *tile;
+
+    tile = (BattlingTile1 *)((u8 *)arg0 + 0x10);
+    *((u8 *)tile + 3) = 2;
+    tile->code = 0x6A;
+    tile->r0 = *((u8 *)arg1 + 0x74);
+    tile->g0 = *((u8 *)arg1 + 0x75);
+    tile->b0 = *((u8 *)arg1 + 0x76);
+    tile[1] = tile[0];
+}
+
 long RotTransPers();
 void func_80031870(u32 *pPrim, u32 nextAddr);
 
@@ -885,7 +1221,22 @@ void func_8008CF30(void *arg0, u32 *ot) {
     func_80031870(ot + (RotTransPers(arg0, prim + 8, &flag, &flag) >> 2), (u32)prim);
 }
 
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008CF9C);
+/* 8-byte, 2-byte-aligned vector (SVECTOR layout): copies of it compile to
+ * lwl/lwr + swl/swr pairs. Shared by func_8008C7C0 / func_8008C9B8 / func_8008CC2C / func_8008CCB0 / func_8008CF9C. */
+#ifndef BATTLING_SVEC_DEFINED
+#define BATTLING_SVEC_DEFINED
+typedef struct {
+    s16 vx;
+    s16 vy;
+    s16 vz;
+    s16 pad;
+} BattlingSVec;
+#endif
+
+void func_8008CF9C(void *arg0, BattlingSVec *out) {
+    *out = *(BattlingSVec *)((u8 *)arg0 + 0x1C);
+}
+
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008CFC4);
 
 void func_8008D0A4(void *arg0, void *arg1) {
@@ -995,7 +1346,19 @@ void func_8008D5C0(void *arg0, s32 arg1) {
 }
 
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008D680);
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008D980);
+s32 func_80082488(void *, s32);
+
+void func_8008D980(void *arg0) {
+    s32 y;
+
+    if (*(s16 *)((u8 *)arg0 + 0xA) > 0) {
+        y = *(s16 *)((u8 *)arg0 + 2);
+        if (func_80082488(arg0, 0) < y) {
+            *(s16 *)((u8 *)arg0 + 0xA) = -*(s16 *)((u8 *)arg0 + 0xA) / 2;
+        }
+    }
+}
+
 void func_8008D9F0(void *arg0) {
     s32 v;
 
@@ -1096,7 +1459,52 @@ void func_8008DF30(void) {
     D_80092840 = 0;
 }
 
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008DF50);
+s32 LoadImage();
+/* RECT layout (libgpu): x, y, w, h. */
+typedef struct {
+    s16 x;
+    s16 y;
+    s16 w;
+    s16 h;
+} BattlingRect;
+extern u16 D_80091CE0[];
+
+void func_8008DF50(void) {
+    BattlingRect rect;
+    u16 *a;
+    u16 *b;
+    u16 *clut;
+    s32 i;
+
+    if (D_80092844 == 0) {
+        D_80092844 = HeapAlloc(0x1500, 1);
+        D_8009283C = HeapAlloc(0x2BC0, 1);
+        D_80092840 = HeapAlloc(0x2BC0, 1);
+    }
+    i = 0x1570;
+    a = (u16 *)D_8009283C + 0x1570;
+    b = (u16 *)D_80092840 + 0x1570;
+    do {
+        *b = 0;
+        *a = 0;
+        a--;
+        i--;
+        b--;
+    } while (i != -1);
+    for (i = 0; i < 0x1500; i++) {
+        ((u8 *)D_80092844)[i] = 0;
+    }
+    for (i = 0, clut = D_80091CE0; i < 0x100; i++) {
+        *clut |= 0x8000;
+        clut++;
+    }
+    rect.y = 0x1FD;
+    rect.w = 0xFF;
+    rect.x = 0;
+    rect.h = 1;
+    LoadImage(&rect, D_80091CE0);
+}
+
 
 void func_8008E064(void) {
     if (D_80092844 != 0) {
@@ -1249,7 +1657,40 @@ void func_8008ECEC(s32 arg0) {
 }
 
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008ED6C);
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008EE1C);
+s32 func_8008B650(s32, s16, s32, s32);
+
+void func_8008EE1C(void *arg0, s16 arg1, s16 arg2) {
+    s32 dec;
+    s32 inc;
+    s32 flag;
+    s32 i;
+    s32 unused[4];
+
+    dec = *(s32 *)((u8 *)arg0 + 0x9C);
+    inc = *(s32 *)((u8 *)arg0 + 0x98);
+    if (*(s32 *)((u8 *)arg0 + 0xD0) & 0x100) {
+        flag = 0;
+        dec = dec * 2 / 3;
+    } else {
+        flag = 1;
+    }
+    for (i = 0; i < 2; i++) {
+        if (arg2 != 0 && flag != 0) {
+            *(s32 *)((u8 *)arg0 + 0x48) += inc;
+            if (*(s32 *)((u8 *)arg0 + 0x48) > arg2) {
+                *(s32 *)((u8 *)arg0 + 0x48) = arg2;
+            }
+        } else {
+            *(s32 *)((u8 *)arg0 + 0x48) -= dec;
+            if (*(s32 *)((u8 *)arg0 + 0x48) < 0) {
+                *(s32 *)((u8 *)arg0 + 0x48) = 0;
+            }
+        }
+    }
+    *(s32 *)((u8 *)arg0 + 0x58) = func_8008B650(*(s32 *)((u8 *)arg0 + 0x58), arg1, 0x40, flag);
+    *(s16 *)((u8 *)arg0 + 0xCE) = 0;
+}
+
 
 void func_8008EF00(s32 arg0, void *arg1) {
     func_800767C8();
@@ -1274,7 +1715,27 @@ void func_8008EF74(s32 arg0, void *arg1) {
 }
 #endif
 
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008EFA8);
+typedef struct {
+    u32 pad0 : 13;
+    u32 flag13 : 1;
+    u32 pad14 : 18;
+} BattlingAiFlags;
+
+void func_8008EFA8(void *arg0, void *arg1) {
+    BattlingAiFlags *flags;
+
+    flags = (BattlingAiFlags *)((u8 *)arg1 + 0x2C);
+    flags->flag13 ^= 1;
+    if (flags->flag13) {
+        *(s32 *)((u8 *)arg0 + 0xD0) |= 2;
+        *(s16 *)((u8 *)arg1 + 4) = 0x3C;
+    } else {
+        *(s32 *)((u8 *)arg0 + 0xD0) &= ~2;
+        *(s32 *)((u8 *)arg0 + 0xD0) &= ~0x38;
+        *(s16 *)((u8 *)arg1 + 4) = 0x1E;
+    }
+}
+
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008F014);
 
 #ifndef XENO_PC_PORT
@@ -1358,7 +1819,28 @@ block_5:
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008F9B0);
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008FA2C);
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008FACC);
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008FBD8);
+void func_80076424(void *arg0);
+
+void func_8008FBD8(void *arg0, void *arg1) {
+    u8 level;
+
+    level = *((u8 *)arg1 + 0xF);
+    if (level >= 2) {
+        *(s32 *)((u8 *)arg0 + 0xD0) |= 2;
+        func_80076424(arg0);
+    } else if (level != 0) {
+        if (*((u8 *)arg1 + 0x2C) & 1) {
+            *(s32 *)((u8 *)arg0 + 0xD0) |= 2;
+            func_80076424(arg0);
+        }
+    } else {
+        if ((u8)(*((u8 *)arg1 + 0x2C) % 6) == 0) {
+            *(s32 *)((u8 *)arg0 + 0xD0) |= 2;
+            func_80076424(arg0);
+        }
+    }
+}
+
 
 void func_8008FC7C(void *arg0) {
     void *temp_a0;
@@ -1451,7 +1933,46 @@ void func_8008FF24(void *arg0, void *arg1) {
     func_8008F7B8(arg1);
 }
 
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008FFEC);
+/* The TU prototypes this `void func_8008FFEC(void *, s32)`, but retail
+ * returns 1 (nothing to pick) or 0, so it is defined under a returning alias. */
+s32 func_8008FFEC__ret(void *arg0, void *arg1) asm("func_8008FFEC");
+/* D_800925A4: 14 x 3 status ids. */
+extern u8 D_800925A4[];
+
+s32 func_8008FFEC__ret(void *arg0, void *arg1) {
+    s32 n;
+    s32 i;
+    s32 k;
+
+    n = *((u8 *)arg0 + 0x911);
+    if (n == 0) {
+        return 1;
+    }
+    k = 0;
+    n = rand() % n;
+    for (i = 0; i < 14; i++, k += 3) {
+        if (*(u8 *)(*(s32 *)((u8 *)arg0 + 0x1600) + i + 0xA) != 0 &&
+            *(u8 *)(i * 4 + *(s32 *)((u8 *)arg0 + 0x80) + 3) != 0) {
+            if (n == 0) {
+                if (D_800925A4[k] != 0) {
+                    func_8007639C(arg0, D_800925A4[k]);
+                }
+                if (D_800925A4[k + 1] != 0) {
+                    func_8007639C(arg0, D_800925A4[k + 1]);
+                }
+                if (D_800925A4[k + 2] != 0) {
+                    func_8007639C(arg0, D_800925A4[k + 2]);
+                }
+                break;
+            }
+            n--;
+        }
+    }
+    *(s16 *)((u8 *)arg1 + 4) = (2 - *((u8 *)arg1 + 0xF)) * 20 + (s16)(rand() % 20 + 1);
+    func_8008F7B8(arg1);
+    return 0;
+}
+
 void func_80090174(void *arg0) {
     u8 *ai;
 
