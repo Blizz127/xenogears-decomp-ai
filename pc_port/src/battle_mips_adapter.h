@@ -48,10 +48,14 @@ enum {
     PC_PORT_MIPS_FAULT = -1,
     PC_PORT_MIPS_BUDGET = -2,
     PC_PORT_MIPS_UNSUPPORTED = -3,
-    PC_PORT_MIPS_UNRESOLVED_CALL = -4
+    PC_PORT_MIPS_UNRESOLVED_CALL = -4,
+    PC_PORT_MIPS_INTERPRETER_DISABLED = -5
 };
 
 void PcPortMipsCpuInit(PcPortMipsCpu *cpu, const PcPortMipsBus *bus);
+/* Diagnostic acceptance mode, off by default. Native bridges remain allowed;
+ * an unconverted instruction is refused before fetch/execute. Not a conversion. */
+int PcPortMipsInterpreterDisabled(void);
 int PcPortMipsRun(PcPortMipsCpu *cpu, uint32_t entry, uint32_t halt_pc,
                   uint64_t max_steps);
 

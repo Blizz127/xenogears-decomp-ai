@@ -3,7 +3,14 @@
 #include <limits.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+
+int PcPortMipsInterpreterDisabled(void)
+{
+    const char *value = getenv("XENO_DISABLE_CPU_INTERPRETER");
+    return value != NULL && value[0] != '\0' && strcmp(value, "0") != 0;
+}
 
 typedef struct PendingLoad {
     uint32_t value;
@@ -410,6 +417,7 @@ int PcPortMipsRun(PcPortMipsCpu *cpu, uint32_t entry, uint32_t halt_pc,
                   uint64_t max_steps)
 {
     uint64_t start_steps = cpu->steps;
+    int interpreter_disabled = PcPortMipsInterpreterDisabled();
 
     cpu->pc = entry;
     cpu->next_pc = entry + 4u;
@@ -440,6 +448,10 @@ int PcPortMipsRun(PcPortMipsCpu *cpu, uint32_t entry, uint32_t halt_pc,
             }
         }
 
+        if (interpreter_disabled)
+            return cpu_error(cpu, PC_PORT_MIPS_INTERPRETER_DISABLED,
+                             "CPU interpreter disabled: unconverted target 0x%08x",
+                             cpu->pc);
         if (mem_read(cpu, cpu->pc, 4, &instruction) != 0)
             return PC_PORT_MIPS_FAULT;
 

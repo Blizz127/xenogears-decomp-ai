@@ -26,6 +26,7 @@
 #include "xeno_pc.h"
 #include "psx_memory.h"
 #include "test_input.h"
+#include "battle_mips_adapter.h"
 #include "boot_menu.h"
 #include "field_direct_boot_route.h"
 #include "boot_sound_banks.h"
@@ -1216,6 +1217,9 @@ static void PcPort_LoadSystemTextData(void) {
 
 int main(int argc, char** argv) {
     { extern void PcPort_LogInit(void); PcPort_LogInit(); }
+    if (PcPortMipsInterpreterDisabled())
+        fprintf(stderr, "[xeno-port][native-check] CPU interpreter disabled; "
+                        "unconverted instruction paths fail closed\n");
     /* --config FILE / --set key=value / --help (xg_plat/config.h). */
     switch (xg_plat_config_cli(argc, argv)) {
     case 1: return EXIT_SUCCESS;
