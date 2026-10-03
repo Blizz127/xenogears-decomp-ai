@@ -255,7 +255,7 @@ exact paths. The coordinator was notified. No permissions were bypassed and
 no shared job was submitted.
 
 `disabled-field14-frames-cpu1` then passed the functional roundtrip (exit 0,
-147.46 seconds): entry `(115,0,-455)`, right to `(125,0,-471)`, accepted save,
+147.46 seconds): entry `(115,0,-455)`, diagonal right+down to `(125,0,-471)`, accepted save,
 left to `(100,0,-447)`, and exact restore to `(125,0,-471)`. It uses raw-pad
 vblank ticks 6000–6019 / 7200–7219. Its startup worker-affinity exception is
 retained as described above. A sequential reference comparison of that exact
@@ -263,7 +263,7 @@ schedule is pending; no visual/audio/timing or process-counter acceptance is
 claimed from the disabled result alone.
 
 The sequential `reference-field14-frames-cpu1` completed with exit 0 in
-147.46 seconds. Its right movement ended at `(132,0,-478)`, compared with
+147.46 seconds. Its diagonal right+down movement ended at `(132,0,-478)`, compared with
 `(125,0,-471)` in disabled mode; left ended at `(111,0,-457)`, compared with
 `(100,0,-447)`. Both restored their own saved positions exactly. Thus the
 identical dispatched-vblank schedule still does not establish identical
@@ -280,3 +280,32 @@ receipt on SIGTERM passes with the fix. The original close sequence is a
 negative control and reproducibly raises `I/O operation on closed file`.
 This is harness lifecycle evidence, not gameplay or production-counter proof;
 the completed game runs predate this harness fix.
+
+
+## Input-label correction and queue-cadence finding
+
+A later audit of the actual launch strings and transition logs found that both
+`*-field14-frames-cpu1` runs used **0x6000 (Right+Down)** for their initial
+movement. Their original `move-right` labels are wrong. An unscoped replacement
+of schedule tick 2000 with 6000 also changed `0x2000` to `0x6000`. Original raw
+receipts are preserved, with per-run `input-correction.json` and an annotated
+comparison. Functional movement/save/reload remains observed; pure-right
+coverage from those runs is withdrawn. The separate first unpinned run used
+0x2000 correctly. The private driver now uses the corrected 0x2000 mask.
+
+Source inspection explains why vblank scheduling alone is insufficient to
+prove deterministic movement. `ControllerPushState` records each queued poll,
+but `FieldPollControllers` drains the entire queue and ORs the held/edge masks
+into one field update. Different numbers of field updates while the button is
+held can therefore result from the same number of vblank samples. The retained
+heartbeats show roughly 14–16 field loops per wall-clock second on the pinned
+software renderer. This supports a cadence explanation, but is not a trace of
+every actual movement update and does not exclude other timing effects.
+No queue/overflow/control-mask semantics were changed to force a match.
+
+The existing field-input schedule is injected *after* both control masks in
+`FieldPollControllers`. It must not be substituted into a strict guarded
+acceptance test without explicitly accounting for that bypass. A future
+field-step input probe must preserve those masks and retain the ordinary
+controller path as separate playable evidence. Repeating the same raw-vblank
+schedule cannot close the current timing gap.
