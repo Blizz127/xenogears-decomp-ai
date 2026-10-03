@@ -572,9 +572,6 @@ s32 func_80023440(void* pData)
     return result;
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM(TEMP1_ASM, func_80023468);
-#else
 /* Transcribed from asm/slus_006.64/nonmatchings/system/temp1/func_80023468.s
  * (0x80023468-0x800234AC, 17 instructions). Small dispatch on `type`: retail
  * rejects `type >= 0x10` up front, then jtbl_80018664 maps cases 0/5/6/10-14 to
@@ -585,6 +582,7 @@ INCLUDE_ASM(TEMP1_ASM, func_80023468);
  * an explicit value); a one-argument call therefore yields that slot's content,
  * exactly like retail. */
 s32 func_80023468(s32 type, s32 arg1) {
+#ifdef XENO_PC_PORT
     switch (type) {
     case 0:
     case 5:
@@ -611,8 +609,18 @@ s32 func_80023468(s32 type, s32 arg1) {
     default:
         return arg1;
     }
-}
+#else
+    switch(type) {
+    case 0: case 5: case 6: case 10: case 11: case 12: case 13: case 14:
+        arg1 = 1; break;
+    case 1: case 4: case 8: case 9:
+        arg1 = 0; break;
+    case 2: case 7: case 15:
+        arg1 = 2; break;
+    }
+    return arg1;
 #endif
+}
 
 void func_800234AC(void* pSpriteData) {
 #ifdef XENO_PC_PORT
