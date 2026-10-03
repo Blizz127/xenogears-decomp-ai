@@ -332,10 +332,8 @@ void func_80087A7C(void) {
     g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_80087AB8);
-#else
 void func_80087AB8(void) {
+#ifdef XENO_PC_PORT
     ActorData* pActor = g_FieldScriptVMCurActor;
     void* pScript = g_FieldScriptVMCurScriptData;
     u8 scriptByte = *(u8*)(pScript + pActor->scriptInstructionPointer + 9);
@@ -350,8 +348,19 @@ void func_80087AB8(void) {
     *(s16*)(pGS + 0x1850) = 0;
     *(s16*)(pGS + 0x1856) = 1;
     g_FieldScriptVMCurActor->scriptInstructionPointer += 6;
+#else
+    s32 result;
+    ActorData *actor;
+    g_pGameState->unk184E = FieldScriptArgument1(1, SCRIPT_READ_U8_REL(9));
+    result = FieldScriptArgument2(3, SCRIPT_READ_U8_REL(9));
+    actor = g_FieldScriptVMCurActor;
+    *(s16*)((u8*)g_pGameState + 0x1852) = result;
+    *(s16*)((u8*)g_pGameState + 0x1854) = 0;
+    *(s16*)((u8*)g_pGameState + 0x1850) = 0;
+    *(s16*)((u8*)g_pGameState + 0x1856) = 1;
+    actor->scriptInstructionPointer += 6;
+#endif
 }
-#endif /* XENO_PC_PORT */
 
 void func_80087B5C(void) {
 #ifdef XENO_PC_PORT
@@ -1829,10 +1838,9 @@ extern void func_801E8330(s32 slot, s32 unused, s32 anim);
 /* Field-script opcode: when D_800ADB1C is set, drive an object's anim via the
  * field archive 0x6B9 entry func_801E8330 and record the anim into
  * D_800B21E4[arg1]. Always IP += 5. */
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008B180);
-#else
+
 void func_8008B180(void) {
+#ifdef XENO_PC_PORT
     if (D_800ADB1C != 0) {
         s32 arg1 = FieldScriptVMGetArgument(1);
         s32 arg3 = FieldScriptVMGetArgument(3);
@@ -1842,8 +1850,19 @@ void func_8008B180(void) {
         D_800B21E4[arg1] = (u16)arg3;
     }
     g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
+#else
+    s32 temp_s0_2;
+    s32 temp_s0;
+
+    if (D_800ADB1C != 0) {
+        temp_s0 = FieldScriptVMGetArgument(1) & 0xFFFF;
+        func_801E8330(temp_s0, 0, FieldScriptVMGetArgument(3));
+        temp_s0_2 = FieldScriptVMGetArgument(1);
+        D_800B21E4[temp_s0_2] = FieldScriptVMGetArgument(3);
+    }
+    *(u16 *)((s8*)(g_FieldScriptVMCurActor) + 0xCC) = (u16) (*(u16 *)((s8*)(g_FieldScriptVMCurActor) + 0xCC) + 5);
+#endif
 }
-#endif /* XENO_PC_PORT */
 
 void func_8008B210(void) {
     g_FieldScriptVMCurActor->unk11E = FieldScriptVMGetArgument(1);
