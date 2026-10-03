@@ -225,3 +225,39 @@ pixels) and are not a same-state visual test. Raw results remain under
 `field14-settled-comparison.json`. Both processes are terminal; no local game
 job remains. The next test needs frame-scheduled input and synchronized capture
 without changing state, guards or fixture provenance.
+
+
+## Frame-input and local resource audit
+
+The first raw-controller scheduled run `disabled-field14-frames` passed the
+functional roundtrip (exit 0, 52.03 seconds). Right was held on schedule ticks
+2000–2019 and left on 2600–2619; this exercised the retained production input
+buffer path, with console/devmenu disabled. The clock is advanced by
+`PcPort_PrepareControllerPoll`, once per dispatched game vblank; older comments
+calling these presented frames must not be used as a frame-rate proof.
+No reference parity is claimed for this first run.
+
+Resource correction: the recent shell-launched roundtrip probes used nice 19
+but lacked an explicit CPU affinity limit. The shell allows CPUs 0–11, so
+these are not verified one-CPU receipts. A follow-up driver pins itself before
+spawning children and records its affinity. Inspection of that run found the
+main/audio threads on CPU 0, but a disk-cache worker widened its affinity.
+The owned worker was explicitly repinned and before/after thread receipts
+retained. The startup exception is not erased. Subsequent driver stages audit
+and reapply the inherited one-CPU limit to runtime threads.
+
+The shared-build footprint audit found no authoritative recursive size receipt
+for the three retained jobs' `out/home/.cache` and `out/tmp/xeno-file1-adoption.*`
+trees. All six sizes remain unknown; directory metadata and cached source
+manifests cannot prove the required bound. Private
+`incremental-plan/footprint-receipt-audit.json` records searched evidence and
+exact paths. The coordinator was notified. No permissions were bypassed and
+no shared job was submitted.
+
+`disabled-field14-frames-cpu1` then passed the functional roundtrip (exit 0,
+147.46 seconds): entry `(115,0,-455)`, right to `(125,0,-471)`, accepted save,
+left to `(100,0,-447)`, and exact restore to `(125,0,-471)`. It uses raw-pad
+vblank ticks 6000–6019 / 7200–7219. Its startup worker-affinity exception is
+retained as described above. A sequential reference comparison of that exact
+schedule is pending; no visual/audio/timing or process-counter acceptance is
+claimed from the disabled result alone.
