@@ -326,7 +326,14 @@ void func_800230A8(void* pSpriteData)
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM(TEMP1_ASM, func_80023124);
+typedef struct { s16 x,y; } XenoAnglePoint;
+s32 func_80023124__ret(XenoAnglePoint, XenoAnglePoint) asm("func_80023124");
+s32 func_80023124__ret(XenoAnglePoint a, XenoAnglePoint b) {
+    VECTOR delta;
+    delta.vx = a.x - b.x;
+    delta.vz = a.y - b.y;
+    return -ratan2(delta.vz, delta.vx) & 0xFFF;
+}
 #else
 s32 func_80023124(s32 pointA, s32 pointB) {
     s16 ax = (s16)(pointA & 0xFFFF);
@@ -607,10 +614,8 @@ s32 func_80023468(s32 type, s32 arg1) {
 }
 #endif
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM(TEMP1_ASM, func_800234AC);
-#else
 void func_800234AC(void* pSpriteData) {
+#ifdef XENO_PC_PORT
     u8* pData = pSpriteData;
     u8* pBase = (u8*)(uintptr_t)*(u32*)(pData + 0x20);
     u8* pDirTransforms = (u8*)(uintptr_t)*(u32*)(pBase + 0x34);
@@ -625,8 +630,21 @@ void func_800234AC(void* pSpriteData) {
         *(s16*)(pDir + 0x4) = 0;
         *(s16*)(pDir + 0x6) = 0;
     }
-}
+#else
+    s32 i;
+    s32 offset;
+    i = 0;
+    do {
+        offset = i * 8;
+        *(u8*)(offset + *(s32*)(*(u8**)((u8*)pSpriteData + 0x20) + 0x34)) = 0;
+        *(u8*)(offset + *(s32*)(*(u8**)((u8*)pSpriteData + 0x20) + 0x34) + 1) = 0;
+        *(s16*)(offset + *(s32*)(*(u8**)((u8*)pSpriteData + 0x20) + 0x34) + 2) = 0;
+        *(s16*)(offset + *(s32*)(*(u8**)((u8*)pSpriteData + 0x20) + 0x34) + 4) = 0;
+        i++;
+        *(s16*)(offset + *(s32*)(*(u8**)((u8*)pSpriteData + 0x20) + 0x34) + 6) = 0;
+    } while(i != 8);
 #endif
+}
 
 extern s32 D_800591A8;
 extern s32 D_80059198;
