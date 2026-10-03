@@ -376,14 +376,12 @@ void func_80025710(void) {}
 extern MATRIX D_8004FBB8;
 extern void func_8002C700(void* a, void* b, u_long* ot, s32 flags);
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM(TEMP1E_ASM, func_80025718);
-#else
 void func_80025718(u8* pEntry) {
+#ifdef XENO_PC_PORT
     u8* pSprite = *(u8**)(pEntry + 0x04);
     u8* pSub;
     u8* pMatrix;
-    SVECTOR trans;
+    VECTOR trans;
 
     func_80022038(pSprite);
     pSub = *(u8**)(pSprite + 0x20);
@@ -415,8 +413,28 @@ void func_80025718(u8* pEntry) {
             flags
         );
     }
-}
+#else
+    MATRIX result;
+    VECTOR trans;
+    u8* sprite;
+    u8* sub;
+    sprite = *(u8**)(pEntry + 4);
+    func_80022038(sprite);
+    if (*(s32*)(*(u8**)(sprite + 0x20) + 0x34) != 0) {
+        trans.vx = *(s16*)(sprite + 2);
+        trans.vy = *(s16*)(sprite + 6);
+        trans.vz = *(s16*)(sprite + 10);
+        TransMatrix((MATRIX*)(*(u8**)(sprite + 0x20) + 12), &trans);
+        if (!(sprite[0x3F] & 1)) {
+            CompMatrix(&D_8004FBB8, (MATRIX*)(*(u8**)(sprite + 0x20) + 12), &result);
+        }
+        SetRotMatrix(&result);
+        SetTransMatrix(&result);
+        sub = *(u8**)(sprite + 0x20);
+        func_8002C700(*(void**)(sub + 0x34), *(void**)(sub + g_GfxCurContext * 4 + 0x2C), g_GfxCurOT, *(u16*)(sprite + 0x42) & 4);
+    }
 #endif
+}
 
 /* Transcribed from asm/slus_006.64/nonmatchings/system/temp1/func_800257F0.s
  * (0x800257F0-0x800258A0 ... 0x80025A6C). Sprite transform/render setup:
