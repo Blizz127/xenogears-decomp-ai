@@ -194,6 +194,59 @@ static void results_note_archive(BattleMipsRuntime *runtime, uint32_t target)
         results_invalidate(runtime);
 }
 
+/* DIAGNOSTIC / EVIDENCE TOOLING: XENO_RESULTS_CAPTURE_3A18=<dir> writes the
+ * complete call-site state of the first four 0x801E3A18 calls -- guest RAM,
+ * the native g_GameState copy, the scratchpad and the CPU registers -- before
+ * the dispatch decides native vs interpreted, so a reference (interpreted)
+ * run and an adopted run capture the same thing.  The files are
+ * retail-derived game state: they stay with the run (runner job out/), never
+ * in the tree or a package.  Replayed by
+ * battle_results_host_differential_test.c --replay-3a18.  Unset => nothing. */
+static void results_capture_write(const char *dir, unsigned n, const char *what,
+                                  const void *data, size_t size)
+{
+    char path[512];
+    FILE *f;
+
+    snprintf(path, sizeof(path), "%s/3a18-%u-%s.bin", dir, n, what);
+    f = fopen(path, "wb");
+    if (f == NULL || fwrite(data, 1, size, f) != size) {
+        fprintf(stderr, "[xeno-port][battle-results] capture write failed: %s\n", path);
+        if (f != NULL)
+            fclose(f);
+        return;
+    }
+    fclose(f);
+}
+
+static void results_capture_3a18(BattleMipsRuntime *runtime, PcPortMipsCpu *cpu)
+{
+    static unsigned taken;
+    const char *dir = getenv("XENO_RESULTS_CAPTURE_3A18");
+    uint32_t regs[36];
+    size_t d;
+
+    if (dir == NULL || dir[0] == '\0' || taken >= 4)
+        return;
+    memcpy(regs, cpu->gpr, sizeof(cpu->gpr));
+    regs[32] = cpu->hi;
+    regs[33] = cpu->lo;
+    regs[34] = cpu->load_valid ? (0x100u | cpu->load_reg) : 0u;
+    regs[35] = 0xFFFFFFFFu; /* identity not evaluated here (it caches verdict
+                             * state); the replay verifies the captured RAM */
+    results_capture_write(dir, taken, "ram", g_PsxRam, PSX_RAM_SIZE);
+    results_capture_write(dir, taken, "pad", g_PsxScratchpad, 4096);
+    results_capture_write(dir, taken, "regs", regs, sizeof(regs));
+    for (d = 0; d < runtime->data_count; d++) {
+        if (strcmp(runtime->data[d].name, "g_GameState") == 0)
+            results_capture_write(dir, taken, "gs", runtime->data[d].host,
+                                  runtime->data[d].size);
+    }
+    fprintf(stderr, "[xeno-port][battle-results] captured 0x801E3A18 call %u "
+            "(sp=%08x ra=%08x) to %s\n", taken, cpu->gpr[29], cpu->gpr[31], dir);
+    taken++;
+}
+
 static int results_try_host(BattleMipsRuntime *runtime, PcPortMipsCpu *cpu,
                             uint32_t target)
 {
@@ -210,6 +263,8 @@ static int results_try_host(BattleMipsRuntime *runtime, PcPortMipsCpu *cpu,
         return 0;
     if (target - RESULTS_BASE >= RESULTS_IMMUTABLE_BYTES)
         return 0;
+    if (target == 0x801E3A18u)
+        results_capture_3a18(runtime, cpu);
     for (index = 0; kResultsLeaves[index].name != NULL; index++) {
         if (kResultsLeaves[index].address == target)
             break;

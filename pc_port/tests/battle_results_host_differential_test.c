@@ -871,6 +871,11 @@ static uint16_t peek16(uint32_t address)
     return (uint16_t)(peek8(address) | (peek8(address + 1u) << 8));
 }
 
+static uint32_t peek32(uint32_t address)
+{
+    return (uint32_t)peek16(address) | ((uint32_t)peek16(address + 2u) << 16);
+}
+
 static uint8_t level_of(uint8_t k)
 {
     return peek8(0x8006D902u + 164u * k);
@@ -1933,6 +1938,200 @@ next_case:
     return 0;
 }
 
+/* ---- --replay-3a18 DIR: real call-site state, interpreter disabled -------
+ *
+ * DIR holds what XENO_RESULTS_CAPTURE_3A18 wrote at real 0x801E3A18 calls
+ * (3a18-<n>-ram/gs/pad/regs.bin; retail-derived, never in the tree).  For
+ * each capture: verify the captured module is the pinned retail identity,
+ * run 0x801E3A18 fully interpreted (retail), then from the identical state
+ * natively with XENO_DISABLE_CPU_INTERPRETER=1, so any interpreted
+ * instruction would be refused.  Requires identical registers, HI/LO, all
+ * RAM (frame included), the native g_GameState copy and the scratchpad,
+ * zero interpreted instructions and one native results call, and prints the
+ * side effects retail produced (changed ranges). */
+static int replay_load(const char *dir, unsigned n, const char *what, void *dst,
+                       size_t size, size_t *got)
+{
+    char path[512];
+    FILE *f;
+    size_t r;
+
+    snprintf(path, sizeof(path), "%s/3a18-%u-%s.bin", dir, n, what);
+    f = fopen(path, "rb");
+    if (f == NULL)
+        return -1;
+    r = fread(dst, 1, size, f);
+    fclose(f);
+    if (got != NULL)
+        *got = r;
+    return 0;
+}
+
+static int replay_side(const uint32_t regs[36], int force, SideResult *out)
+{
+    uint64_t calls = rt.results.native_calls;
+
+    memset(&cpu, 0, sizeof(cpu));
+    initialize_cpu(&cpu, &rt);
+    cpu.bus.write = recording_write;
+    memcpy(cpu.gpr, regs, sizeof(cpu.gpr));
+    cpu.hi = regs[32];
+    cpu.lo = regs[33];
+    cpu.gpr[31] = BATTLE_HALT_PC;
+    rt.force_interpret = force;
+    if (sigsetjmp(fault_jmp, 1) != 0) {
+        rt.force_interpret = 0;
+        return -1;
+    }
+    out->rc = PcPortMipsRun(&cpu, 0x801E3A18u, BATTLE_HALT_PC, STEP_LIMIT);
+    rt.force_interpret = 0;
+    memcpy(out->gpr, cpu.gpr, sizeof(out->gpr));
+    out->hi = cpu.hi;
+    out->lo = cpu.lo;
+    out->steps = cpu.steps;
+    out->native_calls = rt.results.native_calls - calls;
+    return 0;
+}
+
+static void replay_ranges(const char *label, const uint8_t *before, const uint8_t *after,
+                          size_t n, uint32_t base)
+{
+    size_t i = 0, changed = 0, printed = 0;
+
+    while (i < n) {
+        size_t j;
+        if (before[i] == after[i]) {
+            i++;
+            continue;
+        }
+        j = i;
+        while (j < n && before[j] != after[j])
+            j++;
+        changed += j - i;
+        if (printed++ < 24)
+            printf("BATTLE RESULTS REPLAY 3A18   %s %08x..%08x (%zu bytes)\n", label,
+                   (unsigned)(base + i), (unsigned)(base + j - 1), j - i);
+        i = j;
+    }
+    printf("BATTLE RESULTS REPLAY 3A18   %s changed bytes=%zu ranges=%zu\n", label,
+           changed, printed);
+}
+
+static int replay_run(const char *dir)
+{
+    static uint8_t loaded_ram[PSX_RAM_SIZE], loaded_pad[4096];
+    static uint8_t loaded_gs[RESULTS_GS_BYTES];
+    unsigned n, replayed = 0;
+
+    for (n = 0; n < 4; n++) {
+        uint32_t regs[36];
+        size_t got_regs = 0, got_gs = 0;
+        SideResult retail, native;
+        size_t diffs, first = 0;
+        unsigned reg;
+        char detail[256];
+
+        if (replay_load(dir, n, "regs", regs, sizeof(regs), &got_regs) != 0)
+            break;
+        if (got_regs != sizeof(regs) ||
+            replay_load(dir, n, "ram", loaded_ram, sizeof(loaded_ram), NULL) != 0 ||
+            replay_load(dir, n, "pad", loaded_pad, sizeof(loaded_pad), NULL) != 0 ||
+            replay_load(dir, n, "gs", loaded_gs, sizeof(loaded_gs), &got_gs) != 0) {
+            fail("replay-3a18", "capture", "incomplete capture files");
+            continue;
+        }
+        memcpy(g_PsxRam, loaded_ram, sizeof(loaded_ram));
+        memcpy(native_gs, loaded_gs, got_gs);
+        memcpy(g_PsxScratchpad, loaded_pad, sizeof(loaded_pad));
+        memcpy(loaded_gs, native_gs, RESULTS_GS_BYTES);
+        if (regs[34] != 0) {
+            fail("replay-3a18", "capture", "a delay-slot load was pending at the call");
+            continue;
+        }
+        if (!results_identity_current(&rt, 0x801E3A18u)) {
+            fail("replay-3a18", "identity", "captured module is not the pinned retail image");
+            continue;
+        }
+        printf("BATTLE RESULTS REPLAY 3A18 capture=%u sp=%08x ra=%08x a0=%08x gs_bytes=%zu "
+               "slots=%08x kinds=%u/%u/%u\n", n, regs[29], regs[31], regs[4], got_gs,
+               peek32(0x801E44C8u), peek8(peek32(0x801E44C8u) + 0x56u),
+               peek8(peek32(0x801E44C8u) + 0x170u + 0x56u),
+               peek8(peek32(0x801E44C8u) + 0x2E0u + 0x56u));
+
+        stray_writes = 0;
+        unsetenv("XENO_DISABLE_CPU_INTERPRETER");
+        if (replay_side(regs, 1, &retail) != 0 || retail.rc != PC_PORT_MIPS_HALTED ||
+            retail.steps == 0 || retail.native_calls != 0) {
+            fail("replay-3a18", "retail", cpu.error);
+            continue;
+        }
+        memcpy(retail_ram, g_PsxRam, sizeof(retail_ram));
+        memcpy(retail_gs, native_gs, RESULTS_GS_BYTES);
+        memcpy(retail_pad, g_PsxScratchpad, sizeof(retail_pad));
+
+        memcpy(g_PsxRam, loaded_ram, sizeof(loaded_ram));
+        memcpy(native_gs, loaded_gs, RESULTS_GS_BYTES);
+        memcpy(g_PsxScratchpad, loaded_pad, sizeof(loaded_pad));
+        setenv("XENO_DISABLE_CPU_INTERPRETER", "1", 1);
+        if (replay_side(regs, 0, &native) != 0) {
+            unsetenv("XENO_DISABLE_CPU_INTERPRETER");
+            fail("replay-3a18", "native-fault", "native body faulted");
+            continue;
+        }
+        unsetenv("XENO_DISABLE_CPU_INTERPRETER");
+        if (native.rc != PC_PORT_MIPS_HALTED || native.steps != 0 || native.native_calls != 1) {
+            snprintf(detail, sizeof(detail), "rc=%d steps=%llu native_calls=%llu err=%s",
+                     native.rc, (unsigned long long)native.steps,
+                     (unsigned long long)native.native_calls, cpu.error);
+            fail("replay-3a18", "not-interpreter-free", detail);
+            continue;
+        }
+        for (reg = 1; reg < 32; reg++) {
+            if (retail.gpr[reg] != native.gpr[reg]) {
+                snprintf(detail, sizeof(detail), "r%u retail=%08x native=%08x", reg,
+                         retail.gpr[reg], native.gpr[reg]);
+                fail("replay-3a18", "exit-registers", detail);
+                break;
+            }
+        }
+        if (reg != 32)
+            continue;
+        if (retail.hi != native.hi || retail.lo != native.lo) {
+            fail("replay-3a18", "hilo", "HI/LO differ");
+            continue;
+        }
+        count_diffs(retail_ram, g_PsxRam, PSX_RAM_SIZE, 0, 0, &diffs, &first);
+        if (diffs != 0) {
+            snprintf(detail, sizeof(detail), "%zu bytes differ, first at guest %08x",
+                     diffs, (unsigned)(0x80000000u | first));
+            fail("replay-3a18", "ram", detail);
+            continue;
+        }
+        count_diffs(retail_gs, native_gs, RESULTS_GS_BYTES, 0, 0, &diffs, &first);
+        if (diffs != 0 || memcmp(retail_pad, g_PsxScratchpad, sizeof(retail_pad)) != 0 ||
+            stray_writes != 0) {
+            fail("replay-3a18", "native-copy/scratchpad/stray", "differs");
+            continue;
+        }
+        printf("BATTLE RESULTS REPLAY 3A18 capture=%u PASS: retail %llu interpreted "
+               "instructions; native 0 interpreted (CPU interpreter disabled), 1 native "
+               "results call, fallback 0; registers, HI/LO, RAM, g_GameState copy and "
+               "scratchpad identical. Observed side effects:\n", n,
+               (unsigned long long)retail.steps);
+        replay_ranges("ram", loaded_ram, retail_ram, PSX_RAM_SIZE, 0x80000000u);
+        replay_ranges("g_GameState", loaded_gs, retail_gs, RESULTS_GS_BYTES, 0x8006D634u);
+        replayed++;
+    }
+    if (replayed == 0)
+        fail("replay-3a18", "capture", "no complete capture in the directory");
+    if (failures != 0) {
+        fprintf(stderr, "BATTLE RESULTS DIFFERENTIAL FAIL replay-3a18 total=%u\n", failures);
+        return 1;
+    }
+    printf("BATTLE RESULTS REPLAY 3A18 PASS captures=%u\n", replayed);
+    return 0;
+}
+
 /* An adopted address is dispatched whenever the guest PC equals it, so it
  * must be reachable only as a call: no branch, J, or data word (jump table)
  * in the module may target it. */
@@ -1970,8 +2169,10 @@ int main(int argc, char **argv)
     unsigned spec_count = (unsigned)(sizeof(kSpecs) / sizeof(kSpecs[0]));
 
     if (argc != 2 && !(argc == 3 && (strcmp(argv[2], "--meter") == 0 ||
-                                     strcmp(argv[2], "--compose-3a18") == 0))) {
-        fprintf(stderr, "usage: %s results_module.bin [--meter|--compose-3a18]\n", argv[0]);
+                                     strcmp(argv[2], "--compose-3a18") == 0)) &&
+        !(argc == 4 && strcmp(argv[2], "--replay-3a18") == 0)) {
+        fprintf(stderr, "usage: %s results_module.bin [--meter|--compose-3a18|"
+                "--replay-3a18 DIR]\n", argv[0]);
         return 2;
     }
     f = fopen(argv[1], "rb");
@@ -2003,6 +2204,8 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    if (argc == 4)
+        return replay_run(argv[3]);
     if (argc == 3 && strcmp(argv[2], "--compose-3a18") == 0)
         return compose_run(4000u);
     if (argc == 3)
