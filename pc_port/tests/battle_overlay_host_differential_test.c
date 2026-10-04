@@ -318,6 +318,15 @@ static void placeholder_inconclusive(const Leaf *leaf, const char *side)
     }
 }
 
+/* Optional per-case setup run identically before EACH side (after the RAM
+ * snapshot/restore), for leaves whose native callees need valid state that
+ * seeded random RAM cannot provide (the heap for 8008ABB8).  Its own writes
+ * land in both sides' RAM alike; placeholder hits it causes are not charged to
+ * the body.  force_return_bits overrides the generated return width for a leaf
+ * whose bridge returns a guest-domain value (typed 8008ABB8). */
+static void (*pre_side)(void);
+static unsigned force_return_bits;
+
 static void compare(const Leaf *leaf, const uint32_t *args)
 {
     const char *name = leaf->name;
@@ -335,6 +344,8 @@ static void compare(const Leaf *leaf, const uint32_t *args)
     /* Both sides call the same rand(); start each run from the same point or
      * every random-dependent body would differ for no reason. */
     srand(1);
+    if (pre_side != NULL)
+        pre_side();
     g_prover_placeholder_hits = 0;
     /* The interpreted side calls main-executable code natively through the
      * bridge (HeapFree, rcos, ...). If that native callee faults, retail did
@@ -383,6 +394,11 @@ static void compare(const Leaf *leaf, const uint32_t *args)
 
     memcpy(g_PsxRam, before, sizeof(g_PsxRam));
     srand(1);
+    if (pre_side != NULL) {
+        unsigned hits = g_prover_placeholder_hits;
+        pre_side();
+        g_prover_placeholder_hits = hits;
+    }
     if (sigsetjmp(host_fault_jmp, 1) != 0) {
         fail(name, "host-fault",
              "host body faulted where the interpreter completed (wild address)");
@@ -405,7 +421,7 @@ static void compare(const Leaf *leaf, const uint32_t *args)
      * whatever the callee happened to have in rax, and a u8/u16 return leaves
      * the upper bits undefined by the ABI. Retail's v1 is not part of any of
      * these functions' contract either. */
-    switch (leaf->return_bits) {
+    switch (force_return_bits != 0 ? force_return_bits : leaf->return_bits) {
     case 8:  mask = 0xFFu; break;
     case 16: mask = 0xFFFFu; break;
     case 32: mask = 0xFFFFFFFFu; break;
@@ -489,11 +505,46 @@ static void compare_name(const char *name, const uint32_t *args)
     compare(leaf_by_name(name), args);
 }
 
+/* 8008ABB8 = HeapChangeCurrentUser(2, 0); return HeapAlloc(size, mode).
+ * Both sides reach the real native allocator, whose blocks live in guest RAM
+ * and whose globals (g_Heap, current user/content, consolidation flag) are
+ * native, so every side starts from the same freshly initialised 128 KiB heap.
+ * The typed bridge returns the guest address, so all 32 bits of v0 are
+ * compared, unlike the generic pointer-return rule. */
+#define ABB8_HEAP_LO 0x80140000u
+#define ABB8_HEAP_HI 0x80160000u
+extern void HeapInit(void *pHeapStart, void *pHeapEnd);
+static void abb8_heap(void)
+{
+    HeapInit(PSX_ADDR(ABB8_HEAP_LO), PSX_ADDR(ABB8_HEAP_HI));
+}
+
+static void hand_cases_8008ABB8(void)
+{
+    static const uint32_t sizes[] = {0u, 4u, 0x10Cu, 0x2F8u, 0xA2B4u, 0x8000u};
+    uint32_t args[4];
+    unsigned s, mode;
+
+    pre_side = abb8_heap;
+    force_return_bits = 32;
+    for (s = 0; s < sizeof(sizes) / sizeof(sizes[0]); s++) {
+        for (mode = 0; mode <= 1; mode++) {
+            begin_case(s % 3u, 0);
+            args[0] = sizes[s]; args[1] = mode; args[2] = args[3] = 0;
+            compare_name("func_8008ABB8", args);
+        }
+    }
+    pre_side = NULL;
+    force_return_bits = 0;
+}
+
 /* One case per adopted leaf, with the arguments the port's bridge test already
  * established as meaningful for it. */
 static void hand_cases(void)
 {
     uint32_t args[4];
+
+    hand_cases_8008ABB8();
 
     /* AA80AE4's result is undefined when no rotation slot qualifies. Seed a
      * valid 11-entry cycle so both sides return a defined selected value. */

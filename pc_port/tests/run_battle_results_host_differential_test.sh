@@ -229,7 +229,7 @@ for mode in ${BATTLE_RESULTS_DIFFERENTIAL_MODES:-O0 O2 UBSan}; do
     XENO_CPU_FALLBACK_STATS=1 "$OUT/$mode" "$OUT/results_module.bin" --meter \
         >"$OUT/$mode-meter.log" 2>&1 || status=$?
     cat "$OUT/$mode-meter.log"
-    summary='^\[xeno-port\]\[cpu-fallback\] battle=[12] end=returned interpreted_instructions=[0-9]+ interpreted_calls=[0-9]+ interpreted_targets=[0-9]+ untracked_calls=0 native_main_exe_calls=0 native_overlay_calls=0 native_results_calls=[0-9]+ native_file1_calls=0 native_call_share=[0-9.]+%$'
+    summary='^\[xeno-port\]\[cpu-fallback\] battle=[12] end=returned interpreted_instructions=[0-9]+ interpreted_calls=[0-9]+ disabled_dispatches=0 interpreted_targets=[0-9]+ untracked_calls=0 native_main_exe_calls=0 native_overlay_calls=0 native_results_calls=[0-9]+ native_file1_calls=0 native_call_share=[0-9.]+%$'
     if [ "$status" -ne 0 ] ||
        ! grep -q '^BATTLE RESULTS DIFFERENTIAL METER PASS ' "$OUT/$mode-meter.log" ||
        [ "$(grep -cE "$summary" "$OUT/$mode-meter.log")" -ne 2 ] ||
