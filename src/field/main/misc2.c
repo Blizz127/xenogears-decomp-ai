@@ -9,6 +9,7 @@
 #ifdef XENO_PC_PORT
 #include <assert.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include "test_input.h"
 
 #ifdef XENO_PC_PORT
