@@ -104,6 +104,37 @@ global, so port quicksaves did not carry it. It now goes in a `<save>.rng`
 sidecar tied to the checkpoint by its checksum (0b27e2d1); the main
 quicksave format is unchanged, so older builds still load it.
 
+## Follow-up (d): map-2 hang, root cause and fix
+
+Receipts: `~/release-staging/xeno-work/e52f8f1e-prologue/` (`d-hang-6b1b5cbc/`,
+`d-verify-cee78410/`).
+
+- **Isolation** (job …-573808). The route continued into map 2, with
+  xeno-port run as a gdb child.
+  - Variant A (lock-step sound + vblank test clock) HUNG; variant B (vblank
+    test clock only) HUNG; variant C (lock-step only) ran 480 s past map 2.
+  - gdb, main thread: `func_8007554C` (field misc2.c) spinning in
+    `while (Vsync(-1) < s1 + D_800B217C + 2)`. `D_800B217C` is the field
+    script frame rate (`func_800925A0`: 0/1/2 = 30/20/15 fps).
+  - Under the test clock, `Vsync(-1)` returns the serviced vblank count,
+    which advanced only by K=2 per blocking Vsync. When the Lahan opening
+    switches to 20/15 fps, the target s1+3 or s1+4 is never reached.
+  - This is a test-clock defect: the plain clock reaches map 2. It does not
+    share a root with (a)/(e).
+- **Fix** (cee78410, opt-in test mode): a `Vsync(-1)` whose previous Vsync call
+  was also a `Vsync(-1)` with the same count is a spin, and it advances the
+  test clock by one vblank. Any `Vsync(1)` or blocking Vsync ends the spin,
+  so 30 fps frames are unchanged. At 20/15 fps frames take 3/4 vblanks, as
+  on hardware.
+- **Verification** (job 20261004-181725-…-1333301):
+  - Into map 2 ×2: no stall. Both runs went maps 490 → 4 → 2, logged the
+    spin advance, entered the opening battle (interpreted, reference mode)
+    and were still running at the 410 s limit (back in field 14).
+  - Regression, prologue slice ref + dis: PASS. Frames are identical to the
+    accepted e-verify run; SPU c2a263e6… and seed 96af344d are unchanged.
+  - Regression, field14 ref + dis: PASS. Both saves are 63929945…, and the
+    frames are identical to the (a) run.
+
 ## Status
 
 - **Accepted, opt-in test mode (clock armed from the title map):** the full
