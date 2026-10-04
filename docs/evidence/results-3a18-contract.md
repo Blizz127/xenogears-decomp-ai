@@ -56,7 +56,7 @@ needs a port build (stubs.c), which is coordinator-sequenced. The model is
 not registered for dispatch. No nonempty-party fixture exists yet, and this
 oracle does not create one.
 
-## Composition with the adopted native helpers (staged, NOT RUN)
+## Composition with the adopted native helpers (RUN: PASS, gate d1d329f4)
 
 `battle_results_host_differential_test.c --compose-3a18`, called from
 run_battle_results_host_differential_test.sh for each of O0/O2/UBSan.
@@ -77,3 +77,5 @@ Compile-only check: clang -Wall -Wextra -Werror at O0/O2/UBSan compiles
 (stand-in RESULTS_GS_BYTES). The run needs pc_port/build_native/stubs.c from a
 port build, so it is queued in the coordinator-sequenced gate request for
 e52f8f1e1137. Still not dispatched: 0x801E3A18 stays off the allowlist.
+
+Gate d1d329f4 (job 883844): --compose-3a18 PASS 4,000 cases at O0/O2/UBSan; drop-exit-regs mutant fails in each mode. See gate-d1d329f4-20261004.md.
