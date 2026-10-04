@@ -42,7 +42,17 @@
 #ifdef XENO_PC_PORT
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 extern unsigned char g_PsxRam[];
+/* The movie overlay's own strings, read where retail reads them: main_loop
+ * decompresses movie.bin to 0x8006FAF0 before MovieMain runs, so its .rodata
+ * is in guest RAM. The literal only names the string for readers and for
+ * run_movie_overlay_strings_test.sh; it is not compiled in (the port binary
+ * carries no game data). */
+#define MV_STR(vaddr, lit) ((char*)&g_PsxRam[(vaddr) & 0x1FFFFFu])
+#else
+#define MV_STR(vaddr, lit) (lit)
 #endif
 
 /* SLUS symbols */
@@ -610,7 +620,7 @@ INCLUDE_ASM("asm/movie/nonmatchings/main", MovieMain);
 #else
 void MovieMain(void)
 {
-    char trouble[8] = "trouble";
+    char trouble[8];
     void* pModule;
     void* pProbe;
     s32 button;
@@ -618,6 +628,17 @@ void MovieMain(void)
     s32 stepScale;
     s32 i;
 
+    {
+        /* Test hook (run_movie_overlay_strings_test.sh): the overlay MV_STR
+         * reads, as loaded, before MovieMain touches it. */
+        const char* dump = getenv("XENO_MOVIE_OVERLAY_DUMP");
+        FILE* f = (dump != NULL && dump[0] != '\0') ? fopen(dump, "wb") : NULL;
+        if (f != NULL) {
+            fwrite(&g_PsxRam[0x6FAF0], 1, 0x7453, f);
+            fclose(f);
+        }
+    }
+    memcpy(trouble, MV_STR(0x80070084, "trouble"), sizeof(trouble));
     HeapChangeCurrentUser(4, NULL);
     ArchiveSetIndex(0x18, 0);
     SoundSetCdVolumeWithFade(0, 0);
@@ -717,14 +738,14 @@ void MovieMain(void)
 
         MovieSwapRenderEnv();
         if (D_80077450 == 0) {
-            FontPrintf("  [ MOVIE CD-ROM MODE1 DISK %1d ]  \n\n", ArchiveGetDiscNumber());
+            FontPrintf(MV_STR(0x8007008C, "  [ MOVIE CD-ROM MODE1 DISK %1d ]  \n\n"), ArchiveGetDiscNumber());
         } else if (D_80077450 == -1) {
-            FontPrintf("  [ MOVIE CD-ROM MODE2 DISK %1d ]  \n\n", ArchiveGetDiscNumber());
+            FontPrintf(MV_STR(0x800700B4, "  [ MOVIE CD-ROM MODE2 DISK %1d ]  \n\n"), ArchiveGetDiscNumber());
         } else {
-            FontPrintf("  [ MOVIE PC HDD MODE  DISK %1d ]  \n\n", ArchiveGetDiscNumber());
+            FontPrintf(MV_STR(0x800700DC, "  [ MOVIE PC HDD MODE  DISK %1d ]  \n\n"), ArchiveGetDiscNumber());
         }
-        FontPrintf("    ERROR %2d Sect %2d:%2d FM%3d\n", D_8005A4DC, D_8005A4A8, D_8005A4B4, D_8005A4B8);
-        FontPrintf("    LesMem%2d NoMem%2d Skp%3d\n", D_8005A49C, D_8005A4A4, D_801E89D4, D_80062514);
+        FontPrintf(MV_STR(0x80070104, "    ERROR %2d Sect %2d:%2d FM%3d\n"), D_8005A4DC, D_8005A4A8, D_8005A4B4, D_8005A4B8);
+        FontPrintf(MV_STR(0x80070128, "    LesMem%2d NoMem%2d Skp%3d\n"), D_8005A49C, D_8005A4A4, D_801E89D4, D_80062514);
 
         step = func_800747AC(0, 0xD, &button);
         stepScale = 1;
@@ -838,88 +859,88 @@ void MovieMain(void)
         }
 
         for (i = 0; i < 0xE; i++) {
-            FontPrintf(D_80077118 == (u32)i ? "  >" : "   ");
+            FontPrintf(D_80077118 == (u32)i ? MV_STR(0x80070148, "  >") : MV_STR(0x8007014C, "   "));
             switch (i) {
             case 0:
-                FontPrintf(" MOVIE TYPE   ");
+                FontPrintf(MV_STR(0x80070150, " MOVIE TYPE   "));
                 switch (D_80077448) {
                 case 0:
-                    FontPrintf("PICTURE ONLY\n");
+                    FontPrintf(MV_STR(0x80070160, "PICTURE ONLY\n"));
                     break;
                 case 1:
-                    FontPrintf("PICTURE+ADPCM\n");
+                    FontPrintf(MV_STR(0x80070170, "PICTURE+ADPCM\n"));
                     break;
                 case 2:
-                    FontPrintf("ADPCM ONLY\n");
+                    FontPrintf(MV_STR(0x80070180, "ADPCM ONLY\n"));
                     break;
                 }
                 break;
             case 1:
-                FontPrintf(" MOVIE NUMBER %4d\n\n", D_8007711C);
+                FontPrintf(MV_STR(0x8007018C, " MOVIE NUMBER %4d\n\n"), D_8007711C);
                 break;
             case 2:
-                FontPrintf(" START FRAME  %4d ", D_800773A4);
+                FontPrintf(MV_STR(0x800701A0, " START FRAME  %4d "), D_800773A4);
                 if (D_80077444 == 1) {
-                    FontPrintf("SET");
+                    FontPrintf(MV_STR(0x800701B4, "SET"));
                 }
                 if (D_80077444 == 2) {
                     if (D_800773A8 < 0) {
-                        FontPrintf("EOF", D_800773A8);
+                        FontPrintf(MV_STR(0x800701B8, "EOF"), D_800773A8);
                     } else {
-                        FontPrintf("+%4dSECT", D_800773A8);
+                        FontPrintf(MV_STR(0x800701BC, "+%4dSECT"), D_800773A8);
                     }
                 }
-                FontPrintf("\n");
+                FontPrintf(MV_STR(0x8006FC6C, "\n"));
                 break;
             case 3:
-                FontPrintf(" END   FRAME  %4d ", D_8007739C);
+                FontPrintf(MV_STR(0x800701CC, " END   FRAME  %4d "), D_8007739C);
                 if (D_8007743C == 0) {
-                    FontPrintf("SET");
+                    FontPrintf(MV_STR(0x800701B4, "SET"));
                 }
                 if (D_8007743C == 2) {
-                    FontPrintf("???");
+                    FontPrintf(MV_STR(0x800701E0, "???"));
                 }
-                FontPrintf("\n");
+                FontPrintf(MV_STR(0x8006FC6C, "\n"));
                 break;
             case 4:
-                FontPrintf(" MOVIE CHANNEL %3d\n", D_80077398);
+                FontPrintf(MV_STR(0x800701E4, " MOVIE CHANNEL %3d\n"), D_80077398);
                 break;
             case 5:
-                FontPrintf(" SCREEN MODE  ");
-                FontPrintf(D_80077454 != 0 ? "24 BIT COLOR" : "16 BIT COLOR");
-                FontPrintf("\n");
+                FontPrintf(MV_STR(0x800701F8, " SCREEN MODE  "));
+                FontPrintf(D_80077454 != 0 ? MV_STR(0x80070208, "24 BIT COLOR") : MV_STR(0x80070218, "16 BIT COLOR"));
+                FontPrintf(MV_STR(0x8006FC6C, "\n"));
                 break;
             case 6:
-                FontPrintf(" SCREEN DRAW  ");
+                FontPrintf(MV_STR(0x80070228, " SCREEN DRAW  "));
                 if (D_800773A0 < 0) {
-                    FontPrintf("ALL", D_800773A0);
+                    FontPrintf(MV_STR(0x80070238, "ALL"), D_800773A0);
                 } else {
-                    FontPrintf("%3d", D_800773A0);
+                    FontPrintf(MV_STR(0x8007023C, "%3d"), D_800773A0);
                 }
-                FontPrintf("\n");
+                FontPrintf(MV_STR(0x8006FC6C, "\n"));
                 break;
             case 7:
-                FontPrintf(" REWIND       ");
-                FontPrintf(D_80077438 != 0 ? "ON" : "OFF");
-                FontPrintf("\n\n");
+                FontPrintf(MV_STR(0x80070240, " REWIND       "));
+                FontPrintf(D_80077438 != 0 ? MV_STR(0x80070250, "ON") : MV_STR(0x80070254, "OFF"));
+                FontPrintf(MV_STR(0x80070258, "\n\n"));
                 break;
             case 8:
-                FontPrintf(" MOVIE START.\n\n");
+                FontPrintf(MV_STR(0x8007025C, " MOVIE START.\n\n"));
                 break;
             case 9:
-                FontPrintf(" CD-ROM MONITOR.\n\n");
+                FontPrintf(MV_STR(0x8007026C, " CD-ROM MONITOR.\n\n"));
                 break;
             case 10:
-                FontPrintf(" CD-ROM CHECK.\n");
+                FontPrintf(MV_STR(0x80070280, " CD-ROM CHECK.\n"));
                 break;
             case 11:
-                FontPrintf(" FAT CHECK.\n\n");
+                FontPrintf(MV_STR(0x80070290, " FAT CHECK.\n\n"));
                 break;
             case 12:
-                FontPrintf(" [DISC CHANGE.]\n");
+                FontPrintf(MV_STR(0x800702A0, " [DISC CHANGE.]\n"));
                 break;
             case 13:
-                FontPrintf(" [RETURN TO KERNEL.]\n");
+                FontPrintf(MV_STR(0x800702B4, " [RETURN TO KERNEL.]\n"));
                 break;
             }
         }
@@ -1399,8 +1420,8 @@ void func_80075D8C(void)
         s32 i;
 
         MovieSwapRenderEnv();
-        FontPrintf("\n[ FAT CHECK MODE ");
-        FontPrintf(hex ? "HEX ]\n" : "DEC ]\n");
+        FontPrintf(MV_STR(0x80070450, "\n[ FAT CHECK MODE "));
+        FontPrintf(hex ? MV_STR(0x80070464, "HEX ]\n") : MV_STR(0x8007046C, "DEC ]\n"));
         func_800747AC(0, 0, &button);
         if (!(D_800773B4 & 0x1000) && (D_800773AC & 0x1000) && first > 0) {
             first--;
@@ -1429,15 +1450,15 @@ void func_80075D8C(void)
 
         for (i = first; i < first + 0x14; i++) {
             if (func_80075D4C(i) == 0) {
-                FontPrintf(hex ? "No %4x NullFile\n" : "No %4d NullFile\n", i);
+                FontPrintf(hex ? MV_STR(0x80070474, "No %4x NullFile\n") : MV_STR(0x80070488, "No %4d NullFile\n"), i);
                 continue;
             }
-            FontPrintf(hex ? "No %4x Sect%6x " : "No %4d Sect%6d ", i, ArchiveDecodeSector(i + 1));
+            FontPrintf(hex ? MV_STR(0x8007049C, "No %4x Sect%6x ") : MV_STR(0x800704AC, "No %4d Sect%6d "), i, ArchiveDecodeSector(i + 1));
             if (names) {
                 char* path;
 
                 if (func_80075D4C(i) < 0) {
-                    FontPrintf("[P%3d]\n", -func_80075D4C(i));
+                    FontPrintf(MV_STR(0x800704BC, "[P%3d]\n"), -func_80075D4C(i));
                     continue;
                 }
                 path = ArchiveGetFilePath(i + 1);
@@ -1450,16 +1471,16 @@ void func_80075D8C(void)
                         }
                         p++;
                     }
-                    FontPrintf("%s\n", path);
+                    FontPrintf(MV_STR(0x800704C4, "%s\n"), path);
                 } else {
-                    FontPrintf("\n", path);
+                    FontPrintf(MV_STR(0x8006FC6C, "\n"), path);
                 }
             } else {
-                FontPrintf(hex ? "Size%9x\n" : "Size%9d\n", func_80075D4C(i));
+                FontPrintf(hex ? MV_STR(0x800704C8, "Size%9x\n") : MV_STR(0x800704D4, "Size%9d\n"), func_80075D4C(i));
             }
         }
 
-        FontPrintf("\nPUSH CIRCLE BUTTON TO MENU.");
+        FontPrintf(MV_STR(0x80070430, "\nPUSH CIRCLE BUTTON TO MENU."));
         if (D_80077394 > 0) {
             HeapDebugDump(1, 0, 6, 0x808D);
         }
