@@ -1996,7 +1996,10 @@ void PcPort_BeforeControllerPush(void)
  * everything clocked by vblanks (pad pushes, Vsync(1) frame deltas,
  * vblank-driven script counters, the lock-step sound tick) varies with it.
  * From XENO_FIELD_STEP_PAD_INPUT arming (boot and title keep the host clock),
- * each blocking Vsync in the live field loop (frozen while loading)
+ * or with XENO_DETERMINISTIC_VBLANK_FROM_FIELD=<map> from the first vblank in
+ * that field (e.g. 490, the title map: the title's frame count is otherwise
+ * host-paced, and its per-frame effects consume a varying number of rand()
+ * calls before a later slice arms), each blocking Vsync in the live field loop (frozen while loading)
  * advances a virtual count by exactly K (Vsync(n>=2): n), Vsync(1) returns it,
  * and the vblank service (controller_vblank_service.c) follows it instead of
  * the host counter.  Presentation is still paced by the host.  Retail's own
@@ -2008,7 +2011,15 @@ static int s_detVblankLive;       /* the field loop is running (a drain since th
 static uint32_t s_detVblankNow;   /* service clock while live (service cursor domain) */
 static uint32_t s_detQuery;       /* game-visible clock returned by Vsync(1) */
 static int s_detLastQuery;        /* last host Vsync(1) value before arming */
-static unsigned s_detLoadStep;    /* step clock value at the last load */
+static unsigned s_detLoadStep;    /* drain count at the last load */
+static unsigned s_detDrains;      /* FieldPollControllers drains since boot */
+static int s_detFromField = -2;   /* XENO_DETERMINISTIC_VBLANK_FROM_FIELD, -1 unset */
+
+/* Every FieldPollControllers drain, armed or not (test_input.c). */
+void PcPort_DetVblankNoteDrain(void)
+{
+    s_detDrains++;
+}
 static int s_detPrevLatch;
 
 static int PcPort_DetVblankK(void)
@@ -2043,24 +2054,35 @@ int PcPort_DeterministicVblank(uint32_t* now)
     unsigned step;
     int latch;
 
-    if (PcPort_DetVblankK() == 0 || !PcPort_FieldStepPadArmedStep(&step))
+    if (PcPort_DetVblankK() == 0)
         return 0;
+    if (s_detFromField == -2) {
+        const char* e = getenv("XENO_DETERMINISTIC_VBLANK_FROM_FIELD");
+        s_detFromField = (e != NULL && e[0] != '\0') ? (atoi(e) & 0xFFF) : -1;
+    }
+    if (!PcPort_FieldStepPadArmedStep(&step)) {
+        extern int g_GameSceneMapNum;
+        step = 0;
+        if (!s_detVblankOn && (s_detFromField < 0 || (g_GameSceneMapNum & 0xFFF) != s_detFromField))
+            return 0;
+    }
     latch = PcPort_QuickCheckpointFieldIsActive();
     if (!s_detVblankOn) {
         s_detVblankOn = 1;
-        s_detLoadStep = step;
+        s_detLoadStep = s_detDrains;
         s_detQuery = (uint32_t)s_detLastQuery;
-        fprintf(stderr, "[det-vblank] jitter-free test clock armed: K=%d at step %u "
-                "(not a retail-timing claim)\n", s_detVblankK, step);
+        fprintf(stderr, "[det-vblank] jitter-free test clock armed: K=%d at step %u drain %u "
+                "(not a retail-timing claim)\n", s_detVblankK, step, s_detDrains);
     }
     if (s_detPrevLatch && !latch) {          /* field teardown: a load begins */
         s_detVblankLive = 0;
-        s_detLoadStep = step;
-        fprintf(stderr, "[det-vblank] load: host-paced service from step %u\n", step);
+        s_detLoadStep = s_detDrains;
+        fprintf(stderr, "[det-vblank] load: host-paced service from step %u drain %u\n", step,
+                s_detDrains);
     }
     s_detPrevLatch = latch;
     if (!s_detVblankLive) {
-        if (step <= s_detLoadStep)
+        if (s_detDrains <= s_detLoadStep)
             return 0;                         /* still loading: host-paced service */
         s_detVblankLive = 1;
         s_detVblankNow = *now;

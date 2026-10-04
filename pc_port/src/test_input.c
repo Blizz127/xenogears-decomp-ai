@@ -618,6 +618,9 @@ int PcPort_FieldStepPadApply(unsigned char *pad,
 /* Once per FieldPollControllers, after its drain. */
 void PcPort_FieldStepPadNoteDrain(void)
 {
+    extern void PcPort_DetVblankNoteDrain(void) __attribute__((weak));
+    if (PcPort_DetVblankNoteDrain)
+        PcPort_DetVblankNoteDrain();
     if (s_step_pad_state != 2)
         return;
     if (s_step_pad_vblanks == 0u) {
