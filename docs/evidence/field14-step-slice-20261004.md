@@ -80,3 +80,47 @@ are opt-in; neither becomes a shipped default without the owner.
 over the same field14 walk from a reference (emulator or hardware), including any 3-vblank
 slowdown frames, and make the virtual clock follow it. Until then, K=2 removes host jitter
 but does not model retail frame timing or slowdowns.
+
+## FULL ACCEPTANCE — job 3875192 (source 73cb0497), 2026-10-04
+
+`20261004-060627-xeno-xeno-e52f-field14-split-73cb0497-3875192`, binary 18d7b007…, with the
+deterministic test clocks (`XENO_SOUND_TICK_LOCKSTEP=1`, `XENO_DETERMINISTIC_VBLANK=2`:
+a jitter-free test-determinism clock, not a retail-timing claim). Determinism was required in
+both summaries (`FIELD14_REQUIRE_DETERMINISM=1`). Receipts with on-runner artifact hashes:
+`~/release-staging/xeno-work/e52f8f1e-field14-splitclock/receipts/`.
+
+| Item | Result over 4 runs (ref1, dis1, ref2, dis2) |
+|---|---|
+| self-exit | every run exited by itself at the step-1100 cap, rc=0 |
+| zero fallback | the interpreter-disabled runs logged entries/interpreted/refusals = 0 at every checkpoint |
+| visual | all 36 checkpoint frames byte-identical across the 4 runs |
+| timing | checkpoint steps, presented-frame deltas and game-vblank deltas identical |
+| save | the F11 save at step 780 is byte-identical in all 4 runs (63929945…); the F12 reload restores the position |
+| audio | all 6 SPU register-page pairs identical on every vblank (2,000 rows) and on distinct states (347) |
+
+Both summaries: "FIELD14 SLICE PASS". The job's own exit code was 2 because of a job-script
+bug, not a result: the var-watch extract loop reused the shell variable holding the overall
+rc. Every gate line reads rc=0.
+
+The path there:
+- Sound: the RCnt2 tick moved from PsyCross's host thread into lock-step (9ff66adf).
+- Vblank pacing: a fixed K=2 test clock (f2a179c6).
+- Activation transients: 43ffebe1, fb29b1cc.
+- 2b7058b7 froze the clock during loads and HUNG the field-14 load (jobs 3219278/3255482,
+  stopped, void).
+- 73cb0497 split the clock: the service clock stays host-paced while loading and becomes
+  deterministic once the field loop is live; the game-visible Vsync(1) clock is frozen
+  during loads.
+
+Open notes:
+- The var-watch logged ZERO VM writes to script byte 0xC (= g_GameState+0x193C) in these
+  runs. The earlier one-byte save difference came in through the host-timed load path, not
+  a field-script write. It is now deterministic, but its writer is unidentified.
+- Neither flag is a shipped default; that decision is the owner's, with this evidence.
+- Timing fidelity follow-up (B), measuring retail's per-frame vblank cost, remains open.
+- Audio output: the SPU page is still not rendered to a device (WDS/B5).
+
+**Status: the field14 movement slice is ACCEPTED under the deterministic test clocks.**
+The interpreter is disabled with zero fallback, and semantic, visual, timing, save and
+SPU-state equality hold across repeated reference and interpreter-disabled runs. This is
+the first accepted native runtime slice. Coverage is one field (Lahan, map 14) walk.
