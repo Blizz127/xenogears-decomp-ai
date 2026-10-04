@@ -1478,6 +1478,7 @@ XG_PLAT_WRAP_SYMS+=" DrawOTag PutDrawEnv PutDispEnv ClearOTag ClearOTagR"   # re
 XG_PLAT_WRAP_SYMS+=" CdRead CdControl CdControlB CdControlF"                # disc
 XG_PLAT_WRAP_SYMS+=" PsyX_Pad_InitPad PsyX_UpdateInput"                     # input (pad buffers)
 XG_PLAT_WRAP_SYMS+=" VSync SetRCnt GetRCnt StartRCnt"                        # timing
+XG_PLAT_WRAP_SYMS+=" PsyX_Sys_DispatchCounter2"                              # sound tick clock
 XG_PLAT_WRAPS=""
 for _sym in $XG_PLAT_WRAP_SYMS; do XG_PLAT_WRAPS+=" -Wl,--wrap=$_sym"; done
 if [ -n "$COV_OBJ" ]; then

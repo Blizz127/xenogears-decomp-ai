@@ -6,6 +6,7 @@
 #include "system/controller_vblank.h"
 
 extern int PsyX_Sys_GetVBlankCount(void);
+extern void PcPort_SoundLockstepVblank(void) __attribute__((weak));
 static void (*callback)(void);
 static uint32_t serviced_count;
 static int servicing;
@@ -96,6 +97,11 @@ void PcPort_ServiceVblank(void)
         g_VsyncInterruptCount = (int)((uint32_t)g_VsyncInterruptCount + 1u);
         if (callback)
             callback();
+        /* XENO_SOUND_TICK_LOCKSTEP: the 4 RCnt2 sound ticks of this vblank,
+         * on the game's clock (plat/xg_plat_psycross.c).  Weak: unit tests
+         * that link this file alone have no sound tick. */
+        if (PcPort_SoundLockstepVblank)
+            PcPort_SoundLockstepVblank();
         /* Mask/reset operations may sample a newer clock. Do not continue
          * toward a stale target or overwrite their new cursor on return. */
         if (epoch != mask_epoch)
