@@ -423,6 +423,18 @@ static uint32_t s_step_pad_vblanks;       /* injections since the last drain */
 static uint32_t s_step_pad_empty;         /* drains that saw no injection */
 static int s_step_pad_map = -1;
 static int s_step_pad_state = -1;         /* -1 unparsed, 0 off, 1 waiting, 2 armed */
+/* XENO_FIELD_STEP_PAD_SUSPENDED="u:value,..." (first u 0, game bits): while
+ * the field loop is suspended -- MenuMain runs synchronously inside the
+ * field menu opener, so no FieldPollControllers drain happens and the step
+ * clock stops -- the pad follows this schedule instead, clocked by u = vblanks
+ * since the last drain minus XENO_FIELD_STEP_PAD_SUSPEND_AFTER (default 8;
+ * the live field drains every 2 under the test clock).  It replays from u=0
+ * on every suspension, and only applies while the field latch is set and a
+ * drain has happened since arming, so loads never get scripted presses. */
+static TestInputStep s_susp_steps[TEST_INPUT_MAX_STEPS];
+static size_t s_susp_count;
+static uint32_t s_susp_after = 8u;
+static uint16_t s_susp_logged = 0xFFFFu;
 
 static int step_pad_error(const char *reason)
 {
@@ -486,6 +498,38 @@ int PcPort_FieldStepPadInit(void)
             return step_pad_error("trailing comma");
     }
 
+    {
+        const char *susp = getenv("XENO_FIELD_STEP_PAD_SUSPENDED");
+        const char *after = getenv("XENO_FIELD_STEP_PAD_SUSPEND_AFTER");
+        uint32_t prev = 0u;
+
+        if (after != NULL && after[0] != '\0')
+            s_susp_after = (uint32_t)strtoul(after, NULL, 10);
+        cursor = susp;
+        while (cursor != NULL && *cursor != '\0') {
+            char *end;
+            unsigned long u, value;
+
+            if (s_susp_count == TEST_INPUT_MAX_STEPS)
+                return step_pad_error("too many suspended pairs");
+            errno = 0;
+            u = strtoul(cursor, &end, 10);
+            if (errno != 0 || end == cursor || *end != ':' || u > UINT32_MAX)
+                return step_pad_error("invalid suspended boundary");
+            cursor = end + 1;
+            value = strtoul(cursor, &end, 0);
+            if (end == cursor || value > UINT16_MAX || (*end != '\0' && *end != ','))
+                return step_pad_error("invalid suspended value");
+            if ((s_susp_count == 0u && u != 0u) || (s_susp_count != 0u && u <= prev))
+                return step_pad_error("suspended boundaries must start at 0 and increase");
+            s_susp_steps[s_susp_count].frame = (uint32_t)u;
+            s_susp_steps[s_susp_count].value = (uint16_t)value;
+            s_susp_count++;
+            prev = (uint32_t)u;
+            cursor = (*end == ',') ? end + 1 : end;
+        }
+    }
+
     map = getenv("XENO_FIELD_STEP_PAD_MAP");
     if (map != NULL) {
         char *end;
@@ -529,6 +573,23 @@ int PcPort_FieldStepPadApply(unsigned char *pad,
            s_step_pad_step >= s_step_pad_steps[s_step_pad_current + 1u].frame)
         s_step_pad_current++;
     value = s_step_pad_steps[s_step_pad_current].value;
+    if (s_susp_count != 0u && s_step_pad_step > 0u && s_step_pad_vblanks >= s_susp_after) {
+        extern int PcPort_QuickCheckpointFieldIsActive(void) __attribute__((weak));
+        if (!PcPort_QuickCheckpointFieldIsActive || PcPort_QuickCheckpointFieldIsActive()) {
+            uint32_t u = s_step_pad_vblanks - s_susp_after;
+            size_t k = 0u;
+            while (k + 1u < s_susp_count && u >= s_susp_steps[k + 1u].frame)
+                k++;
+            value = s_susp_steps[k].value;
+            if (value != s_susp_logged) {
+                fprintf(stderr, "[field-step-pad] suspended u=%u held=0x%04x step=%u\n",
+                        u, (unsigned int)value, s_step_pad_step);
+                s_susp_logged = value;
+            }
+        }
+    } else {
+        s_susp_logged = 0xFFFFu;
+    }
     if (s_step_pad_current != previous)
         fprintf(stderr, "[field-step-pad] step=%u held=0x%04x\n",
                 s_step_pad_step, (unsigned int)value);
@@ -575,5 +636,7 @@ void PcPort_FieldStepPadResetForCertificate(void)
     s_step_pad_step = s_step_pad_vblanks = s_step_pad_empty = 0u;
     s_step_pad_map = -1;
     s_step_pad_state = -1;
+    s_susp_count = 0u;
+    s_susp_after = 8u;
 }
 #endif

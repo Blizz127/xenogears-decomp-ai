@@ -45,6 +45,10 @@ def run(path):
             out['refusals'] += 1
         if '[stub]' in line:
             out['stubs'] += 1
+        if '[menu] func_800799D4 request=128' in line and '-> MenuMain' in line:
+            out['menu_opens'] = out.get('menu_opens', 0) + 1
+        if '[menu] MenuMain returned' in line:
+            out['menu_returns'] = out.get('menu_returns', 0) + 1
         if 'cpu-execution' in line:
             out['execution_stats'].append(line.strip())
         if '[cpu-fallback] battle=' in line:
@@ -156,6 +160,12 @@ def main():
             and len(da) > 0,
         'timing: vblank deltas identical': deltas(ref, 'vblank') == deltas(dis, 'vblank'),
     }
+    import os
+    want_menus = os.environ.get('FIELD14_EXPECT_MENUS')
+    if want_menus:
+        n = int(want_menus)
+        checks['menu: %d field-menu opens and returns in both runs' % n] = all(
+            side.get('menu_opens', 0) == n and side.get('menu_returns', 0) == n for side in (ref, dis))
     # Under the deterministic clocks (XENO_SOUND_TICK_LOCKSTEP +
     # XENO_DETERMINISTIC_VBLANK) audio and vblank equality are required too.
     import os

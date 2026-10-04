@@ -249,6 +249,46 @@ static void mode_unset(void)
     printf("FIELD STEP PAD PASS unset: pad untouched, real input ORed as before\n");
 }
 
+/* I9: suspended sub-schedule (field loop stopped inside MenuMain): after T
+ * vblanks without a drain the pad follows XENO_FIELD_STEP_PAD_SUSPENDED by
+ * u = vblanks - T, replays per suspension, and never applies before the
+ * first drain (a load). */
+static void suspension(unsigned vblanks, u16 *seen)
+{
+    unsigned v;
+    for (v = 0; v < vblanks; v++) {
+        vblank();
+        seen[v] = g_C1ButtonState;
+    }
+}
+
+static void mode_suspend(void)
+{
+    u16 seen[40];
+    unsigned v, round;
+
+    setenv("XENO_FIELD_STEP_PAD_INPUT", "0:0,2:0x10,4:0", 1);
+    setenv("XENO_FIELD_STEP_PAD_SUSPENDED", "0:0,10:0x40,12:0", 1);
+    setenv("XENO_FIELD_STEP_PAD_SUSPEND_AFTER", "8", 1);
+    memcpy(g_ControllerButtonMappings, (u_char[8]){0, 1, 2, 3, 4, 5, 6, 7}, 8);
+    reset_controller();
+    suspension(30, seen);                      /* before any drain: a load */
+    for (v = 0; v < 30; v++)
+        CHECK(seen[v] == 0);
+    for (v = 0; v < 6; v++) {                  /* live field: drains every vblank */
+        vblank();
+        FieldPollControllers();
+    }
+    for (round = 0; round < 2; round++) {      /* two menu suspensions */
+        suspension(30, seen);
+        for (v = 0; v < 30; v++)
+            CHECK(seen[v] == ((v >= 18 && v < 20) ? 0x40 : 0));
+        FieldPollControllers();                /* the loop resumes */
+    }
+    printf("FIELD STEP PAD PASS suspend: sub-schedule after T, replayed per suspension, "
+           "inert before the first drain\n");
+}
+
 /* I8: ambiguous or invalid configurations refuse. */
 static int mode_refuse(const char *which)
 {
@@ -278,6 +318,7 @@ int main(int argc, char **argv)
     else if (!strcmp(argv[1], "overflow")) mode_overflow();
     else if (!strcmp(argv[1], "map")) mode_map();
     else if (!strcmp(argv[1], "unset")) mode_unset();
+    else if (!strcmp(argv[1], "suspend")) mode_suspend();
     else if (!strcmp(argv[1], "refuse") && argc == 3) return mode_refuse(argv[2]);
     else return 2;
     return 0;

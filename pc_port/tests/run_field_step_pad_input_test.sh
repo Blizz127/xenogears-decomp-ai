@@ -77,7 +77,7 @@ run_modes() {
     for layout in identity usa; do
         for p in 0 1 2; do "$bin" "main-$layout" "$p"; done
     done
-    for mode in masks contrast overflow map unset; do "$bin" "$mode"; done
+    for mode in masks contrast overflow map unset suspend; do "$bin" "$mode"; done
     for which in field pad schedule map; do "$bin" refuse "$which"; done
 }
 for opt in O0 O2 UBSan; do
