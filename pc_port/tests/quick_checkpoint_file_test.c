@@ -86,7 +86,7 @@ int main(void)
             return 1;
         {
             PcPortQuickCheckpoint other = written;
-            char keep[600];
+            char keep[sizeof(side) + 8];
             snprintf(keep, sizeof(keep), "%s.keep", side);
             rename(side, keep);
             other.game_state[0] ^= 0xFF;
