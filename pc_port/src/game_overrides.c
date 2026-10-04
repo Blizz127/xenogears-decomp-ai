@@ -147,16 +147,31 @@ void PcPort_FieldCaptureOnVsync(void)
                 PcPortMipsExecutionStats st = PcPortMipsExecutionStatsGet();
                 extern int g_FrameDeltaTime;
                 extern unsigned short D_800AFE9C;
+                /* Player position read directly (null checks only): POSDIAG
+                 * also gates on the field transition flag, which stays clear
+                 * after a field menu, so it cannot serve as evidence there. */
+                extern s32 g_PlayerActorIndex;
+                int ppos[3] = {0, 0, 0}, pok = 0;
+                if (g_FieldActors != NULL) {
+                    ActorData* pa = (ActorData*)(uintptr_t)g_FieldActors[g_PlayerActorIndex].pActorData;
+                    if (pa != NULL) {
+                        ppos[0] = (int)(pa->position.vx >> 0x10);
+                        ppos[1] = (int)(pa->position.vy >> 0x10);
+                        ppos[2] = (int)(pa->position.vz >> 0x10);
+                        pok = 1;
+                    }
+                }
                 fprintf(stderr, "[field-step-pad] checkpoint step=%u at_step=%u presented=%u "
                         "vblank=%d entries=%llu native_bridges=%llu interpreted_instructions=%llu "
                         "disabled_refusals=%llu unresolved_bridges=%llu frame_delta=%d "
-                        "c1=0x%04x held=0x%04x\n",
+                        "c1=0x%04x held=0x%04x player=%s(%d,%d,%d)\n",
                         cp_steps[cp_next], step, s_frames, D_80059488,
                         (unsigned long long)st.entries, (unsigned long long)st.native_bridges,
                         (unsigned long long)st.interpreted_instructions,
                         (unsigned long long)st.disabled_refusals,
                         (unsigned long long)st.unresolved_bridges, g_FrameDeltaTime,
-                        (unsigned)g_C1ButtonState, (unsigned)D_800AFE9C);
+                        (unsigned)g_C1ButtonState, (unsigned)D_800AFE9C,
+                        pok ? "" : "unavailable", ppos[0], ppos[1], ppos[2]);
             }
             if (dir != NULL && dir[0] != '\0') {
                 snprintf(path, sizeof(path), "%s/step-%06u.png", dir, cp_steps[cp_next]);
