@@ -1,0 +1,126 @@
+Opening capture facts and next capture plan (coordinator task a5aed66a1575)
+
+Evidence provenance
+- Local warps/route/route1-newgame-to-map14.jsonl.gz:
+  map4 entrance0 scenario0 -> map2 entrance0 scenario3 -> map14 entrance0 scenario3.
+  Map490 entrance0 is the boot/title scene and is not an opening enhancement map.
+- route2-map14-13-dan.jsonl.gz: map14 entrance0 scenario6 -> map13 entrance1
+  scenario6; scenario6->7 on map13. The writer is actor10; recorded trigger actor13.
+  These are script actor IDs, not proof of a sprite's identity or character name.
+- route4-alice-house.jsonl.gz: map12 entrance0 scenario7 -> map11 entrance1
+  scenario8, after restoring map14 entrance0 scenario6.
+- warps/sweep-2/summary.txt verifies the named destinations below; candidate
+  atlas TSV rows and initial atlas result files alone do NOT verify a destination.
+
+Proposed staged allowlist; not a production setting change
+  Current proven sprite scene: 14, Fei's room, entrance0.
+  Next Lahan capture candidates: 1 (village bridge entrance0 / well entrance6),
+  13 (chief's house entrance1), 12 (Alice's house entrance0),
+  11 (Alice's downstairs entrance1), 9 (pub entrance0).
+  Later adjacent route: 15 (mountain start entrance0 / bridge entrance3).
+  Maps4/2 in the opening recording are numerically observed but their names, input
+  coverage, and suitability for effects are not established here; keep withheld.
+  Map allowlisting does not establish a sprite mapping or verified depth/protection.
+
+Checkpoint facts (all three format/checksum valid; no payload stored here)
+  warps/ckpt14.xgqs: map14 entrance0, position (115,0,-455).
+  npc/map1e0.xgqs: map1 entrance0, SAME position and identical game-state payload
+  digest as ckpt14. It is not evidence of an independently saved Lahan position;
+  inspect walkmesh/camera restoration and save a fresh legitimate field checkpoint.
+  r6.6/field14-ng1.xgqs: map14 entrance0, same position, different state payload.
+  Checkpoints are field snapshots, not complete animation/camera-process replays.
+
+Exact sprite evidence already observed
+  map14 player actor1: FNV db7d0105, raw frame190, parts0..5,
+  tpage26, clut14353. Existing six-part production profile is the verified slice.
+  UV vertex order is u0,v0,u1,v1,u2,v2,u3,v3:
+    0: 4,55,15,55,4,60,15,60
+    1: 20,43,27,43,20,48,27,48
+    2: 20,34,27,34,20,41,27,41
+    3: 4,1,31,1,4,13,31,13
+    4: 4,15,23,15,4,32,23,32
+    5: 4,34,15,34,4,53,15,53
+  map14 nonplayer actor10: FNV 8ee75047, observed raw frame36. Character name
+  unverified. Its independent movement/flip changes geometry even with frame36
+  fixed; never equate it with map13's script writer actor10.
+  The three route JSONL recordings contain no FNV/frame/part/UV/CLUT evidence.
+  No Lahan outdoor Fei or named Dan/Alice sprite mapping can be inferred from them.
+
+Capture recommendations, using the root-owned headless GPU runner
+  1. Load verified field14 checkpoint; use exact existing camera for house anchor.
+  2. Reach village1 via verified entrance0 or6 and save a fresh safe checkpoint.
+     Capture both anchor views to include different scenery and NPC occlusion.
+  3. Record all rendered actors with actual player index, FNV, raw frame, part,
+     four UVs, tpage/CLUT, quad and OT. Label characters from scene evidence;
+     never infer an identity from script trigger index or reuse a map14 actor slot.
+  4. For Fei record idle and walk in every exposed camera-relative facing,
+     all animation frames actually used, plus turns and camera rotation. Include
+     diagonal views and mirrored UV variants; a frame cursor alone is insufficient.
+  5. Capture chief-house13/e1 before/after Dan scenario6->7, Alice12/e0 at
+     scenario7, downstairs11/e1 at scenario8, then pub9/e0. Preserve conversation
+     and idle states separately; initial setup scripts can change cast or camera.
+  6. Compare full OFF baseline/lane frames with identical inputs; retain organic
+     failures and clearly label any actor-pose/render-input fixture. Do not crop
+     independent NPC animation away. ON requires GPU texture-consumption evidence,
+     changed Fei pixels, exact retail quads/OT, and strict per-part/occlusion checks.
+
+Tooling
+  pc_port/tests/hd2d_opening_evidence.py checks checkpoint format/checksum and
+  exports only header metadata, slim route transitions, and explicit probe keys.
+  Local full report: ~/release-staging/xeno-work/hd2d/opening-evidence-a5aed66a1575.json.
+  No checkpoint/game-state payload, retail sprite pixels, or route dump is committed.
+
+Fresh map1 trace update (lahan-map1-trace-a5aed66a1575)
+  Runtime confirms FieldLoad map1 and player position restored. Actual screenshots
+  1312 and1496 show intact daylight village geometry, well on left, a market stall,
+  visible unnamed villagers, and Fei standing on the central path. This establishes
+  a useful fixed camera/render sample; it does not establish walking/exit safety or
+  independent authenticity of the transplanted checkpoint's scenario state.
+  Settled sample1312: player actor1, FNVdb7d0105, rawframe190, all six parts0..5.
+  Their UVs/tpage26/clut14353 exactly equal the map14 six-part keys above.
+  Fei visibly faces toward the foreground. This supports testing the same authored
+  frame190 pose for map1 without inventing a new facing; GPU/footprint proof is
+  still required for map1. No production profile or whitelist changed here.
+  Initial frame146 has eight parts, but its associated early screenshot1168 still
+  shows the title transition. Do NOT label frame146 as a verified walk/facing pose.
+  Settled measurement window1312..1496 contains only Fei rawframe190.
+  Full trace observes23 actor slots and16 FNV identities, including repeated FNVs
+  across NPC slots. Villager names remain unassigned without scene/dialogue proof.
+  Private exports: observed-all-sprite-keys.json (919 distinct keys, includes
+  startup), settled-sprite-keys.json (only fixed selected window),
+  sprite-inventory-summary.json, player-frame190-present1312.json. All live under
+  ~/release-staging/xeno-work/hd2d/lahan-map1-trace-a5aed66a1575/.
+  Prefer present1312 as first complete idle association; capture fresh directed
+  walks and turns separately before assigning any walk-frame artwork.
+
+Actual map1 walking capture (lahan-walk-a5aed66a1575)
+  Private diagnostic empty-profile binary used npc/map1e0.xgqs. Test-pad injection
+  starts only after real map1 FieldIsSafe plus120 presents; actual ready marker1255.
+  Full selected screenshot window1260..1514 has128 images every2 presents. Actual
+  right/left/down/up motion and camera tracking are visible. This verifies walking
+  in this loaded village state, not route/scenario authenticity of its checkpoint.
+  All selected player records are actor1/FNVdb7d0105. Inventory preserves39 distinct
+  ordered part/UV/tpage/clut sets across29 raw indices, and1907 complete part records
+  with individual quad/OT/present IDs. Frames34/50 occur briefly between samples.
+  Walking frames26..34,42..50,58..65 and idle146/168/190 were logged. Raw indices
+  alone DO NOT identify a facing or a complete authored animation association.
+  Conservative visual anchors (same frame/UV set at previous/current/next present):
+    1276: raw43,12parts, walking right in screen view.
+    1316: raw43,12parts, walking left; DIFFERENT UVs and reversed quad orientation.
+    1356: raw59,6parts, moving toward foreground.
+    1396: raw27,8parts, moving away; back visible.
+    1418: raw146,8parts, stationary back view in actual village.
+    1298/1338: raw168,4parts, respective right/left stationary variants.
+    1260: raw190,6parts, initial stationary foreground-facing pose.
+  Walking anchors use tpage26/clut14352; these idle anchors use clut14353. Thus
+  neither the house six-part layout nor its CLUT can be copied to every walk pose.
+  Field screenshot .png files contain BMP data, retained unchanged. The private
+  walking-contact.png converts/concatenates six full images solely for review;
+  its order is1260,1276,1316,1356,1396,1418. No cropped identity comparison used.
+  Private walking-player-inventory.json preserves each tuple variant and stable
+  screenshot association; walking-player-parts.jsonl contains every player part
+  within the selected window. Variants without stable screenshots remain unassigned.
+  All1907 records report accepted0/packet_exact1. GPU overrides accepted0; this
+  is faithful retail diagnostic evidence, not replacement-art acceptance.
+  Tools: hd2d_walk_trace.py, hd2d_walk_input_probe.c, hd2d_walk_inventory.py.
+  Production profiles, authored artwork and map whitelist were not changed.

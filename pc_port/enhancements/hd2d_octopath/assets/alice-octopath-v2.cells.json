@@ -1,0 +1,157 @@
+{
+  "schema": 1,
+  "kind": "authored_cells_only",
+  "label": "fan-made, AI-generated replacement sprite art created for this project; not from the game; characters © Square Enix",
+  "width": 1254,
+  "height": 1254,
+  "cells": [
+    {
+      "name": "front_idle",
+      "facing": "front",
+      "authored_phase": "idle",
+      "x": 191,
+      "y": 44,
+      "width": 145,
+      "height": 269
+    },
+    {
+      "name": "front_left_step",
+      "facing": "front",
+      "authored_phase": "left_step",
+      "x": 433,
+      "y": 44,
+      "width": 145,
+      "height": 273
+    },
+    {
+      "name": "front_passing",
+      "facing": "front",
+      "authored_phase": "passing",
+      "x": 668,
+      "y": 44,
+      "width": 146,
+      "height": 274
+    },
+    {
+      "name": "front_right_step",
+      "facing": "front",
+      "authored_phase": "right_step",
+      "x": 918,
+      "y": 44,
+      "width": 146,
+      "height": 275
+    },
+    {
+      "name": "back_idle",
+      "facing": "back",
+      "authored_phase": "idle",
+      "x": 195,
+      "y": 339,
+      "width": 135,
+      "height": 276
+    },
+    {
+      "name": "back_left_step",
+      "facing": "back",
+      "authored_phase": "left_step",
+      "x": 433,
+      "y": 339,
+      "width": 144,
+      "height": 276
+    },
+    {
+      "name": "back_passing",
+      "facing": "back",
+      "authored_phase": "passing",
+      "x": 669,
+      "y": 339,
+      "width": 144,
+      "height": 275
+    },
+    {
+      "name": "back_right_step",
+      "facing": "back",
+      "authored_phase": "right_step",
+      "x": 915,
+      "y": 339,
+      "width": 150,
+      "height": 276
+    },
+    {
+      "name": "left_idle",
+      "facing": "left",
+      "authored_phase": "idle",
+      "x": 200,
+      "y": 636,
+      "width": 147,
+      "height": 267
+    },
+    {
+      "name": "left_left_step",
+      "facing": "left",
+      "authored_phase": "left_step",
+      "x": 427,
+      "y": 636,
+      "width": 165,
+      "height": 269
+    },
+    {
+      "name": "left_passing",
+      "facing": "left",
+      "authored_phase": "passing",
+      "x": 673,
+      "y": 636,
+      "width": 152,
+      "height": 267
+    },
+    {
+      "name": "left_right_step",
+      "facing": "left",
+      "authored_phase": "right_step",
+      "x": 929,
+      "y": 636,
+      "width": 161,
+      "height": 267
+    },
+    {
+      "name": "right_idle",
+      "facing": "right",
+      "authored_phase": "idle",
+      "x": 175,
+      "y": 923,
+      "width": 146,
+      "height": 273
+    },
+    {
+      "name": "right_left_step",
+      "facing": "right",
+      "authored_phase": "left_step",
+      "x": 414,
+      "y": 923,
+      "width": 160,
+      "height": 273
+    },
+    {
+      "name": "right_passing",
+      "facing": "right",
+      "authored_phase": "passing",
+      "x": 650,
+      "y": 923,
+      "width": 158,
+      "height": 273
+    },
+    {
+      "name": "right_right_step",
+      "facing": "right",
+      "authored_phase": "right_step",
+      "x": 901,
+      "y": 923,
+      "width": 163,
+      "height": 273
+    }
+  ],
+  "rectangle_source": "inspected alpha silhouettes",
+  "game_mappings": [],
+  "approved_opening_maps": [],
+  "mapping_status": "pending verified retail frame indices; not runtime metadata"
+}

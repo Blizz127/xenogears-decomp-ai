@@ -1890,9 +1890,54 @@ void PcPort_PrepareControllerPoll(void)
     PcPort_ForcedMenuNav();
 }
 
+/* TEST TOOLING -- XENO_CARD_SCREEN_TEST=back (pc_port/tests/
+ * run_title_continue_test.sh).  Once the Save/Load card screen is up
+ * (func_801D9F98 sets g_XenoCardScreenActive), retire the XENO_PAD_TEST_INPUT
+ * schedule so its Circle pulse train cannot act on the file list, then inject
+ * one Cross release (MENU_INPUT_BACK) 90 menu-reader ticks later.  Clocked by
+ * reader ticks (game-thread menu frames), not vblanks, so host load cannot
+ * land the press on a different screen.  Inert unless the variable is set. */
+static void PcPort_CardScreenTestEdges(void)
+{
+    extern unsigned short g_C1ButtonStateReleased;
+    extern int g_XenoMenuNavReaderTicks;
+    extern int g_XenoCardScreenActive __attribute__((weak));
+    static int armed = -1;
+    static int enterTick = -1;
+    static int backInjected;
+
+    if (armed < 0) {
+        const char* e = getenv("XENO_CARD_SCREEN_TEST");
+        armed = (e != NULL && strcmp(e, "back") == 0);
+    }
+    if (!armed || &g_XenoCardScreenActive == NULL)
+        return;
+    if (!g_XenoCardScreenActive) {
+        enterTick = -1;
+        return;
+    }
+    if (enterTick < 0) {
+        enterTick = g_XenoMenuNavReaderTicks;
+        if (!s_padTestSuppress) {
+            s_padTestSuppress = 1;
+            printf("[xeno-port][test] XENO_CARD_SCREEN_TEST: card screen up "
+                   "at reader tick %d; pad schedule retired\n", enterTick);
+            fflush(stdout);
+        }
+    }
+    if (!backInjected && g_XenoMenuNavReaderTicks >= enterTick + 90) {
+        backInjected = 1;
+        g_C1ButtonStateReleased |= 0x40; /* CTRL_BTN_CROSS */
+        printf("[xeno-port][test] XENO_CARD_SCREEN_TEST: Cross back "
+               "at reader tick %d\n", g_XenoMenuNavReaderTicks);
+        fflush(stdout);
+    }
+}
+
 void PcPort_BeforeControllerPush(void)
 {
     PcPort_ForcedMenuActionEdges();
+    PcPort_CardScreenTestEdges();
 }
 
 /* TEST TOOLING: XENO_DETERMINISTIC_VBLANK=<K> -- a jitter-free

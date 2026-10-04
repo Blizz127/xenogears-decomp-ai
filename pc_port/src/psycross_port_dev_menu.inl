@@ -79,7 +79,8 @@ static int PsyX_PortDevMenuHandleEvent(SDL_Event *event)
 static void PsyX_DevMenuDrawTextColor(const char* text, int x, int y, float r, float g, float b);
 
 /* Harness-only scripted menu keys (DEV_MENU_SPEC.md §9), inert unless set:
- * XENO_DEV_MENU_KEYS="present:KEY,..." with KEY one of F8 UP DOWN ENTER ESC
+ * XENO_DEV_MENU_KEYS="present:KEY,..." with KEY one of F8 UP DOWN ENTER ESC,
+ * SDL:<scancode name> (a real key press pushed through SDL, e.g. SDL:F8)
  * or SHOT=<name>, which saves the presented frame WITH the overlay to
  * $XENO_DEV_MENU_SHOT_DIR/<name>.bmp.  `present` counts overlay draws. */
 static void PsyX_DevMenuScript(int phase)
@@ -110,6 +111,19 @@ static void PsyX_DevMenuScript(int phase)
 			else if (!strcmp(k, "DOWN")) PcPort_DevMenuKey(PC_DEV_DOWN, 1);
 			else if (!strcmp(k, "ENTER")) PcPort_DevMenuKey(PC_DEV_ACCEPT, 1);
 			else if (!strcmp(k, "ESC")) PcPort_DevMenuKey(PC_DEV_BACK, 1);
+			else if (!strncmp(k, "SDL:", 4)) {
+				/* A real key press through SDL's queue (same path as the
+				 * keyboard: host hotkeys, dev-menu filter, game pad). */
+				SDL_Event e;
+				SDL_zero(e);
+				e.type = SDL_KEYDOWN;
+				e.key.state = SDL_PRESSED;
+				e.key.keysym.scancode = SDL_GetScancodeFromName(k + 4);
+				SDL_PushEvent(&e);
+				e.type = SDL_KEYUP;
+				e.key.state = SDL_RELEASED;
+				SDL_PushEvent(&e);
+			}
 			if (strncmp(k, "SHOT=", 5)) eprintinfo("[DEV_MENU] scripted %s at present %d\n", k, presents);
 		} else if (!strncmp(k, "SHOT=", 5)) {
 			const char* dir = getenv("XENO_DEV_MENU_SHOT_DIR");

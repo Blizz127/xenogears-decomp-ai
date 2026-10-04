@@ -9,6 +9,9 @@
 
 #ifdef XENO_PC_PORT
 #include <stdio.h>
+/* pc_port/src/game_error_report.c */
+extern void PcPort_ReportGameError(unsigned int errorCode,
+                                   unsigned int sourceAddress);
 #endif
 
 extern unsigned int g_CurGameState;
@@ -268,7 +271,16 @@ void GameHandleError(unsigned int errorCode, unsigned int sourceAddress) {
     unsigned int allocSize;
 
     nFrame = 0;
-    
+
+#ifdef XENO_PC_PORT
+    /* Fail-visible: retail stops here for good (red screen + spin, or the
+     * error text loop below).  Behaviour is unchanged; the port only reports
+     * the code and the host call chain once, since sourceAddress (a MIPS $ra)
+     * is 0 on the host.  Codes: include/system/memory.h (0x83 = HeapFree of
+     * NULL, LsFreeMem "Can't Release NULL Pointer"). */
+    PcPort_ReportGameError(errorCode, sourceAddress);
+#endif
+
     if ((u32) (D_80010000 + 1) >= 0x2) {
         HeapDumpToFile(&D_800181B8);
     } else {

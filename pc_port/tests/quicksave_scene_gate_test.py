@@ -4,8 +4,9 @@ without replaying the scene (Lahan, field 14, the painting scene).
 
 Phase 1 (New Game, ~12 min headless): boot -> title -> New Game -> page the
 prologue and the opening battle at speed 5 -> field 14 at speed 1.  Through
-the painting scene the driver asks for a quick save every 2 s and presses
-confirm between the requests, as the r6.3 video's fast path did.  Every
+the painting scene the driver asks for a quick save every 3 s and presses
+confirm while an event holds control (from the port's POSDIAG canRun/b21d0),
+then asks once the player has been free for six frames.  Every
 request while a field script event holds control must be refused with
 "CAN'T QUICKSAVE DURING A SCENE"; the first accepted one comes after the
 scene, and the checkpoint's scenario flag (g_GameState+0x1930) must equal the
@@ -40,6 +41,22 @@ def scenario_in(path):
     return struct.unpack_from('<H', data, 48 + 0x1930)[0]
 
 
+STATE = re.compile(r'POSDIAG map=14 .*canRun=(\d) owner=0x[0-9a-f]+ b21d0=(\d)')
+
+
+def recent_states(port, start, count):
+    """(canRun, b21d0) of the last `count` field-14 POSDIAG frames."""
+    out = []
+    with port.lock:
+        for line in reversed(port.lines[start:]):
+            m = STATE.search(line)
+            if m:
+                out.append((int(m.group(1)), int(m.group(2))))
+                if len(out) == count:
+                    break
+    return out[::-1]
+
+
 def last_scenario(port, before):
     with port.lock:
         for line in reversed(port.lines[:before]):
@@ -72,14 +89,35 @@ def phase_newgame(binary, root, out, qs, fails):
             return 'NOT_RUN field 14 not reached'
         port.con('speed 1')
         f14 = port.n()
+        # State-driven, so host speed cannot phase-lock it: confirm (to page
+        # dialogs or leave the easel close-up) only while an event holds
+        # control, ask for a save during the scene every 3 s, and once the
+        # player has been free for several frames ask once more and press
+        # nothing.  A fixed confirm/save cadence under load kept reopening
+        # the easel close-up just before each save.
         deadline = time.time() + 900
+        last_save = last_press = 0.0
         while time.time() < deadline and port.find(SAVED, f14) is None:
-            port.con('save')
-            time.sleep(1.0)
-            if port.find(SAVED, f14) is not None:
-                break
-            port.pad(CIRCLE, 8)
-            time.sleep(1.0)
+            states = recent_states(port, f14, 6)
+            now = time.time()
+            if len(states) == 6 and all(c == 1 and b == 0 for c, b in states):
+                s = port.n()
+                port.con('save')
+                last_save = now
+                port.wait_for(SAVED, 15, s)
+                if port.find(SAVED, s) is None and port.find(REFUSED, s) is None:
+                    fails.append('a save at free control got no answer')
+                    break
+                continue
+            if states and (states[-1][0] == 0 or states[-1][1] == 1):
+                if now - last_save >= 3.0:
+                    port.con('save')
+                    last_save = now
+                    time.sleep(0.5)
+                if time.time() - last_press >= 2.0:
+                    port.pad(CIRCLE, 8)
+                    last_press = time.time()
+            time.sleep(0.25)
         saved = port.find(SAVED, f14)
         if saved is None:
             fails.append('no quick save was accepted in field 14 within 15 min')

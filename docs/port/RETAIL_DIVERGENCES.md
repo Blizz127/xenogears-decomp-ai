@@ -153,6 +153,43 @@ Investigated and found to match retail:
   after them closed it. `run_easel_closeup_test.sh` (needs a field-14 quick
   checkpoint) checks that cancel does not leave it and confirm does.
 
+## Title Continue hang (2026-09-30, r6.6)
+
+The r6.6rc title/New Game smoke hung about 1 run in 3-5 under host load, spinning
+in `GameHandleError` with the stack `HeapFree <- func_801E5B3C <- func_801D9E3C <-
+func_801E3088 <- func_801C531C <- func_801C58EC`. The pad schedule is clocked by
+real-time vblanks. When the host starves the game thread, a scripted Circle lands
+one phase off, and the title menu confirms its default cursor, Continue. Selecting
+Continue hung every time, loaded or not, because of the bugs below. It was already
+the case in r6.4 (68d68c75).
+
+| Function | Port bug | Fix / verification |
+| --- | --- | --- |
+| `func_801D9F98` (Save/Load card screen controller) | No port body: the generated stub returned 0 without building the screen. `func_801C531C` still ran the retail teardown (`func_801E3088` case 1/8 -> `func_801D9E3C` -> `func_801E5B3C`), which freed 32 never-allocated (NULL) slot pointers, so HeapFree stopped the game with `GameHandleError(0x83)` ("LsFreeMem: Can't Release NULL Pointer") | Translated from retail (retail C still asm). `run_title_continue_test.sh` hangs on the old binary (both cases) and passes on the new one |
+| `func_801C93A8`, `func_801E86C8`, `func_801E8B4C`, `func_801E78C8`, `func_801E56E8`, `func_801E5B88`, `func_801E5E4C` | No port bodies (generated stubs, or never linked): the card scan, header labels, save-icon upload and slot/panel prims | Translated from retail (retail C still asm) |
+| `MenuPsxPointerSlot` | Mapped only 8 of the 32 slot-buffer pointers (retail g_Menu+0x3A8..0x424) onto `unk39C`. Slots 8..31 used raw host offsets inside the pointer-inflated SystemMenu | All 32 map onto `unk39C` |
+| `SystemMenu.unkDE0` | `u8[0x300]` holds six 0x80-byte MenuStrings on the PSX, but a host MenuString is 152 bytes, so `func_801D9F34` wrote 144 bytes past it into `itemMenuStrings` | `MenuString unkDE0[6]` on the port (identical on the PSX) |
+| `func_801E8070` mode 0 | Indexed the D_801E9A00/D_801E9A2C position tables by `selected`; retail uses `arg6 + selected`. The title and root menu pass 0, the card screen 7 | Uses `arg6 + selected` |
+| `func_801C531C` entry 8 (Continue) | Stored the card screen's return in `screenResult`; retail keeps `$s0` = 1 there, so the post-screen rebuild (`func_801D1EB0`, the title `func_801E8018` relabel) always runs | Matches retail |
+| `func_801CD710` | Read g_Menu+0x338 and wrote g_Menu+0x334 by raw host offset | Typed `menu2Choice` / `unk334` |
+| `func_801CF37C`, `func_801CF5E4`, `func_801CF8D8`, `func_801CFB48` (card-screen draw passes) | Raw g_Menu offsets 0x4CC/0x4D4/0x4D8 and card offsets without `MENU_CARD_OFF`; NULL guards retail does not have. CF8D8 picked the plate glyph and the port from the wrong tests; CFB48 skipped slots that retail draws (green) and coloured matching used entries green where retail draws them red | Checked block by block against retail and rewritten |
+| `func_801D01D0` (shared matched body) | Its per-frame animation words at retail g_Menu+0x4CC..0x4D9 used raw host offsets. On the host those lie in `unk39C`, on slot pointers 10..13 | `MENU_4CC` maps them onto `unk4CC`. The PSX expansion is the retail expression (rom-check) |
+| `func_801C6400` (card state init, every title/field menu open) | Card offsets 0x4F88..0x501B without `MENU_CARD_OFF`, which wrote host bytes 0x10 low; a NULL guard retail does not have | `MENU_CARD_OFF` |
+| `GameHandleError` | Retail behaviour is kept: the red screen and spin, or the error text loop. The port adds one stderr line with the code and the host call chain before the spin (`pc_port/src/game_error_report.c`), because the retail source address is a MIPS `$ra` the host cannot capture | Port diagnostics only |
+
+Still open:
+
+- The card-screen actions `func_801CD2AC` / `func_801CC6D8` / `func_801CB304` /
+  `func_801CBD90` (Load, Save, Copy, Delete) have no port bodies. Confirming an
+  action on the card screen reaches their generic stubs, so Continue cannot load
+  a save yet. Correction to the `func_801CD710` row above: after any of the three
+  handler cases, retail returns 0 whatever the handler returns (the delay-slot
+  `addu $s0,$zero,$zero` at 0x801CD7EC runs on both paths). The port still
+  returns 1, which keeps the card screen open instead of continuing with an
+  unloaded game state.
+- Seen, not on this path, not changed: `func_801CB28C` reads g_Menu+0x330 and
+  `func_801C57A4` reads g_Menu+0x329 by raw host offset.
+
 ## World map 1:1 pass (2026-09-30, r6.5)
 
 Found by running the same pad schedule in the port and in the retail oracle

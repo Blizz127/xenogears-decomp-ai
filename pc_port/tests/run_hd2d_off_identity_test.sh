@@ -48,7 +48,10 @@ SPEED="${XENO_HD2D_OFF_TEST_SPEED:-1}"
 MIN_PAIRED_S="${XENO_HD2D_OFF_TEST_MIN_PAIRED_S:-90}"
 MIN_PAIRED_V="${XENO_HD2D_OFF_TEST_MIN_PAIRED_V:-40}"
 ATTEMPTS="${XENO_HD2D_OFF_TEST_ATTEMPTS:-4}"
-SECONDS_PER_RUN="${XENO_HD2D_OFF_TEST_SECONDS:-300}"
+# 600 s like the smoke's own default: since the world map's VSync(n>=2) fix the
+# retail pacing makes 3000 schedule frames take close to 300 s on a loaded box,
+# and a run cut by the time limit one frame short reads as "did not reach".
+SECONDS_PER_RUN="${XENO_HD2D_OFF_TEST_SECONDS:-600}"
 OUTDIR="${XENO_HD2D_OFF_TEST_OUTDIR:-$ROOT/scratchpad/hd2d_off_identity/$(date +%Y%m%d-%H%M%S)}"
 mkdir -p "$OUTDIR"
 OUTDIR="$(cd "$OUTDIR" && pwd)"
