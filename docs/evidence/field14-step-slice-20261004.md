@@ -124,3 +124,8 @@ Open notes:
 The interpreter is disabled with zero fallback, and semantic, visual, timing, save and
 SPU-state equality hold across repeated reference and interpreter-disabled runs. This is
 the first accepted native runtime slice. Coverage is one field (Lahan, map 14) walk.
+
+Re-run with the fixed job script: `20261004-061423-xeno-xeno-e52f-field14-split2-73cb0497-4085031`,
+job exit 0 (overall_rc=0), binary 503ae281…, both summaries "FIELD14 SLICE PASS". The same
+36 frame hashes, save 63929945…, 6/6 SPU pairs identical on every vblank, and 0 var-6
+writes: 8 identical runs across 2 jobs. Receipts: `…/e52f8f1e-field14-splitclock/receipts-rerun/`.
