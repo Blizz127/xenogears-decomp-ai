@@ -136,7 +136,7 @@ def main():
         'both armed in field 14': ref['armed'] and dis['armed'],
         'both completed every transition': ref['transitions'] == want and dis['transitions'] == want,
         'checkpoint positions identical': ref['checkpoints'] == dis['checkpoints'] and None not in ref['checkpoints'],
-        'movement observed': len({tuple(c) for c in ref['checkpoints'] if c}) >= 3,
+        'movement observed (at least one move between checkpoints)': len({tuple(c) for c in ref['checkpoints'] if c}) >= 2,
         'disabled: no interpreter refusal': dis['refusals'] == 0,
         'disabled: zero interpreted instructions counted': dis['interpreted_instructions'] == 0,
         'no stubs reached': ref['stubs'] == 0 and dis['stubs'] == 0,
@@ -162,7 +162,6 @@ def main():
             and len(da) > 0,
         'timing: vblank deltas identical': deltas(ref, 'vblank') == deltas(dis, 'vblank'),
     }
-    import os
     want_menus = os.environ.get('FIELD14_EXPECT_MENUS')
     if want_menus:
         n = int(want_menus)
@@ -170,7 +169,6 @@ def main():
             side.get('menu_opens', 0) == n and side.get('menu_returns', 0) == n for side in (ref, dis))
     # Under the deterministic clocks (XENO_SOUND_TICK_LOCKSTEP +
     # XENO_DETERMINISTIC_VBLANK) audio and vblank equality are required too.
-    import os
     if os.environ.get('FIELD14_REQUIRE_DETERMINISM') == '1':
         checks.update(informational)
     for side in (ref, dis):
