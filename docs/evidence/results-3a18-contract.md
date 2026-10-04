@@ -79,3 +79,21 @@ port build, so it is queued in the coordinator-sequenced gate request for
 e52f8f1e1137. Still not dispatched: 0x801E3A18 stays off the allowlist.
 
 Gate d1d329f4 (job 883844): --compose-3a18 PASS 4,000 cases at O0/O2/UBSan; drop-exit-regs mutant fails in each mode. See gate-d1d329f4-20261004.md.
+
+## Real call sites on the legitimate route (2026-10-04)
+
+- Job 1101085 (f99d3d0a): the pad-only route (boot → New Game → prologue →
+  Lahan → real opening battle → field 14) PASSED, but the opening battle's
+  RESULTS never calls 0x801E3A18. Only func_801E24B0 runs there (natively,
+  identity verified). The 3A18 replay was NOT_RUN for lack of a call. A
+  0x801E3A18 call on real state needs a later battle that awards EXP.
+- Job 2003494 (68869728): same route, capturing the real func_801E24B0
+  call (from the RESULTS entry, ra=0x801E25F8; a0=1 a1=0x800EB46C a2=0x1B
+  a3=1). --replay-3a18 PASS: retail 389 interpreted instructions; native with
+  XENO_DISABLE_CPU_INTERPRETER=1: 0 interpreted, 1 native results call,
+  fallback 0. Registers, HI/LO, RAM, the native g_GameState copy and the
+  scratchpad are identical. Observed side effects: none (0 bytes changed in
+  RAM or g_GameState). On this state no result id matched an entry, so
+  there were no writes to observe. Receipts:
+  `~/release-staging/xeno-work/e52f8f1e-capture-24b0/receipts/` (capture
+  binaries stay on the runner; their hashes are listed there).
