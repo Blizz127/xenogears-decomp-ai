@@ -74,7 +74,9 @@ def run(path):
     out['save_sha256'] = sha(Path(path, 'quicksave.xgqs'))
     out['entry_sha256'] = sha(Path(path, 'entry.xgqs'))
     spu = Path(path, 'spu.log')
-    out['spu'] = [l.split() for l in spu.read_text().splitlines()] if spu.exists() else []
+    # Same fixed game-time window as field14_spu_pairs.py (steps <= 1000).
+    out['spu'] = [r for r in (l.split() for l in spu.read_text().splitlines())
+                  if int(r[1]) <= 1000] if spu.exists() else []
     interp = [int(x) for l in out['execution_stats']
               for x in re.findall(r'interpreted_instructions=(\d+)', l)]
     # Exit receipt if present, else the last in-run checkpoint receipt.

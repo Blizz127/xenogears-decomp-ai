@@ -21,8 +21,15 @@ import sys
 from pathlib import Path
 
 
+# Compare a fixed game-time window, not run length: runs end at a host
+# timeout at slightly different points, so trailing rows past the last
+# checkpoint step are not evidence of anything.
+WINDOW_LAST_STEP = 1000
+
+
 def load(run):
     rows = [l.split() for l in Path(run, 'spu.log').read_text().splitlines()]
+    rows = [r for r in rows if int(r[1]) <= WINDOW_LAST_STEP]
     distinct, prev = [], None
     for row in rows:
         if row[2] != prev:
