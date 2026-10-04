@@ -6,6 +6,18 @@
 #include "system/controller_vblank.h"
 
 extern int PsyX_Sys_GetVBlankCount(void);
+/* XENO_DETERMINISTIC_VBLANK (psyq_compat.c): a jitter-free test clock the
+ * service follows instead of the host counter once active.  Weak: absent in
+ * unit tests that link this file alone. */
+extern int PcPort_DeterministicVblank(uint32_t* now) __attribute__((weak));
+
+static uint32_t vblank_now(void)
+{
+    uint32_t now;
+    if (PcPort_DeterministicVblank && PcPort_DeterministicVblank(&now))
+        return now;
+    return (uint32_t)PsyX_Sys_GetVBlankCount();
+}
 extern void PcPort_SoundLockstepVblank(void) __attribute__((weak));
 static void (*callback)(void);
 static uint32_t serviced_count;
@@ -19,7 +31,7 @@ volatile int g_VsyncInterruptCount;
 void PcPort_ResetVblankService(void)
 {
     callback = 0;
-    serviced_count = (uint32_t)PsyX_Sys_GetVBlankCount();
+    serviced_count = vblank_now();
     g_VsyncInterruptCount = 0;
     enabled = 1;
     pending = 0;
@@ -36,7 +48,7 @@ static void initialize(void)
 /* I_STAT holds one pending bit, not one event for every masked vblank. */
 static void latch_masked_ticks(void)
 {
-    uint32_t now = (uint32_t)PsyX_Sys_GetVBlankCount();
+    uint32_t now = vblank_now();
     pending |= now != serviced_count;
     serviced_count = now;
 }
@@ -86,7 +98,7 @@ void PcPort_ServiceVblank(void)
         latch_masked_ticks();
         return;
     }
-    now = (uint32_t)PsyX_Sys_GetVBlankCount();
+    now = vblank_now();
     epoch = mask_epoch;
     servicing = 1;
     while (pending || serviced_count != now) {

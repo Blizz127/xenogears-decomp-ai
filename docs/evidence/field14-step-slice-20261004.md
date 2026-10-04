@@ -61,3 +61,22 @@ on a script bug. Recomputed read-only, it gave the same item results.)
 
 The slice passes visual, timing, save and zero-fallback with the interpreter disabled.
 It is NOT fully accepted while audio is open.
+
+## Deterministic clocks and the timing-fidelity follow-up
+
+Control job 3927918 showed the field14 SPU stream differs between two runs of the SAME
+mode: the sound tick (240 Hz RCnt2 handler) runs on PsyCross's host interrupt thread.
+Lock-step job 1941800 (`XENO_SOUND_TICK_LOCKSTEP=1`, 4 ticks per serviced vblank, 9ff66adf)
+made the streams match except for host vblank jitter. One run's F11 save differed in one
+byte (g_GameState+0x193C, a vblank-driven field-script counter) after extra host vblanks.
+
+`XENO_DETERMINISTIC_VBLANK=<K>` is a **jitter-free test-determinism clock, not a
+retail-timing claim**. Once the field-step probe arms, each blocking Vsync advances a
+virtual game-vblank count by exactly K (K=2, the port's usual no-jitter field cadence),
+Vsync(1) and the vblank service follow it, and presentation stays host-paced. Both flags
+are opt-in; neither becomes a shipped default without the owner.
+
+**Tracked follow-up (B), timing fidelity:** measure retail's actual per-frame vblank cost
+over the same field14 walk from a reference (emulator or hardware), including any 3-vblank
+slowdown frames, and make the virtual clock follow it. Until then, K=2 removes host jitter
+but does not model retail frame timing or slowdowns.

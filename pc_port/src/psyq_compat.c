@@ -1849,6 +1849,55 @@ void PcPort_BeforeControllerPush(void)
     PcPort_ForcedMenuActionEdges();
 }
 
+/* TEST TOOLING: XENO_DETERMINISTIC_VBLANK=<K> -- a jitter-free
+ * test-determinism clock, NOT a retail-timing claim.  The port's game vblank
+ * count normally follows host wall time, so how many vblanks one field
+ * iteration spans varies with host speed (usually 2, sometimes 3), and
+ * everything clocked by vblanks (pad pushes, Vsync(1) frame deltas,
+ * vblank-driven script counters, the lock-step sound tick) varies with it.
+ * Once XENO_FIELD_STEP_PAD_INPUT arms (boot, title and loading keep the host
+ * clock, so host-paced waits there cannot stall), each blocking Vsync
+ * advances a virtual count by exactly K (Vsync(n>=2): n), Vsync(1) returns it,
+ * and the vblank service (controller_vblank_service.c) follows it instead of
+ * the host counter.  Presentation is still paced by the host.  Retail's own
+ * per-frame vblank cost, and its slowdowns, are not modelled: K is a fixed
+ * cadence (2 for the field, the port's usual no-jitter value). */
+static int s_detVblankK = -1;
+static int s_detVblankOn;
+static uint32_t s_detVblankNow;
+
+static int PcPort_DetVblankActive(void)
+{
+    extern int PcPort_FieldStepPadArmedStep(unsigned *step);
+    extern int PsyX_Sys_GetVBlankCount(void);
+    unsigned step;
+
+    if (s_detVblankK < 0) {
+        const char* e = getenv("XENO_DETERMINISTIC_VBLANK");
+        s_detVblankK = (e != NULL && e[0] != '\0') ? atoi(e) : 0;
+        if (s_detVblankK < 0 || s_detVblankK > 8)
+            s_detVblankK = 0;
+    }
+    if (s_detVblankK == 0)
+        return 0;
+    if (!s_detVblankOn && PcPort_FieldStepPadArmedStep(&step)) {
+        s_detVblankOn = 1;
+        s_detVblankNow = (uint32_t)PsyX_Sys_GetVBlankCount();
+        fprintf(stderr, "[det-vblank] jitter-free test clock active: K=%d from host vblank %u "
+                "(not a retail-timing claim)\n", s_detVblankK, s_detVblankNow);
+    }
+    return s_detVblankOn;
+}
+
+/* Hook for controller_vblank_service.c (weak there). */
+int PcPort_DeterministicVblank(uint32_t* now)
+{
+    if (!PcPort_DetVblankActive())
+        return 0;
+    *now = s_detVblankNow;
+    return 1;
+}
+
 int Vsync(int mode)
 {
     int count;
@@ -1864,6 +1913,8 @@ int Vsync(int mode)
     if (mode == 1 || mode < 0) {
         count = VSync(mode);
         XENO_SERVICE_VBLANK();
+        if (mode == 1 && PcPort_DetVblankActive())
+            count = (int)s_detVblankNow;
         return (mode < 0 && PcPort_GetServicedVblankCount) ? PcPort_GetServicedVblankCount() : count;
     }
 
@@ -1920,8 +1971,14 @@ int Vsync(int mode)
     { extern void PcPort_WalkmeshDump(void) __attribute__((weak)); if (PcPort_WalkmeshDump) PcPort_WalkmeshDump(); }
     /* Pace first so the newly elapsed tick is serviced before returning.
      * All entry points share one counter cursor, including the guest pump. */
+    /* XENO_DETERMINISTIC_VBLANK: this wait consumes exactly K (or n) game
+     * vblanks; VSync below still paces presentation to the host. */
+    if (PcPort_DetVblankActive())
+        s_detVblankNow += (uint32_t)(mode >= 2 ? mode : s_detVblankK);
     count = VSync(mode);
     XENO_SERVICE_VBLANK();
+    if (PcPort_DetVblankActive())
+        count = (int)s_detVblankNow;
 
     /* Headless menu driver (no-op unless XENO_KERNEL_SEL is set). Must run after
      * ControllerPoll, which recomputes g_C1ButtonState* each frame -- we OR the

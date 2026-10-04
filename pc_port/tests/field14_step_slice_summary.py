@@ -151,6 +151,11 @@ def main():
             and len(da) > 0,
         'timing: vblank deltas identical': deltas(ref, 'vblank') == deltas(dis, 'vblank'),
     }
+    # Under the deterministic clocks (XENO_SOUND_TICK_LOCKSTEP +
+    # XENO_DETERMINISTIC_VBLANK) audio and vblank equality are required too.
+    import os
+    if os.environ.get('FIELD14_REQUIRE_DETERMINISM') == '1':
+        checks.update(informational)
     for side in (ref, dis):
         side['spu_lines'] = len(side.pop('spu'))
     result = {'pass': all(checks.values()), 'checks': checks, 'informational': informational,
