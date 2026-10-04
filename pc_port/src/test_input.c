@@ -413,8 +413,11 @@ void PcPort_WorldTestInputResetForCertificate(void)
  *
  * XENO_FIELD_STEP_PAD_MAP=<map> arms on the first vblank in that field
  * (low 12 bits of g_GameSceneMapNum); unset arms on the first vblank.
- * It refuses to combine with XENO_FIELD_TEST_INPUT or XENO_PAD_TEST_INPUT:
- * both inject on the same paths and would make the receipt ambiguous. */
+ * It refuses to combine with XENO_FIELD_TEST_INPUT, and with
+ * XENO_PAD_TEST_INPUT unless that boot schedule hands over: it retires at
+ * XENO_PAD_TEST_STOP_FIELD, which must equal XENO_FIELD_STEP_PAD_MAP.
+ * Otherwise both would inject on the same paths and make the receipt
+ * ambiguous. */
 static TestInputStep s_step_pad_steps[FIELD_TEST_INPUT_MAX_STEPS];
 static size_t s_step_pad_count;
 static size_t s_step_pad_current;
@@ -450,6 +453,7 @@ int PcPort_FieldStepPadInit(void)
     const char *cursor;
     const char *map;
     uint32_t previous = 0u;
+    int handover;
 
     if (s_step_pad_state >= 0)
         return 0;
@@ -459,8 +463,10 @@ int PcPort_FieldStepPadInit(void)
         return 0;
     if (getenv("XENO_FIELD_TEST_INPUT") != NULL)
         return step_pad_error("XENO_FIELD_TEST_INPUT is also set (post-mask path)");
-    if (getenv("XENO_PAD_TEST_INPUT") != NULL)
-        return step_pad_error("XENO_PAD_TEST_INPUT is also set (vblank-clocked path)");
+    /* XENO_PAD_TEST_INPUT may only hand over: the boot schedule retires when
+     * XENO_PAD_TEST_STOP_FIELD loads, and this probe must arm on that same
+     * map (checked below), so the two never inject together. */
+    handover = getenv("XENO_PAD_TEST_INPUT") != NULL;
     if (*schedule == '\0')
         return step_pad_error("empty schedule");
 
@@ -540,6 +546,15 @@ int PcPort_FieldStepPadInit(void)
         if (errno != 0 || end == map || *end != '\0' || parsed < 0 || parsed > 0xFFF)
             return step_pad_error("XENO_FIELD_STEP_PAD_MAP must be 0..0xFFF");
         s_step_pad_map = (int)parsed;
+    }
+    if (handover) {
+        const char *stop = getenv("XENO_PAD_TEST_STOP_FIELD");
+        if (stop == NULL || stop[0] == '\0' || s_step_pad_map < 0 ||
+            (atoi(stop) & 0xFFF) != s_step_pad_map)
+            return step_pad_error("XENO_PAD_TEST_INPUT is also set (vblank-clocked path) "
+                                  "without XENO_PAD_TEST_STOP_FIELD == XENO_FIELD_STEP_PAD_MAP");
+        fprintf(stderr, "[field-step-pad] hand-over: boot pad schedule retires at map %d\n",
+                s_step_pad_map);
     }
     s_step_pad_state = 1;
     fprintf(stderr, "[field-step-pad] enabled steps=%zu map=%d\n",

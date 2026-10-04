@@ -301,11 +301,36 @@ static int mode_refuse(const char *which)
         setenv("XENO_FIELD_STEP_PAD_INPUT", "1:0x2000", 1);
     else if (strcmp(which, "map") == 0)
         setenv("XENO_FIELD_STEP_PAD_MAP", "0x1000", 1);
+    else if (strcmp(which, "handover-mismatch") == 0) {
+        setenv("XENO_PAD_TEST_INPUT", "0:0", 1);
+        setenv("XENO_PAD_TEST_STOP_FIELD", "5", 1);
+        setenv("XENO_FIELD_STEP_PAD_MAP", "4", 1);
+    } else if (strcmp(which, "handover-nomap") == 0) {
+        setenv("XENO_PAD_TEST_INPUT", "0:0", 1);
+        setenv("XENO_PAD_TEST_STOP_FIELD", "4", 1);
+    }
     pad_read();
     CHECK(PcPort_FieldStepPadApply(g_C1Buffer, PcPort_PadTestGameToPhysical, 0) == -1);
     CHECK(g_C1Buffer[0x2] == 0xFF && g_C1Buffer[0x3] == 0xFF);
     printf("FIELD STEP PAD PASS refuse-%s\n", which);
     return 0;
+}
+
+/* The boot schedule may hand over when it retires at the probe's map:
+ * accepted, and the probe stays inert until that map. */
+static void mode_handover(void)
+{
+    setenv("XENO_FIELD_STEP_PAD_INPUT", "0:0x2000", 1);
+    setenv("XENO_PAD_TEST_INPUT", "0:0", 1);
+    setenv("XENO_PAD_TEST_STOP_FIELD", "4", 1);
+    setenv("XENO_FIELD_STEP_PAD_MAP", "4", 1);
+    pad_read();
+    CHECK(PcPort_FieldStepPadApply(g_C1Buffer, PcPort_PadTestGameToPhysical, 490) == 0);
+    CHECK(g_C1Buffer[0x2] == 0xFF && g_C1Buffer[0x3] == 0xFF);
+    pad_read();
+    CHECK(PcPort_FieldStepPadApply(g_C1Buffer, PcPort_PadTestGameToPhysical, 4) == 0);
+    CHECK(g_C1Buffer[0x2] != 0xFF || g_C1Buffer[0x3] != 0xFF);
+    printf("FIELD STEP PAD PASS handover: accepted only with STOP_FIELD == MAP, inert before\n");
 }
 
 int main(int argc, char **argv)
@@ -319,6 +344,7 @@ int main(int argc, char **argv)
     else if (!strcmp(argv[1], "map")) mode_map();
     else if (!strcmp(argv[1], "unset")) mode_unset();
     else if (!strcmp(argv[1], "suspend")) mode_suspend();
+    else if (!strcmp(argv[1], "handover")) mode_handover();
     else if (!strcmp(argv[1], "refuse") && argc == 3) return mode_refuse(argv[2]);
     else return 2;
     return 0;
