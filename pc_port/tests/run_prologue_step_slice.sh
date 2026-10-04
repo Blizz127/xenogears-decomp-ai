@@ -56,6 +56,7 @@ env -i PATH="$PATH" HOME="$OUT/home" XDG_CONFIG_HOME="$OUT/config" XDG_STATE_HOM
     XENO_FIELD_STEP_PAD_INPUT="$PROLOGUE_SCHEDULE" XENO_FIELD_STEP_PAD_MAP=4 \
     XENO_FIELD_STEP_CHECKPOINTS="$CHECKPOINTS" XENO_FIELD_STEP_SPU_LOG="$OUT/spu.log" \
     XENO_FIELD_STEP_RNG_LOG="$([ "${PROLOGUE_RNG_LOG:-0}" = 1 ] && echo "$OUT/rng.log")" \
+    XENO_RAND_TRACE="$([ "${PROLOGUE_RAND_TRACE:-0}" = 1 ] && echo "$OUT/rand-trace.log")" \
     XENO_FIELD_CAPTURE_DIR="$OUT/captures" XENO_FIELD_CAPTURE_EVERY=100000 \
     timeout --signal=INT --kill-after=20 "${PROLOGUE_SLICE_SECONDS:-900}s" "$BINARY" > "$OUT/run.log" 2>&1
 echo "rc=$?" > "$OUT/rc.txt"

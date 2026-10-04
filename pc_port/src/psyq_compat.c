@@ -72,6 +72,30 @@ int rand(void)
 {
     uint32_t next = g_RandomSeed * UINT32_C(0x41C64E6D) + UINT32_C(0x3039);
     s_rand_calls++;
+    /* XENO_RAND_TRACE=<path>: one line per call (index, map, caller) until
+     * the field-step probe arms -- localizes run-to-run differences in how
+     * many calls the boot/title/load phase makes (follow-up e). */
+    {
+        static int trace_state = -1;
+        static FILE* trace;
+        extern int g_GameSceneMapNum;
+        extern int PcPort_FieldStepPadArmedStep(unsigned* step);
+        unsigned step;
+        if (trace_state < 0) {
+            const char* e = getenv("XENO_RAND_TRACE");
+            trace = (e != NULL && e[0] != '\0') ? fopen(e, "w") : NULL;
+            trace_state = trace != NULL;
+        }
+        if (trace_state == 1) {
+            if (PcPort_FieldStepPadArmedStep(&step)) {
+                fclose(trace);
+                trace_state = 0;
+            } else {
+                fprintf(trace, "%u %d %p\n", (unsigned)s_rand_calls, g_GameSceneMapNum,
+                        __builtin_return_address(0));
+            }
+        }
+    }
     if (!s_rand_on_main) {
         s_rand_calls_off_main++;
         s_rand_last_off_main = __builtin_return_address(0);
