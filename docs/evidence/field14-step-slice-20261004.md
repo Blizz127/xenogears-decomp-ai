@@ -129,3 +129,34 @@ Re-run with the fixed job script: `20261004-061423-xeno-xeno-e52f-field14-split2
 job exit 0 (overall_rc=0), binary 503ae281…, both summaries "FIELD14 SLICE PASS". The same
 36 frame hashes, save 63929945…, 6/6 SPU pairs identical on every vblank, and 0 var-6
 writes: 8 identical runs across 2 jobs. Receipts: `…/e52f8f1e-field14-splitclock/receipts-rerun/`.
+
+## Field menu slice ACCEPTED — job 1645287 (source c4cc953a), 2026-10-04
+
+`20261004-070956-xeno-xeno-e52f-field14-menu-c4cc953a-1645287`, binary 4bf7a4d9…, job exit 0.
+The fixture, test clocks and deterministic flags are the same as the walk slice.
+
+Schedule:
+- Triangle at steps 300 and 420 opens the field system menu. The field requests it
+  (D_800ADB64=0x80), and func_800799D4 then runs MenuMain synchronously.
+- While MenuMain suspends the field loop, XENO_FIELD_STEP_PAD_SUSPENDED presses Cross
+  (u=120, then every 60 vblanks). u=180 closes it ("func_801C55A0 cancel/close
+  choice=6", then "MenuMain returned").
+- Right walk, F11 save at step 640, self-exit at step 760.
+
+Over 4 runs (ref×2, dis×2):
+- each run rc=0, with 2 menu opens and 2 returns;
+- checkpoint frames, save (b5446276…) and checkpoint player positions identical:
+  (115,0,−455) → (203,0,−496) after the menus;
+- all 6 SPU pairs identical on every vblank;
+- zero interpreted instructions and refusals.
+
+Both summaries: "FIELD14 SLICE PASS".
+
+Observations:
+- The first scripted Cross arrives before the menu's input loop; the remaining scripted
+  presses land in the post-menu WAIT_MENU window. Both happen identically in every run.
+- POSDIAG stays silent after a field menu because the field transition flag D_800ADB04
+  remains clear. Checkpoints therefore read the player position directly (c4cc953a).
+  Whether D_800ADB04 staying clear is a port divergence is an open question.
+
+Receipts (tmpfs, per the devbox disk rule): /tmp/xeno-e52f-receipts/field14-menu-c4cc953a/.
