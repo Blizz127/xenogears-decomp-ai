@@ -55,3 +55,25 @@ sets, is the next step. It needs the results differential harness, and that
 needs a port build (stubs.c), which is coordinator-sequenced. The model is
 not registered for dispatch. No nonempty-party fixture exists yet, and this
 oracle does not create one.
+
+## Composition with the adopted native helpers (staged, NOT RUN)
+
+`battle_results_host_differential_test.c --compose-3a18`, called from
+run_battle_results_host_differential_test.sh for each of O0/O2/UBSan.
+Retail side: 0x801E3A18 and its helpers fully interpreted (force_interpret).
+Composed side: the same register-exact model, run with zero interpreted
+instructions. It writes the guest frame through the production mapping and
+calls the six adopted native helpers through production `results_try_host`,
+which applies their exit-register sets.
+
+4,000 cases use the existing helper-world shaper, three kinds per case
+(0..12 or the leaf-test kind alphabet) and about 25% dead slots. Exit
+registers, HI/LO, all RAM (frame included, no FRAME_SKIP), the native
+g_GameState copy, the scratchpad and uncompared writes must all match. All
+six helpers must be reached. Mutant `XENO_COMPOSE_3A18_MUTANT=drop-exit-regs`
+must fail on exit registers.
+
+Compile-only check: clang -Wall -Wextra -Werror at O0/O2/UBSan compiles
+(stand-in RESULTS_GS_BYTES). The run needs pc_port/build_native/stubs.c from a
+port build, so it is queued in the coordinator-sequenced gate request for
+e52f8f1e1137. Still not dispatched: 0x801E3A18 stays off the allowlist.

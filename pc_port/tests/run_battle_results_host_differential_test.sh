@@ -237,6 +237,25 @@ for mode in ${BATTLE_RESULTS_DIFFERENTIAL_MODES:-O0 O2 UBSan}; do
         echo "BATTLE RESULTS DIFFERENTIAL FAIL mode=$mode meter status=$status" >&2
         exit 1
     fi
+    # 0x801E3A18 model composed with the adopted native helpers (not
+    # dispatched; see compose_run), then a mutant that drops their exit
+    # registers, which must fail.
+    status=0
+    env -u XENO_CPU_FALLBACK_STATS -u XENO_COMPOSE_3A18_MUTANT "$OUT/$mode" \
+        "$OUT/results_module.bin" --compose-3a18 >"$OUT/$mode-compose.log" 2>&1 || status=$?
+    cat "$OUT/$mode-compose.log"
+    if [ "$status" -ne 0 ] || ! grep -q '^BATTLE RESULTS COMPOSE 3A18 PASS ' "$OUT/$mode-compose.log"; then
+        echo "BATTLE RESULTS DIFFERENTIAL FAIL mode=$mode compose-3a18 status=$status" >&2
+        exit 1
+    fi
+    status=0
+    env -u XENO_CPU_FALLBACK_STATS XENO_COMPOSE_3A18_MUTANT=drop-exit-regs "$OUT/$mode" \
+        "$OUT/results_module.bin" --compose-3a18 >"$OUT/$mode-compose-mutant.log" 2>&1 || status=$?
+    if [ "$status" -eq 0 ] || ! grep -q 'compose-3a18.*exit-registers' "$OUT/$mode-compose-mutant.log"; then
+        echo "BATTLE RESULTS DIFFERENTIAL FAIL mode=$mode compose mutant drop-exit-regs survived" >&2
+        exit 1
+    fi
+    echo "BATTLE RESULTS DIFFERENTIAL compose-3a18 negative control PASS mode=$mode"
 done
 
 # expect_rejected <suffix> <host dir> <runtime> <required FAIL pattern>

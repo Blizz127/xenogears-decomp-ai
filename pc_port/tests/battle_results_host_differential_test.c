@@ -1637,6 +1637,293 @@ static int meter_run(void)
     return 0;
 }
 
+/* ---- --compose-3a18: model of 0x801E3A18 over the adopted helpers -------
+ *
+ * Retail side: 0x801E3A18 and its helpers fully interpreted (force).
+ * Composed side: zero interpreted instructions.  A register-exact C model of
+ * 0x801E3A18 (the one proven against the retail bytes under scripted helpers
+ * by run_results_3a18_contract_test.sh) writes its guest frame and calls the
+ * six adopted native helpers through production results_try_host, which
+ * applies their exit-register sets.  Everything compare_case compares must
+ * match, and the guest frame too (no FRAME_SKIP here).  This tests the
+ * composition only; 0x801E3A18 is NOT on the allowlist and nothing here
+ * dispatches it.  XENO_COMPOSE_3A18_MUTANT=drop-exit-regs keeps the caller's
+ * temporaries across each helper and must fail. */
+static unsigned compose_cover[6], compose_dead, compose_failed_call;
+static int compose_drop_exit;
+
+static uint32_t c_rd(uint32_t address, unsigned width)
+{
+    uint8_t *p = resolve_memory(&rt, address, width, 0);
+    uint32_t v = 0;
+    unsigned i;
+    if (p == NULL)
+        siglongjmp(fault_jmp, 1);
+    for (i = 0; i < width; i++)
+        v |= (uint32_t)p[i] << (8 * i);
+    return v;
+}
+
+static void c_wr(uint32_t address, unsigned width, uint32_t value)
+{
+    uint8_t *p = resolve_memory(&rt, address, width, 1);
+    unsigned i;
+    if (p == NULL)
+        siglongjmp(fault_jmp, 1);
+    for (i = 0; i < width; i++)
+        p[i] = (uint8_t)(value >> (8 * i));
+    note_write(p, width);
+}
+
+static void c_call(uint32_t *r, uint32_t target, uint32_t return_address)
+{
+    static const uint32_t helpers[6] = {0x801E3BE0u, 0x801E3D54u, 0x801E3E14u,
+                                        0x801E3F28u, 0x801E3EA4u, 0x801E3FB0u};
+    uint32_t keep[32];
+    unsigned i;
+
+    r[31] = return_address;
+    memcpy(keep, r, sizeof(keep));
+    rt.bridge_cpu = &cpu;
+    if (results_try_host(&rt, &cpu, target) != 1)
+        compose_failed_call++;
+    if (compose_drop_exit) {
+        for (i = 1; i < 32; i++)
+            if (i != 2 && !(i >= 16 && i <= 23) && i != 29 && i != 30 && i != 31)
+                r[i] = keep[i];
+    }
+    for (i = 0; i < 6; i++)
+        compose_cover[i] += helpers[i] == target;
+}
+
+static void compose_3A18(void)
+{
+    uint32_t *r = cpu.gpr;
+    uint32_t sp = r[29] = r[29] - 32u;
+
+    c_wr(sp + 20u, 4, r[17]);
+    c_wr(sp + 24u, 4, r[18]);
+    c_wr(sp + 28u, 4, r[31]);
+    c_wr(sp + 16u, 4, r[16]);
+    r[17] = 0;
+    r[18] = 10;
+    r[16] = r[17] & 0xFFu;
+    for (;;) {
+        uint32_t s0 = r[16];
+
+        r[3] = c_rd(0x801E44C8u, 4);
+        r[2] = ((s0 * 3u) * 8u - s0) << 4;
+        r[4] = r[2] + r[3];
+        r[2] = c_rd(r[4] + 0x7Cu, 2);
+        r[1] = 0x801E0000u;
+        c_wr(0x801E44ECu, 4, r[4]);
+        r[2] &= 0x8000u;
+        if (r[2] != 0) {
+            compose_dead++;
+            goto next_slot;
+        }
+        r[4] = c_rd(r[4] + 0x56u, 1);
+        r[2] = (int32_t)r[4] < 9;
+        if (r[2] == 0) {
+            r[2] = (int32_t)r[4] < 7;
+        } else {
+            r[2] = (int32_t)r[4] < 7;
+            if (r[2] == 0)
+                goto after_3BE0;
+        }
+        c_call(r, 0x801E3BE0u, 0x801E3A94u);
+        r[4] = r[2];
+        r[2] = r[4] & 0xFFu;
+        if (r[2] != 0) {
+            r[2] = c_rd(0x801E44C8u, 4) + r[16];
+            c_wr(r[2] + 0x101Cu, 1, r[4]);
+        }
+after_3BE0:
+        r[2] = c_rd(0x801E44ECu, 4);
+        r[4] = c_rd(r[2] + 0x56u, 1);
+        if (r[4] == r[18]) {
+            r[2] = (int32_t)r[4] < 7;
+            goto check_3E14;
+        }
+        r[2] = (int32_t)r[4] < 7;
+        c_call(r, 0x801E3D54u, 0x801E3ADCu);
+        r[4] = r[2];
+        r[2] = r[4] & 0xFFu;
+        r[3] = r[17] & 0xFFu;
+        if (r[2] != 0) {
+            r[2] = c_rd(0x801E44C8u, 4) + r[3];
+            c_wr(r[2] + 0x101Fu, 1, r[4]);
+        }
+        r[2] = c_rd(0x801E44ECu, 4);
+        r[4] = c_rd(r[2] + 0x56u, 1);
+        r[2] = (int32_t)r[4] < 7;
+check_3E14:
+        if (r[2] != 0) {
+            r[2] = (int32_t)r[4] < 9;
+        } else {
+            r[2] = (int32_t)r[4] < 9;
+            if (r[2] != 0 || r[4] == r[18])
+                goto check_3F28;
+        }
+        c_call(r, 0x801E3E14u, 0x801E3B38u);
+check_3F28:
+        r[2] = c_rd(0x801E44ECu, 4);
+        r[4] = c_rd(r[2] + 0x56u, 1);
+        r[2] = (int32_t)r[4] < 11;
+        if (r[2] == 0) {
+            r[2] = (int32_t)r[4] < 8;
+        } else {
+            r[2] = (int32_t)r[4] < 8;
+            if (r[2] == 0)
+                goto check_3EA4;
+        }
+        c_call(r, 0x801E3F28u, 0x801E3B68u);
+check_3EA4:
+        r[2] = c_rd(0x801E44ECu, 4);
+        r[3] = c_rd(r[2] + 0x56u, 1);
+        r[2] = 8;
+        if (r[3] == r[2])
+            c_call(r, 0x801E3EA4u, 0x801E3B8Cu);
+        r[2] = c_rd(0x801E44ECu, 4);
+        r[3] = c_rd(r[2] + 0x56u, 1);
+        r[2] = 7;
+        if (r[3] == r[2])
+            c_call(r, 0x801E3FB0u, 0x801E3BB0u);
+next_slot:
+        r[17] += 1;
+        r[2] = r[17] & 0xFFu;
+        r[2] = r[2] < 3u;
+        r[16] = r[17] & 0xFFu;
+        if (r[2] == 0)
+            break;
+    }
+    r[31] = c_rd(sp + 28u, 4);
+    r[18] = c_rd(sp + 24u, 4);
+    r[17] = c_rd(sp + 20u, 4);
+    r[16] = c_rd(sp + 16u, 4);
+    r[29] = sp + 32u;
+}
+
+static void shape_compose_3A18(unsigned index, uint32_t args[4])
+{
+    uint32_t slots, k, j;
+    uint8_t kinds[3];
+
+    for (j = 0; j < 4; j++)
+        args[j] = rnd();
+    for (k = 0; k < 3; k++)
+        kinds[k] = (rnd() & 1u) ? (uint8_t)(rnd() % 13u) : shape_kind();
+    shape_helper_world(index, kinds[0]);
+    for (k = 1; k < 3; k++)
+        poke_level(kinds[k], (uint8_t)rnd());
+    slots = guest_buffer(0x1100u);
+    poke32(0x801E44C8u, slots);
+    for (k = 0; k < 3; k++) {
+        poke16(slots + 0x170u * k + 0x7Cu,
+               (uint16_t)((rnd() % 4u) ? (rnd() & 0x7FFFu) : (0x8000u | rnd())));
+        poke8(slots + 0x170u * k + 0x56u, kinds[k]);
+    }
+}
+
+static int compose_run(unsigned cases)
+{
+    const char *mutant = getenv("XENO_COMPOSE_3A18_MUTANT");
+    volatile unsigned c, proven = 0;
+    unsigned i;
+    char detail[256];
+
+    compose_drop_exit = mutant != NULL && strcmp(mutant, "drop-exit-regs") == 0;
+    for (c = 0; c < cases; c++) {
+        uint32_t seed = 0x801E3A18u ^ (0x9E3779B9u * (c + 1u));
+        uint32_t args[4];
+        SideResult retail;
+        size_t diffs, first = 0;
+        uint64_t calls_before;
+        unsigned failed_before = compose_failed_call, reg;
+
+        begin_case(seed);
+        shape_compose_3A18(c, args);
+        memcpy(before_ram, g_PsxRam, sizeof(before_ram));
+        memcpy(before_gs, native_gs, RESULTS_GS_BYTES);
+        memcpy(before_pad, g_PsxScratchpad, sizeof(before_pad));
+        stray_writes = 0;
+        if (run_side(0x801E3A18u, args, 1, seed, &retail) != 0 ||
+            retail.rc != PC_PORT_MIPS_HALTED || retail.native_calls != 0) {
+            fail("compose-3a18", "retail", cpu.error);
+            continue;
+        }
+        memcpy(retail_ram, g_PsxRam, sizeof(retail_ram));
+        memcpy(retail_gs, native_gs, RESULTS_GS_BYTES);
+        memcpy(retail_pad, g_PsxScratchpad, sizeof(retail_pad));
+        memcpy(g_PsxRam, before_ram, sizeof(before_ram));
+        memcpy(native_gs, before_gs, RESULTS_GS_BYTES);
+        memcpy(g_PsxScratchpad, before_pad, sizeof(before_pad));
+
+        prepare_cpu(args, seed);
+        cpu.gpr[31] = BATTLE_HALT_PC;
+        calls_before = rt.results.native_calls;
+        if (sigsetjmp(fault_jmp, 1) != 0) {
+            fail("compose-3a18", "composed-fault", "composed side faulted");
+            continue;
+        }
+        compose_3A18();
+        if (compose_failed_call != failed_before || cpu.steps != 0) {
+            fail("compose-3a18", "not-native", "a helper was refused or something interpreted");
+            continue;
+        }
+        (void)calls_before;
+        for (reg = 1; reg < 32; reg++) {
+            if (retail.gpr[reg] != cpu.gpr[reg]) {
+                snprintf(detail, sizeof(detail), "r%u retail=%08x composed=%08x seed=%08x",
+                         reg, retail.gpr[reg], cpu.gpr[reg], seed);
+                fail("compose-3a18", "exit-registers", detail);
+                goto next_case;
+            }
+        }
+        if (retail.hi != cpu.hi || retail.lo != cpu.lo) {
+            fail("compose-3a18", "hilo", "HI/LO differ");
+            continue;
+        }
+        count_diffs(retail_ram, g_PsxRam, PSX_RAM_SIZE, 0, 0, &diffs, &first);
+        if (diffs != 0) {
+            snprintf(detail, sizeof(detail), "%zu bytes differ, first at guest %08x seed=%08x",
+                     diffs, (unsigned)(0x80000000u | first), seed);
+            fail("compose-3a18", "ram", detail);
+            continue;
+        }
+        count_diffs(retail_gs, native_gs, RESULTS_GS_BYTES, 0, 0, &diffs, &first);
+        if (diffs != 0) {
+            fail("compose-3a18", "native-copy", "g_GameState copy differs");
+            continue;
+        }
+        if (memcmp(retail_pad, g_PsxScratchpad, sizeof(retail_pad)) != 0 || stray_writes != 0) {
+            fail("compose-3a18", "scratchpad/stray", "scratchpad or uncompared write");
+            continue;
+        }
+        proven++;
+next_case:
+        ;
+    }
+    printf("BATTLE RESULTS COMPOSE 3A18 coverage: 3BE0=%u 3D54=%u 3E14=%u 3F28=%u "
+           "3EA4=%u 3FB0=%u dead=%u\n", compose_cover[0], compose_cover[1],
+           compose_cover[2], compose_cover[3], compose_cover[4], compose_cover[5],
+           compose_dead);
+    for (i = 0; i < 6; i++)
+        if (compose_cover[i] == 0) {
+            fprintf(stderr, "BATTLE RESULTS DIFFERENTIAL FAIL compose helper %u never called\n", i);
+            failures++;
+        }
+    if (failures != 0 || proven != cases) {
+        fprintf(stderr, "BATTLE RESULTS DIFFERENTIAL FAIL compose-3a18 proven=%u of %u\n",
+                proven, cases);
+        return 1;
+    }
+    printf("BATTLE RESULTS COMPOSE 3A18 PASS cases=%u: model + adopted native helpers, "
+           "zero interpreted instructions, identical to fully interpreted retail "
+           "(registers, HI/LO, RAM incl. guest frame, native copy, scratchpad)\n", cases);
+    return 0;
+}
+
 /* An adopted address is dispatched whenever the guest PC equals it, so it
  * must be reachable only as a call: no branch, J, or data word (jump table)
  * in the module may target it. */
@@ -1673,8 +1960,9 @@ int main(int argc, char **argv)
     size_t i;
     unsigned spec_count = (unsigned)(sizeof(kSpecs) / sizeof(kSpecs[0]));
 
-    if (argc != 2 && !(argc == 3 && strcmp(argv[2], "--meter") == 0)) {
-        fprintf(stderr, "usage: %s results_module.bin [--meter]\n", argv[0]);
+    if (argc != 2 && !(argc == 3 && (strcmp(argv[2], "--meter") == 0 ||
+                                     strcmp(argv[2], "--compose-3a18") == 0))) {
+        fprintf(stderr, "usage: %s results_module.bin [--meter|--compose-3a18]\n", argv[0]);
         return 2;
     }
     f = fopen(argv[1], "rb");
@@ -1706,6 +1994,8 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    if (argc == 3 && strcmp(argv[2], "--compose-3a18") == 0)
+        return compose_run(4000u);
     if (argc == 3)
         return meter_run();
 
