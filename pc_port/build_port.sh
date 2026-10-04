@@ -539,6 +539,10 @@ apply_psycross_patch "$ROOT/pc_port/patches/psycross_compmatrix_alias.patch" "_x
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_compmatrix_word_store.patch" "_xeno_compmatrix_word_store"
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_sqrt_lz_registers.patch" "_xeno_sqrt_lz_registers"
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_sqrt_retail_memory.patch" "_xeno_sqrt_retail_memory"
+# The port ships no game data: LIBGTE.C's retail rcossin/ratan tables are
+# loaded from the user's disc/SLUS_006.64 (retail_data.h); SQRT is dropped
+# (SquareRoot0 reads guest memory since the previous patch).
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_gte_tables_from_disc.patch" "_xeno_gte_tables_from_disc"
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_gte_mvmva_signed_translation.patch" "_xeno_gte_mvmva_signed_translation"
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_gte_projection_signed_translation.patch" "_xeno_gte_projection_signed_translation"
 # Optional F22 logical-origin correction. This is intentionally applied only

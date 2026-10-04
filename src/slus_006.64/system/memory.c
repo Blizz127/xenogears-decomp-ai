@@ -26,6 +26,47 @@ HeapDelayedFreeBlock g_HeapDelayedFreeBlocksHead;
  * as heap_debug.c's HeapDumpToFile). The small-data macro loads elsewhere in
  * this TU (HeapPrintf's sink pointer, HeapAlloc's globals) still assemble
  * gp-relative under the SdataSmall preset. */
+#ifdef XENO_PC_PORT
+/* Port: zero storage filled with the same retail bytes from the user's
+ * disc/SLUS_006.64 before main() (retail_data.h); the port binary carries no
+ * game data. Loaded here rather than in a pc_port data TU so the tests that
+ * build this TU on its own still link. */
+#include "../../../pc_port/src/retail_data.h"
+char D_80059248[6];
+char D_80059250[5];
+char D_80059258[4];
+char D_8005925C[3];
+char D_80059260[4];
+char D_80059264[2];
+char D_80059268[5];
+char D_80059270[8];
+char D_80059278[8];
+char D_80059280[8];
+char D_80059288[6];
+char D_80059290[8];
+char D_80059298[5];
+char D_800592A0[5];
+char D_800592A8[8];
+char D_800592B0[6];
+XENO_RETAIL_DATA_BEGIN(heap_dump_strings)
+    XENO_RD(D_80059248, XENO_RD_SLUS, XENO_RD_SLUS_OFF(0x80059248u), 6),
+    XENO_RD(D_80059250, XENO_RD_SLUS, XENO_RD_SLUS_OFF(0x80059250u), 5),
+    XENO_RD(D_80059258, XENO_RD_SLUS, XENO_RD_SLUS_OFF(0x80059258u), 4),
+    XENO_RD(D_8005925C, XENO_RD_SLUS, XENO_RD_SLUS_OFF(0x8005925Cu), 3),
+    XENO_RD(D_80059260, XENO_RD_SLUS, XENO_RD_SLUS_OFF(0x80059260u), 4),
+    XENO_RD(D_80059264, XENO_RD_SLUS, XENO_RD_SLUS_OFF(0x80059264u), 2),
+    XENO_RD(D_80059268, XENO_RD_SLUS, XENO_RD_SLUS_OFF(0x80059268u), 5),
+    XENO_RD(D_80059270, XENO_RD_SLUS, XENO_RD_SLUS_OFF(0x80059270u), 8),
+    XENO_RD(D_80059278, XENO_RD_SLUS, XENO_RD_SLUS_OFF(0x80059278u), 8),
+    XENO_RD(D_80059280, XENO_RD_SLUS, XENO_RD_SLUS_OFF(0x80059280u), 8),
+    XENO_RD(D_80059288, XENO_RD_SLUS, XENO_RD_SLUS_OFF(0x80059288u), 6),
+    XENO_RD(D_80059290, XENO_RD_SLUS, XENO_RD_SLUS_OFF(0x80059290u), 8),
+    XENO_RD(D_80059298, XENO_RD_SLUS, XENO_RD_SLUS_OFF(0x80059298u), 5),
+    XENO_RD(D_800592A0, XENO_RD_SLUS, XENO_RD_SLUS_OFF(0x800592A0u), 5),
+    XENO_RD(D_800592A8, XENO_RD_SLUS, XENO_RD_SLUS_OFF(0x800592A8u), 8),
+    XENO_RD(D_800592B0, XENO_RD_SLUS, XENO_RD_SLUS_OFF(0x800592B0u), 6),
+XENO_RETAIL_DATA_END(heap_dump_strings)
+#else
 char D_80059248[] = "%06x ";
 char D_80059250[] = "%6x ";
 char D_80059258[] = "%s ";
@@ -42,6 +83,7 @@ char D_80059298[] = "%3d ";
 char D_800592A0[] = "--- ";
 char D_800592A8[] = "------ ";
 char D_800592B0[] = "---- ";
+#endif
 const char D_80018A58[] = "FUNCTION/";
 const char D_80018A64[] = "CONTENTS";
 const char D_80018A70[] = "\nFree %6x";

@@ -2172,27 +2172,17 @@ void func_800223B0(void* pSpriteData, s16 arg1) {
 
 /* Animation bytecode length table. Retail lives in sdata
  * (asm/slus_006.64/data/3F290.sdata.s, dlabel D_8004FC40). Matching build
- * links that blob; the PC port needs a real definition (an auto-stubbed
- * zero table would advance the bytecode PC by 0 and hang the interpreter). */
+ * links that blob; the port has zero storage filled with the same bytes from
+ * the user's disc/SLUS_006.64 before main() (retail_data.h) -- a zero table
+ * would advance the bytecode PC by 0 and hang the interpreter. Loaded here
+ * rather than in a pc_port data TU so the tests that build this TU on its
+ * own still link. */
 #ifdef XENO_PC_PORT
-const u8 D_8004FC40[256] = {
-    16, 231, 46, 112, 80, 16, 60, 112, 255, 127, 80, 144, 160, 16, 88, 16,  /* 0x00 */
-    251, 80, 144, 156, 16, 22, 80, 160, 14, 48, 160, 48, 82, 48, 134, 48,  /* 0x10 */
-    31, 162, 176, 80, 208, 156, 48, 144, 48, 80, 48, 25,  0, 25, 63, 80,  /* 0x20 */
-    128, 188, 48, 242, 48, 160, 144, 80, 144, 240, 144, 255, 127, 251, 62, 49,  /* 0x30 */
-    80, 240, 24, 68, 65, 34, 49, 80, 80, 160, 240, 240, 48, 255, 142, 49,  /* 0x40 */
-    18, 145, 226, 80, 240, 240, 240, 240, 80, 240, 80, 112, 160, 80, 191, 162,  /* 0x50 */
-    112, 78, 48, 230, 17, 144, 241, 144, 209, 48, 146, 14, 48, 34, 254, 17,  /* 0x60 */
-    48, 98, 46, 82,  4, 48, 48, 18, 50, 50, 48, 242, 124, 50,  0,  0,  /* 0x70 */
-     1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  /* 0x80 */
-     1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  /* 0x90 */
-     2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  /* 0xA0 */
-     2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  /* 0xB0 */
-     2,  2,  2,  2,  2,  2,  2,  2,  3,  3,  3,  3,  3,  3,  3,  3,  /* 0xC0 */
-     3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  /* 0xD0 */
-     3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  /* 0xE0 */
-     3,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  /* 0xF0 */
-};
+#include "../../../pc_port/src/retail_data.h"
+u8 D_8004FC40[256];
+XENO_RETAIL_DATA_BEGIN(anim_opcode_lengths)
+    XENO_RD(D_8004FC40, XENO_RD_SLUS, XENO_RD_SLUS_OFF(0x8004FC40u), sizeof(D_8004FC40)),
+XENO_RETAIL_DATA_END(anim_opcode_lengths)
 #else
 extern u8 D_8004FC40[256];
 #endif

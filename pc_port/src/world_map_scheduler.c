@@ -37,6 +37,7 @@
 
 #include "common.h"
 #include "psx_memory.h"
+#include "retail_data.h"
 #include "world_map_callback_923a8.h"
 #include "world_map_callback_925a0.h"
 #include "world_map_callback_8a2c8.h"
@@ -288,23 +289,19 @@ extern s32 wm_80084068(s32 slot_index) __attribute__((weak));
 /* Recognized callback addresses from the W34B5G natural pool capture.
  * Linked accepted bodies are resolved before this missing fallback:
  * 16 occupied slots x {+0x18, +0x1C}; duplicates 0x8008B644/0x8008D678
- * collapsed — 30 distinct addresses). */
+ * collapsed — 30 distinct addresses).
+ *
+ * Slots 0-14 are Table A's {cb0, cb1} records (world_map.bin 0x80099E8C,
+ * 15 x 8 bytes; slots 3 and 6 repeat cb1 = 0x8008B644 / 0x8008D678). They
+ * are read from the user's disc/world_map.bin before main() (retail_data.h)
+ * instead of being listed here: the port binary carries no game data. */
+static u32 s_wm_sched_table_a[30];
+XENO_RETAIL_DATA_BEGIN(wm_sched_table_a)
+    XENO_RD(s_wm_sched_table_a, XENO_RD_WORLD_MAP, XENO_RD_WORLD_MAP_OFF(0x80099E8Cu),
+            sizeof(s_wm_sched_table_a)),
+XENO_RETAIL_DATA_END(wm_sched_table_a)
+
 static const u32 s_wm_sched_known_missing[] = {
-    0x800923A8u, 0x800925A0u, /* slot 0  (Table A record 0)  */
-    0x8008A2C8u, 0x8008A72Cu, /* slot 1  */
-    0x8008B2BCu, 0x8008B644u, /* slot 2  */
-    0x8008BB40u,              /* slot 3 cb0 (cb1 = 0x8008B644) */
-    0x8008C530u, 0x8008C844u, /* slot 4  */
-    0x8008D3F0u, 0x8008D678u, /* slot 5  */
-    0x8008DD6Cu,              /* slot 6 cb0 (cb1 = 0x8008D678) */
-    0x8008E190u, 0x8008E76Cu, /* slot 7  */
-    0x800906E0u, 0x800907F4u, /* slot 8  */
-    0x80091430u, 0x800914D0u, /* slot 9  */
-    0x80091B54u, 0x80091C18u, /* slot 10 */
-    0x80092234u, 0x800922ACu, /* slot 11 */
-    0x80092BE4u, 0x80092C70u, /* slot 12 */
-    0x80092DF8u, 0x80092FD8u, /* slot 13 */
-    0x80071A50u, 0x80071A58u, /* slot 14 */
     0x80087710u, 0x80087734u, /* slot 15 (Table B, selector 0) */
     0x8007756Cu, 0x800776E0u, /* mode 8/11 camera slot */
     0x80076A14u, 0x80076A1Cu, /* shared mode-13 draw slot */
@@ -1250,6 +1247,9 @@ static s16 wm_sched_builtin_80084068(int slot_index)
 static int wm_sched_is_known_missing(u32 guest_addr)
 {
     unsigned i;
+    for (i = 0; i < sizeof(s_wm_sched_table_a) / sizeof(s_wm_sched_table_a[0]); i++)
+        if (s_wm_sched_table_a[i] == guest_addr)
+            return 1;
     for (i = 0; i < WM_SCHED_KNOWN_MISSING_COUNT; i++)
         if (s_wm_sched_known_missing[i] == guest_addr)
             return 1;
