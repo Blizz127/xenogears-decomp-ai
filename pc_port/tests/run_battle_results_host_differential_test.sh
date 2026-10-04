@@ -208,6 +208,11 @@ build_link() {
 }
 
 RUNTIME="$PWD/pc_port/src/battle_mips_runtime.c"
+# The retail meter battle lists 0x801E3A18 among its interpreted targets
+# (any rank); once 0x801E3A18 itself is adopted the native battle must show
+# no interpreted work at all and exactly one native results call.
+caller_native=0
+case " $(echo $LEAVES) " in *" func_801E3A18 "*) caller_native=1 ;; esac
 for mode in ${BATTLE_RESULTS_DIFFERENTIAL_MODES:-O0 O2 UBSan}; do
     build_link "$mode" pc_port/src "$RUNTIME" ""
     status=0
@@ -233,7 +238,9 @@ for mode in ${BATTLE_RESULTS_DIFFERENTIAL_MODES:-O0 O2 UBSan}; do
     if [ "$status" -ne 0 ] ||
        ! grep -q '^BATTLE RESULTS DIFFERENTIAL METER PASS ' "$OUT/$mode-meter.log" ||
        [ "$(grep -cE "$summary" "$OUT/$mode-meter.log")" -ne 2 ] ||
-       ! grep -qE '^\[xeno-port\]\[cpu-fallback\]    1\. 0x801e3a18 calls=1 ' "$OUT/$mode-meter.log"; then
+       ! grep -qE '^\[xeno-port\]\[cpu-fallback\] +[0-9]+\. 0x801e3a18 calls=1 ' "$OUT/$mode-meter.log" ||
+       { [ "$caller_native" = 1 ] &&
+         ! grep -qE '^\[xeno-port\]\[cpu-fallback\] battle=2 end=returned interpreted_instructions=0 interpreted_calls=0 disabled_dispatches=0 interpreted_targets=0 .* native_results_calls=1 ' "$OUT/$mode-meter.log"; }; then
         echo "BATTLE RESULTS DIFFERENTIAL FAIL mode=$mode meter status=$status" >&2
         exit 1
     fi
