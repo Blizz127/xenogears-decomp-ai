@@ -160,3 +160,27 @@ Observations:
   Whether D_800ADB04 staying clear is a port divergence is an open question.
 
 Receipts (tmpfs, per the devbox disk rule): /tmp/xeno-e52f-receipts/field14-menu-c4cc953a/.
+
+## Follow-up (a) resolved: the first-run save byte, 2026-10-04
+
+The variable save byte from the r6.7-t1 gates is g_GameState+0x193D. In 2 of 8
+runs the save differed: always the job's first, slower run, whose title phase
+ran longer (spu start 24 vs 21–23). Root cause: the same as the prologue's
+follow-up (e) (`docs/evidence/prologue-slice-20261004.md`). The test clock
+armed only with the step probe, so the title phase before the F12 quick-load
+ran host-paced.
+
+Check: job 20261004-174602-…-115167, source 640ac877, walk slice ×4 with
+`XENO_DETERMINISTIC_VBLANK_FROM_FIELD=490`.
+- Every run passed: rc=0, both summaries PASS, spu-pairs identical.
+- Seed at arming was 05463f19 in all 4 runs; every SPU log starts at index 0;
+  the load phase begins at the same step and drain (919/951).
+- **All 4 F11 saves equal the accepted 63929945…, ref1 included.** Each also
+  wrote its rand-seed sidecar (`.rng`, 0b27e2d1).
+- Checkpoint frames 299–899 equal the accepted frames. Frame 1000, the only
+  checkpoint after the F12 reload at step 900, is identical in all 4 runs but
+  differs from the accepted frame. The likely reason: the reload now restores
+  the saved rand seed from the sidecar instead of continuing with the host's
+  seed (not separately proven).
+
+Receipts: `~/release-staging/xeno-work/e52f8f1e-prologue/a-f14-640ac877/`.
