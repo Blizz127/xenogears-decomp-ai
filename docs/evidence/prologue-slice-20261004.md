@@ -64,13 +64,54 @@ The cause is not yet known. The pre-arm frame and vblank offsets (presented
 as stated. Candidates: the flame effect's random-number or timer source, and
 the host-paced boot and load phases before the probe arms.
 
+## Follow-up (e): root cause and fix
+
+Receipts: `~/release-staging/xeno-work/e52f8f1e-prologue/` (`e-investigate-c50b9384/`,
+`e-trace-4ef1590b/`, `e-verify-02320d42/`).
+
+- **Investigation** (job …-1540902, 3 reference runs, RNG log c50b9384):
+  - r1 and r2 armed at map 4 with seed c521f39b after 1,895 `rand()` calls;
+    r3 armed with seed 62264e95 after 1,893 calls.
+  - After arming, all three runs made identical calls (4,641 each), with 0
+    from other threads.
+  - r3's frames differ from step 3280 onward, where the fire starts. The fire
+    effect consumes `rand()`, and the seed entering map 4 differed.
+- **Trace** (job …-2210747, 5 runs, per-call trace 4ef1590b):
+  - Every variable call happens in the title map (490), from two per-frame
+    callers: `func_8001BD40` (temp3.c, 490–496 calls) and `func_80078B5C`
+    (field misc4.c, 1,400–1,402 calls).
+  - The test clock armed only with the step probe at map 4 ("boot and title
+    keep the host clock"), so the title phase was host-paced.
+- **Fix** (4af144ba, opt-in test mode): `XENO_DETERMINISTIC_VBLANK_FROM_FIELD=490`
+  arms the clock on the first vblank in the title map. Load/live detection now
+  counts every field drain, so it also works before the probe arms.
+- **Verification** (job 20261004-172350-…-3653136, source 02320d42, ref ×2 and
+  dis ×2, all rc=0):
+  - Seed at arming is identical in all 4 runs: 96af344d after 1,645 calls,
+    ending at 6b73b862 after 6,286 calls.
+  - All 9 checkpoint frames are identical in all 4 runs, **including the
+    page-7 fire frames 3350 and 3415**.
+  - The SPU log is identical (c2a263e6…, 7,060 rows), and so is the text-box
+    sequence (18 events).
+  - Summaries ref1/dis1, ref2/dis2 and ref1/ref2 all **PASS**.
+  - New Game was chosen in all 4 runs; no title stall.
+  - Still varies: the title phase's drain count before the map-4 load
+    (1,600–1,615). The RNG consumption and every compared output are
+    identical regardless.
+
+Related fix: the port keeps the retail rand seed (guest 0x8005A1FC) in a host
+global, so port quicksaves did not carry it. It now goes in a `<save>.rng`
+sidecar tied to the checkpoint by its checksum (0b27e2d1); the main
+quicksave format is unchanged, so older builds still load it.
+
 ## Status
 
-- **Accepted, opt-in test mode:** narration pages 1–6 of the prologue. That
-  covers visual evidence for steps 0–3000 in all 4 runs, plus text-box
-  sequence, timing deltas and SPU through step 3420 in all 4 runs, with zero
-  fallback.
-- **Not accepted:** the visual identity of page 7 (fire animation), follow-up (e).
+- **Accepted, opt-in test mode (clock armed from the title map):** the full
+  prologue narration slice, all 7 pages. Job …-3653136: frames, text-box
+  sequence, timing deltas and SPU are identical across 2 reference and 2
+  interpreter-disabled runs, with zero fallback.
+- Superseded: the earlier pages-1–6 acceptance (job …-144690), and the page-7
+  visual nondeterminism under probe-armed clocks, now explained and fixed.
 - **Coverage limits:** no input response is exercised (the narration is
   timed), no save is taken (scene control holds), and battle is not reached
   (it is still interpreted).
