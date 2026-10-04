@@ -1504,3 +1504,185 @@ uint32_t battle_results_func_801E3FB0(uint32_t a0, uint32_t a1, uint32_t a2,
     BattleResults_SetExitHiLo(hi, lo);
     return v0;
 }
+
+/* func_801E3A18 (0x801E3A18..0x801E3BDC, 0x1C8 bytes, the one adopted
+ * non-leaf).  Skill/flag promotion over the three result slots; each gate
+ * calls one of the six adopted helpers above directly.  Contract and proof:
+ * docs/evidence/results-3a18-contract.md (retail bytes vs this exact
+ * register-level transcription under scripted helpers, then composed with
+ * the real helper bodies in the results differential).
+ *
+ *   frame  addiu sp,-32: s0 -> sp+16, s1 -> +20, s2 -> +24, ra -> +28 (the
+ *          caller's values, from g_BattleResultsEntry.gpr), all restored, so
+ *          s0-s2/sp/ra never appear in the exit set.
+ *   loop   s1 = 0..2, slot = word 0x801E44C8 + 0x170*s0, stored to word
+ *          0x801E44EC before the dead check (u16 +0x7C & 0x8000 skips).
+ *   gates  the kind byte +0x56 is RE-READ through 0x801E44EC before every
+ *          gate: 3BE0 if kind not 7/8 (nonzero low byte of v0 -> base+0x101C+s0),
+ *          3D54 if kind != 10 (-> base+0x101F+s1), 3E14 if kind < 7, == 9 or
+ *          >= 11, 3F28 if kind < 8 or >= 11, 3EA4 if kind == 8 and 3FB0 if
+ *          kind == 7 (those two get whatever a0 is live).
+ *   exit   at/v0/v1/a0 as this code last wrote them, otherwise whatever the
+ *          last helper left (its exit set, HI/LO from 3FB0's multu): a helper
+ *          call merges its exit registers into the local register file, the
+ *          way the interpreted caller would see them after its jal. */
+typedef struct BrRegs3A18 {
+    uint32_t r[32];
+    uint32_t written;
+    int hilo;
+    uint32_t hi, lo;
+} BrRegs3A18;
+
+static void br_3a18_call(BrRegs3A18 *s, BattleResultsHostBody body,
+                         uint32_t return_address)
+{
+    unsigned reg;
+
+    s->r[31] = return_address;
+    g_BattleResultsExit.mask = 0;
+    g_BattleResultsExit.hilo = 0;
+    s->r[2] = body(s->r[4], s->r[5], s->r[6], s->r[7]);
+    s->written |= 1u << 2;
+    for (reg = 1; reg < 32; reg++) {
+        if (reg != 2 && (g_BattleResultsExit.mask & (1u << reg))) {
+            s->r[reg] = g_BattleResultsExit.gpr[reg];
+            s->written |= 1u << reg;
+        }
+    }
+    if (g_BattleResultsExit.hilo) {
+        s->hilo = 1;
+        s->hi = g_BattleResultsExit.hi;
+        s->lo = g_BattleResultsExit.lo;
+    }
+}
+
+#define BR3A18_SET(reg, value) (s.r[(reg)] = (value), s.written |= 1u << (reg))
+
+uint32_t battle_results_func_801E3A18(uint32_t a0, uint32_t a1, uint32_t a2,
+                                      uint32_t a3)
+{
+    BrRegs3A18 s;
+    uint32_t sp;
+    unsigned reg;
+
+    memcpy(s.r, g_BattleResultsEntry.gpr, sizeof(s.r));
+    s.r[4] = a0;
+    s.r[5] = a1;
+    s.r[6] = a2;
+    s.r[7] = a3;
+    s.written = 0;
+    s.hilo = 0;
+    s.hi = s.lo = 0;
+
+    sp = s.r[29] - 32u;
+    BR_SW(sp + 20u, s.r[17]);
+    BR_SW(sp + 24u, s.r[18]);
+    BR_SW(sp + 28u, s.r[31]);
+    BR_SW(sp + 16u, s.r[16]);
+    s.r[17] = 0;
+    s.r[18] = 10;
+    s.r[16] = s.r[17] & 0xFFu;
+    for (;;) {
+        uint32_t s0 = s.r[16];
+
+        BR3A18_SET(3, BR_LW(0x801E44C8u));
+        BR3A18_SET(2, ((s0 * 3u) * 8u - s0) << 4);
+        BR3A18_SET(4, s.r[2] + s.r[3]);
+        BR3A18_SET(2, BR_LHU(s.r[4] + 0x7Cu));
+        BR3A18_SET(1, 0x801E0000u);
+        BR_SW(0x801E44ECu, s.r[4]);
+        s.r[2] &= 0x8000u;
+        if (s.r[2] != 0)
+            goto next_slot;
+
+        BR3A18_SET(4, BR_LBU(s.r[4] + 0x56u));
+        s.r[2] = (uint32_t)br_slt(s.r[4], 9u);
+        if (s.r[2] == 0) {
+            s.r[2] = (uint32_t)br_slt(s.r[4], 7u);
+        } else {
+            s.r[2] = (uint32_t)br_slt(s.r[4], 7u);
+            if (s.r[2] == 0)
+                goto after_3BE0;
+        }
+        br_3a18_call(&s, battle_results_func_801E3BE0, 0x801E3A94u);
+        BR3A18_SET(4, s.r[2]);
+        s.r[2] = s.r[4] & 0xFFu;
+        if (s.r[2] != 0) {
+            s.r[2] = BR_LW(0x801E44C8u) + s.r[16];
+            BR_SB(s.r[2] + 0x101Cu, s.r[4]);
+        }
+after_3BE0:
+        s.r[2] = BR_LW(0x801E44ECu);
+        BR3A18_SET(4, BR_LBU(s.r[2] + 0x56u));
+        if (s.r[4] == s.r[18]) {
+            s.r[2] = (uint32_t)br_slt(s.r[4], 7u);
+            goto check_3E14;
+        }
+        s.r[2] = (uint32_t)br_slt(s.r[4], 7u);
+        br_3a18_call(&s, battle_results_func_801E3D54, 0x801E3ADCu);
+        BR3A18_SET(4, s.r[2]);
+        s.r[2] = s.r[4] & 0xFFu;
+        BR3A18_SET(3, s.r[17] & 0xFFu);
+        if (s.r[2] != 0) {
+            s.r[2] = BR_LW(0x801E44C8u) + s.r[3];
+            BR_SB(s.r[2] + 0x101Fu, s.r[4]);
+        }
+        s.r[2] = BR_LW(0x801E44ECu);
+        BR3A18_SET(4, BR_LBU(s.r[2] + 0x56u));
+        s.r[2] = (uint32_t)br_slt(s.r[4], 7u);
+check_3E14:
+        if (s.r[2] != 0) {
+            s.r[2] = (uint32_t)br_slt(s.r[4], 9u);
+        } else {
+            s.r[2] = (uint32_t)br_slt(s.r[4], 9u);
+            if (s.r[2] != 0 || s.r[4] == s.r[18])
+                goto check_3F28;
+        }
+        br_3a18_call(&s, battle_results_func_801E3E14, 0x801E3B38u);
+check_3F28:
+        s.r[2] = BR_LW(0x801E44ECu);
+        BR3A18_SET(4, BR_LBU(s.r[2] + 0x56u));
+        s.r[2] = (uint32_t)br_slt(s.r[4], 11u);
+        if (s.r[2] == 0) {
+            s.r[2] = (uint32_t)br_slt(s.r[4], 8u);
+        } else {
+            s.r[2] = (uint32_t)br_slt(s.r[4], 8u);
+            if (s.r[2] == 0)
+                goto check_3EA4;
+        }
+        br_3a18_call(&s, battle_results_func_801E3F28, 0x801E3B68u);
+check_3EA4:
+        s.r[2] = BR_LW(0x801E44ECu);
+        BR3A18_SET(3, BR_LBU(s.r[2] + 0x56u));
+        s.r[2] = 8;
+        if (s.r[3] == s.r[2])
+            br_3a18_call(&s, battle_results_func_801E3EA4, 0x801E3B8Cu);
+        s.r[2] = BR_LW(0x801E44ECu);
+        BR3A18_SET(3, BR_LBU(s.r[2] + 0x56u));
+        s.r[2] = 7;
+        if (s.r[3] == s.r[2])
+            br_3a18_call(&s, battle_results_func_801E3FB0, 0x801E3BB0u);
+next_slot:
+        s.r[17] += 1;
+        s.r[2] = s.r[17] & 0xFFu;
+        s.r[2] = s.r[2] < 3u;
+        s.r[16] = s.r[17] & 0xFFu;
+        if (s.r[2] == 0)
+            break;
+    }
+    /* Epilogue: s0-s2/ra reloaded from the frame (the caller's values, as
+     * stored above), sp back to the caller's.  None of them is an exit. */
+
+    g_BattleResultsExit.mask = 0;
+    g_BattleResultsExit.hilo = 0;
+    for (reg = 1; reg < 32; reg++) {
+        if (reg == 2 || (reg >= 16 && reg <= 18) || reg == 29 || reg == 31)
+            continue;
+        if (s.written & (1u << reg))
+            BattleResults_SetExitReg(reg, s.r[reg]);
+    }
+    if (s.hilo)
+        BattleResults_SetExitHiLo(s.hi, s.lo);
+    return s.r[2];
+}
+#undef BR3A18_SET

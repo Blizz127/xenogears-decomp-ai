@@ -32,3 +32,4 @@
     {0x801e3ea4u, "func_801E3EA4"},
     {0x801e3f28u, "func_801E3F28"},
     {0x801e3fb0u, "func_801E3FB0"},
+    {0x801e3a18u, "func_801E3A18"},

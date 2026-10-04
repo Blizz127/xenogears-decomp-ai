@@ -1133,6 +1133,9 @@ static void shape_801E3FB0(unsigned index, uint32_t args[4])
     }
 }
 
+/* Defined with --compose-3a18 below; also the leaf shaper of 0x801E3A18. */
+static void shape_compose_3A18(unsigned index, uint32_t args[4]);
+
 typedef struct LeafSpec {
     uint32_t address;
     void (*shape)(unsigned index, uint32_t args[4]);
@@ -1155,6 +1158,7 @@ static const LeafSpec kSpecs[] = {
     {0x801E3EA4u, shape_801E3EA4, 3},
     {0x801E3F28u, shape_801E3F28, 3},
     {0x801E3FB0u, shape_801E3FB0, 4},
+    {0x801E3A18u, shape_compose_3A18, 11},
 };
 
 /* ---- running one side --------------------------------------------------- */
@@ -1598,9 +1602,11 @@ static int meter_run(void)
                 "XENO_CPU_FALLBACK_STATS=1\n");
         return 1;
     }
+    unsigned caller_native = 0;
     for (i = 0; kResultsLeaves[i].name != NULL; i++) {
         for (s = 0; s < 3; s++)
             adopted += kResultsLeaves[i].address == helpers[s];
+        caller_native |= kResultsLeaves[i].address == 0x801E3A18u;
     }
     for (s = 0; s < 2; s++) {
         int force = s == 0;
@@ -1617,23 +1623,26 @@ static int meter_run(void)
         }
         meter_expect("interpreted_instructions", m->interpreted_instructions,
                      side.steps);
+        /* With 0x801E3A18 itself adopted the whole call is one native
+         * results call (its helper calls are direct C calls inside it). */
         meter_expect("interpreted_calls", m->interpreted_calls,
-                     force ? 10u : 10u - 3u * adopted);
+                     force ? 10u : caller_native ? 0u : 10u - 3u * adopted);
         meter_expect("native_results_calls", m->native_results_calls,
-                     force ? 0u : 3u * adopted);
+                     force ? 0u : caller_native ? 1u : 3u * adopted);
         meter_expect("results bodies run", side.native_calls,
-                     force ? 0u : 3u * adopted);
+                     force ? 0u : caller_native ? 1u : 3u * adopted);
         meter_expect("native_main_exe_calls", m->native_main_exe_calls, 0);
         meter_expect("native_overlay_calls", m->native_overlay_calls, 0);
         meter_expect("native_file1_calls", m->native_file1_calls, 0);
         meter_expect("interpreted_targets", m->distinct_targets,
-                     force ? 4u : 1u + 3u - adopted);
+                     force ? 4u : caller_native ? 0u : 1u + 3u - adopted);
         cpu_meter_end_battle("returned");
         meter_expect("inactive after battle end", (unsigned long long)m->active, 0);
     }
     if (failures != 0)
         return 1;
-    printf("BATTLE RESULTS DIFFERENTIAL METER PASS adopted_helpers=%u\n", adopted);
+    printf("BATTLE RESULTS DIFFERENTIAL METER PASS adopted_helpers=%u caller_native=%u\n",
+           adopted, caller_native);
     return 0;
 }
 

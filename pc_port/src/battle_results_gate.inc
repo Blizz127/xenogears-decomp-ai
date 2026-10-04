@@ -261,6 +261,7 @@ static int results_try_host(BattleMipsRuntime *runtime, PcPortMipsCpu *cpu,
     g_BattleResultsExit.mask = 0;
     g_BattleResultsExit.hilo = 0;
     g_BattleResultsEntry.sp = cpu->gpr[29];
+    memcpy(g_BattleResultsEntry.gpr, cpu->gpr, sizeof(g_BattleResultsEntry.gpr));
     v0 = g_ResultsHosts[index](cpu->gpr[4], cpu->gpr[5], cpu->gpr[6],
                                cpu->gpr[7]);
     results_call = call.previous;

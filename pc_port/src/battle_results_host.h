@@ -67,11 +67,14 @@ extern BattleResultsExitRegs g_BattleResultsExit;
 /* Entry registers a body may need besides a0..a3, set by the dispatch before
  * each call.  `sp` is the guest SP at the jal target: a routine that takes a
  * fifth (or later) o32 argument reads it from the caller's outgoing argument
- * area at sp+0x10.., exactly as its retail bytes do (func_801E1370).  A body
- * never writes the guest stack through it: retail bodies adopted so far keep
- * nothing in their frames. */
+ * area at sp+0x10.., exactly as its retail bytes do (func_801E1370).  `gpr`
+ * is the whole guest register file at the jal target (gpr[29] == sp).  The
+ * one adopted non-leaf, func_801E3A18, stores the caller's s0-s2 and ra into
+ * its guest frame below sp, as its retail prologue does, through the
+ * ordinary accessors; leaves never touch the guest stack. */
 typedef struct BattleResultsEntryRegs {
     uint32_t sp;
+    uint32_t gpr[32];
 } BattleResultsEntryRegs;
 extern BattleResultsEntryRegs g_BattleResultsEntry;
 
