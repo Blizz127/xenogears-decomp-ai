@@ -145,14 +145,18 @@ void PcPort_FieldCaptureOnVsync(void)
              * depend on the process exiting cleanly. */
             {
                 PcPortMipsExecutionStats st = PcPortMipsExecutionStatsGet();
+                extern int g_FrameDeltaTime;
+                extern unsigned short D_800AFE9C;
                 fprintf(stderr, "[field-step-pad] checkpoint step=%u at_step=%u presented=%u "
                         "vblank=%d entries=%llu native_bridges=%llu interpreted_instructions=%llu "
-                        "disabled_refusals=%llu unresolved_bridges=%llu\n",
+                        "disabled_refusals=%llu unresolved_bridges=%llu frame_delta=%d "
+                        "c1=0x%04x held=0x%04x\n",
                         cp_steps[cp_next], step, s_frames, D_80059488,
                         (unsigned long long)st.entries, (unsigned long long)st.native_bridges,
                         (unsigned long long)st.interpreted_instructions,
                         (unsigned long long)st.disabled_refusals,
-                        (unsigned long long)st.unresolved_bridges);
+                        (unsigned long long)st.unresolved_bridges, g_FrameDeltaTime,
+                        (unsigned)g_C1ButtonState, (unsigned)D_800AFE9C);
             }
             if (dir != NULL && dir[0] != '\0') {
                 snprintf(path, sizeof(path), "%s/step-%06u.png", dir, cp_steps[cp_next]);

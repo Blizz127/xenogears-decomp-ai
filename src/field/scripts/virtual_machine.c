@@ -966,6 +966,17 @@ INCLUDE_ASM("asm/field/nonmatchings/scripts/virtual_machine", FieldScriptMemoryW
 void FieldScriptMemoryWriteU16(s32 address, u16 value) {
     s32 index = address >> 1;
 
+    /* DIAGNOSTIC (port only, logging only): XENO_FIELD_VAR_WATCH=<byte
+     * offset> logs every write to that script variable with the writer and
+     * the clocks (pc_port/src/psyq_compat.c PcPort_FieldVarWatch). */
+    {
+        extern void PcPort_FieldVarWatch(s32 address, u16 old_value, u16 new_value,
+                                         s32 actor, s32 ip) __attribute__((weak));
+        if (PcPort_FieldVarWatch)
+            PcPort_FieldVarWatch(address, ((u16*)&g_FieldScriptMemory)[index], value, D_800AFD1C,
+                                 g_FieldScriptVMCurActor
+                                     ? (s32)g_FieldScriptVMCurActor->scriptInstructionPointer : -1);
+    }
     ((u16*)&g_FieldScriptMemory)[index] = value;
 }
 #endif /* XENO_PC_PORT */

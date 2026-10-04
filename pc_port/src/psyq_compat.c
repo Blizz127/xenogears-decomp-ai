@@ -1762,6 +1762,34 @@ static void PcPort_ForcedMenuActionEdges(void)
  *   XENO_FIELD_STEP_SAVE_AT=<step> / XENO_FIELD_STEP_LOAD_AT=<step>  queue
  *       the ordinary F11 quick save / F12 quick load once the step clock
  *       reaches that step (retried per vblank until queued). */
+/* DIAGNOSTIC: XENO_FIELD_VAR_WATCH=<byte offset> -- called by the field
+ * VM's script-memory writer for every write (src/field/scripts/
+ * virtual_machine.c); logs writes to the watched offset with the writing
+ * actor and instruction pointer, the field-step clock and the game, serviced
+ * and host vblank counts.  Logging only. */
+void PcPort_FieldVarWatch(int address, unsigned short old_value, unsigned short new_value,
+                          int actor, int ip)
+{
+    extern int PcPort_FieldStepPadArmedStep(unsigned *step);
+    extern int D_80059488;
+    extern int PsyX_Sys_GetVBlankCount(void);
+    static int watch = -2;
+    unsigned step = 0;
+    int armed;
+
+    if (watch == -2) {
+        const char* e = getenv("XENO_FIELD_VAR_WATCH");
+        watch = (e != NULL && e[0] != '\0') ? (int)strtol(e, NULL, 0) : -1;
+    }
+    if (watch < 0 || ((address ^ watch) & ~1) != 0)
+        return;
+    armed = PcPort_FieldStepPadArmedStep(&step);
+    fprintf(stderr, "[var-watch] off=0x%x %u->%u actor=%d ip=%d armed=%d step=%u game_vblank=%d "
+            "serviced=%d host_vblank=%d\n", address, old_value, new_value, actor, ip, armed, step,
+            D_80059488, PcPort_GetServicedVblankCount ? PcPort_GetServicedVblankCount() : -1,
+            PsyX_Sys_GetVBlankCount());
+}
+
 int PcPort_DeterministicVblankLogGate(void);
 
 static void PcPort_FieldStepEvidenceOnVblank(void)
