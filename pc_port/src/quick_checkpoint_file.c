@@ -47,6 +47,16 @@ static uint32_t checksum_bytes(uint32_t hash, const uint8_t* bytes,
     return hash;
 }
 
+#define SEED_TRAILER_BYTES 12u
+static const uint8_t kSeedTag[4] = { 'R', 'N', 'G', 'S' };
+
+static uint32_t seed_check(uint32_t seed)
+{
+    uint8_t bytes[4];
+    put_u32(bytes, seed);
+    return checksum_bytes(checksum_bytes(2166136261u, kSeedTag, 4), bytes, 4);
+}
+
 static uint32_t checkpoint_checksum(const uint8_t* header,
                                     const uint8_t* game_state)
 {
@@ -61,6 +71,7 @@ int PcPort_QuickCheckpointWriteFile(const char* path,
                                     const PcPortQuickCheckpoint* checkpoint)
 {
     uint8_t header[PC_PORT_QUICK_CHECKPOINT_HEADER_BYTES] = {0};
+    uint8_t trailer[SEED_TRAILER_BYTES];
     char temporary[1024];
     FILE* file;
     uint32_t checksum;
@@ -86,6 +97,9 @@ int PcPort_QuickCheckpointWriteFile(const char* path,
     put_u16(header + 44, (uint16_t)checkpoint->rotation[2]);
     checksum = checkpoint_checksum(header, checkpoint->game_state);
     put_u32(header + 20, checksum);
+    memcpy(trailer, kSeedTag, sizeof(kSeedTag));
+    put_u32(trailer + 4, checkpoint->random_seed);
+    put_u32(trailer + 8, seed_check(checkpoint->random_seed));
 
     file = fopen(temporary, "wb");
     if (!file)
@@ -93,6 +107,8 @@ int PcPort_QuickCheckpointWriteFile(const char* path,
     if (fwrite(header, 1, sizeof(header), file) == sizeof(header) &&
         fwrite(checkpoint->game_state, 1, sizeof(checkpoint->game_state), file) ==
             sizeof(checkpoint->game_state) &&
+        (!checkpoint->has_random_seed ||
+         fwrite(trailer, 1, sizeof(trailer), file) == sizeof(trailer)) &&
         fflush(file) == 0)
         result = 0;
     if (fclose(file) != 0)
@@ -109,13 +125,15 @@ int PcPort_QuickCheckpointReadFile(const char* path,
                                    PcPortQuickCheckpoint* checkpoint)
 {
     uint8_t header[PC_PORT_QUICK_CHECKPOINT_HEADER_BYTES];
+    uint8_t trailer[SEED_TRAILER_BYTES + 1];
     PcPortQuickCheckpoint loaded;
     FILE* file;
-    int trailing;
+    size_t trailing;
     uint32_t expected;
 
     if (!path || !checkpoint)
         return -1;
+    memset(&loaded, 0, sizeof(loaded));
     file = fopen(path, "rb");
     if (!file)
         return -1;
@@ -129,10 +147,15 @@ int PcPort_QuickCheckpointReadFile(const char* path,
         fclose(file);
         return -1;
     }
-    trailing = fgetc(file);
+    trailing = fread(trailer, 1, sizeof(trailer), file);
     fclose(file);
-    if (trailing != EOF)
+    if (trailing == SEED_TRAILER_BYTES && memcmp(trailer, kSeedTag, sizeof(kSeedTag)) == 0 &&
+        get_u32(trailer + 8) == seed_check(get_u32(trailer + 4))) {
+        loaded.has_random_seed = 1;
+        loaded.random_seed = get_u32(trailer + 4);
+    } else if (trailing != 0) {
         return -1;
+    }
 
     expected = get_u32(header + 20);
     if (checkpoint_checksum(header, loaded.game_state) != expected)

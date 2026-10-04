@@ -259,6 +259,11 @@ static int capture_checkpoint(PcPortQuickCheckpoint* checkpoint)
     checkpoint->rotation[0] = actor->rotation.vx;
     checkpoint->rotation[1] = actor->rotation.vy;
     checkpoint->rotation[2] = actor->rotation.vz;
+    {
+        extern uint32_t g_RandomSeed;
+        checkpoint->has_random_seed = 1;
+        checkpoint->random_seed = g_RandomSeed;
+    }
     return 0;
 }
 
@@ -418,6 +423,10 @@ void PcPort_QuickCheckpointCommitLoad(void)
            PC_PORT_QUICK_CHECKPOINT_STATE_BYTES);
     *(u16*)(g_GameState + 0x231A) = s_loaded.map;
     *(u16*)(g_GameState + 0x2320) = s_loaded.entrance;
+    if (s_loaded.has_random_seed) {
+        extern uint32_t g_RandomSeed;
+        g_RandomSeed = s_loaded.random_seed;
+    }
     s_loadReady = 0;
     s_restoreReady = !s_spawnNaturally;
     s_spawnNaturally = 0;

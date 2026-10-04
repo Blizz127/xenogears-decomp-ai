@@ -40,6 +40,8 @@ int main(void)
     written.rotation[2] = 0x120;
     for (i = 0; i < sizeof(written.game_state); ++i)
         written.game_state[i] = (uint8_t)(i * 37u + 11u);
+    written.has_random_seed = 1;
+    written.random_seed = 0x62264E95u;
 
     if (!require(PcPort_QuickCheckpointWriteFile(path, &written) == 0,
                  "write valid checkpoint"))
@@ -48,7 +50,43 @@ int main(void)
                  "read valid checkpoint"))
         return 1;
     if (!require(memcmp(&written, &loaded, sizeof(written)) == 0,
-                 "checkpoint round trip"))
+                 "checkpoint round trip (with rand seed trailer)"))
+        return 1;
+
+    /* A legacy file (no seed trailer) still loads, without a seed. */
+    {
+        PcPortQuickCheckpoint legacy = written;
+        legacy.has_random_seed = 0;
+        legacy.random_seed = 0;
+        if (!require(PcPort_QuickCheckpointWriteFile(path, &legacy) == 0 &&
+                     PcPort_QuickCheckpointReadFile(path, &loaded) == 0 &&
+                     memcmp(&legacy, &loaded, sizeof(legacy)) == 0 &&
+                     !loaded.has_random_seed,
+                     "legacy checkpoint without seed trailer loads"))
+            return 1;
+        file = fopen(path, "ab");
+        if (!file)
+            return 2;
+        fputs("junk", file);
+        fclose(file);
+        if (!require(PcPort_QuickCheckpointReadFile(path, &loaded) != 0,
+                     "reject trailing bytes that are not a seed trailer"))
+            return 1;
+    }
+    if (!require(PcPort_QuickCheckpointWriteFile(path, &written) == 0, "rewrite"))
+        return 1;
+    file = fopen(path, "r+b");
+    if (!file)
+        return 2;
+    fseek(file, -2, SEEK_END);
+    byte = fgetc(file);
+    fseek(file, -1, SEEK_CUR);
+    fputc(byte ^ 0x01, file);
+    fclose(file);
+    if (!require(PcPort_QuickCheckpointReadFile(path, &loaded) != 0,
+                 "reject corrupt seed trailer"))
+        return 1;
+    if (!require(PcPort_QuickCheckpointWriteFile(path, &written) == 0, "rewrite"))
         return 1;
 
     file = fopen(path, "r+b");
