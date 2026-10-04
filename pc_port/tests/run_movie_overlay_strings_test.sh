@@ -7,7 +7,8 @@
 # literal is not compiled in.  This checks that
 #   1. every MV_STR address holds exactly its literal (NUL-terminated) in the
 #      user's disc/movie.bin, and no FontPrintf passes a bare literal,
-#   2. the overlay in guest RAM at MovieMain entry equals disc/movie.bin
+#   2. the overlay's .rodata in guest RAM at MovieMain entry equals
+#      disc/movie.bin's (other differing ranges are listed, offsets only)
 #      (shipping boot -> state 6, dumped by XENO_MOVIE_OVERLAY_DUMP into a
 #      private temp directory that is never written to the tree or to out/),
 #   3. the built binary does not contain the menu strings.
@@ -60,11 +61,28 @@ assert not holds(addr + 4, lit), 'negative control not detected'
 print('negative control detected: MV_STR address +4')
 ov = dump / 'overlay.bin'
 data = ov.read_bytes() if ov.exists() else b''
-if data != movie:
-    print('FAIL guest-RAM overlay at MovieMain entry (%d bytes) != disc/movie.bin' % len(data))
+# MV_STR reads .rodata ([0, 0x9F8) of the file); it must match exactly. The
+# rest is reported as offset ranges (no bytes) for the record.
+RODATA_END = 0x9F8
+if len(data) != len(movie):
+    print('FAIL overlay dump is %d bytes, disc/movie.bin %d' % (len(data), len(movie)))
     fails += 1
 else:
-    print('guest-RAM overlay at MovieMain entry == disc/movie.bin (%d bytes)' % len(data))
+    diff = [i for i in range(len(movie)) if data[i] != movie[i]]
+    ranges = []
+    for i in diff:
+        if ranges and i == ranges[-1][1] + 1:
+            ranges[-1][1] = i
+        else:
+            ranges.append([i, i])
+    print('guest-RAM overlay at MovieMain entry vs disc/movie.bin: %d differing bytes in %d '
+          'range(s): %s' % (len(diff), len(ranges),
+                            ', '.join('0x%X-0x%X' % (a, b) for a, b in ranges[:16])))
+    if any(i < RODATA_END for i in diff):
+        print('FAIL overlay .rodata [0, 0x%X) differs from disc/movie.bin' % RODATA_END)
+        fails += 1
+    else:
+        print('overlay .rodata [0, 0x%X) == disc/movie.bin' % RODATA_END)
 image = binary.read_bytes()
 present = [lit for _, lit in pairs if len(lit) >= 8 and lit.encode('latin-1') + b'\0' in image]
 for lit in present:
