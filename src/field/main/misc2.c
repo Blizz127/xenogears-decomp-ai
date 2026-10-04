@@ -1548,6 +1548,22 @@ void FieldPollControllers(void) {
         PcPort_FieldTestInputMerge(&D_800AFE9C, &D_800C3900, &D_800C2694);
     }
 
+    /* Headless field-test: synthesize Circle-released when a text box is
+     * waiting on confirm (window flags bit 0x8). Real pads still work; this
+     * only ORs the bit so well/dialog scripts can finish without a human. */
+    {
+        const char* ft = getenv("XENO_FIELD_TEST");
+        if (ft && ft[0] == '1') {
+            s32 i;
+            for (i = 0; i < 4; i++) {
+                u8* pWin = (u8*)&g_FieldTextBoxes[i] + 0x18;
+                if (g_FieldTextBoxes[i].visibility == 0 && (*(u16*)(pWin + 0x10) & 0x8)) {
+                    D_800C2694 |= 0x20;
+                    break;
+                }
+            }
+        }
+    }
     /* DIAGNOSTIC (logging only): XENO_FIELD_TEXTBOX_LOG=1 logs each field
      * text box's show/hide (visibility 0 = shown, -1 = hidden) and its
      * waiting-for-confirm flag (window +0x10 bit 0x8) on change, with the
@@ -1576,23 +1592,6 @@ void FieldPollControllers(void) {
                             vis == 0 ? "shown" : "hidden", wait ? 1 : 0, step);
                     prev_vis[i] = vis;
                     prev_wait[i] = wait;
-                }
-            }
-        }
-    }
-
-    /* Headless field-test: synthesize Circle-released when a text box is
-     * waiting on confirm (window flags bit 0x8). Real pads still work; this
-     * only ORs the bit so well/dialog scripts can finish without a human. */
-    {
-        const char* ft = getenv("XENO_FIELD_TEST");
-        if (ft && ft[0] == '1') {
-            s32 i;
-            for (i = 0; i < 4; i++) {
-                u8* pWin = (u8*)&g_FieldTextBoxes[i] + 0x18;
-                if (g_FieldTextBoxes[i].visibility == 0 && (*(u16*)(pWin + 0x10) & 0x8)) {
-                    D_800C2694 |= 0x20;
-                    break;
                 }
             }
         }
