@@ -9,6 +9,7 @@ void func_80021EBC(void *arg0, void *arg1);
 #ifdef XENO_PC_PORT
 #include <assert.h>
 #include <stdio.h>
+#include "../../../pc_port/src/retail_data.h"
 #include <inline_c.h>
 
 extern void func_8001D2B0(void* pSpriteData, s16 frameIndex);
@@ -2178,7 +2179,6 @@ void func_800223B0(void* pSpriteData, s16 arg1) {
  * rather than in a pc_port data TU so the tests that build this TU on its
  * own still link. */
 #ifdef XENO_PC_PORT
-#include "../../../pc_port/src/retail_data.h"
 u8 D_8004FC40[256];
 XENO_RETAIL_DATA_BEGIN(anim_opcode_lengths)
     XENO_RD(D_8004FC40, XENO_RD_SLUS, XENO_RD_SLUS_OFF(0x8004FC40u), sizeof(D_8004FC40)),

@@ -1,6 +1,10 @@
 #include "common.h"
 #include "system/memory.h"
 #include "psyq/pc.h"
+#ifdef XENO_PC_PORT
+/* Retail data loaded from the user's disc before main(). */
+#include "../../../pc_port/src/retail_data.h"
+#endif
 
 // .sbss
 u16 g_HeapCurContentType;
@@ -31,7 +35,6 @@ HeapDelayedFreeBlock g_HeapDelayedFreeBlocksHead;
  * disc/SLUS_006.64 before main() (retail_data.h); the port binary carries no
  * game data. Loaded here rather than in a pc_port data TU so the tests that
  * build this TU on its own still link. */
-#include "../../../pc_port/src/retail_data.h"
 char D_80059248[6];
 char D_80059250[5];
 char D_80059258[4];

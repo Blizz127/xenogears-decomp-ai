@@ -2,6 +2,10 @@
 #include "system/sound.h"
 #include "psyq/kernel.h"
 #include "psyq/libspu.h"
+#ifdef XENO_PC_PORT
+/* Retail data loaded from the user's disc before main(). */
+#include "../../../pc_port/src/retail_data.h"
+#endif
 
 #ifndef XENO_PC_PORT
 s32 func_8003E290();
@@ -261,7 +265,6 @@ SpuUnion* g_pSoundSpuRegisters = &s_SpuRegisterBackingPage;
  * note pitch/velocity/operand lookups return 0 (silent notes, broken scan
  * skips). Loaded here rather than in a pc_port data TU so the tests that
  * build this TU on its own still link. */
-#include "../../../pc_port/src/retail_data.h"
 u8 D_80050B78[120];
 s16 D_80050BF0[3072];
 u8 D_80050A94[228];
