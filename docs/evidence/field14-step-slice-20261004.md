@@ -42,3 +42,22 @@ visual, audio, timing and save evidence), this is the first executed slice with 
 interpreter disabled, zero counted fallback and matching semantic state on a legitimate
 fixture. It is NOT yet a fully accepted slice: visual, audio, timing and save evidence
 are outstanding.
+
+## Acceptance evidence, job 3798264 (source cb100a26) — 2026-10-04
+
+`20261004-012113-xeno-xeno-e52f-field14-accept-cb100a26-3798264`, binary d2735c82…, in-job
+summary rc 0, "FIELD14 SLICE PASS". Receipts with on-runner artifact hashes:
+`~/release-staging/xeno-work/e52f8f1e-field14-acceptance/receipts-cb100a26/`.
+(The first acceptance attempt, 2435487 / 395361d9, ran fully but its summary crashed
+on a script bug. Recomputed read-only, it gave the same item results.)
+
+| Item | Result |
+|---|---|
+| visual | PASS: the first presented frame at steps 299/359/479/539/659/719/779/899/1000 is byte-identical between reference and interpreter-disabled; the 9 frames are mutually distinct |
+| timing | PASS on the game's frame clock: checkpoint steps identical, presented-frame deltas [60,120,60,120,60,60,120,119] identical. Vblank deltas differ slightly because vblanks are host real-time paced (explained) |
+| save | PASS: the ordinary F11 quick save at step 780 is byte-identical between modes and differs from the fixture; after a second walk, F12 reload at 900 restores the saved position in both. This is the port's quick checkpoint, not a memory-card block (field 14 has no save point) |
+| counters | PASS: the disabled run logged entries/interpreted/refusals = 0 at all 9 checkpoints in-run; the reference exit receipt also reads 0. The disabled exit line is still lost on SIGINT; in-run receipts make it unnecessary |
+| audio | NOT ACCEPTED: SPU register-page hashes and even the distinct-state sequences differ between modes. Source: the sound driver's 240 Hz tick (RCnt2 handler) runs on PsyCross's host interrupt thread, asynchronous to field updates. The port also does not yet render that page to an audio device (sound.c, WDS/B5). Same-mode control job 3927918 decides whether this is host nondeterminism |
+
+The slice passes visual, timing, save and zero-fallback with the interpreter disabled.
+It is NOT fully accepted while audio is open.
