@@ -23,6 +23,7 @@ s32 D_800ADB68;
 s32 D_800ADBFC = 1;
 s32 D_800ADB2C;
 u8 D_800B21D0;
+uint32_t g_RandomSeed;   /* retail rand seed: quicksaves carry it (trailer) */
 
 /* g_FieldScriptMemory is a raw buffer in the game (field/actor.h declares it
  * `void*` and uses its address); give the symbol 0x800 bytes here. */
@@ -228,8 +229,10 @@ int main(int argc, char** argv)
     /* A real field checkpoint can be loaded from the fully initialized title
      * loop, whose script owns control and has no usable player actor. */
     reset_case();
+    g_RandomSeed = 0x62264E95u;
     PcPort_QuickCheckpointRequestSave();
     expect_saved("title fixture");
+    g_RandomSeed = 0x12345678u;
     g_GameSceneMapNum = 490;
     D_800ADB68 = 0;
     D_800B21D0 = 1;
@@ -245,6 +248,7 @@ int main(int argc, char** argv)
     require(*(u16*)(g_GameState + 0x231A) == 13 &&
             *(u16*)(g_GameState + 0x2320) == 7 && g_GameState[0] == 0x5A,
             "title load did not restore saved state/map/entrance");
+    require(g_RandomSeed == 0x62264E95u, "load did not restore the saved rand seed");
     PcPort_QuickCheckpointRequestSave();
     require(PcPort_QuickCheckpointGetUiState() == PC_PORT_QUICK_UI_SAVE_ERROR,
             "title save must be rejected");
