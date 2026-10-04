@@ -1752,6 +1752,74 @@ static void PcPort_ForcedMenuActionEdges(void)
     #undef HASH_REGION
 }
 
+/* TEST TOOLING for the field-step slice (run_field14_step_slice.sh), all
+ * keyed to XENO_FIELD_STEP_PAD_INPUT's field-step clock and inert unless set:
+ *   XENO_FIELD_STEP_SPU_LOG=<file>  one line per vblank once armed: vblank
+ *       index since arming, step, FNV-1a of the 0x200-byte SPU register page
+ *       the sound driver writes (g_pSoundSpuRegisters).  That page is the
+ *       sound driver's output as retail hardware would receive it; the port
+ *       does not yet render it to an audio device (sound.c, WDS/B5).
+ *   XENO_FIELD_STEP_SAVE_AT=<step> / XENO_FIELD_STEP_LOAD_AT=<step>  queue
+ *       the ordinary F11 quick save / F12 quick load once the step clock
+ *       reaches that step (retried per vblank until queued). */
+static void PcPort_FieldStepEvidenceOnVblank(void)
+{
+    extern int PcPort_FieldStepPadArmedStep(unsigned *step);
+    extern void* g_pSoundSpuRegisters;
+    extern void PcPort_QuickCheckpointRequestSave(void);
+    extern void PcPort_QuickCheckpointRequestLoad(void);
+    extern int PcPort_QuickCheckpointGetUiState(void);
+    static int init;
+    static FILE* spu;
+    static long save_at = -1, load_at = -1;
+    static int saved, loaded;
+    static unsigned vblanks;
+    unsigned step;
+
+    if (!init) {
+        const char* e;
+        init = 1;
+        e = getenv("XENO_FIELD_STEP_SPU_LOG");
+        if (e != NULL && e[0] != '\0')
+            spu = fopen(e, "w");
+        e = getenv("XENO_FIELD_STEP_SAVE_AT");
+        if (e != NULL && e[0] != '\0')
+            save_at = strtol(e, NULL, 10);
+        e = getenv("XENO_FIELD_STEP_LOAD_AT");
+        if (e != NULL && e[0] != '\0')
+            load_at = strtol(e, NULL, 10);
+    }
+    if (!PcPort_FieldStepPadArmedStep(&step))
+        return;
+    if (spu != NULL && g_pSoundSpuRegisters != NULL) {
+        const unsigned char* page = (const unsigned char*)g_pSoundSpuRegisters;
+        unsigned int h = 2166136261u;
+        unsigned i;
+        for (i = 0; i < 0x200u; i++) {
+            h ^= page[i];
+            h *= 16777619u;
+        }
+        fprintf(spu, "%u %u %08x\n", vblanks, step, h);
+        fflush(spu);
+    }
+    vblanks++;
+    /* Queued == UI state SAVE_PENDING (1) / LOAD_PENDING (2); an ignored
+     * request (not in a field) is retried about once a second, like a key
+     * pressed again. */
+    if (save_at >= 0 && !saved && step >= (unsigned long)save_at && vblanks % 60u == 1u) {
+        PcPort_QuickCheckpointRequestSave();
+        saved = PcPort_QuickCheckpointGetUiState() == 1;
+        if (saved)
+            fprintf(stderr, "[field-step-pad] F11 quick save requested at step=%u\n", step);
+    }
+    if (load_at >= 0 && !loaded && step >= (unsigned long)load_at && vblanks % 60u == 1u) {
+        PcPort_QuickCheckpointRequestLoad();
+        loaded = PcPort_QuickCheckpointGetUiState() == 2;
+        if (loaded)
+            fprintf(stderr, "[field-step-pad] F12 quick load requested at step=%u\n", step);
+    }
+}
+
 /* Called once per dispatched game vblank, not once per timing query. */
 void PcPort_PrepareControllerPoll(void)
 {
@@ -1771,6 +1839,7 @@ void PcPort_PrepareControllerPoll(void)
                                      g_GameSceneMapNum) != 0)
             exit(EXIT_FAILURE);
     }
+    PcPort_FieldStepEvidenceOnVblank();
     PcPort_PadOnControl();
     PcPort_ForcedMenuNav();
 }

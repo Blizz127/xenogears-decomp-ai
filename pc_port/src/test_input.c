@@ -553,6 +553,14 @@ void PcPort_FieldStepPadNoteDrain(void)
     s_step_pad_step++;
 }
 
+/* For the port's step-keyed evidence hooks (psyq_compat.c,
+ * game_overrides.c): 1 once armed, with the completed-drain step count. */
+int PcPort_FieldStepPadArmedStep(unsigned *step)
+{
+    *step = s_step_pad_step;
+    return s_step_pad_state == 2;
+}
+
 /* Receipt for drivers: completed steps and empty drains since arming. */
 void PcPort_FieldStepPadCounts(unsigned *steps, unsigned *empty)
 {

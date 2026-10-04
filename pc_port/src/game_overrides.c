@@ -113,6 +113,42 @@ void PcPort_FieldCaptureOnVsync(void)
      * Counted whether or not a capture directory is set. */
     s_frames++;
     g_PcPortPresentedFrames = s_frames;
+    /* TEST TOOLING: XENO_FIELD_STEP_CHECKPOINTS="s1,s2,..." -- the first frame
+     * presented once XENO_FIELD_STEP_PAD_INPUT's step clock equals s is saved
+     * as <dir>/step-%06u.png, with its presented-frame and vblank counts. */
+    {
+        extern int PcPort_FieldStepPadArmedStep(unsigned *step);
+        extern int D_80059488;
+        static int cp_init;
+        static unsigned cp_steps[32], cp_count, cp_next;
+        unsigned step;
+
+        if (!cp_init) {
+            const char* e = getenv("XENO_FIELD_STEP_CHECKPOINTS");
+            cp_init = 1;
+            while (e != NULL && *e != '\0' && cp_count < 32) {
+                char* end;
+                unsigned long v = strtoul(e, &end, 10);
+                if (end == e)
+                    break;
+                cp_steps[cp_count++] = (unsigned)v;
+                e = (*end == ',') ? end + 1 : end;
+                if (*end != ',')
+                    break;
+            }
+        }
+        if (cp_next < cp_count && PcPort_FieldStepPadArmedStep(&step) &&
+            step >= cp_steps[cp_next]) {
+            const char* dir = getenv("XENO_FIELD_CAPTURE_DIR");
+            fprintf(stderr, "[field-step-pad] checkpoint step=%u at_step=%u presented=%u "
+                    "vblank=%d\n", cp_steps[cp_next], step, s_frames, D_80059488);
+            if (dir != NULL && dir[0] != '\0') {
+                snprintf(path, sizeof(path), "%s/step-%06u.png", dir, cp_steps[cp_next]);
+                PsyX_TakeScreenshotPath(path);
+            }
+            cp_next++;
+        }
+    }
     if (!s_dir || !s_dir[0])
         return;
     /* TEST TOOLING: presents the Fei HD-2D footprint test asks for

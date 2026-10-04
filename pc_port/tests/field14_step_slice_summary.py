@@ -11,6 +11,7 @@ arm, complete all transitions, show identical checkpoint positions, and the
 disabled run to report zero interpreted instructions and no refusal.  It is
 movement-slice evidence only: no audio, no frame-exact timing.
 """
+import hashlib
 import json
 import re
 import sys
@@ -18,6 +19,12 @@ from pathlib import Path
 
 POS = re.compile(r'POSDIAG map=(\d+) pos=\((-?\d+),(-?\d+),(-?\d+)\)')
 STEP = re.compile(r'\[field-step-pad\] step=(\d+) held=(0x[0-9a-f]+)')
+CHECK = re.compile(r'\[field-step-pad\] checkpoint step=(\d+) at_step=(\d+) presented=(\d+) vblank=(-?\d+)')
+
+
+def sha(path):
+    path = Path(path)
+    return hashlib.sha256(path.read_bytes()).hexdigest() if path.exists() else None
 
 
 def run(path):
@@ -49,6 +56,22 @@ def run(path):
             out['transitions'].append([int(m.group(1)), m.group(2)])
             out['checkpoints'].append(last_pos)
     out['checkpoints'].append(last_pos)
+    out['timing'] = []
+    out['frames'] = {}
+    for line in text:
+        m = CHECK.search(line)
+        if m:
+            st = int(m.group(1))
+            out['timing'].append({'step': st, 'at_step': int(m.group(2)),
+                                  'presented': int(m.group(3)), 'vblank': int(m.group(4))})
+            out['frames'][st] = sha(Path(path, 'captures', 'step-%06d.png' % st))
+    out['saved'] = any('F11 quick save requested' in l for l in text) and \
+        any('[xeno-port][quick] saved ' in l for l in text)
+    out['reloaded'] = any('F12 quick load requested' in l for l in text)
+    out['save_sha256'] = sha(Path(path, 'quicksave.xgqs'))
+    out['entry_sha256'] = sha(Path(path, 'entry.xgqs'))
+    spu = Path(path, 'spu.log')
+    out['spu'] = [l.split() for l in spu.read_text().splitlines()] if spu.exists() else []
     interp = [int(x) for l in out['execution_stats']
               for x in re.findall(r'interpreted_instructions=(\d+)', l)]
     out['interpreted_instructions'] = max(interp) if interp else None
@@ -59,7 +82,25 @@ def run(path):
 def main():
     ref, dis = run(sys.argv[1]), run(sys.argv[2])
     want = [[300, '0x2000'], [360, '0x0000'], [480, '0x8000'], [540, '0x0000'],
-            [660, '0x4000'], [720, '0x0000']]
+            [660, '0x4000'], [720, '0x0000'], [800, '0x2000'], [860, '0x0000']]
+
+    def deltas(run, key):
+        t = run['timing']
+        return [t[i + 1][key] - t[i][key] for i in range(len(t) - 1)]
+    rs, ds = ref['spu'], dis['spu']
+    common = min(len(rs), len(ds))
+    first_diff = next((i for i in range(common) if rs[i][2] != ds[i][2]), None)
+    first_by_step_ref, first_by_step_dis = {}, {}
+    for row in rs:
+        first_by_step_ref.setdefault(row[1], row[2])
+    for row in ds:
+        first_by_step_dis.setdefault(row[1], row[2])
+    spu = {'vblanks_ref': len(rs), 'vblanks_disabled': len(ds),
+           'first_vblank_divergence': first_diff,
+           'distinct_hashes_ref': len({r[2] for r in rs}),
+           'per_step_first_hash_equal': sum(1 for k in first_by_step_ref
+                                            if first_by_step_dis.get(k) == first_by_step_ref[k]),
+           'per_step_compared': len(first_by_step_ref)}
     checks = {
         'both loaded the fixture': ref['loaded'] and dis['loaded'],
         'both armed in field 14': ref['armed'] and dis['armed'],
@@ -69,13 +110,36 @@ def main():
         'disabled: no interpreter refusal': dis['refusals'] == 0,
         'disabled: zero interpreted instructions counted': dis['interpreted_instructions'] == 0,
         'no stubs reached': ref['stubs'] == 0 and dis['stubs'] == 0,
+        'visual: checkpoint frames identical': bool(ref['frames']) and ref['frames'] == dis['frames']
+            and None not in ref['frames'].values(),
+        'timing: checkpoint steps and presented-frame deltas identical':
+            [t['at_step'] for t in ref['timing']] == [t['at_step'] for t in dis['timing']]
+            and deltas(ref, 'presented') == deltas(dis, 'presented') and len(ref['timing']) == 9,
+        'save: F11 saved and F12 reloaded in both': ref['saved'] and dis['saved']
+            and ref['reloaded'] and dis['reloaded'],
+        'save: saved checkpoint byte-identical': ref['save_sha256'] == dis['save_sha256']
+            and ref['save_sha256'] != ref['entry_sha256'],
+        'counters: reference receipt present': ref['interpreted_instructions'] is not None,
     }
-    result = {'pass': all(checks.values()), 'checks': checks, 'reference': ref, 'disabled': dis,
-              'limits': 'movement slice only: headless null audio, no frame-exact timing, '
-                        'checkpoints are quiescent positions, not per-step traces'}
+    informational = {
+        'audio: SPU register page identical every vblank': first_diff is None and len(rs) > 0
+            and len(rs) == len(ds),
+        'timing: vblank deltas identical': deltas(ref, 'vblank') == deltas(dis, 'vblank'),
+    }
+    for run in (ref, dis):
+        run['spu_lines'] = len(run.pop('spu'))
+    result = {'pass': all(checks.values()), 'checks': checks, 'informational': informational,
+              'spu': spu, 'presented_deltas': [deltas(ref, 'presented'), deltas(dis, 'presented')],
+              'vblank_deltas': [deltas(ref, 'vblank'), deltas(dis, 'vblank')],
+              'reference': ref, 'disabled': dis,
+              'limits': 'audio evidence = the SPU register page the sound driver writes (the port '
+                        'does not yet render it to a device); vblank pacing is host real time'}
     Path(sys.argv[3]).write_text(json.dumps(result, indent=2) + '\n')
     for k, v in checks.items():
         print(('PASS ' if v else 'FAIL ') + k)
+    for k, v in informational.items():
+        print(('SAME ' if v else 'DIFFERS ') + k + ' (explain if DIFFERS)')
+    print('spu ' + json.dumps(spu))
     print('FIELD14 SLICE ' + ('PASS' if result['pass'] else 'FAIL'))
     return 0 if result['pass'] else 1
 

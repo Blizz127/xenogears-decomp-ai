@@ -34,10 +34,48 @@ static void execution_stats_report(void)
 
 /* Opt-in with the counters: a run stopped by SIGINT/SIGTERM (a harness
  * timeout) still reports them.  Installed before SDL, which then keeps it. */
+static size_t stats_put_u64(char *out, uint64_t v)
+{
+    char digits[24];
+    size_t n = 0, i;
+    do {
+        digits[n++] = (char)('0' + v % 10u);
+        v /= 10u;
+    } while (v != 0);
+    for (i = 0; i < n; i++)
+        out[i] = digits[n - 1 - i];
+    return n;
+}
+
+static size_t stats_put_str(char *out, const char *s)
+{
+    size_t n = strlen(s);
+    memcpy(out, s, n);
+    return n;
+}
+
+/* Async-signal-safe: formats by hand and write(2)s once (stdio in a handler
+ * can deadlock on a lock another thread holds -- the likely reason a
+ * reference run ended by SIGINT lost its receipt). */
 static void execution_stats_signal(int sig)
 {
-    execution_stats_write("cpu-execution");
-    fflush(stderr);
+    char line[256];
+    size_t n = 0;
+    ssize_t ignored;
+
+    n += stats_put_str(line + n, "[xeno-port][cpu-execution] entries=");
+    n += stats_put_u64(line + n, execution_stats.entries);
+    n += stats_put_str(line + n, " native_bridges=");
+    n += stats_put_u64(line + n, execution_stats.native_bridges);
+    n += stats_put_str(line + n, " interpreted_instructions=");
+    n += stats_put_u64(line + n, execution_stats.interpreted_instructions);
+    n += stats_put_str(line + n, " disabled_refusals=");
+    n += stats_put_u64(line + n, execution_stats.disabled_refusals);
+    n += stats_put_str(line + n, " unresolved_bridges=");
+    n += stats_put_u64(line + n, execution_stats.unresolved_bridges);
+    line[n++] = '\n';
+    ignored = write(2, line, n);
+    (void)ignored;
     _exit(128 + sig);
 }
 
