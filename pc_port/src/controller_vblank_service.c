@@ -11,16 +11,17 @@ extern int PsyX_Sys_GetVBlankCount(void);
  * unit tests that link this file alone. */
 extern int PcPort_DeterministicVblank(uint32_t* now) __attribute__((weak));
 
+static uint32_t serviced_count;
+
 static uint32_t vblank_now(void)
 {
-    uint32_t now;
+    uint32_t now = serviced_count;  /* in: the cursor the clock seeds from */
     if (PcPort_DeterministicVblank && PcPort_DeterministicVblank(&now))
         return now;
     return (uint32_t)PsyX_Sys_GetVBlankCount();
 }
 extern void PcPort_SoundLockstepVblank(void) __attribute__((weak));
 static void (*callback)(void);
-static uint32_t serviced_count;
 static int servicing;
 static int initialized;
 static int enabled = 1;
