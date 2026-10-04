@@ -1762,6 +1762,8 @@ static void PcPort_ForcedMenuActionEdges(void)
  *   XENO_FIELD_STEP_SAVE_AT=<step> / XENO_FIELD_STEP_LOAD_AT=<step>  queue
  *       the ordinary F11 quick save / F12 quick load once the step clock
  *       reaches that step (retried per vblank until queued). */
+int PcPort_DeterministicVblankLogGate(void);
+
 static void PcPort_FieldStepEvidenceOnVblank(void)
 {
     extern int PcPort_FieldStepPadArmedStep(unsigned *step);
@@ -1791,7 +1793,7 @@ static void PcPort_FieldStepEvidenceOnVblank(void)
     }
     if (!PcPort_FieldStepPadArmedStep(&step))
         return;
-    if (spu != NULL && g_pSoundSpuRegisters != NULL) {
+    if (spu != NULL && g_pSoundSpuRegisters != NULL && PcPort_DeterministicVblankLogGate()) {
         const unsigned char* page = (const unsigned char*)g_pSoundSpuRegisters;
         unsigned int h = 2166136261u;
         unsigned i;
@@ -1855,9 +1857,9 @@ void PcPort_BeforeControllerPush(void)
  * iteration spans varies with host speed (usually 2, sometimes 3), and
  * everything clocked by vblanks (pad pushes, Vsync(1) frame deltas,
  * vblank-driven script counters, the lock-step sound tick) varies with it.
- * From the first completed field-step drain after XENO_FIELD_STEP_PAD_INPUT
- * arms (boot, title and loading keep the host clock, so host-paced waits
- * there cannot stall), each blocking Vsync
+ * From the first vblank service in the live field loop after
+ * XENO_FIELD_STEP_PAD_INPUT arms (boot, title and loading keep the host
+ * clock, so host-paced waits there cannot stall), each blocking Vsync
  * advances a virtual count by exactly K (Vsync(n>=2): n), Vsync(1) returns it,
  * and the vblank service (controller_vblank_service.c) follows it instead of
  * the host counter.  Presentation is still paced by the host.  Retail's own
@@ -1888,8 +1890,15 @@ static int PcPort_DetVblankActive(void)
 
 /* Hook for controller_vblank_service.c (weak there).  *now carries the
  * service's own cursor in; the clock activates at a deterministic point --
- * after the first completed field-step drain -- seeded from that cursor (not
- * the host counter), so nothing host-timed leaks across the switch. */
+ * the first service in the live field loop after arming -- seeded from that
+ * cursor (not the host counter), so nothing host-timed leaks across the
+ * switch. */
+int PcPort_DeterministicVblankLogGate(void)
+{
+    /* Evidence logs keyed to game time start with the clock, when it is on. */
+    return PcPort_DetVblankK() == 0 || s_detVblankOn;
+}
+
 int PcPort_DeterministicVblank(uint32_t* now)
 {
     extern int PcPort_FieldStepPadArmedStep(unsigned *step);
@@ -1898,7 +1907,11 @@ int PcPort_DeterministicVblank(uint32_t* now)
     if (PcPort_DetVblankK() == 0)
         return 0;
     if (!s_detVblankOn) {
-        if (!PcPort_FieldStepPadArmedStep(&step) || step < 1u)
+        extern int PcPort_QuickCheckpointFieldIsActive(void);
+        /* First service once the probe is armed AND the field loop is live
+         * (FieldMain sets the latch before its first iteration): loading is
+         * over, and every later blocking Vsync is a field-loop wait. */
+        if (!PcPort_FieldStepPadArmedStep(&step) || !PcPort_QuickCheckpointFieldIsActive())
             return 0;
         s_detVblankOn = 1;
         s_detVblankNow = *now;
