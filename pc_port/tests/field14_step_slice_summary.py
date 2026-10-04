@@ -19,7 +19,8 @@ from pathlib import Path
 
 POS = re.compile(r'POSDIAG map=(\d+) pos=\((-?\d+),(-?\d+),(-?\d+)\)')
 STEP = re.compile(r'\[field-step-pad\] step=(\d+) held=(0x[0-9a-f]+)')
-CHECK = re.compile(r'\[field-step-pad\] checkpoint step=(\d+) at_step=(\d+) presented=(\d+) vblank=(-?\d+)')
+CHECK = re.compile(r'\[field-step-pad\] checkpoint step=(\d+) at_step=(\d+) presented=(\d+) vblank=(-?\d+)'
+                   r'(?: .*interpreted_instructions=(\d+) disabled_refusals=(\d+))?')
 
 
 def sha(path):
@@ -63,7 +64,9 @@ def run(path):
         if m:
             st = int(m.group(1))
             out['timing'].append({'step': st, 'at_step': int(m.group(2)),
-                                  'presented': int(m.group(3)), 'vblank': int(m.group(4))})
+                                  'presented': int(m.group(3)), 'vblank': int(m.group(4)),
+                                  'interpreted': None if m.group(5) is None else int(m.group(5)),
+                                  'refusals': None if m.group(6) is None else int(m.group(6))})
             out['frames'][st] = sha(Path(path, 'captures', 'step-%06d.png' % st))
     out['saved'] = any('F11 quick save requested' in l for l in text) and \
         any('[xeno-port][quick] saved ' in l for l in text)
@@ -74,7 +77,11 @@ def run(path):
     out['spu'] = [l.split() for l in spu.read_text().splitlines()] if spu.exists() else []
     interp = [int(x) for l in out['execution_stats']
               for x in re.findall(r'interpreted_instructions=(\d+)', l)]
+    # Exit receipt if present, else the last in-run checkpoint receipt.
+    live = [t['interpreted'] for t in out['timing'] if t.get('interpreted') is not None]
+    interp += live[-1:]
     out['interpreted_instructions'] = max(interp) if interp else None
+    out['checkpoint_counters'] = len(live)
     out['rc'] = Path(path, 'rc.txt').read_text().strip() if Path(path, 'rc.txt').exists() else None
     return out
 
@@ -95,7 +102,19 @@ def main():
         first_by_step_ref.setdefault(row[1], row[2])
     for row in ds:
         first_by_step_dis.setdefault(row[1], row[2])
-    spu = {'vblanks_ref': len(rs), 'vblanks_disabled': len(ds),
+    def distinct(rows):
+        out, prev = [], None
+        for row in rows:
+            if row[2] != prev:
+                out.append(row[2])
+                prev = row[2]
+        return out
+    da, db = distinct(rs), distinct(ds)
+    dn = min(len(da), len(db))
+    seq_diff = next((i for i in range(dn) if da[i] != db[i]), None)
+    spu = {'distinct_states_ref': len(da), 'distinct_states_disabled': len(db),
+           'distinct_sequence_first_divergence': seq_diff,
+           'vblanks_ref': len(rs), 'vblanks_disabled': len(ds),
            'first_vblank_divergence': first_diff,
            'distinct_hashes_ref': len({r[2] for r in rs}),
            'per_step_first_hash_equal': sum(1 for k in first_by_step_ref
@@ -110,24 +129,28 @@ def main():
         'disabled: no interpreter refusal': dis['refusals'] == 0,
         'disabled: zero interpreted instructions counted': dis['interpreted_instructions'] == 0,
         'no stubs reached': ref['stubs'] == 0 and dis['stubs'] == 0,
-        'visual: checkpoint frames identical': bool(ref['frames']) and ref['frames'] == dis['frames']
-            and None not in ref['frames'].values(),
+        'visual: checkpoint frames identical': len(ref['frames']) == 9 and ref['frames'] == dis['frames']
+            and all(isinstance(v, str) and len(v) == 64 for v in ref['frames'].values()),
         'timing: checkpoint steps and presented-frame deltas identical':
             [t['at_step'] for t in ref['timing']] == [t['at_step'] for t in dis['timing']]
             and deltas(ref, 'presented') == deltas(dis, 'presented') and len(ref['timing']) == 9,
         'save: F11 saved and F12 reloaded in both': ref['saved'] and dis['saved']
             and ref['reloaded'] and dis['reloaded'],
         'save: saved checkpoint byte-identical': ref['save_sha256'] == dis['save_sha256']
+            and isinstance(ref['save_sha256'], str) and len(ref['save_sha256']) == 64
             and ref['save_sha256'] != ref['entry_sha256'],
-        'counters: reference receipt present': ref['interpreted_instructions'] is not None,
+        'counters: both runs have a receipt (exit or in-run)': ref['interpreted_instructions'] is not None
+            and dis['interpreted_instructions'] is not None,
     }
     informational = {
         'audio: SPU register page identical every vblank': first_diff is None and len(rs) > 0
             and len(rs) == len(ds),
+        'audio: SPU distinct-state sequence identical': seq_diff is None and len(da) == len(db)
+            and len(da) > 0,
         'timing: vblank deltas identical': deltas(ref, 'vblank') == deltas(dis, 'vblank'),
     }
-    for run in (ref, dis):
-        run['spu_lines'] = len(run.pop('spu'))
+    for side in (ref, dis):
+        side['spu_lines'] = len(side.pop('spu'))
     result = {'pass': all(checks.values()), 'checks': checks, 'informational': informational,
               'spu': spu, 'presented_deltas': [deltas(ref, 'presented'), deltas(dis, 'presented')],
               'vblank_deltas': [deltas(ref, 'vblank'), deltas(dis, 'vblank')],

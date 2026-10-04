@@ -31,6 +31,7 @@ void func_80019548(void) {}
 #include <time.h>
 #include <sys/stat.h>
 #include "common.h"
+#include "battle_mips_adapter.h"
 #include "main/main.h"
 #include "field/actor.h"
 #include "field/camera.h"
@@ -140,8 +141,19 @@ void PcPort_FieldCaptureOnVsync(void)
         if (cp_next < cp_count && PcPort_FieldStepPadArmedStep(&step) &&
             step >= cp_steps[cp_next]) {
             const char* dir = getenv("XENO_FIELD_CAPTURE_DIR");
-            fprintf(stderr, "[field-step-pad] checkpoint step=%u at_step=%u presented=%u "
-                    "vblank=%d\n", cp_steps[cp_next], step, s_frames, D_80059488);
+            /* CPU counters at the checkpoint too, so the evidence does not
+             * depend on the process exiting cleanly. */
+            {
+                PcPortMipsExecutionStats st = PcPortMipsExecutionStatsGet();
+                fprintf(stderr, "[field-step-pad] checkpoint step=%u at_step=%u presented=%u "
+                        "vblank=%d entries=%llu native_bridges=%llu interpreted_instructions=%llu "
+                        "disabled_refusals=%llu unresolved_bridges=%llu\n",
+                        cp_steps[cp_next], step, s_frames, D_80059488,
+                        (unsigned long long)st.entries, (unsigned long long)st.native_bridges,
+                        (unsigned long long)st.interpreted_instructions,
+                        (unsigned long long)st.disabled_refusals,
+                        (unsigned long long)st.unresolved_bridges);
+            }
             if (dir != NULL && dir[0] != '\0') {
                 snprintf(path, sizeof(path), "%s/step-%06u.png", dir, cp_steps[cp_next]);
                 PsyX_TakeScreenshotPath(path);
