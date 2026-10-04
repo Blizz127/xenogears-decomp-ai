@@ -12,6 +12,7 @@ disabled run to report zero interpreted instructions and no refusal.  It is
 movement-slice evidence only: no audio, no frame-exact timing.
 """
 import hashlib
+import os
 import json
 import re
 import sys
@@ -144,8 +145,9 @@ def main():
         'timing: checkpoint steps and presented-frame deltas identical':
             [t['at_step'] for t in ref['timing']] == [t['at_step'] for t in dis['timing']]
             and deltas(ref, 'presented') == deltas(dis, 'presented') and len(ref['timing']) == n_checkpoints,
-        'save: F11 saved and F12 reloaded in both': ref['saved'] and dis['saved']
-            and ref['reloaded'] and dis['reloaded'],
+        'save: F11 saved (and F12 reloaded when scheduled) in both': ref['saved'] and dis['saved']
+            and (os.environ.get('FIELD14_LOAD_AT', '900') == '-1'
+                 or (ref['reloaded'] and dis['reloaded'])),
         'save: saved checkpoint byte-identical': ref['save_sha256'] == dis['save_sha256']
             and isinstance(ref['save_sha256'], str) and len(ref['save_sha256']) == 64
             and ref['save_sha256'] != ref['entry_sha256'],
