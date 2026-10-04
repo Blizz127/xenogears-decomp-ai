@@ -2014,6 +2014,18 @@ static int s_detLastQuery;        /* last host Vsync(1) value before arming */
 static unsigned s_detLoadStep;    /* drain count at the last load */
 static unsigned s_detDrains;      /* FieldPollControllers drains since boot */
 static int s_detFromField = -2;   /* XENO_DETERMINISTIC_VBLANK_FROM_FIELD, -1 unset */
+/* Busy-wait polls: the field's frame wait (func_8007554C) spins on Vsync(-1)
+ * until s1 + D_800B217C + 2 -- the script frame rate (0/1/2 = 30/20/15 fps).
+ * The test clock adds K per blocking Vsync only, so at 20/15 fps the target
+ * was never reached (follow-up d, the map-2 hang). A Vsync(-1) whose
+ * previous Vsync call was also a Vsync(-1) returning the same count is a
+ * spin: it advances the test clock by one vblank, as real vblanks keep
+ * arriving on hardware while the game spins. Any Vsync(1) or blocking Vsync
+ * ends the spin, so the per-frame s1 read and the first loop check never
+ * advance; at 30 fps nothing changes. */
+static int s_detPollPending;
+static uint32_t s_detPollLast;
+static uint32_t s_detSpinVblanks;
 
 /* Every FieldPollControllers drain, armed or not (test_input.c). */
 void PcPort_DetVblankNoteDrain(void)
@@ -2112,6 +2124,19 @@ int Vsync(int mode)
      * twice (PsyX_EndScene + VRAM fallback) and flickers. Keep presentation
      * in the blocking path. */
     if (mode == 1 || mode < 0) {
+        if (mode < 0 && PcPort_DetVblankActive()) {
+            if (s_detPollPending && s_detPollLast == s_detVblankNow) {
+                s_detVblankNow++;
+                s_detQuery++;
+                if (s_detSpinVblanks++ == 0)
+                    fprintf(stderr, "[det-vblank] busy-wait Vsync(-1) poll advances the test "
+                            "clock by one vblank per spin (not a retail-timing claim)\n");
+            }
+            s_detPollPending = 1;
+            s_detPollLast = s_detVblankNow;
+        } else {
+            s_detPollPending = 0;
+        }
         count = VSync(mode);
         XENO_SERVICE_VBLANK();
         if (mode == 1) {
@@ -2182,6 +2207,7 @@ int Vsync(int mode)
     /* Frozen while loading (field latch clear), so a host-timed load --
      * the fixture load or an F12 reload -- adds no game vblanks, pad
      * samples or sound ticks.  Test-clock behaviour, not retail timing. */
+    s_detPollPending = 0;
     if (PcPort_DetVblankActive()) {
         uint32_t step_vblanks = (uint32_t)(mode >= 2 ? mode : s_detVblankK);
         s_detVblankNow += step_vblanks;
