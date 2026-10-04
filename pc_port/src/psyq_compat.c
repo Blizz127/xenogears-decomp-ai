@@ -1821,6 +1821,22 @@ static void PcPort_FieldStepEvidenceOnVblank(void)
     }
     if (!PcPort_FieldStepPadArmedStep(&step))
         return;
+    /* XENO_FIELD_STEP_EXIT_AT=<step>: end the run by itself on its frame cap
+     * (exit(0), so atexit receipts are written); the driver's timeout is
+     * then only a hang detector. */
+    {
+        static long exit_at = -2;
+        if (exit_at == -2) {
+            const char* e = getenv("XENO_FIELD_STEP_EXIT_AT");
+            exit_at = (e != NULL && e[0] != '\0') ? strtol(e, NULL, 10) : -1;
+        }
+        if (exit_at >= 0 && step >= (unsigned long)exit_at) {
+            fprintf(stderr, "[field-step-pad] frame cap: exiting at step=%u\n", step);
+            fflush(stdout);
+            fflush(stderr);
+            exit(0);
+        }
+    }
     if (spu != NULL && g_pSoundSpuRegisters != NULL && PcPort_DeterministicVblankLogGate()) {
         const unsigned char* page = (const unsigned char*)g_pSoundSpuRegisters;
         unsigned int h = 2166136261u;
@@ -1893,11 +1909,13 @@ void PcPort_BeforeControllerPush(void)
  * per-frame vblank cost, and its slowdowns, are not modelled: K is a fixed
  * cadence (2 for the field, the port's usual no-jitter value). */
 static int s_detVblankK = -1;
-static int s_detVblankOn;
-static uint32_t s_detVblankNow;   /* virtual game-vblank count (service cursor domain) */
-static uint32_t s_detVblankAt;    /* its value at activation */
-static uint32_t s_detQueryBase;   /* last Vsync(1) value the game saw before activation */
-static int s_detLastQuery;
+static int s_detVblankOn;         /* armed: the test clock is in charge of Vsync(1) */
+static int s_detVblankLive;       /* the field loop is running (a drain since the last load) */
+static uint32_t s_detVblankNow;   /* service clock while live (service cursor domain) */
+static uint32_t s_detQuery;       /* game-visible clock returned by Vsync(1) */
+static int s_detLastQuery;        /* last host Vsync(1) value before arming */
+static unsigned s_detLoadStep;    /* step clock value at the last load */
+static int s_detPrevLatch;
 
 static int PcPort_DetVblankK(void)
 {
@@ -1912,41 +1930,57 @@ static int PcPort_DetVblankK(void)
 
 static int PcPort_DetVblankActive(void)
 {
-    return s_detVblankOn;
+    return s_detVblankLive;
 }
 
-/* Hook for controller_vblank_service.c (weak there).  *now carries the
- * service's own cursor in; the clock activates when the probe arms, seeded
- * from that cursor (not the host counter), and advances only in the live
- * field loop, so nothing host-timed leaks in. */
-int PcPort_DeterministicVblankLogGate(void)
-{
-    /* Evidence logs keyed to game time start with the clock, when it is on. */
-    return PcPort_DetVblankK() == 0 || s_detVblankOn;
-}
-
+/* Two clocks.  The SERVICE clock (pad pushes, sound ticks, the callbacks a
+ * field load waits on) stays host-paced while loading, so a load cannot
+ * stall; it becomes deterministic (+K per blocking Vsync, seeded from the
+ * service's own cursor, so no jump) once the field loop is live: a
+ * field-step drain has happened since the last load (arming, or the field
+ * teardown of an F12 reload).  The GAME-VISIBLE clock (Vsync(1), which the
+ * field turns into frame deltas) advances only while live, so a load's
+ * duration never becomes field time.  Hook for controller_vblank_service.c
+ * (weak there); *now carries the service cursor in. */
 int PcPort_DeterministicVblank(uint32_t* now)
 {
     extern int PcPort_FieldStepPadArmedStep(unsigned *step);
+    extern int PcPort_QuickCheckpointFieldIsActive(void);
     unsigned step;
+    int latch;
 
-    if (PcPort_DetVblankK() == 0)
+    if (PcPort_DetVblankK() == 0 || !PcPort_FieldStepPadArmedStep(&step))
         return 0;
+    latch = PcPort_QuickCheckpointFieldIsActive();
     if (!s_detVblankOn) {
-        /* From arming (first vblank in map 14, possibly mid-load).  The
-         * count then only advances in the live field loop (see Vsync), so
-         * load durations never become game time. */
-        if (!PcPort_FieldStepPadArmedStep(&step))
-            return 0;
         s_detVblankOn = 1;
+        s_detLoadStep = step;
+        s_detQuery = (uint32_t)s_detLastQuery;
+        fprintf(stderr, "[det-vblank] jitter-free test clock armed: K=%d at step %u "
+                "(not a retail-timing claim)\n", s_detVblankK, step);
+    }
+    if (s_detPrevLatch && !latch) {          /* field teardown: a load begins */
+        s_detVblankLive = 0;
+        s_detLoadStep = step;
+        fprintf(stderr, "[det-vblank] load: host-paced service from step %u\n", step);
+    }
+    s_detPrevLatch = latch;
+    if (!s_detVblankLive) {
+        if (step <= s_detLoadStep)
+            return 0;                         /* still loading: host-paced service */
+        s_detVblankLive = 1;
         s_detVblankNow = *now;
-        s_detVblankAt = *now;
-        s_detQueryBase = (uint32_t)s_detLastQuery;
-        fprintf(stderr, "[det-vblank] jitter-free test clock active: K=%d at field step %u, "
-                "service cursor %u (not a retail-timing claim)\n", s_detVblankK, step, *now);
+        fprintf(stderr, "[det-vblank] live: deterministic service from step %u, cursor %u\n",
+                step, *now);
     }
     *now = s_detVblankNow;
     return 1;
+}
+
+int PcPort_DeterministicVblankLogGate(void)
+{
+    /* Evidence logs keyed to game time cover only the deterministic spans. */
+    return PcPort_DetVblankK() == 0 || s_detVblankLive;
 }
 
 int Vsync(int mode)
@@ -1965,10 +1999,9 @@ int Vsync(int mode)
         count = VSync(mode);
         XENO_SERVICE_VBLANK();
         if (mode == 1) {
-            /* Deterministic mode: continue from the last value the game saw,
-             * advancing only with the virtual clock (Vsync(1) deltas). */
-            if (PcPort_DetVblankActive())
-                count = (int)(s_detQueryBase + (s_detVblankNow - s_detVblankAt));
+            /* Test clock: the game-visible count, frozen while loading. */
+            if (s_detVblankOn)
+                count = (int)s_detQuery;
             else
                 s_detLastQuery = count;
         }
@@ -2033,15 +2066,15 @@ int Vsync(int mode)
     /* Frozen while loading (field latch clear), so a host-timed load --
      * the fixture load or an F12 reload -- adds no game vblanks, pad
      * samples or sound ticks.  Test-clock behaviour, not retail timing. */
-    {
-        extern int PcPort_QuickCheckpointFieldIsActive(void);
-        if (PcPort_DetVblankActive() && PcPort_QuickCheckpointFieldIsActive())
-            s_detVblankNow += (uint32_t)(mode >= 2 ? mode : s_detVblankK);
+    if (PcPort_DetVblankActive()) {
+        uint32_t step_vblanks = (uint32_t)(mode >= 2 ? mode : s_detVblankK);
+        s_detVblankNow += step_vblanks;
+        s_detQuery += step_vblanks;
     }
     count = VSync(mode);
     XENO_SERVICE_VBLANK();
-    if (PcPort_DetVblankActive())
-        count = (int)(s_detQueryBase + (s_detVblankNow - s_detVblankAt));
+    if (s_detVblankOn)
+        count = (int)s_detQuery;
 
     /* Headless menu driver (no-op unless XENO_KERNEL_SEL is set). Must run after
      * ControllerPoll, which recomputes g_C1ButtonState* each frame -- we OR the

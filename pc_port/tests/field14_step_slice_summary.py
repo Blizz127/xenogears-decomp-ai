@@ -141,6 +141,7 @@ def main():
         'save: saved checkpoint byte-identical': ref['save_sha256'] == dis['save_sha256']
             and isinstance(ref['save_sha256'], str) and len(ref['save_sha256']) == 64
             and ref['save_sha256'] != ref['entry_sha256'],
+        'both runs exited by themselves (rc=0 on the frame cap)': ref['rc'] == 'rc=0' and dis['rc'] == 'rc=0',
         'counters: both runs have a receipt (exit or in-run)': ref['interpreted_instructions'] is not None
             and dis['interpreted_instructions'] is not None,
     }

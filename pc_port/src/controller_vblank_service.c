@@ -12,18 +12,25 @@ extern int PsyX_Sys_GetVBlankCount(void);
 extern int PcPort_DeterministicVblank(uint32_t* now) __attribute__((weak));
 
 static uint32_t serviced_count;
+static int initialized;
 
 static uint32_t vblank_now(void)
 {
     uint32_t now = serviced_count;  /* in: the cursor the clock seeds from */
+    uint32_t host;
     if (PcPort_DeterministicVblank && PcPort_DeterministicVblank(&now))
         return now;
-    return (uint32_t)PsyX_Sys_GetVBlankCount();
+    host = (uint32_t)PsyX_Sys_GetVBlankCount();
+    /* Never step the cursor backwards: after a deterministic span the
+     * virtual count may be ahead of the host's; wait for the host instead
+     * of wrapping.  A no-op in normal runs (the host count only grows). */
+    if (initialized && (int32_t)(host - serviced_count) < 0)
+        return serviced_count;
+    return host;
 }
 extern void PcPort_SoundLockstepVblank(void) __attribute__((weak));
 static void (*callback)(void);
 static int servicing;
-static int initialized;
 static int enabled = 1;
 static int pending;
 static uint32_t mask_epoch;
