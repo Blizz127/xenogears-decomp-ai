@@ -1983,7 +1983,7 @@ static int replay_side(const uint32_t regs[36], int force, SideResult *out)
         rt.force_interpret = 0;
         return -1;
     }
-    out->rc = PcPortMipsRun(&cpu, 0x801E3A18u, BATTLE_HALT_PC, STEP_LIMIT);
+    out->rc = PcPortMipsRun(&cpu, regs[35], BATTLE_HALT_PC, STEP_LIMIT);
     rt.force_interpret = 0;
     memcpy(out->gpr, cpu.gpr, sizeof(out->gpr));
     out->hi = cpu.hi;
@@ -2048,15 +2048,30 @@ static int replay_run(const char *dir)
             fail("replay-3a18", "capture", "a delay-slot load was pending at the call");
             continue;
         }
-        if (!results_identity_current(&rt, 0x801E3A18u)) {
+        /* regs[35]: the captured routine (older 3A18-only captures: ~0). */
+        if (regs[35] == 0xFFFFFFFFu)
+            regs[35] = 0x801E3A18u;
+        {
+            unsigned k, listed = 0;
+            for (k = 0; kResultsLeaves[k].name != NULL; k++)
+                listed |= kResultsLeaves[k].address == regs[35];
+            if (!listed) {
+                fail("replay-3a18", "capture", "captured routine is not an adopted results body");
+                continue;
+            }
+        }
+        if (!results_identity_current(&rt, regs[35])) {
             fail("replay-3a18", "identity", "captured module is not the pinned retail image");
             continue;
         }
-        printf("BATTLE RESULTS REPLAY 3A18 capture=%u sp=%08x ra=%08x a0=%08x gs_bytes=%zu "
-               "slots=%08x kinds=%u/%u/%u\n", n, regs[29], regs[31], regs[4], got_gs,
-               peek32(0x801E44C8u), peek8(peek32(0x801E44C8u) + 0x56u),
-               peek8(peek32(0x801E44C8u) + 0x170u + 0x56u),
-               peek8(peek32(0x801E44C8u) + 0x2E0u + 0x56u));
+        printf("BATTLE RESULTS REPLAY 3A18 capture=%u routine=%08x sp=%08x ra=%08x "
+               "a0=%08x a1=%08x a2=%08x a3=%08x gs_bytes=%zu\n", n, regs[35], regs[29],
+               regs[31], regs[4], regs[5], regs[6], regs[7], got_gs);
+        if (regs[35] == 0x801E3A18u)
+            printf("BATTLE RESULTS REPLAY 3A18   slots=%08x kinds=%u/%u/%u\n",
+                   peek32(0x801E44C8u), peek8(peek32(0x801E44C8u) + 0x56u),
+                   peek8(peek32(0x801E44C8u) + 0x170u + 0x56u),
+                   peek8(peek32(0x801E44C8u) + 0x2E0u + 0x56u));
 
         stray_writes = 0;
         unsetenv("XENO_DISABLE_CPU_INTERPRETER");
@@ -2113,10 +2128,10 @@ static int replay_run(const char *dir)
             fail("replay-3a18", "native-copy/scratchpad/stray", "differs");
             continue;
         }
-        printf("BATTLE RESULTS REPLAY 3A18 capture=%u PASS: retail %llu interpreted "
+        printf("BATTLE RESULTS REPLAY 3A18 capture=%u routine=%08x PASS: retail %llu interpreted "
                "instructions; native 0 interpreted (CPU interpreter disabled), 1 native "
                "results call, fallback 0; registers, HI/LO, RAM, g_GameState copy and "
-               "scratchpad identical. Observed side effects:\n", n,
+               "scratchpad identical. Observed side effects:\n", n, regs[35],
                (unsigned long long)retail.steps);
         replay_ranges("ram", loaded_ram, retail_ram, PSX_RAM_SIZE, 0x80000000u);
         replay_ranges("g_GameState", loaded_gs, retail_gs, RESULTS_GS_BYTES, 0x8006D634u);
