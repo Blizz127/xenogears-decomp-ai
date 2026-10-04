@@ -29,21 +29,3 @@ diff --git a/src/psx/LIBGTE.C b/src/psx/LIBGTE.C
  
  #define ONE_BITS			12
  #define ONE					(1 << 12)
-@@ -100,7 +115,7 @@ void PushMatrix()
- 	}
- 	else
- 	{
--		printf("Error: Can't push matrix,stack(max 20) is full!\n");
-+		printf("[psycross] PushMatrix: matrix stack full (20 entries)\n");
- 	}
- }
- 
-@@ -117,7 +132,7 @@ void PopMatrix()
- 	}
- 	else
- 	{
--		printf("Error: Can't pop matrix,stack is empty!\n");
-+		printf("[psycross] PopMatrix: matrix stack empty\n");
- 	}
- }
- 

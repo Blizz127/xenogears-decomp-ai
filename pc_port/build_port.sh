@@ -543,6 +543,9 @@ apply_psycross_patch "$ROOT/pc_port/patches/psycross_sqrt_retail_memory.patch" "
 # loaded from the user's disc/SLUS_006.64 (retail_data.h); SQRT is dropped
 # (SquareRoot0 reads guest memory since the previous patch).
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_gte_tables_from_disc.patch" "_xeno_gte_tables_from_disc"
+# PushMatrix/PopMatrix print the port's own stack messages; the SDK's text is
+# compiled out (zero-context patch, so the patch file does not quote it).
+apply_psycross_patch "$ROOT/pc_port/patches/psycross_gte_stack_messages.patch" "_xeno_gte_stack_messages" unidiff-zero
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_gte_mvmva_signed_translation.patch" "_xeno_gte_mvmva_signed_translation"
 apply_psycross_patch "$ROOT/pc_port/patches/psycross_gte_projection_signed_translation.patch" "_xeno_gte_projection_signed_translation"
 # Optional F22 logical-origin correction. This is intentionally applied only

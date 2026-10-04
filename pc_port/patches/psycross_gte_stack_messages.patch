@@ -1,0 +1,13 @@
+diff --git a/src/psx/LIBGTE.C b/src/psx/LIBGTE.C
+--- a/src/psx/LIBGTE.C
++++ b/src/psx/LIBGTE.C
+@@ -117,0 +118 @@ void PushMatrix()
++#if 0 // _xeno_gte_stack_messages: the SDK text is not shipped
+@@ -118,0 +120,2 @@ void PushMatrix()
++#endif
++		printf("[psycross] PushMatrix: matrix stack full (20 entries)\n");
+@@ -134,0 +138 @@ void PopMatrix()
++#if 0 // _xeno_gte_stack_messages: the SDK text is not shipped
+@@ -135,0 +140,2 @@ void PopMatrix()
++#endif
++		printf("[psycross] PopMatrix: matrix stack empty\n");
