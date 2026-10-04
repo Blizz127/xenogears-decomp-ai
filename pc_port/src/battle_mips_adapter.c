@@ -3,7 +3,9 @@
 #include <limits.h>
 #include <inttypes.h>
 #include <stdarg.h>
+#include <signal.h>
 #include <stdio.h>
+#include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -30,6 +32,15 @@ static void execution_stats_report(void)
     execution_stats_write("cpu-execution");
 }
 
+/* Opt-in with the counters: a run stopped by SIGINT/SIGTERM (a harness
+ * timeout) still reports them.  Installed before SDL, which then keeps it. */
+static void execution_stats_signal(int sig)
+{
+    execution_stats_write("cpu-execution");
+    fflush(stderr);
+    _exit(128 + sig);
+}
+
 void PcPortMipsExecutionStatsInit(void)
 {
     const char *value;
@@ -39,6 +50,10 @@ void PcPortMipsExecutionStatsInit(void)
     execution_stats_enabled = value && value[0] && strcmp(value, "0") != 0;
     if (execution_stats_enabled && atexit(execution_stats_report) != 0)
         fprintf(stderr, "[xeno-port][cpu-execution] exit report registration failed\n");
+    if (execution_stats_enabled) {
+        signal(SIGINT, execution_stats_signal);
+        signal(SIGTERM, execution_stats_signal);
+    }
 }
 
 int PcPortMipsInterpreterDisabled(void)

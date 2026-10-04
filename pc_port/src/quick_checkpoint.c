@@ -181,12 +181,39 @@ int PcPort_QuickCheckpointFieldIsActive(void)
     return s_fieldActive;
 }
 
+/* TEST TOOLING (headless drivers): XENO_QUICKLOAD_ON_TITLE=1 issues the
+ * ordinary quick load -- the same request F12 queues -- once, when the title
+ * field (map 490) becomes active, for runs whose video driver has no keyboard
+ * (SDL offscreen).  It loads XENO_QUICKSAVE_PATH exactly as F12 at the title
+ * does; no warp, console or dev menu.  Unset => nothing. */
+static void PcPort_QuickCheckpointHeadlessTitleLoad(void)
+{
+    static int done;
+    static unsigned attempts;
+    extern int g_GameSceneMapNum;
+    const char *flag;
+
+    if (done || !s_fieldActive || (g_GameSceneMapNum & 0xFFF) != 490)
+        return;
+    /* One attempt per ~second of field polls, as a driver re-pressing F12. */
+    if (attempts++ % 60u != 0u)
+        return;
+    flag = getenv("XENO_QUICKLOAD_ON_TITLE");
+    if (flag == NULL || flag[0] == '\0' || strcmp(flag, "0") == 0)
+        return;
+    fprintf(stderr, "[xeno-port][quick] XENO_QUICKLOAD_ON_TITLE: requesting the F12 quick load at the title\n");
+    PcPort_QuickCheckpointRequestLoad();
+    /* Like a held-down F12 retried until it takes: done once queued. */
+    done = s_request.action == PC_PORT_QUICK_REQUEST_LOAD;
+}
+
 void PcPort_QuickCheckpointSetFieldActive(int active)
 {
     s_fieldActive = active != 0;
     s_sceneAtPrevPoll = 0;
     if (!s_fieldActive && s_request.action != PC_PORT_QUICK_REQUEST_NONE)
         PcPort_QuickRequestCancel(&s_request);
+    PcPort_QuickCheckpointHeadlessTitleLoad();
 }
 
 /* The game-state image a retail save would hold now.  FieldMain syncs the
@@ -264,6 +291,7 @@ int PcPort_QuickCheckpointPoll(void)
     if (s_fieldActive)
         s_sceneAtPrevPoll = sceneNow;
     s_fieldLoopCount++;
+    PcPort_QuickCheckpointHeadlessTitleLoad();
     /* Loads/warps must leave the field consumer alive until it releases the
      * active stream. Otherwise the ring fills after teardown and the next
      * overlay's ArchiveCdDataSync(0) waits forever for unread sectors. Keep
