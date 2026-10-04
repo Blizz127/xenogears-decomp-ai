@@ -61,9 +61,21 @@ void func_800408F4(void)
  * is 64-bit on the native port. */
 uint32_t g_RandomSeed;
 
+/* DIAGNOSTIC (counters only; the sequence is unchanged): calls, and calls
+ * from any thread other than the one running the game's vblank dispatch,
+ * for XENO_FIELD_STEP_RNG_LOG (determinism investigation, follow-up e). */
+static uint32_t s_rand_calls, s_rand_calls_off_main;
+static void* s_rand_last_off_main;
+static __thread int s_rand_on_main;
+
 int rand(void)
 {
     uint32_t next = g_RandomSeed * UINT32_C(0x41C64E6D) + UINT32_C(0x3039);
+    s_rand_calls++;
+    if (!s_rand_on_main) {
+        s_rand_calls_off_main++;
+        s_rand_last_off_main = __builtin_return_address(0);
+    }
     g_RandomSeed = next;
     return (int)((next >> 16) & UINT32_C(0x7FFF));
 }
@@ -1801,6 +1813,7 @@ static void PcPort_FieldStepEvidenceOnVblank(void)
     extern int PcPort_QuickCheckpointGetUiState(void);
     static int init;
     static FILE* spu;
+    static FILE* rng;
     static long save_at = -1, load_at = -1;
     static int saved, loaded;
     static unsigned vblanks;
@@ -1812,6 +1825,12 @@ static void PcPort_FieldStepEvidenceOnVblank(void)
         e = getenv("XENO_FIELD_STEP_SPU_LOG");
         if (e != NULL && e[0] != '\0')
             spu = fopen(e, "w");
+        /* XENO_FIELD_STEP_RNG_LOG=<path>: per armed vblank, the retail rand
+         * seed and call counters (all / off the game thread, last off-thread
+         * caller). The game thread is the one running this hook. */
+        e = getenv("XENO_FIELD_STEP_RNG_LOG");
+        if (e != NULL && e[0] != '\0')
+            rng = fopen(e, "w");
         e = getenv("XENO_FIELD_STEP_SAVE_AT");
         if (e != NULL && e[0] != '\0')
             save_at = strtol(e, NULL, 10);
@@ -1819,8 +1838,14 @@ static void PcPort_FieldStepEvidenceOnVblank(void)
         if (e != NULL && e[0] != '\0')
             load_at = strtol(e, NULL, 10);
     }
+    s_rand_on_main = 1;
     if (!PcPort_FieldStepPadArmedStep(&step))
         return;
+    if (rng != NULL) {
+        fprintf(rng, "%u %u %08x %u %u %p\n", vblanks, step, (unsigned)g_RandomSeed,
+                (unsigned)s_rand_calls, (unsigned)s_rand_calls_off_main, s_rand_last_off_main);
+        fflush(rng);
+    }
     /* XENO_FIELD_STEP_EXIT_AT=<step>: end the run by itself on its frame cap
      * (exit(0), so atexit receipts are written); the driver's timeout is
      * then only a hang detector. */
