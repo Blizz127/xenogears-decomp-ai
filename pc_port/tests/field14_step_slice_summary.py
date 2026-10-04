@@ -90,8 +90,12 @@ def run(path):
 
 def main():
     ref, dis = run(sys.argv[1]), run(sys.argv[2])
-    want = [[300, '0x2000'], [360, '0x0000'], [480, '0x8000'], [540, '0x0000'],
-            [660, '0x4000'], [720, '0x0000'], [800, '0x2000'], [860, '0x0000']]
+    # Expected transitions and checkpoints come from what the driver ran.
+    sched = Path(sys.argv[1], 'schedule.txt').read_text().strip().split(',')
+    want = [[int(e.split(':')[0]), '0x%04x' % int(e.split(':')[1], 0)] for e in sched
+            if int(e.split(':')[0]) > 0]
+    cp_file = Path(sys.argv[1], 'checkpoints.txt')
+    n_checkpoints = len(cp_file.read_text().strip().split(',')) if cp_file.exists() else 9
 
     def deltas(run, key):
         t = run['timing']
@@ -131,11 +135,11 @@ def main():
         'disabled: no interpreter refusal': dis['refusals'] == 0,
         'disabled: zero interpreted instructions counted': dis['interpreted_instructions'] == 0,
         'no stubs reached': ref['stubs'] == 0 and dis['stubs'] == 0,
-        'visual: checkpoint frames identical': len(ref['frames']) == 9 and ref['frames'] == dis['frames']
+        'visual: checkpoint frames identical': len(ref['frames']) == n_checkpoints and ref['frames'] == dis['frames']
             and all(isinstance(v, str) and len(v) == 64 for v in ref['frames'].values()),
         'timing: checkpoint steps and presented-frame deltas identical':
             [t['at_step'] for t in ref['timing']] == [t['at_step'] for t in dis['timing']]
-            and deltas(ref, 'presented') == deltas(dis, 'presented') and len(ref['timing']) == 9,
+            and deltas(ref, 'presented') == deltas(dis, 'presented') and len(ref['timing']) == n_checkpoints,
         'save: F11 saved and F12 reloaded in both': ref['saved'] and dis['saved']
             and ref['reloaded'] and dis['reloaded'],
         'save: saved checkpoint byte-identical': ref['save_sha256'] == dis['save_sha256']

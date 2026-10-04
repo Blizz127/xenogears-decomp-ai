@@ -1547,6 +1547,39 @@ void FieldPollControllers(void) {
         PcPort_FieldTestInputMerge(&D_800AFE9C, &D_800C3900, &D_800C2694);
     }
 
+    /* DIAGNOSTIC (logging only): XENO_FIELD_TEXTBOX_LOG=1 logs each field
+     * text box's show/hide (visibility 0 = shown, -1 = hidden) and its
+     * waiting-for-confirm flag (window +0x10 bit 0x8) on change, with the
+     * XENO_FIELD_STEP_PAD_INPUT step clock, so dialogue slices can be
+     * scheduled and verified headlessly. */
+    {
+        static int log_boxes = -1;
+        static short prev_vis[4] = {-2, -2, -2, -2};
+        static u16 prev_wait[4] = {0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF};
+
+        if (log_boxes < 0) {
+            const char* e = getenv("XENO_FIELD_TEXTBOX_LOG");
+            log_boxes = (e && e[0] && !(e[0] == '0' && e[1] == 0)) ? 1 : 0;
+        }
+        if (log_boxes) {
+            extern int PcPort_FieldStepPadArmedStep(unsigned* step);
+            s32 i;
+            for (i = 0; i < 4; i++) {
+                u8* pWin = (u8*)&g_FieldTextBoxes[i] + 0x18;
+                short vis = g_FieldTextBoxes[i].visibility;
+                u16 wait = (u16)(*(u16*)(pWin + 0x10) & 0x8);
+                if (vis != prev_vis[i] || wait != prev_wait[i]) {
+                    unsigned step = 0;
+                    PcPort_FieldStepPadArmedStep(&step);
+                    fprintf(stderr, "[textbox] box=%d %s wait=%d step=%u\n", (int)i,
+                            vis == 0 ? "shown" : "hidden", wait ? 1 : 0, step);
+                    prev_vis[i] = vis;
+                    prev_wait[i] = wait;
+                }
+            }
+        }
+    }
+
     /* Headless field-test: synthesize Circle-released when a text box is
      * waiting on confirm (window flags bit 0x8). Real pads still work; this
      * only ORs the bit so well/dialog scripts can finish without a human. */
