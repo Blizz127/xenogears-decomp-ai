@@ -34,7 +34,7 @@ MUTS=(
  "func_8002D244|pPoly[3] = 0xC; /* POLY_GT4 tag */|pPoly[3] = 0xD; /* POLY_GT4 tag */"
  "func_8002D420|*(u16*)(pPoly + 0x30) = *(u16*)(pColor + 0xA);|*(u16*)(pPoly + 0x30) = *(u16*)(pColor + 0x8);"
  "func_8002D814|*(u16*)(pPoly + 0x1C) = *(u16*)(pColor + 0);|*(u16*)(pPoly + 0x1C) = *(u16*)(pColor + 2);"
- "func_8002DA14|*(u32*)(pPoly + 0x18) = *(u16*)(pColor + 6) | ((u32)D_80059308 << 16);|*(u32*)(pPoly + 0x18) = *(u16*)(pColor + 6) | ((u32)D_8005930C << 16);"
+ "func_8002DA14|((u32)D_80059308 << 16)|((u32)D_8005930C << 16)"
  "func_8002DB84|d2.vz = v2->vz - v0->vz;|d2.vz = v2->vz - v1->vz;"
  "func_80030228|d = (s32)((u32)(s32)pDeltas[2] * (u32)scale) >> 12;|d = (s32)((u32)(s32)pDeltas[2] * (u32)scale) >> 11;"
  "func_800302D4|VectorNormalSS(pNorm, pNorm);|VectorNormalSS(pNorm, pNorm); pNorm->vx ^= 1;"

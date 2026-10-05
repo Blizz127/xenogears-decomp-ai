@@ -154,23 +154,28 @@ static void setup_db84(uint32_t id)
 }
 static uint32_t nat_db84(void) { func_8002DB84(LOWC(O_VERT), LOWC(O_VERT + 8), LOWC(O_VERT + 16), LOWC(O_OUTN)); return 0; }
 
+static int g_norm_ranges; /* func_800302D4: keep |n|^2 sums inside retail's signed-ADD domain */
 static void setup_delta(uint32_t id)
 {
     unsigned n = rn(8);
     fill_random_low();
     rand_vertices(O_VERT2, 16, 0);
+    if (g_norm_ranges) { /* plausible unit-ish normals (<=4096 scale) so sum of squares never overflows */
+        for (unsigned i = 0; i < 16; i++) for (int k = 0; k < 3; k++) ((s16 *)lo(O_VERT2 + i * 8))[k] = (s16)rrange(-4096, 4096);
+    }
     for (unsigned i = 0; i < n; i++) {
         s16 *d = (s16 *)lo(O_DELTA + i * 8);
-        for (int k = 0; k < 4; k++) d[k] = (rnd() & 3) ? (s16)rrange(-5000, 5000) : (s16)rnd_val();
+        for (int k = 0; k < 4; k++) d[k] = g_norm_ranges ? (s16)rrange(-1500, 1500) : (rnd() & 3) ? (s16)rrange(-5000, 5000) : (s16)rnd_val();
         /* retail layout: +0 dx, +2 dy, +4 dz, +6 vertex index; every slot is
          * a valid index so a wrong slot reads different data, never out of range */
         d[3] = (s16)rn(16);
         d[1] = (s16)rrange(-1500, 1500); /* also the slot a wrong-layout body would use as index: stays inside the window */
     }
     A[0] = lo_addr(O_VERT2); A[1] = lo_addr(O_DELTA); A[2] = n;
-    A[3] = (id % 5 == 0) ? 0 : (uint32_t)((rnd() & 1) ? rnd_val() : rrange(-0x1200, 0x1200));
+    A[3] = g_norm_ranges ? (id % 5 == 0 ? 0 : (uint32_t)rrange(-0x1200, 0x1200)) : (id % 5 == 0) ? 0 : (uint32_t)((rnd() & 1) ? rnd_val() : rrange(-0x1200, 0x1200));
 }
 static uint32_t nat_3028(void) { func_80030228(lo(O_VERT2), (s16 *)lo(O_DELTA), (s32)A[2], (s32)A[3]); return 0; }
+static void setup_norm(uint32_t id) { g_norm_ranges = 1; setup_delta(id); g_norm_ranges = 0; }
 static uint32_t nat_302D(void) { func_800302D4(lo(O_VERT2), (s16 *)lo(O_DELTA), (s32)A[2], (s32)A[3]); return 0; }
 
 static void setup_patch(uint32_t id)
@@ -211,7 +216,7 @@ static const Fn fns[] = {
     { "func_8002DA14", 0x8002DA14u, 1, setup_poly, nat_DA14 },
     { "func_8002DB84", 0x8002DB84u, 0, setup_db84, nat_db84 },
     { "func_80030228", 0x80030228u, 0, setup_delta, nat_3028 },
-    { "func_800302D4", 0x800302D4u, 0, setup_delta, nat_302D },
+    { "func_800302D4", 0x800302D4u, 0, setup_norm, nat_302D },
     { "func_80030988", 0x80030988u, 0, setup_patch, nat_3098 },
     { "func_80030A30", 0x80030A30u, 0, setup_lightdir, nat_3A30 },
     { "func_80030B14", 0x80030B14u, 0, setup_lightmat, nat_3B14 },

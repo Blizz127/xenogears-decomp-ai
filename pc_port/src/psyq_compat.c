@@ -272,9 +272,13 @@ static int32_t GteClampS32(int64_t value)
  */
 void OuterProduct0(VECTOR* v0, VECTOR* v1, VECTOR* out)
 {
-    out->vx = v0->vy * v1->vz - v0->vz * v1->vy;
-    out->vy = v0->vz * v1->vx - v0->vx * v1->vz;
-    out->vz = v0->vx * v1->vy - v0->vy * v1->vx;
+    /* GTE MAC1..3 are 44-bit; the 32-bit read-back keeps the low word, so the
+     * products and differences wrap modulo 2^32 (never signed-overflow UB). */
+    uint32_t x0 = (uint32_t)v0->vx, y0 = (uint32_t)v0->vy, z0 = (uint32_t)v0->vz;
+    uint32_t x1 = (uint32_t)v1->vx, y1 = (uint32_t)v1->vy, z1 = (uint32_t)v1->vz;
+    out->vx = (int32_t)(y0 * z1 - z0 * y1);
+    out->vy = (int32_t)(z0 * x1 - x0 * z1);
+    out->vz = (int32_t)(x0 * y1 - y0 * x1);
 }
 
 void OuterProduct12(VECTOR* v0, VECTOR* v1, VECTOR* v2)
@@ -302,7 +306,7 @@ static int32_t VectorNormalWork(int32_t x, int32_t y, int32_t z, int32_t* outX, 
     int32_t sx = (int16_t)x;
     int32_t sy = (int16_t)y;
     int32_t sz = (int16_t)z;
-    uint32_t squared = (uint32_t)(sx * sx + sy * sy + sz * sz);
+    uint32_t squared = (uint32_t)sx * (uint32_t)sx + (uint32_t)sy * (uint32_t)sy + (uint32_t)sz * (uint32_t)sz; /* wraps like the 32-bit GTE read-back, no signed-overflow UB */
     int lzc;
     int lzcEven;
     int shift;
