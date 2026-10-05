@@ -217,7 +217,7 @@ static int32_t draw(uint32_t id, uint32_t a0, uint32_t a2) {
         if (!fail) return (int32_t)a2;
         switch ((r >> 8) % 3) { case 0: return -1; case 1: return 0; default: return (int32_t)a2 - 1; }
     case S_RENAME: return fail ? 0 : 1;
-    case S_FORMAT: return fail ? (((r >> 8) & 1) ? 0 : -1) : 1;
+    case S_FORMAT: return (fail || ((r >> 16) % 4 == 0)) ? (((r >> 8) & 1) ? 0 : -1) : 1;
     case S_ERASE: case S_CLOSE: return (int32_t)(r & 1);
     case S_FIRSTFILE: return fail ? 0 : 1;
     case S_NEXTFILE: return (r % 5) != 0;
@@ -853,6 +853,8 @@ static void g_93A8(Args* a) {
         *cardb_r(0x4F8A + p) = (rnd() % 4 == 0) ? 0 : (uint8_t)rnd_range(17);
         *cardb_r(0x4F8C + p) = (rnd() % 3 == 0) ? *cardb_r(0x4F8A + p) : (uint8_t)rnd();
     }
+    /* block[0x123] indexes the 32-byte match table; a larger value would byte-patch the pointer stored beside it */
+    for (unsigned k = 0; k < 32; k++) *cardb_r(0xB94 + k * 0x200 + 0x123) = (uint8_t)rnd_range(16);
     w8(MGR + 0x2F, (uint8_t)(rnd() & 1)); w8(CURS + HO_MenuPointerCursors_unk144, (uint8_t)(rnd() & 1));
     w8(CURS + HO_MenuPointerCursors_renderContexts, (uint8_t)(rnd() & 1));
     if (rnd() % 3 == 0) world.n = 0;
