@@ -259,11 +259,12 @@ void func_8008764C(void) {
     for (i = 0; i < 32; i += 4) {
         *(s32*)(pDst + i) = *(s32*)(pSrc + i);
     }
-    /* Set party flags */
-    if (srcIdx == 9) {
+    /* Set party flags.  Retail (differential-tested) tests the DESTINATION
+     * slot index (the second operand, kept in $t1), not the source. */
+    if (dstIdx == 9) {
         *(u16*)(pGS + 0x22B6) |= 0x2000;
     }
-    if (srcIdx == 10) {
+    if (dstIdx == 10) {
         *(u16*)(pGS + 0x22B6) |= 0x1000;
     }
     g_FieldScriptVMCurActor->scriptInstructionPointer += 5;
@@ -1071,7 +1072,7 @@ void func_80088C1C(void) {
     arg1 = FieldScriptVMGetArgument(3);
     {
         u16 flags = *(u16*)(pBank + 0x2A);
-        *(u16*)(pBank + 0x2A) = (u16)(flags | (arg1 << 8));
+        *(u16*)(pBank + 0x2A) = (u16)(flags | (s32)((u32)arg1 << 8));
     }
 
     arg1 = FieldScriptVMGetArgument(5);
@@ -1764,8 +1765,10 @@ void func_8008AEC8(void) {
     arg2 = FieldScriptArgument2(3, mask);
 
     {
-        s32 idx = arg2 * 3; /* stride 6 = 3 halfwords */
-        D_800B221C[idx] = (s16)arg1;
+        /* Retail (differential-tested): operand 1 is the record index, operand
+         * 2 the first halfword; the old port arm had the two swapped. */
+        s32 idx = arg1 * 3; /* stride 6 = 3 halfwords */
+        D_800B221C[idx] = (s16)arg2;
         mask = SCRIPT_READ_U8_REL(9);
         D_800B221C[idx + 1] = (s16)FieldScriptArgument3(5, mask);
         mask = SCRIPT_READ_U8_REL(9);
@@ -3918,9 +3921,25 @@ void func_8008F90C(void) {
 
     g_FieldScriptVMCurActor->scriptInstructionPointer += 9;
 
-    dx = ((arg1 << 16) - *(s32*)(pScene + 0xA0)) / steps;
-    dz = ((arg5 << 16) - *(s32*)(pScene + 0xA4)) / steps;
-    dy = ((arg3 << 16) - *(s32*)(pScene + 0xA4)) / steps;
+    /* Retail does the shift/subtract with wrapping MIPS arithmetic and a
+     * non-trapping div (INT_MIN / -1 = INT_MIN); do it on u32 so the port has
+     * no signed-overflow / shift-of-negative UB. */
+    {
+        u32 sceneA0 = *(u32*)(pScene + 0xA0);
+        u32 sceneA4 = *(u32*)(pScene + 0xA4);
+        u32 nx = ((u32)arg1 << 16) - sceneA0;
+        u32 nz = ((u32)arg5 << 16) - sceneA4;
+        u32 ny = ((u32)arg3 << 16) - sceneA4;
+        if (steps == -1) {
+            dx = (s32)(0u - nx);
+            dz = (s32)(0u - nz);
+            dy = (s32)(0u - ny);
+        } else {
+            dx = (s32)nx / steps;
+            dz = (s32)nz / steps;
+            dy = (s32)ny / steps;
+        }
+    }
 
     *(s16*)(pScene + 0x9A) = (s16)steps;
     *(s16*)(pScene + 0x98) = 1;
