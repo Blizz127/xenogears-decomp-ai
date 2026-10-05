@@ -116,6 +116,43 @@ static s16 ScaleSpriteFrameByte(u8 value, s16 scale) {
 }
 #endif
 
+#ifdef XENO_PC_PORT
+static s32 ScaleSpriteFrameByte32(s32 value, s32 scale) {
+    s32 result = (s32)((u32)value * (u32)scale);
+
+    if (result < 0) {
+        result += 0xFFF;
+    }
+
+    return result >> 12;
+}
+
+/* Retail RotMatrix (8003F738) with its exact Q12 stage rounding; the host
+ * trig-identity RotMatrix differs. Macro rcos is sine, rsin is cosine (see
+ * AnimationC1RotMatrix in animation_scripts.c). */
+static void Retail8003F738RotMatrix(const SVECTOR* angles, MATRIX* matrix) {
+    s32 sx = rcos((u16)angles->vx & 0xFFF);
+    s32 cx = rsin((u16)angles->vx & 0xFFF);
+    s32 sy = rcos((u16)angles->vy & 0xFFF);
+    s32 cy = rsin((u16)angles->vy & 0xFFF);
+    s32 sz = rcos((u16)angles->vz & 0xFFF);
+    s32 cz = rsin((u16)angles->vz & 0xFFF);
+    s32 nsy = -sy;
+    s32 t0 = (cz * nsy) >> 12;
+    s32 t0b = (sz * nsy) >> 12;
+
+    matrix->m[0][0] = (s16)((cz * cy) >> 12);
+    matrix->m[1][0] = (s16)(((sz * cx) >> 12) - ((t0 * sx) >> 12));
+    matrix->m[2][0] = (s16)(((t0 * cx) >> 12) + ((sz * sx) >> 12));
+    matrix->m[0][1] = (s16)((-(sz * cy)) >> 12);
+    matrix->m[1][1] = (s16)(((cz * cx) >> 12) + ((t0b * sx) >> 12));
+    matrix->m[2][1] = (s16)(((cz * sx) >> 12) - ((t0b * cx) >> 12));
+    matrix->m[0][2] = (s16)sy;
+    matrix->m[1][2] = (s16)((-(cy * sx)) >> 12);
+    matrix->m[2][2] = (s16)((cy * cx) >> 12);
+}
+#endif
+
 /* Retail8001D4E8: allocate and initialize eight direction records once. */
 extern void func_800234AC(void* pSpriteData);
 void func_8001D4E8(void* pSpriteData) {
@@ -749,13 +786,19 @@ void func_8001E3D8(void* pSpriteData, void* ot) {
                     if ((flags3C >> 3) & 1) {
                         dirXOffset = -dirXOffset;
                     }
-                    dirYOffset = (dirYOffset * *(s16*)(pData + 0x2C)) >> 12;
-                    dirXOffset = (dirXOffset * *(s16*)(pData + 0x2C)) >> 12;
+                    /* asm 8001E54C-8001E5C8: negative products are rounded
+                     * toward zero (+0xFFF) before the >>12. */
+                    dirYOffset = ScaleSpriteFrameByte32(dirYOffset, *(s16*)(pData + 0x2C));
+                    dirXOffset = ScaleSpriteFrameByte32(dirXOffset, *(s16*)(pData + 0x2C));
 
                     rotation.vx = *(u16*)(pDirection + 0x2);
                     rotation.vy = *(u16*)(pDirection + 0x4);
                     rotation.vz = *(u16*)(pDirection + 0x6);
-                    RotMatrix(&rotation, &matrix);
+                    /* asm 8001E5B4-8001E5D0: flip-X negates the Z angle. */
+                    if ((flags3C >> 3) & 1) {
+                        rotation.vz = (s16)-(s32)(u16)rotation.vz;
+                    }
+                    Retail8003F738RotMatrix(&rotation, &matrix);
                     matrix.t[0] = *(s32*)(pBase + 0x20) + dirXOffset;
                     matrix.t[1] = *(s32*)(pBase + 0x24) + dirYOffset;
                     matrix.t[2] = *(s32*)(pBase + 0x28);
