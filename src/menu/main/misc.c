@@ -1962,6 +1962,11 @@ void func_801C8960(void) {
 }
 
 extern s32 D_801EA900;
+/* Array view of the per-card block counters (s32[2]): indexing the scalar
+ * declaration past element 0 is UB (object-size check). */
+#ifdef XENO_PC_PORT
+extern s32 D_801EA900Pair[2] asm("D_801EA900");
+#endif
 
 s32 func_801C8A10(u8 port) {
     s32 ret = 1;
@@ -1980,7 +1985,11 @@ s32 func_801C8A10(u8 port) {
     if (result == -1) {
         (((u8*)g_Menu->unk32C) + port)[MENU_CARD_OFF(0x4F8A)] = 0;
         (((u8*)g_Menu->unk32C) + port)[MENU_CARD_OFF(0x4FE4)] = 0;
+#ifdef XENO_PC_PORT
+        D_801EA900Pair[port] = 0;
+#else
         ((s32*)&D_801EA900)[port] = 0;
+#endif
         for (i = 0; i < 16; i++) {
             (((u8*)g_Menu->unk32C) + (port * 16 + i))[MENU_CARD_OFF(0x4FAE)] = 0xFF;
             (((u8*)g_Menu->unk32C) + (port * 16 + i))[MENU_CARD_OFF(0x4F8E)] = 0;
@@ -2405,7 +2414,7 @@ s32 func_801C93A8(void) {
             strcat(path, D_801C50B8);
             erase(path);
             *(s32*)&CARD_BYTE(0x4F84) = 0;
-            (&D_801EA900)[port] = 0;
+            D_801EA900Pair[port] = 0;
             for (slot = 0; slot < CARD_BYTE(0x4F8A + port); slot++) {
                 s32 index;
 
@@ -2448,7 +2457,7 @@ s32 func_801C93A8(void) {
     func_801C9270(1);
     if (((u8*)g_Menu->pManager)[0x2F] != 0 &&
         g_Menu->pCursors->unk144[0] != 0) {
-        u32 selected = D_801E981C[g_Menu->unk32C->unk4F7C];
+        s32 selected = (s32)D_801E981C[g_Menu->unk32C->unk4F7C];
         POLY_FT4* p = &g_Menu->pCursors->polysCursor[g_Menu->pCursors->renderContexts[0]];
 
         p->x0 = D_801E9894[selected * 2] + 8;
@@ -3104,9 +3113,9 @@ void func_801CAE08(s32 mode) {
         MENU_RAW(0x44C)[0x7B8] = (u8)g_Menu->renderContext;
         ((u8*)g_Menu->pManager)[0x52] = 1;
         *(u32*)(MENU_RAW(0x44C) + 0x7B4) = 8;
-        func_80039E60(((s32)g_Menu->unk2E4->sedId << 16) | 0xE0);
-        func_80039E60(((s32)g_Menu->unk2E4->sedId << 16) | 0xE1);
-        func_80039E60(((s32)g_Menu->unk2E4->sedId << 16) | 0x8F);
+        func_80039E60((s32)(((u32)g_Menu->unk2E4->sedId << 16) | 0xE0));
+        func_80039E60((s32)(((u32)g_Menu->unk2E4->sedId << 16) | 0xE1));
+        func_80039E60((s32)(((u32)g_Menu->unk2E4->sedId << 16) | 0x8F));
         break;
     case 2:
         if (((u8*)g_Menu->pManager)[0x52] != 0) {
@@ -3284,7 +3293,7 @@ u8 func_801CB304(void) {
                 u8 entry = CB304_CARD(
                     0x4FAE + D_801E981C[g_Menu->unk32C->unk4F7C]);
 
-                strcat(path, (char*)g_Menu->unk32C + entry * 0x5C + 0x18);
+                strcat(path, (char*)g_Menu->unk32C + MENU_CARD_OFF(entry * 0x5C + 0x18));
             }
             if ((func_801CACF8(0x65, 0xFF, 1) & 0xFF) == 0) {
                 *(s32*)&CB304_CARD(0x4F80) = 0xFF;
@@ -3700,7 +3709,7 @@ s32 func_801CBD90(u8 arg0) {
         }
 
         {
-            u32 selected = D_801E981C[CS_CARD32(0x4F7C)];
+            s32 selected = (s32)D_801E981C[CS_CARD32(0x4F7C)];
             u8* entry = (u8*)g_Menu->unk32C + selected;
 
             if (entry[MENU_CARD_OFF(0x4FAE)] == 0xFF) {
@@ -3716,7 +3725,7 @@ s32 func_801CBD90(u8 arg0) {
 
                 strcpy(tmp, prefix);
                 file = CS_CARD(0x4FAE + D_801E981C[CS_CARD32(0x4F7C)]);
-                strcat(tmp, (char*)g_Menu->unk32C + file * 0x5C + 0x18);
+                strcat(tmp, (char*)g_Menu->unk32C + MENU_CARD_OFF(file * 0x5C + 0x18));
                 erase(tmp);
                 file = CS_CARD(0x4FAE + D_801E981C[CS_CARD32(0x4F7C)]);
                 saveNum = CS_CARD(0xCB7 + file * 0x200);
@@ -4077,9 +4086,9 @@ u8 func_801CC6D8(void) {
         if (!(s7 & 0xFF)) {
             goto done;
         }
-        if ((&D_801EA900)[s4] >= 0xF) {
+        if (D_801EA900Pair[s4] >= 0xF) {
             s7 = 0;
-            (&D_801EA900)[s4] = 0;
+            D_801EA900Pair[s4] = 0;
             s1 = 0;
             ((u8*)g_Menu->pManager)[0x2F] = 0;
             func_801CACF8(0xAC, 0xFF, 0);
