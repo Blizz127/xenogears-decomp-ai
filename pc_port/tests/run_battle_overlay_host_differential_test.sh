@@ -36,6 +36,10 @@ TUS=$(python3 tools/scripts/battle_overlay_host_tus.py --verify)
 # itself exercised in all three regimes rather than only at -O0.
 ABI_TUS=" $(python3 tools/scripts/battle_overlay_host_tus.py --abi-tus | tr '\n' ' ') "
 read -r -a ABI_STRICT <<<"$(python3 tools/scripts/battle_overlay_host_tus.py --abi-strict-flags)"
+python3 tools/scripts/battle_overlay_host_tus.py --check-abi-thunks || {
+    echo "BATTLE OVERLAY DIFFERENTIAL FAIL typed bridge thunks disagree with the prototypes" >&2
+    exit 1
+}
 python3 tools/scripts/battle_overlay_host_tus.py --leaf-types \
     > "$OUT/overlay_leaf_types.inc"
 # Pointer-typed overlay globals: the sweep seeds the guest word with a live RAM
@@ -195,6 +199,7 @@ build_link() {
     local main14="${5:-src/battle/main14.c}"
     local main69="${6:-src/battle/main69.c}"
     local mutant_dir="${7:-}"
+    local test_defs="${8:-}"
     local flags; flags=$(mode_flags "$mode")
     local target="$OUT/$mode$suffix"
     local err="$OUT/$mode$suffix-bridge.err"
@@ -228,7 +233,7 @@ build_link() {
             -o "$hostdir/$(basename "$tu" .c).o"
     done
     # shellcheck disable=SC2086
-    clang "${COMMON[@]}" $flags -Wall -Wextra -Werror \
+    clang "${COMMON[@]}" $flags -Wall -Wextra -Werror $test_defs \
         -DBATTLE_RUNTIME_SOURCE="\"$PWD/pc_port/src/battle_mips_runtime.c\"" -DPROVER_REAL_GTE \
         -c pc_port/tests/battle_overlay_host_differential_test.c \
         -o "$OUT/$mode.test.o"
@@ -361,4 +366,19 @@ for group in a b; do
         grep -m1 "^BATTLE OVERLAY DIFFERENTIAL FAIL $leaf " "$OUT/mutant-$group.log" >&2
     done
 done
-echo "BATTLE OVERLAY DIFFERENTIAL PASS (O0/O2/UBSan + wrong-result, store-path and 10 guest-ABI mutant controls rejected)"
+# Negative control 13 (typed bridge thunks): the pre-thunk bridge, which turns
+# every address-shaped word into a host pointer, must fail the 800A5914
+# tries<=0 pass-through case through the bridge.
+build_link O2 "$OUT/host-legacy-bridge" src/battle/main12.c "-legacy-bridge" \
+    src/battle/main14.c src/battle/main69.c "" "-DBATTLE_BRIDGE_LEGACY_ARGS"
+status=0
+"$OUT/O2-legacy-bridge" >"$OUT/legacy-bridge.log" 2>&1 || status=$?
+if [ "$status" -eq 0 ] || ! grep -q '^BATTLE OVERLAY DIFFERENTIAL FAIL func_800A5914 bridge-domain ' "$OUT/legacy-bridge.log"; then
+    cat "$OUT/legacy-bridge.log" >&2
+    echo "BATTLE OVERLAY DIFFERENTIAL CONTROL FAILURE legacy bridge passed the 800A5914 pass-through case" >&2
+    exit 1
+fi
+grep -m1 'bridge-domain func_800A5914' "$OUT/legacy-bridge.log" >&2
+grep -m1 '^BATTLE OVERLAY DIFFERENTIAL FAIL func_800A5914 return ' "$OUT/legacy-bridge.log" >&2 || true
+grep -m1 '^BATTLE OVERLAY DIFFERENTIAL FAIL func_800A5914 bridge-domain ' "$OUT/legacy-bridge.log" >&2
+echo "BATTLE OVERLAY DIFFERENTIAL PASS (O0/O2/UBSan + wrong-result, store-path, 10 guest-ABI mutant and legacy-bridge controls rejected)"

@@ -212,6 +212,121 @@ def abi_tus() -> list[str]:
     ]
 
 
+THUNKS = ROOT / "pc_port" / "src" / "battle_guest_abi_thunks.inc"
+THUNK_RE = re.compile(
+    r"^BG_THUNK\(\s*0x([0-9A-Fa-f]+)u\s*,\s*\"(func_\w+)\"\s*,\s*BG_THUNK_RET_(\w+)\s*,"
+    r"\s*(\d+)\s*((?:,\s*BG_THUNK_ARG_\w+\s*)*)\)",
+    re.M,
+)
+GUEST_ABI_MACRO_RE = re.compile(r"\b(GPTR|GADDR|GSLOT|GLOAD|GGET|GSTORE)\s*\(")
+NARROW_KINDS = {"u8": "U8", "s8": "S8", "char": "S8", "u16": "U16",
+                "s16": "S16", "short": "S16"}
+
+
+def port_prototypes() -> dict[str, tuple[str, str, str]]:
+    """name -> (return type incl. stars, parameter text, body) of the
+    port-visible definition (retail-only spans skipped)."""
+    out: dict[str, tuple[str, str, str]] = {}
+    for path in sorted(BATTLE_SRC.glob("*.c")):
+        text = path.read_text(errors="ignore")
+        retail_only = retail_only_spans(text)
+        for m in DEFINITION_RE.finditer(text):
+            if not is_definition(text, m.end() - 1) or in_spans(m.start(), retail_only):
+                continue
+            depth = 0
+            close = m.end() - 1
+            for i in range(m.end() - 1, len(text)):
+                if text[i] == "(":
+                    depth += 1
+                elif text[i] == ")":
+                    depth -= 1
+                    if depth == 0:
+                        close = i
+                        break
+            params = text[m.end():close]
+            depth = 0
+            start = text.index("{", close)
+            end = start
+            for i in range(start, len(text)):
+                if text[i] == "{":
+                    depth += 1
+                elif text[i] == "}":
+                    depth -= 1
+                    if depth == 0:
+                        end = i
+                        break
+            body = re.sub(r"/\*.*?\*/", "", text[start:end], flags=re.S)
+            out[m.group(3)] = (m.group(1) + m.group(2), params, body)
+    return out
+
+
+def check_abi_thunks(wanted: list[str]) -> int:
+    """Typed bridge thunks (pc_port/src/battle_guest_abi_thunks.inc) agree with
+    the C prototypes, and every adopted leaf whose body uses a guest-ABI macro
+    has one.  Returns the number of violations."""
+    protos = port_prototypes()
+    text = re.sub(r"/\*.*?\*/", "", THUNKS.read_text(), flags=re.S)
+    declared: dict[str, tuple[int, str, list[str]]] = {}
+    bad = 0
+    for m in THUNK_RE.finditer(text):
+        kinds = re.findall(r"BG_THUNK_ARG_(\w+)", m.group(5))
+        declared[m.group(2)] = (int(m.group(1), 16), m.group(3), kinds)
+        if int(m.group(4)) != len(kinds):
+            print(f"THUNK {m.group(2)}: argc {m.group(4)} != {len(kinds)} kinds")
+            bad += 1
+    if len(declared) != text.count("BG_THUNK("):
+        print("THUNK: an entry does not parse")
+        bad += 1
+    for name, (addr, ret, kinds) in declared.items():
+        if name not in wanted:
+            print(f"THUNK {name}: not an adopted leaf")
+            bad += 1
+            continue
+        if addr != int(name[5:], 16):
+            print(f"THUNK {name}: address 0x{addr:08X} does not match the name")
+            bad += 1
+        if name not in protos:
+            print(f"THUNK {name}: no port-visible definition")
+            bad += 1
+            continue
+        rtype, params, _ = protos[name]
+        if "*" in rtype:
+            want_ret = {"HOST"}
+        elif rtype == "void":
+            want_ret = {"VOID"}
+        elif rtype in NARROW_KINDS:
+            want_ret = {NARROW_KINDS[rtype]}
+        else:
+            want_ret = {"W32", "GUEST"}
+        if ret not in want_ret:
+            print(f"THUNK {name}: return {ret}, prototype '{rtype}' wants {sorted(want_ret)}")
+            bad += 1
+        plist = [p.strip() for p in params.split(",")] if params.strip() not in ("", "void") else []
+        if len(plist) != len(kinds):
+            print(f"THUNK {name}: {len(kinds)} kinds, prototype has {len(plist)} parameters")
+            bad += 1
+            continue
+        for index, (param, kind) in enumerate(zip(plist, kinds)):
+            base = param.replace("const ", "").split()[0] if param.split() else ""
+            if "*" in param or "GSLOT(" in param:
+                want = {"HOST"}
+            elif base in NARROW_KINDS:
+                want = {NARROW_KINDS[base]}
+            else:
+                want = {"W32", "GUEST"}
+            if kind not in want:
+                print(f"THUNK {name}: parameter {index} '{param}' declared {kind}, wants {sorted(want)}")
+                bad += 1
+    for name in wanted:
+        if name in protos and name not in declared and (
+            GUEST_ABI_MACRO_RE.search(protos[name][2])
+            or "GSLOT(" in protos[name][1]
+        ):
+            print(f"THUNK {name}: guest-ABI leaf has no typed thunk")
+            bad += 1
+    return bad
+
+
 def owners(name: str, found: dict[str, list[tuple[str, bool]]]) -> list[str]:
     entries = found.get(name, [])
     matching = [tu for tu, port_only in entries if not port_only]
@@ -348,6 +463,13 @@ def main() -> int:
 
     if "--abi-tus" in sys.argv:
         print("\n".join(abi_tus()))
+        return 0
+    if "--check-abi-thunks" in sys.argv:
+        bad = check_abi_thunks(wanted)
+        if bad:
+            print(f"ERROR: {bad} typed bridge thunk violation(s)", file=sys.stderr)
+            return 1
+        print(f"# typed bridge thunks agree with the C prototypes", file=sys.stderr)
         return 0
     if "--abi-strict-flags" in sys.argv:
         print(ABI_STRICT_FLAGS)

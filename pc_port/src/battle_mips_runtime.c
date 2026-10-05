@@ -496,6 +496,137 @@ static uintptr_t translate_argument(BattleMipsRuntime *runtime,
     return p != NULL ? (uintptr_t)p : (uintptr_t)value;
 }
 
+/* Typed bridge thunks for the battle guest-ABI leaves
+ * (pc_port/src/battle_guest_abi_thunks.inc has the contract).  The legacy
+ * generic bridge cannot tell an integer from a pointer, so it turns every
+ * KSEG0/KSEG1/scratchpad-shaped word into a host pointer (translate_argument).
+ * A guest-ABI body takes guest addresses as u32 integers and may hand one back
+ * unchanged (func_800A5914 returns its fourth argument when tries <= 0): a
+ * translated argument then comes back in the HOST domain and retail stores a
+ * host address into guest RAM.  An entry here passes each argument exactly as
+ * its declared kind, with no heuristic. */
+enum {
+    BG_THUNK_ARG_W32 = 1,
+    BG_THUNK_ARG_GUEST,
+    BG_THUNK_ARG_U8,
+    BG_THUNK_ARG_S8,
+    BG_THUNK_ARG_U16,
+    BG_THUNK_ARG_S16,
+    BG_THUNK_ARG_HOST
+};
+enum {
+    BG_THUNK_RET_VOID = 1,
+    BG_THUNK_RET_W32,
+    BG_THUNK_RET_GUEST,
+    BG_THUNK_RET_U8,
+    BG_THUNK_RET_S8,
+    BG_THUNK_RET_U16,
+    BG_THUNK_RET_S16,
+    BG_THUNK_RET_HOST
+};
+#define BG_THUNK_MAX_ARGS 8u
+
+typedef struct BattleGuestThunk {
+    uint32_t address;
+    const char *name;
+    uint8_t ret;
+    uint8_t argc;
+    uint8_t args[BG_THUNK_MAX_ARGS];
+} BattleGuestThunk;
+
+typedef uintptr_t (*BattleGuestThunkFunction)(
+    uintptr_t, uintptr_t, uintptr_t, uintptr_t,
+    uintptr_t, uintptr_t, uintptr_t, uintptr_t);
+
+#define BG_THUNK(addr, fname, rkind, nargs, ...) \
+    { (addr), (fname), (rkind), (nargs), { __VA_ARGS__ } },
+__attribute__((unused)) static const BattleGuestThunk kBattleGuestThunks[] = {
+#include "battle_guest_abi_thunks.inc"
+};
+#undef BG_THUNK
+#define BATTLE_GUEST_THUNK_COUNT \
+    (sizeof(kBattleGuestThunks) / sizeof(kBattleGuestThunks[0]))
+
+__attribute__((unused)) static const BattleGuestThunk *battle_guest_thunk(uint32_t target)
+{
+    size_t i;
+    for (i = 0; i < BATTLE_GUEST_THUNK_COUNT; i++) {
+        if (kBattleGuestThunks[i].address == target)
+            return &kBattleGuestThunks[i];
+    }
+    return NULL;
+}
+
+/* Calls `host` (the leaf's native body) with `words` (the o32 argument words,
+ * a0..a3 then the stack slots) converted per the thunk's declared kinds, and
+ * stores the declared return into *v0 (untouched for void).  -1 when a
+ * declared pointer has no backing or a pointer return cannot be put back in
+ * the guest domain; nothing is called in the first case. */
+__attribute__((unused)) static int battle_guest_thunk_invoke(BattleMipsRuntime *runtime,
+                                     const BattleGuestThunk *thunk, void *host,
+                                     const uint32_t *words, uint32_t *v0)
+{
+    uintptr_t args[BG_THUNK_MAX_ARGS] = {0};
+    uintptr_t result;
+    unsigned i;
+
+    for (i = 0; i < thunk->argc; i++) {
+        uint32_t w = words[i];
+        switch (thunk->args[i]) {
+        case BG_THUNK_ARG_W32:
+        case BG_THUNK_ARG_GUEST: args[i] = (uintptr_t)w; break;
+        case BG_THUNK_ARG_U8:    args[i] = (uintptr_t)(uint8_t)w; break;
+        case BG_THUNK_ARG_S8:    args[i] = (uintptr_t)(uint32_t)(int32_t)(int8_t)w; break;
+        case BG_THUNK_ARG_U16:   args[i] = (uintptr_t)(uint16_t)w; break;
+        case BG_THUNK_ARG_S16:   args[i] = (uintptr_t)(uint32_t)(int32_t)(int16_t)w; break;
+        case BG_THUNK_ARG_HOST:
+            if ((w & 0xff800000u) == 0x80000000u ||
+                (w & 0xff800000u) == 0xa0000000u ||
+                (w & 0xfffff000u) == 0x1f800000u) {
+                uint8_t *p = resolve_memory(runtime, w, 1, 0);
+                if (p == NULL)
+                    return -1;
+                args[i] = (uintptr_t)p;
+            } else {
+                /* NULL, or a raw host address a native main-exe service
+                 * handed the overlay (-no-pie; bg_ptr's rule). */
+                args[i] = (uintptr_t)w;
+            }
+            break;
+        default:
+            return -1;
+        }
+    }
+    result = ((BattleGuestThunkFunction)host)(args[0], args[1], args[2], args[3],
+                                               args[4], args[5], args[6], args[7]);
+    switch (thunk->ret) {
+    case BG_THUNK_RET_VOID: break;
+    case BG_THUNK_RET_W32:
+    case BG_THUNK_RET_GUEST: *v0 = (uint32_t)result; break;
+    case BG_THUNK_RET_U8:   *v0 = (uint8_t)result; break;
+    case BG_THUNK_RET_S8:   *v0 = (uint32_t)(int32_t)(int8_t)result; break;
+    case BG_THUNK_RET_U16:  *v0 = (uint16_t)result; break;
+    case BG_THUNK_RET_S16:  *v0 = (uint32_t)(int32_t)(int16_t)result; break;
+    case BG_THUNK_RET_HOST: {
+        const void *pointer = (const void *)result;
+        uintptr_t ram = (uintptr_t)g_PsxRam;
+        uintptr_t pad = (uintptr_t)g_PsxScratchpad;
+        if (pointer == NULL)
+            *v0 = 0;
+        else if (result >= ram && result < ram + PSX_RAM_SIZE)
+            *v0 = PsxMemory_GuestAddr(pointer);
+        else if (result >= pad && result < pad + 0x1000u)
+            *v0 = 0x1f800000u | (uint32_t)(result - pad);
+        else
+            return -1;
+        break;
+    }
+    default:
+        return -1;
+    }
+    return 0;
+}
+
 static int is_callback_argument(const char *name, unsigned index)
 {
     if (index == 0 && strcmp(name, "func_8001D164") == 0)
@@ -1031,6 +1162,41 @@ static int runtime_bridge_call(void *opaque, PcPortMipsCpu *cpu, uint32_t target
                 target, cpu->gpr[31] - 8u);
         return -1;
     }
+
+#ifndef BATTLE_BRIDGE_LEGACY_ARGS
+    /* Guest-ABI leaves: typed thunk, never the translate_argument heuristic.
+     * (BATTLE_BRIDGE_LEGACY_ARGS rebuilds the pre-thunk bridge; only the
+     * overlay differential's old-bridge control defines it.) */
+    if (target_is_guest_code(target)) {
+        const BattleGuestThunk *thunk = battle_guest_thunk(target);
+        if (thunk != NULL) {
+            uint32_t words[BG_THUNK_MAX_ARGS] = {0};
+            for (i = 0; i < thunk->argc; i++) {
+                if (i < 4)
+                    words[i] = cpu->gpr[4 + i];
+                else if (runtime_read(runtime, cpu->gpr[29] + 0x10u + (i - 4u) * 4u,
+                                      4, &words[i]) != 0)
+                    return -1;
+            }
+            if (runtime->trace_calls)
+                fprintf(stderr,
+                        "[xeno-port][battle-mips] typed call %s target=0x%08x "
+                        "a0=%08x a1=%08x a2=%08x a3=%08x\n",
+                        resolved->name, target, cpu->gpr[4], cpu->gpr[5],
+                        cpu->gpr[6], cpu->gpr[7]);
+            cpu_meter_note_kind(CPU_METER_KIND_GENERIC);
+            if (battle_guest_thunk_invoke(runtime, thunk, resolved->host, words,
+                                          &cpu->gpr[2]) != 0) {
+                fprintf(stderr,
+                        "[xeno-port][battle-mips] typed thunk %s refused its "
+                        "arguments at 0x%08x\n", thunk->name, target);
+                return -1;
+            }
+            cpu->gpr[3] = 0;
+            return 1;
+        }
+    }
+#endif
 
     if (resolved->address == 0x800a3490u || resolved->address == 0x800a3514u ||
         resolved->address == 0x800a3578u || resolved->address == 0x800a35c8u) {

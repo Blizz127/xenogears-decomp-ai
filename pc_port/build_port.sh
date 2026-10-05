@@ -1283,6 +1283,14 @@ BATTLE_HOST_TUS="$(python3 tools/scripts/battle_overlay_host_tus.py --verify)" |
     echo "ERROR: could not derive the battle host TU list from the allowlist."
     exit 1
 }
+# Typed bridge thunks (pc_port/src/battle_guest_abi_thunks.inc): every
+# guest-ABI leaf must declare its argument/return kinds, and each declaration
+# must agree with the C prototype, or the bridge would hand it legacy
+# heuristically translated arguments.
+python3 tools/scripts/battle_overlay_host_tus.py --check-abi-thunks || {
+    echo "ERROR: typed bridge thunks disagree with the battle guest-ABI leaves."
+    exit 1
+}
 BATTLE_HOST_OBJS=()
 # TUs on the battle guest ABI (include/battle_guest_abi.h) drop the blanket
 # `-w -fpermissive` and compile with strict int/pointer errors instead.

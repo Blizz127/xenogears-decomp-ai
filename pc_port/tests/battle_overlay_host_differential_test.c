@@ -754,6 +754,37 @@ static void hand_cases_mesh(void)
             compare_name("func_800A5914", args);
         }
         require_outcomes("func_800A5914", seen, 3u);
+
+        /* Bridge domain (typed thunks): with tries <= 0 the body returns its
+         * fourth argument unchanged.  Hand it address-shaped words (KSEG0,
+         * KSEG1, scratchpad) through the BRIDGE: retail returns the guest
+         * word, so v0 must be that word, not a translated host pointer.  The
+         * legacy heuristic bridge (BATTLE_BRIDGE_LEGACY_ARGS) fails here. */
+        {
+            static const uint32_t kShaped[] = {
+                0x80123450u, 0xA0123450u, 0x1F800010u, MESH_PT
+            };
+            unsigned k, bridge_proven = 0, bridge_cases = 0;
+            for (k = 0; k < sizeof(kShaped) / sizeof(kShaped[0]); k++) {
+                for (tries = -1; tries <= 0; tries++) {
+                    begin_case(0, 0);
+                    mesh_fixture(0, 11);
+                    mesh_point(10, 0, 10);
+                    args[0] = MESH_PT; args[1] = 2;
+                    args[2] = (uint32_t)tries; args[3] = kShaped[k];
+                    bridge_cases++;
+                    compare_name("func_800A5914", args);
+                    if (last_case_proven && last_retail_v0 == kShaped[k])
+                        bridge_proven++;
+                }
+            }
+            printf("BATTLE OVERLAY DIFFERENTIAL bridge-domain func_800A5914 "
+                   "tries<=0 address-shaped a3: proven=%u/%u\n",
+                   bridge_proven, bridge_cases);
+            if (bridge_proven != bridge_cases)
+                fail("func_800A5914", "bridge-domain",
+                     "address-shaped pass-through argument not returned in the guest domain");
+        }
     }
 }
 
