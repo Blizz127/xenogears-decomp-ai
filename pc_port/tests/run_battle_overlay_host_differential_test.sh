@@ -348,6 +348,13 @@ if [ "$status" -eq 0 ] || ! grep -q '^BATTLE OVERLAY DIFFERENTIAL FAIL func_800A
     exit 1
 fi
 grep -m1 '^BATTLE OVERLAY DIFFERENTIAL FAIL func_800A5A48 ' "$OUT/mutant-abi.log" >&2
+# The indirect (bg_jalr) case must see the mutant too: that is what shows the
+# guest-address -> native map runs the native body rather than the interpreter.
+if ! grep -q '^BATTLE OVERLAY DIFFERENTIAL FAIL func_800A5A48 indirect ' "$OUT/mutant-abi.log"; then
+    echo "BATTLE OVERLAY DIFFERENTIAL CONTROL FAILURE indirect call did not reach the mutated native body" >&2
+    exit 1
+fi
+grep -m1 'indirect-native' "$OUT/mutant-abi.log" >&2
 # Negative controls 4-12: one mutant per further guest-ABI leaf.
 for group in a b; do
     case "$group" in
@@ -381,4 +388,4 @@ fi
 grep -m1 'bridge-domain func_800A5914' "$OUT/legacy-bridge.log" >&2
 grep -m1 '^BATTLE OVERLAY DIFFERENTIAL FAIL func_800A5914 return ' "$OUT/legacy-bridge.log" >&2 || true
 grep -m1 '^BATTLE OVERLAY DIFFERENTIAL FAIL func_800A5914 bridge-domain ' "$OUT/legacy-bridge.log" >&2
-echo "BATTLE OVERLAY DIFFERENTIAL PASS (O0/O2/UBSan + wrong-result, store-path, 10 guest-ABI mutant and legacy-bridge controls rejected)"
+echo "BATTLE OVERLAY DIFFERENTIAL PASS (O0/O2/UBSan + wrong-result, store-path, 10 guest-ABI mutant, indirect-native and legacy-bridge controls rejected)"

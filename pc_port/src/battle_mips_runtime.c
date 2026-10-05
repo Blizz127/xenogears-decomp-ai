@@ -1429,6 +1429,36 @@ void *PcPort_BattleGuestWordToHost(uint32_t value)
     return (void *)translate_argument(runtime, value);
 }
 
+/* Guest-address -> native map for indirect calls from native code (bg_jalr,
+ * and any later GCALL): a target that is an adopted guest-ABI leaf with a
+ * typed thunk runs its native body instead of the interpreter.  Exactly the
+ * leaves the bridge would adopt for a JAL: allowlisted, a linked host body
+ * (battle_<name> first, as the bridge looks it up), never a generated stub.
+ * dlsym results are process-wide, so the cache is too. */
+__attribute__((unused)) static void *g_GuestNativeHost[BATTLE_GUEST_THUNK_COUNT];
+__attribute__((unused)) static uint8_t g_GuestNativeState[BATTLE_GUEST_THUNK_COUNT]; /* 0 ?, 1 yes, 2 no */
+/* Indirect calls served natively; the differential reads it. */
+__attribute__((unused)) static unsigned long g_GuestNativeIndirectCalls;
+
+__attribute__((unused)) static void *battle_guest_native_host(const BattleGuestThunk *thunk)
+{
+    size_t index = (size_t)(thunk - kBattleGuestThunks);
+    if (g_GuestNativeState[index] == 0) {
+        char battle_name[40];
+        void *host;
+        snprintf(battle_name, sizeof(battle_name), "battle_%s", thunk->name);
+        host = dlsym(RTLD_DEFAULT, battle_name);
+        if (host == NULL)
+            host = dlsym(RTLD_DEFAULT, thunk->name);
+        if (host != NULL && (!overlay_leaf_host_ok(thunk->name) ||
+                             xeno_port_is_generated_stub(thunk->name)))
+            host = NULL;
+        g_GuestNativeHost[index] = host;
+        g_GuestNativeState[index] = host != NULL ? 1 : 2;
+    }
+    return g_GuestNativeState[index] == 1 ? g_GuestNativeHost[index] : NULL;
+}
+
 int PcPort_BattleMipsCallGuest(uint32_t target, const uint32_t *args,
                               unsigned argc, uint32_t *result)
 {
@@ -1448,6 +1478,30 @@ int PcPort_BattleMipsCallGuest(uint32_t target, const uint32_t *args,
     if (!target_is_guest_code(target) || (target & 3u) != 0 ||
         target >= 0x80200000u)
         return -1;
+#ifndef BATTLE_BRIDGE_LEGACY_ARGS
+    /* Native map: an adopted guest-ABI leaf stays native.  force_interpret
+     * (verification only) keeps the interpreter, as the bridge does.  The
+     * caller must supply every declared argument word; otherwise the retail
+     * callee would read registers the native caller never set, so it is left
+     * to the interpreter. */
+    if (!runtime->force_interpret) {
+        const BattleGuestThunk *thunk = battle_guest_thunk(target);
+        void *host = thunk != NULL ? battle_guest_native_host(thunk) : NULL;
+        if (host != NULL && argc >= thunk->argc) {
+            uint32_t v0 = 0;
+            cpu_meter_note_kind(CPU_METER_KIND_GENERIC);
+            if (battle_guest_thunk_invoke(runtime, thunk, host, args, &v0) != 0) {
+                fprintf(stderr, "[xeno-port][battle-mips] typed thunk %s refused "
+                        "its arguments (indirect call)\n", thunk->name);
+                return -1;
+            }
+            g_GuestNativeIndirectCalls++;
+            if (result != NULL)
+                *result = v0;
+            return 0;
+        }
+    }
+#endif
     caller = runtime->bridge_cpu;
     sp = caller->gpr[29];
     /* Retail file-1 801E6CE8 starts with ADDIU SP,SP,-0x50. Its native

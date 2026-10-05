@@ -35,6 +35,8 @@
 #define BATTLE_RUNTIME_SOURCE "../src/battle_mips_runtime.c"
 #endif
 #include BATTLE_RUNTIME_SOURCE
+/* bg_jalr, the native indirect-call entry the guest-ABI bodies use. */
+#include "battle_host_guest.h"
 
 /* Guest RAM plus a guard tail. PSX_ADDR masks a guest address into 2 MiB, so a
  * pointer loaded out of seeded random data can land in the last bytes of the
@@ -788,6 +790,102 @@ static void hand_cases_mesh(void)
     }
 }
 
+/* Indirect calls from native code (bg_jalr -> PcPort_BattleMipsCallGuest):
+ * an adopted guest-ABI leaf must run natively through the guest-address ->
+ * native map (g_GuestNativeIndirectCalls counts it) and give retail's v0 and
+ * RAM; with force_interpret the same call must still go to the interpreter. */
+static void hand_cases_indirect(void)
+{
+#ifndef BATTLE_BRIDGE_LEGACY_ARGS
+    uint32_t args[4];
+    unsigned tri, cases = 0, native = 0, match = 0, interp = 0, seen = 0;
+    int x;
+
+    if (!abi_leaf_listed("func_800A5A48") || !abi_leaf_listed("func_800A5914"))
+        return;
+    for (x = -300; x <= 300; x += 300) {
+        for (tri = 0; tri < 18; tri += 1) {
+            uint32_t iv0, hv0 = 0xDEADBEEFu, cv0 = 0xDEADBEEFu;
+            unsigned long n0;
+            int irc, ok;
+            const int16_t *h;
+            uint32_t a;
+
+            begin_case(0, 0);
+            mesh_fixture(tri & 1, 13);
+            mesh_point(x + 7, 0, 33 - x / 2);
+            h = (const int16_t *)PSX_ADDR(MESH_TRI + 14u * tri);
+            args[0] = MESH_VERT + 8u * (uint16_t)h[0];
+            args[1] = MESH_VERT + 8u * (uint16_t)h[1];
+            args[2] = MESH_VERT + 8u * (uint16_t)h[2];
+            args[3] = MESH_PT;
+            memcpy(before, g_PsxRam, sizeof(before));
+            irc = run_interpreted(0x800A5A48u, args);
+            rt.force_interpret = 0;
+            if (irc != PC_PORT_MIPS_HALTED) {
+                fail("func_800A5A48", "indirect", "retail did not halt");
+                continue;
+            }
+            iv0 = cpu.gpr[2];
+            memcpy(expected, g_PsxRam, sizeof(expected));
+            memcpy(g_PsxRam, before, sizeof(g_PsxRam));
+            memset(&cpu, 0, sizeof(cpu));
+            initialize_cpu(&cpu, &rt);
+            rt.bridge_cpu = &cpu;
+            n0 = g_GuestNativeIndirectCalls;
+            hv0 = bg_jalr(0x800A5A48u, args[0], args[1], args[2], args[3]);
+            cases++;
+            if (g_GuestNativeIndirectCalls == n0 + 1)
+                native++;
+            ok = hv0 == iv0;
+            for (a = 0; ok && a < PSX_RAM_SIZE; a++) {
+                if (a >= STACK_SKIP_LO && a < STACK_SKIP_HI)
+                    continue;
+                ok = expected[a] == g_PsxRam[a];
+            }
+            if (ok) {
+                match++;
+                seen |= iv0 == 0xFFFFFFFFu ? 1u : 2u;
+            }
+            /* Control: the same indirect call, interpreter forced. */
+            memcpy(g_PsxRam, before, sizeof(g_PsxRam));
+            n0 = g_GuestNativeIndirectCalls;
+            rt.force_interpret = 1;
+            cv0 = bg_jalr(0x800A5A48u, args[0], args[1], args[2], args[3]);
+            rt.force_interpret = 0;
+            if (g_GuestNativeIndirectCalls == n0 && cv0 == iv0)
+                interp++;
+        }
+    }
+    /* Typed kinds on the indirect path too: 800A5914 tries=0 hands back an
+     * address-shaped fourth word unchanged, in the guest domain. */
+    {
+        uint32_t w[4];
+        uint32_t v0 = 0;
+        unsigned long n0 = g_GuestNativeIndirectCalls;
+        begin_case(0, 0);
+        mesh_fixture(0, 14);
+        mesh_point(10, 0, 10);
+        memset(&cpu, 0, sizeof(cpu));
+        initialize_cpu(&cpu, &rt);
+        rt.bridge_cpu = &cpu;
+        w[0] = MESH_PT; w[1] = 2; w[2] = 0; w[3] = 0x80123450u;
+        cases++;
+        if (PcPort_BattleMipsCallGuest(0x800A5914u, w, 4, &v0) == 0 &&
+            g_GuestNativeIndirectCalls == n0 + 1)
+            native++;
+        if (v0 == 0x80123450u)
+            match++;
+    }
+    printf("BATTLE OVERLAY DIFFERENTIAL indirect-native bg_jalr/CallGuest: "
+           "cases=%u native=%u retail-match=%u forced-interpreter-control=%u/%u "
+           "outcomes=%u\n", cases, native, match, interp, cases - 1u, seen);
+    if (native != cases || match != cases || interp != cases - 1u || seen != 3u)
+        fail("func_800A5A48", "indirect",
+             "indirect call not served natively with retail's result");
+#endif
+}
+
 /* 800A5BE8 takes a fifth argument (VECTOR *normal) from the guest stack
  * frame, o32 slot sp+0x10.  Both sides start at BATTLE_STACK_TOP and the
  * bridge reads that slot, so it is written before each side. */
@@ -945,6 +1043,7 @@ static void hand_cases(void)
 
     hand_cases_8008ABB8();
     hand_cases_mesh();
+    hand_cases_indirect();
     hand_cases_abi_slots();
     hand_cases_mesh_height();
 

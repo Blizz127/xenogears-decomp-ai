@@ -60,8 +60,11 @@ static inline u32 bg_addr(const void* pointer) {
 
 /* JALR through a retail function pointer, dispatched the way the
  * interpreter's bridge would (pc_port/src/battle_mips_runtime.c):
- *  - overlay code runs in the interpreter with the raw guest argument words
- *    (PcPort_BattleMipsCallGuest);
+ *  - overlay code goes to PcPort_BattleMipsCallGuest with the raw guest
+ *    argument words: an adopted guest-ABI leaf with a typed thunk
+ *    (pc_port/src/battle_guest_abi_thunks.inc) runs its native body through
+ *    the runtime's guest-address -> native map, anything else runs in the
+ *    interpreter;
  *  - a KSEG0 main-executable address goes through the runtime's callback
  *    dispatcher (one argument, as the work-list adapter uses it);
  *  - anything else is a native function address that a native allocator put
