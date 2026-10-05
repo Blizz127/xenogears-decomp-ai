@@ -124,10 +124,8 @@ done
 MUT_GAME_OVERRIDES=(
     "ModelPrimTriSharedSpine:out \+ 0x08\) = xy0:out + 0x0A) = xy0"
     "ModelPrimTriMaxSZSharedSpine:D_80050100 \+ 2:D_80050100 + 3"
-    "ModelPrimQuadF4Variant0:out \+ 0x14\) = \(u32\)xy3:out + 0x16) = (u32)xy3"
-    "ModelPrimQuadFT4Variant0:out \+ 0x18\) = \(u32\)xy2:out + 0x1A) = (u32)xy2"
-    "ModelPrimQuadG4Variant0:0x08000000:0x09000000"
-    "ModelPrimQuadF4MaxSZVariant2:if \(sz0 == 0 \|\|:if (0 && sz0 == 0 ||"
+    "ModelPrimQuadSharedSpine:out \+ 0x08\) = xy0:out + 0x0A) = xy0"
+    "ModelPrimQuadSZSelectSpine:D_80050100 \+ 2:D_80050100 + 3"
                 "ModelPrimTriDepthCueVariant4:out\[0x7\] << 24:out[0x6] << 24"
     "ModelPrimTriDepthCueMaxSZVariant5:out\[0x7\] << 24:out[0x6] << 24"
     "ModelPrimQuadFT4DepthCueVariant4:out \+ 0x10\) = \(u32\)xy1:out + 0x12) = (u32)xy1"
