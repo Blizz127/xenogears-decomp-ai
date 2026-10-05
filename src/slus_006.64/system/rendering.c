@@ -1180,7 +1180,36 @@ static s32 ScaleFrameExtent(s32 value, s16 scale) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001F5BC);
+void func_8001F5BC(void *pSpriteData, s32 arg1, s32 *outZ, s32 *outX, s32 *volatile outY) {
+    u8 *pData = pSpriteData;
+    u8 *pVram;
+    u8 *pAnims;
+    u8 *pAnim;
+    u8 *pDir;
+    s32 fi;
+    u8 *pFrames;
+    u8 *pFrame;
+    s32 ty;
+
+    pVram = *(u8 **)(pData + 0x24);
+    pAnims = *(u8 **)(pVram + 0x10);
+    pAnim = (u8 *)((s32)*(u16 *)(pAnims + 2) + (s32)pAnims);
+    pDir = (u8 *)((s32)*(u16 *)(pAnim + 4) + (s32)pAnim);
+    fi = *(u8 *)(pDir + 4);
+    pFrames = *(u8 **)pVram;
+    if (fi != 0) {
+        fi -= 1;
+    }
+    if (*(u16 *)(pFrames + fi * 2) < fi) {
+        fi = 0;
+    }
+    pFrame = (u8 *)((s32)*(u16 *)(pFrames + fi * 2 + 2) + (s32)pFrames);
+    *outX = (*(u8 *)(pFrame + 3) * *(s16 *)(pData + 0x2C)) / 0x1000;
+    ty = *(u8 *)(pFrame + 1);
+    ty = (ty * *(s16 *)(pData + 0x2C)) / 0x1000;
+    *outY = ty;
+    *outZ = (*(u8 *)(pFrame + 2) * *(s16 *)(pData + 0x2C)) / 0x1000;
+}
 #else
 void func_8001F5BC(void* pSpriteData, s32 arg1, s32* outZ, s32* outX, s32* outY) {
     u8* pData = pSpriteData;
