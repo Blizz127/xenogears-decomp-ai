@@ -289,7 +289,8 @@ static void do_hfree(uint32_t p, uint32_t np) { /* LIFO release keeps the long-r
 }
 
 /* native spy implementations (names as the TU declares them) */
-void func_801C7BF4(void) { spy(S_C7BF4, 0, 0, 0, 0, 0, 0, 0); world_step(); }
+/* every menu frame records the card state byte (+0x4FE6) and the menu-sound flag (unk32A) */
+void func_801C7BF4(void) { spy(S_C7BF4, *cardb_n(0x4FE6), SM[HO_SystemMenu_unk32A], 0, 0, 0, 0, 0); world_step(); }
 unsigned short GetClut(int x, int y) { return (unsigned short)spy_ret(S_CLUT, (uint32_t)x, (uint32_t)y, 0, 0, 0, 0, 0); }
 void func_80033B34(void* in, void* o, int n) {
     spy(S_DEC, dig(in, (unsigned)n * 2), (uint32_t)n, 0, 0, 0, 0, 0);
@@ -516,6 +517,7 @@ static int bridge(void* o, PcPortMipsCpu* c, uint32_t t) {
         }
         if (g->id == S_HFREE) { do_hfree(a[0], pr(a[0])); return 1; }
         if (g->id == S_HALLOC) { c->gpr[2] = do_halloc(a[0], a[1]); return 1; }
+        if (g->id == S_C7BF4) { a[0] = *cardb_r(0x4FE6); a[1] = gp(GM + 0x32A)[0]; }
         if (g->ret) c->gpr[2] = (uint32_t)spy_ret(g->id, a[0], a[1], a[2], a[3], a[4], a[5], a[6]);
         else spy(g->id, a[0], a[1], a[2], a[3], a[4], a[5], a[6]);
         if (g->id == S_C7BF4 || g->id == S_CA750) { native_side = 0; world_step(); }
