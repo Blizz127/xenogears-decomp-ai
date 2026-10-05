@@ -467,8 +467,8 @@ ModelPrimDesc D_8004FE50[17] = {
          * (small-tri max-SZ) -- retail literally reuses prim 4's walkers.
          * proc[1]=0x8002ED20 is the lit small-tri walker (model_prim_ed20.c;
          * the object overlay draws with variant 1 and MAP16's follower
-         * models dispatch this row). proc[3]=0x8002E8DC stays unported ->
-         * NULL (the dispatcher aborts loudly if a map ever reaches it). The
+         * models dispatch this row). proc[3]=0x8002E8DC is the min-SZ
+         * entry (ModelPrimTriSmallMinSZVariant3). The
          * buildProc 0x8002CDCC is a byte-identical retail clone of prim 8's
          * 0x8002CF58 (lit flat tri builder, tag len 4), ported in temp2.c. */
         .proc = { ModelPrimTriSmallAverageVariant0, func_8002ED20,
@@ -560,7 +560,7 @@ ModelPrimDesc D_8004FE50[17] = {
         /* Retail row 0x8004FF18: proc[1]=0x8002E04C is the same entry as
          * proc[0] (average walker); proc[4]=0x8002EF0C is the depth-cued
          * (DPCS fog) AVSZ3 walker; proc[5]=func_8002F0E4 is the depth-cued
-         * max-SZ walker.  proc[3]=0x8002E8F0 stays unported -> NULL. */
+         * max-SZ walker.  proc[3]=0x8002E8F0 is the min-SZ entry. */
         .proc = { ModelPrimTriAverageVariant0, ModelPrimTriAverageVariant0,
                   ModelPrimTriMaxSZVariant2, ModelPrimTriMinSZVariant3,
                   ModelPrimTriDepthCueVariant4, ModelPrimTriDepthCueMaxSZVariant5 },
