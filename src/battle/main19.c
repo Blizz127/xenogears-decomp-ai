@@ -1,4 +1,5 @@
 #include "common.h"
+#include "battle_guest_abi.h"
 #ifndef BATTLE_TU_SUB
 #define BATTLE_TU_SUB 0
 #endif
@@ -16,8 +17,8 @@ extern u8 D_800D3420[];
 
 /* func_8007AE38.s: u8 saturating add row[p[3]] = min(row[p[1]] + row[p[2]], 0xFF) */
 #if BATTLE_SUB(1)
-void func_8007AE38(u8** ppBoard, u8 index) {
-    u8* p = *ppBoard;
+void func_8007AE38(GSLOT(u8) ppBoard, u8 index) {
+    u8* p = GLOAD(u8, ppBoard);
     u8* pRow = D_800D3430 + ((u32)index << 6);
     s32 v = pRow[p[1]] + pRow[p[2]];
     u8 value = v;
