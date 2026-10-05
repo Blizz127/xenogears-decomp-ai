@@ -39,6 +39,11 @@ volatile int g_VsyncInterruptCount;
 void PcPort_ResetVblankService(void)
 {
     callback = 0;
+    /* A reset takes the clock as it is: the never-backwards guard in
+     * vblank_now() protects a running cursor, not a re-seed (it kept a stale
+     * cursor when the host count was numerically lower, e.g. across the
+     * 32-bit wrap). */
+    initialized = 0;
     serviced_count = vblank_now();
     g_VsyncInterruptCount = 0;
     enabled = 1;
