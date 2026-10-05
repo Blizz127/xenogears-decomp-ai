@@ -358,8 +358,11 @@ void func_8001DAE8(void* pSpriteData, u16 frameIndex, u32 animPackageAddr) {
     {
         u8* pFrame = pFrames + *(u16*)(pFrames + frameIndex * 2);
         u8* pVramData = (u8*)(uintptr_t)*(u32*)(pData + 0x24);
-        u16 vramX = *(u16*)(pVramData + 0x4);
-        u16 vramYWord = *(u16*)(pVramData + 0x6);
+        /* asm 8001DC60-8001DC94: the {+4,+6} halfword pair is copied to a
+         * 4-byte stack slot that func_8001F530 rewrites as one word. */
+        u16 vramXY[2];
+#define vramX vramXY[0]
+#define vramYWord vramXY[1]
         u8 header = pFrame[0];
         s32 hasWideOffsets = header & 0x80;
         s32 partCount = header & 0x3F;
@@ -367,7 +370,7 @@ void func_8001DAE8(void* pSpriteData, u16 frameIndex, u32 animPackageAddr) {
         u8* pStream = pFrame + partCount * 4 + 0x6;
         u8* pBase = (u8*)(uintptr_t)*(u32*)(pData + 0x20);
         u8* pPrim = (u8*)(uintptr_t)*(u32*)(pBase + 0x30);
-        s32 baseClutY = *(u8*)(pVramData + 0x6);
+        s32 baseClutY;
         s32 spriteMode = (*(u8*)(pData + 0x3C) >> 5);
         u32 colorAndCode = *(u32*)(pData + 0x28);
         s32 directionIndex = 4;
@@ -376,9 +379,13 @@ void func_8001DAE8(void* pSpriteData, u16 frameIndex, u32 animPackageAddr) {
         s32 texUBase4;
         s32 texUBase8;
 
+        vramXY[0] = *(u16*)(pVramData + 0x4);
+        vramXY[1] = *(u16*)(pVramData + 0x6);
         if (((*(u32*)(pData + 0x40) >> 13) & 0xF) == 0xE) {
-            func_8001F530(&vramX, pFrame[4]);
+            func_8001F530(vramXY, pFrame[4]);
         }
+        /* The V base is the low byte of the (possibly rewritten) Y word. */
+        baseClutY = (u8)vramYWord;
 
         /* asm 8001DD0C-8001DD2C: the part U coordinate is based at the
          * sprite band's texel origin within its 64-word texture page
@@ -529,6 +536,8 @@ void func_8001DAE8(void* pSpriteData, u16 frameIndex, u32 animPackageAddr) {
         *(u32*)(pData + 0x40) = (*(u32*)(pData + 0x40) & ~0xFC) | ((i & 0x3F) << 2);
         func_800251C8(NULL, (s16)vramX, (s16)vramYWord, pFrame[4], pFrame[5]);
     }
+#undef vramX
+#undef vramYWord
 }
 #endif
 
