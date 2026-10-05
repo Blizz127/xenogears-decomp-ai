@@ -32,7 +32,7 @@ fi
 # negative controls: one wrong body each; the test restricted to that function must fail
 MUTS=(
  "WorkListAddTask|pEntry->onFreeCallback = WL_U32(WorkListRemoveTask);|pEntry->onFreeCallback = WL_U32(TimerWorkListRemoveTask);"
- "TimerWorkListAddTask|D_80059464++;|D_80059464 += 2;"
+ "TimerWorkListAddTask|pEntry->unk14_3 = 1;|pEntry->unk14_3 = 0;"
 )
 n=0
 for m in "${MUTS[@]}"; do
