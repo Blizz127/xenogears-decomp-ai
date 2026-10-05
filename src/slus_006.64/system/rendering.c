@@ -161,7 +161,7 @@ void func_8001D53C(void* pSpriteData, u16 frameIndex, void* pAnimPackage) {
         u8* pTile;
         u8 command;
         u8 texByte;
-        u8 tileHeader;
+        u32 tileHeader;
         s32 abr;
         s32 clutXNibble;
         s32 texXOffset;
