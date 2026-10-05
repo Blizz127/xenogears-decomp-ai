@@ -1404,10 +1404,8 @@ extern void* D_800592E4;
 extern s16 D_800592E8;
 extern s16 D_800592EA;
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001FB30);
-#else
 void func_8001FB30(void) {
+#ifdef XENO_PC_PORT
     u8* pStack = HeapAlloc(0x2000, 1);
 #ifdef XENO_PC_PORT
     /* Host cannot emit R3000 $sp move/lw. Alloc/free stay so heap state
@@ -1423,5 +1421,13 @@ void func_8001FB30(void) {
     __asm__ volatile("lw $sp, 0($sp)");
 #endif
     HeapFree(pStack);
-}
+#else
+    u8* pStack = HeapAlloc(0x2000, 1);
+    u8 *p = pStack + 0x1F00;
+    register u8 *q asm("$8");
+    __asm__ volatile("move %0,%1\n\tsw $29,0(%0)\n\taddiu %0,%0,-4\n\tmove $29,%0" : "=&r"(q) : "r"(p));
+    func_8002DDE4(D_800592E4, 1, D_800592E8, D_800592EA, 0, 0, 0);
+    __asm__ volatile("addiu $29,$29,4\n\tlw $29,0($29)");
+    HeapFree(pStack);
 #endif
+}
