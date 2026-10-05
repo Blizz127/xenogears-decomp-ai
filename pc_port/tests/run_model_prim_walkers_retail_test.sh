@@ -86,7 +86,8 @@ for opt in O0 O2 UBSan; do
                 "model_link:pc_port/src/model_prim_link.c" \
                 "guest_link:pc_port/src/guest_prim_link.c" \
                 "leaf:pc_port/src/retail_leaf_adapters.c" \
-                "normlight:pc_port/src/psyq_compat_normal_light_col.c"; do
+                "normlight:pc_port/src/psyq_compat_normal_light_col.c" \
+                "testinput:pc_port/src/test_input.c"; do
         name=${pair%%:*}; source=${pair#*:}
         gcc "${COMMON[@]}" "${GAME[@]}" "${flags[@]}" "${STRICT[@]}" \
             -c "$source" -o "$OUT/$opt.$name.o"
@@ -113,16 +114,13 @@ done
 # that also matches elsewhere in the TU cannot corrupt another body.
 # ---------------------------------------------------------------------------
 MUT_GAME_OVERRIDES=(
-    "ModelPrimTriSmallAverageVariant0:out \+ 0x08\) = \(u32\)xy0:out + 0x0A) = (u32)xy0"
-    "ModelPrimTriSmallMaxSZVariant2:>> \(D_80050100 \+ 2\):>> (D_80050100 + 3)"
+    "ModelPrimTriSharedSpine:out \+ 0x08\) = xy0:out + 0x0A) = xy0"
+    "ModelPrimTriMaxSZSharedSpine:D_80050100 \+ 2:D_80050100 + 3"
     "ModelPrimQuadF4Variant0:out \+ 0x14\) = \(u32\)xy3:out + 0x16) = (u32)xy3"
     "ModelPrimQuadFT4Variant0:out \+ 0x18\) = \(u32\)xy2:out + 0x1A) = (u32)xy2"
     "ModelPrimQuadG4Variant0:0x08000000:0x09000000"
     "ModelPrimQuadF4MaxSZVariant2:if \(sz0 == 0 \|\|:if (0 && sz0 == 0 ||"
-    "ModelPrimTriAverageShared:out \+ 0x10\) = \(u32\)xy1:out + 0x12) = (u32)xy1"
-    "ModelPrimTriGT3Variant0:out \+ 0x14\) = \(u32\)xy1:out + 0x16) = (u32)xy1"
-    "ModelPrimTriMaxSZVariant2:>> \(D_80050100 \+ 2\):>> (D_80050100 + 3)"
-    "ModelPrimTriDepthCueVariant4:out\[0x7\] << 24:out[0x6] << 24"
+                "ModelPrimTriDepthCueVariant4:out\[0x7\] << 24:out[0x6] << 24"
     "ModelPrimTriDepthCueMaxSZVariant5:out\[0x7\] << 24:out[0x6] << 24"
     "ModelPrimQuadFT4DepthCueVariant4:out \+ 0x10\) = \(u32\)xy1:out + 0x12) = (u32)xy1"
     "ModelPrimQuadFT4DepthCueMaxSZVariant5:>> \(D_80050100 \+ 2\):>> (D_80050100 + 3)"
@@ -161,6 +159,7 @@ mut_objects() {
     echo "${objs[@]}"
 }
 
+MUTANTS_REJECTED=0
 for entry in "${MUT_GAME_OVERRIDES[@]}"; do
     fn=${entry%%:*}; rest=${entry#*:}; find=${rest%%:*}; repl=${rest#*:}
     mutate_span pc_port/src/game_overrides.c "$fn" "$find" "$repl" "$OUT/$fn.c"
@@ -178,6 +177,7 @@ for entry in "${MUT_GAME_OVERRIDES[@]}"; do
         exit 1
     fi
     echo "  mutant rejected: $fn"
+    MUTANTS_REJECTED=$((MUTANTS_REJECTED + 1))
 done
 
 mutate_span src/slus_006.64/system/temp2.c func_8002E688 \
@@ -203,6 +203,7 @@ if ! grep -q 'MODEL PRIM WALKERS FAIL' "$OUT/func_8002E688.log"; then
     exit 1
 fi
 echo "  mutant rejected: func_8002E688"
+MUTANTS_REJECTED=$((MUTANTS_REJECTED + 1))
 
 mutate_span pc_port/src/model_prim_ed20.c func_8002ED20 \
     'otz >> shift' 'otz >> (shift + 1)' "$OUT/func_8002ED20.c"
@@ -219,8 +220,9 @@ if ! grep -q 'MODEL PRIM WALKERS FAIL' "$OUT/func_8002ED20.log"; then
     exit 1
 fi
 echo "  mutant rejected: func_8002ED20"
+MUTANTS_REJECTED=$((MUTANTS_REJECTED + 1))
 
-echo "MODEL PRIM WALKERS MUTANTS PASS (15 bodies: store-offset/ot-shift/tag/gate)"
+echo "MODEL PRIM WALKERS MUTANTS PASS $MUTANTS_REJECTED bodies (store-offset/ot-shift/tag/gate)"
 
 # Caveat while bodies are uncertified: a mutant of a DIVERGING body fails the
 # run for the pre-existing divergence, not (necessarily) for its own damage,
