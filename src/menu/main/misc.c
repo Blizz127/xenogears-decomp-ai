@@ -3176,7 +3176,7 @@ extern void* func_801E4D10(s32, s32);
 void func_801CB28C(s32 arg0) {
     s32 i;
     func_801E4D10(arg0, MENU_U330_WORD());
-    D_80059488 = *(s32*)(uintptr_t)arg0;
+    D_80059488 = *(s32*)(uintptr_t)(u32)arg0; /* guest-width pointer: zero-extend (an address >= 0x80000000 is a negative s32) */
     for (i = 0; i < 0x10; i++) {
         D_8005A3A0[i] = D_8006F958[i];
     }

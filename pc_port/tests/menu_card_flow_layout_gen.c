@@ -12,7 +12,7 @@ int main(void) {
            sizeof(MenuWindow), sizeof(MenuManager), sizeof(MenuPointerCursors));
     printf("#define HO_POLY_SIZE 0x%zxu\n#define HO_ULONG_SIZE %zu\n#define HO_GS_SIZE 0x%zxu\n",
            sizeof(POLY_FT4), sizeof(unsigned long), sizeof(GameState));
-    P(SystemMenu, unk0); P(SystemMenu, pGfxEnv); P(SystemMenu, unk2DC); P(SystemMenu, unk2E4); P(SystemMenu, renderContext);
+    P(SystemMenu, unk0); P(SystemMenu, pGfxEnv); P(SystemMenu, unk2DC); P(SystemMenu, unk2E4); P(SystemMenu, unk330); P(SystemMenu, renderContext);
     P(SystemMenu, input); P(SystemMenu, unk326); P(SystemMenu, unk32A); P(SystemMenu, unk32B);
     P(SystemMenu, unk32C); P(SystemMenu, unk334); P(SystemMenu, menu2Choice); P(SystemMenu, unk33B);
     P(SystemMenu, pManager); P(SystemMenu, windows); P(SystemMenu, unk39C); P(SystemMenu, pCursors);

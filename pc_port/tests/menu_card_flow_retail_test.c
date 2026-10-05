@@ -82,8 +82,9 @@ ALIAS(D_801C50A8, RD, 0x801C50A8); ALIAS(D_801C50AC, RD, 0x801C50AC); ALIAS(D_80
 ALIAS(D_801C50B4, RD, 0x801C50B4); ALIAS(D_801C50B8, RD, 0x801C50B8); ALIAS(D_801C50E0, RD, 0x801C50E0);
 ALIAS(D_801EA6D0, RM, 0x801EA6D0); ALIAS(D_801EA6F4, RM, 0x801EA6F4);
 ALIAS(D_801EA6F8, RM, 0x801EA6F8); ALIAS(D_801EA8FC, RM, 0x801EA8FC);
-ALIAS(D_801EA900, RM, 0x801EA900);
-ALIAS(D_801E9894, RM, 0x801E9894); ALIAS(D_801E9914, RM, 0x801E9914);
+ALIAS(D_801EA900, RM, 0x801EA900); ALIAS(D_801EA904, RM, 0x801EA904);
+uint8_t g_PsxRam[64]; /* only reached through the NULL arm of MENU_GUEST_PTR */
+ALIAS(D_801E9768, RM, 0x801E9768); ALIAS(D_801E9894, RM, 0x801E9894); ALIAS(D_801E9914, RM, 0x801E9914);
 /* g_Menu is a host pointer natively and a u32 guest word in the retail image. */
 void* g_Menu;
 
@@ -151,14 +152,15 @@ static uint32_t nrm_r(uint32_t a) {
 /* ---- boundary spies ----------------------------------------------------- */
 enum { S_C7BF4 = 1, S_CLUT, S_DEC, S_ENC, S_E4A28, S_DISC, S_2675C, S_93A8, S_CA750, S_CACF8, S_C8CA4,
        S_C8574, S_D2F4C, S_D32B4, S_C72BC, S_CB28C, S_OPEN, S_READ, S_WRITE, S_CLOSE, S_FORMAT, S_RENAME,
-       S_ERASE, S_HALLOC, S_HFREE, S_VSYNC, S_SETPOLY, S_SND, S_90B0, S_E78C8, S_D9B08, NSPY };
+       S_ERASE, S_HALLOC, S_HFREE, S_VSYNC, S_SETPOLY, S_SND, S_90B0, S_E78C8, S_D9B08,
+       S_E4D10, S_FIRSTFILE, S_NEXTFILE, S_CARDINFO, S_TESTEV, S_UNDELIV, S_CLOSEEV, S_ENTERCS, S_EXITCS, NSPY };
 #define MAXEV 6000
 typedef struct { uint32_t id, a[7]; } Event;
 static struct { Event ev[MAXEV]; unsigned n; } trace;
 static uint32_t feedr[NSPY][64];
 static unsigned fidx[NSPY];
 /* per-case return-value profile (identical on both sides) */
-static struct { unsigned failpct, ca750cap, yes, readmode, hdr3, thr326; } P;
+static struct { unsigned failpct, wfail, ca750cap, yes, readmode, hdr3, thr326; } P;
 static uint32_t heap_ptr, heap_last, heap_top;
 static uint32_t gs_digest(uint8_t* gs);
 #define STACKTAG 0xBADC0DE0u
@@ -211,11 +213,16 @@ static int32_t draw(uint32_t id, uint32_t a0, uint32_t a2) {
                   return ((r >> 4) % 100) < P.yes ? 1 : 0;
     case S_OPEN: return fail ? (((r >> 8) & 3) == 3 ? 0 : -1) : 1 + (int32_t)((r >> 8) % 3);
     case S_READ: case S_WRITE:
+        if (id == S_WRITE && (r % 100) < P.wfail) return -1;
         if (!fail) return (int32_t)a2;
         switch ((r >> 8) % 3) { case 0: return -1; case 1: return 0; default: return (int32_t)a2 - 1; }
     case S_RENAME: return fail ? 0 : 1;
     case S_FORMAT: return fail ? (((r >> 8) & 1) ? 0 : -1) : 1;
     case S_ERASE: case S_CLOSE: return (int32_t)(r & 1);
+    case S_FIRSTFILE: return fail ? 0 : 1;
+    case S_NEXTFILE: return (r % 5) != 0;
+    case S_CARDINFO: return (r % 5 == 0) ? 0 : (r % 7 == 0) ? (int32_t)r : 1;
+    case S_TESTEV: return (r % 3) == 0;
     case S_CLUT: return (int32_t)(r & 0xFFFFu);
     case S_DISC: return (int32_t)(r % 4);
     default: return (int32_t)r;
@@ -313,7 +320,9 @@ int Vsync(int mode) { return spy_ret(S_VSYNC, (uint32_t)mode, 0, 0, 0, 0, 0, 0);
 #ifndef FLOW_REAL_SCAN /* the scan itself is under test in the second binary */
 int func_801C93A8(void) { return spy_ret(S_93A8, 0, 0, 0, 0, 0, 0, 0); }
 #endif
+#ifndef FLOW_REAL_IO
 void func_801C90B0(unsigned char port, unsigned char slot) { spy(S_90B0, port, slot, 0, 0, 0, 0, 0); }
+#endif
 void func_801E78C8(int index) { spy(S_E78C8, (uint32_t)index, 0, 0, 0, 0, 0, 0); }
 void func_801D9B08(void) { spy(S_D9B08, 0, 0, 0, 0, 0, 0, 0); }
 int func_801CA750(int dir, int unused, int limit) {
@@ -325,15 +334,47 @@ int func_801CA750(int dir, int unused, int limit) {
 unsigned char func_801CACF8(unsigned char a, unsigned char b, unsigned char c) {
     return (unsigned char)spy_ret(S_CACF8, a, b, c, 0, 0, 0, 0);
 }
+#ifndef FLOW_REAL_IO /* the card I/O helpers are under test in the third binary */
 void func_801C8CA4(unsigned char idx) { spy(S_C8CA4, idx, 0, 0, 0, 0, 0, 0); }
+#endif
 void func_801C8574(int id) { spy(S_C8574, (uint32_t)id, 0, 0, 0, 0, 0, 0); }
 void func_801D2F4C(unsigned char s) { spy(S_D2F4C, s, 0, 0, 0, 0, 0, 0); }
 int func_801D32B4(int a) { (void)a; return spy_ret(S_D32B4, 0, 0, 0, 0, 0, 0, 0); }
 void func_801C72BC(int mode) { spy(S_C72BC, (uint32_t)mode, 0, 0, 0, 0, 0, 0); }
+#ifndef FLOW_REAL_IO
 void func_801CB28C(int p) {
     uint32_t ga = (uint32_t)p;
     spy(S_CB28C, pn((const void*)(uintptr_t)ga), dig((const uint8_t*)(uintptr_t)ga, 0x1EFF), 0, 0, 0, 0, 0);
 }
+#endif
+void* func_801E4D10(int a, int b) { spy(S_E4D10, (uint32_t)a, (uint32_t)b, 0, 0, 0, 0, 0); return NULL; }
+/* directory enumeration (firstfile/nextfile) and BIOS event/status calls */
+static unsigned ff_run;
+static const char* const FFN[] = { "BASLUS-00664A1", "BASLUS-00664A2", "BASLUS-00664B", "Q", "", "BASLUS-006640Xeno", "BASLUS-00664A1" };
+static void ff_fill(uint8_t* e, uint32_t idx) {
+    const char* nm = FFN[(idx * 5u + fidx[S_FIRSTFILE] * 3u) % 7u];
+    memset(e, 0, 20);
+    memcpy(e, nm, strlen(nm));
+}
+void* firstfile(char* name, void* e) {
+    int32_t r = spy_ret(S_FIRSTFILE, sdig(name), pn(e), 0, 0, 0, 0, 0);
+    ff_run = 0;
+    if (!r) return NULL;
+    ff_fill(e, 0);
+    return e;
+}
+void* nextfile(void* e) {
+    int32_t r = spy_ret(S_NEXTFILE, pn(e), 0, 0, 0, 0, 0, 0);
+    if (!r || ff_run >= 15) return NULL;
+    ff_fill(e, ++ff_run);
+    return e;
+}
+int _card_info(int port) { return spy_ret(S_CARDINFO, (uint32_t)port, 0, 0, 0, 0, 0, 0); }
+int TestEvent(unsigned ev) { return spy_ret(S_TESTEV, ev, 0, 0, 0, 0, 0, 0); }
+int UnDeliverEvent(unsigned a, unsigned b) { spy(S_UNDELIV, a, b, 0, 0, 0, 0, 0); return 0; }
+int CloseEvent(unsigned ev) { spy(S_CLOSEEV, ev, 0, 0, 0, 0, 0, 0); return 0; }
+void EnterCriticalSection(void) { spy(S_ENTERCS, 0, 0, 0, 0, 0, 0, 0); }
+void ExitCriticalSection(void) { spy(S_EXITCS, 0, 0, 0, 0, 0, 0, 0); }
 /* PS1 BIOS card file calls (the port's memory-card layer entry points) */
 int PcPortCard_open(const char* name, unsigned mode) { if (getenv("FLOWDBG")) fprintf(stderr, "native open '%s' %x\n", name, mode); return spy_ret(S_OPEN, sdig(name), mode, 0, 0, 0, 0, 0); }
 int PcPortCard_read(int fd, void* b, int len) { return do_read((uint32_t)fd, pn(b), b, (uint32_t)(uintptr_t)b, len); }
@@ -355,10 +396,20 @@ static const Target targets[] = {
 #ifndef FLOW_REAL_SCAN
     { 0x801C93A8, S_93A8, 0, 0, 1 },
 #endif
-    { 0x801C90B0, S_90B0, 2, 0, 0 }, { 0x801E78C8, S_E78C8, 1, 0, 0 }, { 0x801D9B08, S_D9B08, 0, 0, 0 },
+#ifndef FLOW_REAL_IO
+    { 0x801CB28C, S_CB28C, 1, 0, 0 },
+#endif
+    { 0x801E4D10, S_E4D10, 2, 0, 0 },
+#ifndef FLOW_REAL_IO
+    { 0x801C90B0, S_90B0, 2, 0, 0 }, { 0x801C8CA4, S_C8CA4, 1, 0, 0 },
+#endif
+    { 0x80040584, S_FIRSTFILE, 2, 0, 1 }, { 0x80040594, S_NEXTFILE, 1, 0, 1 }, { 0x8004E784, S_CARDINFO, 1, 0, 1 },
+    { 0x80040494, S_TESTEV, 1, 0, 1 }, { 0x800404C4, S_UNDELIV, 2, 0, 0 }, { 0x80040484, S_CLOSEEV, 1, 0, 0 },
+    { 0x800404D4, S_ENTERCS, 0, 0, 0 }, { 0x800404E4, S_EXITCS, 0, 0, 0 },
+    { 0x801E78C8, S_E78C8, 1, 0, 0 }, { 0x801D9B08, S_D9B08, 0, 0, 0 },
     { 0x801CA750, S_CA750, 1, 0, 1 }, { 0x801CACF8, S_CACF8, 3, 0, 1 },
-    { 0x801C8CA4, S_C8CA4, 1, 0, 0 }, { 0x801C8574, S_C8574, 1, 0, 0 }, { 0x801D2F4C, S_D2F4C, 1, 0, 0 },
-    { 0x801D32B4, S_D32B4, 0, 0, 1 }, { 0x801C72BC, S_C72BC, 1, 0, 0 }, { 0x801CB28C, S_CB28C, 1, 0, 0 },
+    { 0x801C8574, S_C8574, 1, 0, 0 }, { 0x801D2F4C, S_D2F4C, 1, 0, 0 },
+    { 0x801D32B4, S_D32B4, 0, 0, 1 }, { 0x801C72BC, S_C72BC, 1, 0, 0 },
     { 0x80040534, S_OPEN, 2, 0, 1 }, { 0x80040544, S_READ, 3, 0, 1 }, { 0x80040554, S_WRITE, 3, 0, 1 },
     { 0x80040564, S_CLOSE, 1, 0, 1 }, { 0x80040574, S_FORMAT, 1, 0, 1 }, { 0x800405A4, S_RENAME, 2, 0, 1 },
     { 0x800405B4, S_ERASE, 1, 0, 1 }, { 0x80031BDC, S_HALLOC, 2, 0, 1 }, { 0x800320E8, S_HFREE, 1, 0, 0 },
@@ -443,6 +494,22 @@ static int bridge(void* o, PcPortMipsCpu* c, uint32_t t) {
         case S_CB28C: { uint32_t ga = a[0]; a[0] = pr(ga); a[1] = dig(gp(ga), 0x1EFF); break; }
         default: break;
         }
+        if (g->id == S_FIRSTFILE) {
+            uint32_t e = a[1];
+            int32_t r = spy_ret(S_FIRSTFILE, sdig(gp(a[0])), pr(e), 0, 0, 0, 0, 0);
+            ff_run = 0;
+            if (r) ff_fill(gp(e), 0);
+            c->gpr[2] = r ? e : 0;
+            return 1;
+        }
+        if (g->id == S_NEXTFILE) {
+            uint32_t e = a[0];
+            int32_t r = spy_ret(S_NEXTFILE, pr(e), 0, 0, 0, 0, 0, 0);
+            if (!r || ff_run >= 15) { c->gpr[2] = 0; return 1; }
+            ff_fill(gp(e), ++ff_run);
+            c->gpr[2] = e;
+            return 1;
+        }
         if (g->id == S_READ) {
             c->gpr[2] = (uint32_t)do_read(a[0], pr(a[1]), gp(a[1]), a[1], (int32_t)a[2]);
             return 1;
@@ -469,6 +536,7 @@ static const Fld flds[] = {
     { 0x308, HO_SystemMenu_renderContext, 4, K_BYTES },
     { 0x325, HO_SystemMenu_input, 7, K_BYTES },            /* input, unk326..unk32B */
     { 0x32C, HO_SystemMenu_unk32C, 1, K_PTR },
+    { 0x330, HO_SystemMenu_unk330, 1, K_PTR },
     { 0x334, HO_SystemMenu_unk334, 8, K_BYTES },           /* unk334..unk33B (menu2Choice at +4) */
     { 0x33C, HO_SystemMenu_pManager, 1, K_PTR },
     { 0x364, HO_SystemMenu_windows, NWIN, K_PTR },
@@ -597,6 +665,19 @@ extern int func_801CBD90(unsigned char);
 extern unsigned char func_801CC6D8(void);
 extern int func_801CD2AC(void);
 extern int func_801C93A8(void);
+extern void func_801C87C4(void);
+extern void func_801CB28C(int);
+extern void func_801C8CA4(unsigned char);
+extern void func_801C90B0(unsigned char, unsigned char);
+extern int func_801C881C(int);
+extern int func_801C891C(int);
+extern void func_801C8960(void);
+extern int func_801C8A10(unsigned char);
+extern void func_801C8BEC(void);
+extern void func_801C8D1C(unsigned char);
+extern int func_801C8D78(unsigned char);
+extern void func_801C8EE8(void);
+extern int func_801C9038(char*, void*);
 
 typedef struct { uint32_t a0, a1, a2, a3, a4; } Args;
 static uint32_t n_AE08(Args a) { func_801CAE08((int)a.a0); return 0; }
@@ -604,6 +685,19 @@ static uint32_t n_A8C0(Args a) { func_801CA8C0((int)a.a0); return 0; }
 static uint32_t n_B304(Args a) { (void)a; return func_801CB304(); }
 static uint32_t n_BD90(Args a) { return (uint32_t)func_801CBD90((unsigned char)a.a0); }
 static uint32_t n_C6D8(Args a) { (void)a; return func_801CC6D8(); }
+static uint32_t n_B28C(Args a) { func_801CB28C((int)a.a0); return 0; }
+static uint32_t n_87C4(Args a) { (void)a; func_801C87C4(); return 0; }
+static uint32_t n_881C(Args a) { return (uint32_t)func_801C881C((int)a.a0); }
+static uint32_t n_891C(Args a) { return (uint32_t)func_801C891C((int)a.a0); }
+static uint32_t n_8960(Args a) { (void)a; func_801C8960(); return 0; }
+static uint32_t n_8A10(Args a) { return (uint32_t)func_801C8A10((unsigned char)a.a0); }
+static uint32_t n_8BEC(Args a) { (void)a; func_801C8BEC(); return 0; }
+static uint32_t n_8CA4(Args a) { func_801C8CA4((unsigned char)a.a0); return 0; }
+static uint32_t n_8D1C(Args a) { func_801C8D1C((unsigned char)a.a0); return 0; }
+static uint32_t n_8D78(Args a) { return (uint32_t)func_801C8D78((unsigned char)a.a0); }
+static uint32_t n_8EE8(Args a) { (void)a; func_801C8EE8(); return 0; }
+static uint32_t n_9038(Args a) { return (uint32_t)func_801C9038((char*)(uintptr_t)a.a0, (void*)(uintptr_t)a.a1); }
+static uint32_t n_90B0(Args a) { func_801C90B0((unsigned char)a.a0, (unsigned char)a.a1); return 0; }
 static uint32_t n_93A8(Args a) { (void)a; return (uint32_t)func_801C93A8(); }
 static uint32_t n_D2AC(Args a) { (void)a; return (uint32_t)func_801CD2AC(); }
 
@@ -613,7 +707,7 @@ static void card_default(void) {
     for (uint32_t i = 0; i < RC_SIZE; i++)
         *cardb_r(i) = mode == 0 ? (uint8_t)rnd() : mode == 1 ? 0 : mode == 2 ? 0xFF : (uint8_t)(i * 7);
     if (mode != 0)
-        for (uint32_t i = 0; i < 64; i++) *cardb_r(rnd_range(RC_SIZE)) = (uint8_t)rnd();
+        for (uint32_t i = 0; i < 64; i++) { uint32_t k = rnd_range(RC_SIZE); *cardb_r(k) = (uint8_t)rnd(); }
 }
 static void card_dir(void) { /* directory / presence / selector bytes with realistic shape */
     uint32_t sel = rnd_range(32);
@@ -638,6 +732,10 @@ static void put_str(uint32_t cardoff, const char* s) {
 }
 static const char* const NAMES[] = { "BASLUS-00664A1", "BASLUS-00664A2", "BASLUS-00664B", "Q", "", "BASLUS-006640Xeno", "BASLUS-00664A1" };
 static const char* const CODES[] = { "BASLUS-00664", "BASLUS-00665", "BESLES-01000", "X" };
+static void put_str_ram(uint32_t addr, const char* s) {
+    size_t n = strlen(s);
+    for (size_t i = 0; i <= n; i++) w8(addr + (uint32_t)i, (uint8_t)s[i]);
+}
 static void world_gen(void) {
     memset(&world, 0, sizeof(world));
     unsigned n = (rnd() % 16 == 0) ? 190 + rnd_range(10) : rnd_range(24);
@@ -653,6 +751,7 @@ static void params_gen(void) {
     static const unsigned fp[] = { 0, 0, 0, 3, 10, 30, 60 };
     static const unsigned yes[] = { 50, 90, 100, 100 };
     P.failpct = fp[rnd_range(7)];
+    P.wfail = (rnd() % 4 == 0) ? ((rnd() & 1) ? 100 : 50) : 0;
     P.ca750cap = 1 + rnd_range(7);
     P.yes = yes[rnd_range(4)];
     P.readmode = rnd_range(3);
@@ -716,6 +815,37 @@ static void g_C6D8(Args* a) {
     }
 }
 static void g_D2AC(Args* a) { (void)a; flow_state(); }
+static void io_state(void) {
+    flow_state();
+    w32(CARD + 0x4F84, rnd_range(0x10));
+    for (unsigned p = 0; p < 2; p++) {
+        static const uint32_t st[] = { 0xFFFFFFFFu, 0xFFFFFFFEu, 0, 1, 2 };
+        w32(CARD + 0x4F74 + 4 * p, st[rnd_range(5)]);
+    }
+    w8(0x801E9779u, (uint8_t)rnd_range(6));
+    w8(GM + 0x326, (uint8_t)rnd_range(8));
+    *cardb_r(0x4FE6) = (uint8_t)rnd_range(4);
+    *cardb_r(0x4F88) = (rnd() % 3) ? 0 : 1; *cardb_r(0x4F89) = (rnd() % 3) ? 0 : 1;
+}
+static void g_B28C(Args* a) {
+    flow_state();
+    a->a0 = PAYLOAD + 0x100 * rnd_range(8);
+    for (unsigned i = 0; i < 0x40; i += 4) w32(a->a0 + i, rnd());
+}
+static void g_io(Args* a) { a->a0 = rnd() & 1; a->a1 = rnd_range(16); io_state(); }
+static void g_8A10(Args* a) { a->a0 = rnd() & 1; io_state(); }
+static void g_881C(Args* a) { a->a0 = (rnd() & 1) ? 0x10 : 0; io_state(); }
+static void g_891C(Args* a) { a->a0 = (rnd() % 4 == 0) ? (uint32_t)small(-2, 40) : ((rnd() & 1) ? 0x10 : 0); io_state(); }
+static void g_8CA4(Args* a) {
+    a->a0 = (rnd() % 4 == 0) ? (uint32_t)(rnd() & 0xFF) : (rnd() & 1);
+    io_state();
+}
+static void g_9038(Args* a) {
+    static const char* const paths[] = { "bu00:BASLUS-00664A1", "bu10:BASLUS-00664A2", "bu00:" };
+    a->a0 = SLOT + 0x10; a->a1 = PAYLOAD + 0x200 * rnd_range(8);
+    put_str_ram(SLOT + 0x10, paths[rnd_range(3)]);
+    io_state();
+}
 static void g_93A8(Args* a) {
     (void)a; flow_state();
     if (rnd() % 3 == 0) { *cardb_r(0x4FE4) = 0; *cardb_r(0x4FE5) = 0; } /* no card: the 59-vblank wait */
@@ -735,6 +865,20 @@ typedef struct {
 static Fn fns[] = {
 #ifdef FLOW_REAL_SCAN
     { "func_801C93A8", 0x801C93A8, 0x820 / 4, n_93A8, g_93A8, 1500, 32 },
+#elif defined(FLOW_REAL_IO)
+    { "func_801CB28C", 0x801CB28C, 30, n_B28C, g_B28C, 600, 0 },
+    { "func_801C87C4", 0x801C87C4, 22, n_87C4, g_io, 200, 0 },
+    { "func_801C881C", 0x801C881C, 64, n_881C, g_881C, 600, 32 },
+    { "func_801C891C", 0x801C891C, 17, n_891C, g_891C, 600, 32 },
+    { "func_801C8960", 0x801C8960, 44, n_8960, g_io, 600, 0 },
+    { "func_801C8A10", 0x801C8A10, 119, n_8A10, g_8A10, 1500, 32 },
+    { "func_801C8BEC", 0x801C8BEC, 46, n_8BEC, g_io, 1500, 0 },
+    { "func_801C8CA4", 0x801C8CA4, 30, n_8CA4, g_8CA4, 600, 0 },
+    { "func_801C8D1C", 0x801C8D1C, 23, n_8D1C, g_8CA4, 600, 0 },
+    { "func_801C8D78", 0x801C8D78, 92, n_8D78, g_8A10, 1500, 8 },
+    { "func_801C8EE8", 0x801C8EE8, 84, n_8EE8, g_io, 1500, 0 },
+    { "func_801C9038", 0x801C9038, 30, n_9038, g_9038, 600, 32 },
+    { "func_801C90B0", 0x801C90B0, 112, n_90B0, g_io, 1500, 0 },
 #else
     { "func_801CAE08", 0x801CAE08, 223, n_AE08, g_AE08, 1500, 0 },
     { "func_801CA8C0", 0x801CA8C0, 94, n_A8C0, g_A8C0, 600, 0 },
