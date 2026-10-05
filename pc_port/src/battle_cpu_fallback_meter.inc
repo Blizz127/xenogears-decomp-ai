@@ -270,7 +270,17 @@ static void cpu_meter_end_battle(const char *how)
             m->targets[n++] = m->targets[i];
     }
     qsort(m->targets, n, sizeof(m->targets[0]), cpu_meter_target_compare);
-    shown = n < CPU_METER_TOP ? n : CPU_METER_TOP;
+    /* XENO_CPU_FALLBACK_TOP=N lists N targets instead of the default 16
+     * (0 or "all" lists every distinct target); diagnostics only. */
+    {
+        const char *top = getenv("XENO_CPU_FALLBACK_TOP");
+        unsigned limit = CPU_METER_TOP;
+        if (top != NULL && top[0] != '\0')
+            limit = strcmp(top, "all") == 0 ? 0u : (unsigned)strtoul(top, NULL, 10);
+        if (limit == 0u || limit > n)
+            limit = n;
+        shown = limit;
+    }
     fprintf(stderr,
             "[xeno-port][cpu-fallback] top %u of %u interpreted call targets:\n",
             shown, n);
