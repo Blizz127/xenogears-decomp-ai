@@ -51,6 +51,12 @@ char PsyX_BeginScene(void) { abort(); }
 void ClearSplits(void) { abort(); }
 void DrawAllSplits(void) { abort(); }
 void ParsePrimitivesLinkedList(u_long *p, int s) { (void)p; (void)s; abort(); }
+/* libgpu helpers referenced by temp2.c's row-0x10 buildProc func_8002DAFC
+ * (the walkers never call a buildProc; link-only, abort if reached). */
+void SetShadeTex(void *p, int tge) { (void)p; (void)tge; abort(); }
+unsigned short GetTPage(int tp, int abr, int x, int y)
+{ (void)tp; (void)abr; (void)x; (void)y; abort(); }
+unsigned short GetClut(int x, int y) { (void)x; (void)y; abort(); }
 
 /* Walker-owned runtime state.  D_800500F8/FC/50100 are DEFINED by the
  * production game_overrides.c TU (initialized renderer bounds), so they are
@@ -145,6 +151,11 @@ static const WalkerSpec walkers[] = {
     {"8002F0E4", 0x8002F0E4u, 0x01, 5, 0x20, "ModelPrimTriDepthCueMaxSZVariant5"},
     {"8002FCFC", 0x8002FCFCu, 0x09, 4, 0x28, "ModelPrimQuadFT4DepthCueVariant4"},
     {"8002FF0C", 0x8002FF0Cu, 0x09, 5, 0x28, "ModelPrimQuadFT4DepthCueMaxSZVariant5"},
+    {"8002E8B4", 0x8002E8B4u, 0x03, 3, 0x28, "ModelPrimTriGT3MinSZVariant3"},
+    {"8002E8C8", 0x8002E8C8u, 0x02, 3, 0x1C, "ModelPrimTriMediumMinSZVariant3"},
+    {"8002E8DC", 0x8002E8DCu, 0x00, 3, 0x14, "ModelPrimTriSmallMinSZVariant3"},
+    {"8002E8F0", 0x8002E8F0u, 0x01, 3, 0x20, "ModelPrimTriMinSZVariant3"},
+    {"80030750", 0x80030750u, 0x10, 0, 0x20, "func_80030750(temp2)"},
     {"8002F2E0", 0x8002F2E0u, 0x01, 1, 0x20, "func_8002F2E0(temp2)"},
     {"8002F4B4", 0x8002F4B4u, 0x03, 1, 0x20, "func_8002F4B4(temp2)"},
     {"8002FAE8", 0x8002FAE8u, 0x09, 1, 0x28, "func_8002FAE8(temp2)"},

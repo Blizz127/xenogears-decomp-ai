@@ -926,26 +926,6 @@ extern u32 D_80059568;
 extern s32 D_80059578;
 extern s32 func_8003101C(const u8* bounds, s32 mode);
 
-static u32 ModelPrimVertexIndex1(u32 word) {
-    return (word >> 16) & 0xFFFF;
-}
-
-/* Retail screen cull (asm 8002E7CC-8002E818): keep a prim only when at least
- * one vertex has packed SXY <u D_800500FC (y within [0, screenH-1]; negative
- * or below-screen y fails the unsigned compare) AND at least one vertex has
- * x <u D_800500F8. An earlier port transcription inverted the first
- * comparison, culling exactly the on-screen prims. */
-static int ModelPrimPackedOverlapsScreen(u32 xy0, u32 xy1, u32 xy2, u32 xy3) {
-    u32 yMaxPacked = (u32)D_800500FC;
-    u32 xMax = (u32)D_800500F8;
-
-    if (!(xy0 < yMaxPacked || xy1 < yMaxPacked || xy2 < yMaxPacked || xy3 < yMaxPacked)) {
-        return 0;
-    }
-    return (((xy0 & 0xFFFF) < xMax) || ((xy1 & 0xFFFF) < xMax) ||
-            ((xy2 & 0xFFFF) < xMax) || ((xy3 & 0xFFFF) < xMax));
-}
-
 /* PSX GPU hardware rule (see game_overrides.c ModelPrimTriOversized):
  * polygons wider than 1023 or taller than 511 in projected screen space are
  * silently rejected by the rasterizer; PsyX does not implement this. */
@@ -969,90 +949,110 @@ static int __attribute__((unused)) ModelPrimPackedOversized(u32 xy0, u32 xy1, u3
     return (xmax - xmin) > 1023 || (ymax - ymin) > 511;
 }
 
+/* Retail entry 0x8002E688 of the hand-written func_8002E64C quad max-SZ
+ * body (shared .L8002E694, tail 0x8002E1F4): t9 0x8, tag 0x09000000,
+ * packet 0x28 -- rows 0x09/0x0D variant 2.  Translated instruction by
+ * instruction from asm/.../func_8002E64C.s:
+ *   - only v1/v2 are preloaded; each iteration loads v0 and issues RTPT in
+ *     the count test's delay slot (also for count == 0, on the lookahead);
+ *   - v1 decode (cmd >> 13) & 0xFFF8; the fourth vertex is the CURRENT
+ *     command's +6 (lhu -0x2($a0) after the advance);
+ *   - LZCR gate, NCLIP, MAC0 backface test, RTPS of v3, second LZCR gate,
+ *     y then x overlap over all four SXY (no oversize cull);
+ *   - xy0..xy2 stored, then SZ0 == 0 rejects BEFORE xy3 is stored; each of
+ *     SZ1/SZ2/SZ3 == 0 rejects after it; emitted counts only prims whose
+ *     four SZ are all nonzero (delay slot 0x8002E884);
+ *   - signed slt maximum of SZ0..SZ3 shifted by D_80050100 + 2;
+ *   - $v0 is D_800500FC.
+ * The 24-bit packet mask is left to PcPort_LinkModelPrim. */
 s32 func_8002E688(u8* pCmd, s32 count) {
-    const s32 packetStep = 0x28;
+    const u32 packetStep = 0x28;
     const u32 tagLen = 0x09000000;
     u8* vertexBase = (u8*)(uintptr_t)D_8005953C;
-    u8* out = D_80059424 - packetStep;
+    u8* out = D_80059424;
     u32* ot = (u32*)(uintptr_t)D_80059568;
     s32 emitted = D_80059578;
+    u32 yBound = (u32)D_800500FC;
+    u32 xBound = (u32)D_800500F8;
+    u32 shift = (u32)(D_80050100 + 2) & 31u;
+    u32 cmd = *(u32*)pCmd;
+    u8* nextV0 = vertexBase + ((cmd & 0xFFFFu) << 3);
+    u8* v;
 
-    while (count != 0) {
-        u32 cmd = *(u32*)pCmd;
-        SVECTOR* v0 = (SVECTOR*)(vertexBase + ((cmd & 0xFFFF) << 3));
-        SVECTOR* v1 = (SVECTOR*)(vertexBase + (ModelPrimVertexIndex1(cmd) << 3));
-        SVECTOR* v2 = (SVECTOR*)(vertexBase + (*(u16*)(pCmd + 0x04) << 3));
-        SVECTOR* v3 = (SVECTOR*)(vertexBase + (*(u16*)(pCmd + 0x06) << 3));
-        long xy0 = 0;
-        long xy1 = 0;
-        long xy2 = 0;
-        long xy3 = 0;
-        long otz = 0;
-        long p = 0;
-        long flag = 0;
+    v = vertexBase + ((cmd >> 13) & 0xFFF8u);
+    MTC2(*(u32*)v, 2);
+    MTC2(*(u32*)(v + 4), 3);
+    v = vertexBase + ((u32)*(u16*)(pCmd + 4) << 3);
+    MTC2(*(u32*)v, 4);
+    MTC2(*(u32*)(v + 4), 5);
+    out -= packetStep;
 
+    for (;;) {
+        u32 xy0, xy1, xy2, xy3;
+        s32 maxSz, sz;
+
+        MTC2(*(u32*)nextV0, 0);
+        MTC2(*(u32*)(nextV0 + 4), 1);
+        gte_rtpt(); /* count test's delay slot */
+        if (count == 0) break;
         count--;
         pCmd += 8;
+        cmd = *(u32*)pCmd;
         out += packetStep;
+        nextV0 = vertexBase + ((cmd & 0xFFFFu) << 3);
+        v = vertexBase + ((cmd >> 13) & 0xFFF8u);
+        MTC2(*(u32*)v, 2);
+        MTC2(*(u32*)(v + 4), 3);
+        v = vertexBase + ((u32)*(u16*)(pCmd + 4) << 3);
+        MTC2(*(u32*)v, 4);
+        MTC2(*(u32*)(v + 4), 5);
 
-        otz = RotTransPers4(v0, v1, v2, v3, &xy0, &xy1, &xy2, &xy3, &p, &flag);
-        /* No FLAG rejection (inert-LZCR sweep): retail's apparent flag gates
-         * at 8002E788/8002E7C0 are `mfc2 $t0, $31` -- MFC2 reads DATA reg 31
-         * (LZCR, always 1..32), not the FLAG control reg (CFC2) -- so the
-         * bltz never takes on hardware; overflowed divides saturate and the
-         * quad draws.  (The former XENO_E688_IGNORE_FLAG diagnostic toggle
-         * modeled a gate that does not exist; deleted.)  The zero/negative
-         * depth check is kept. */
-        if (otz <= 0) {
+        /* MFC2 $31 reads LZCR (never negative on hardware), not FLAG. */
+        if ((s32)MFC2(31) < 0) continue;
+        xy0 = MFC2(12);
+        xy1 = MFC2(13);
+        xy2 = MFC2(14);
+        gte_nclip();
+        v = vertexBase + ((u32)*(u16*)(pCmd - 2) << 3);
+        if ((s32)MFC2(24) <= 0) continue;
+        MTC2(*(u32*)v, 0);
+        MTC2(*(u32*)(v + 4), 1);
+        gte_rtps();
+        if ((s32)MFC2(31) < 0) continue;
+        xy3 = MFC2(14);
+        if (!(xy0 < yBound || xy1 < yBound || xy2 < yBound || xy3 < yBound)) {
             continue;
         }
-        /* asm 8002E7AC: blez MAC0 after NCLIP — reject backface/degenerate. */
-        if (NormalClip(xy0, xy1, xy2) <= 0) {
-            continue;
-        }
-        if (!ModelPrimPackedOverlapsScreen((u32)xy0, (u32)xy1, (u32)xy2, (u32)xy3)) {
-            continue;
-        }
-        /* No oversize cull in retail 8002E688 (asm 8002E7CC-8002E894 is only the
-         * screen-overlap + max-SZ OT path). A port-only 1023x511 reject would
-         * delete extreme close-up FT4s (Map014 painting hold). */
-
         {
-            /* Retail 0x8002E82C-0x8002E894 rejects any zero SZ, selects
-             * max(SZ0,SZ1,SZ2,SZ3), and shifts it by D_80050100 + 2.
-             * RotTransPers4's return is SZ3 >> 2 and is correct for the PsyQ
-             * helper contract, but is not this walker's OT-depth source. */
-#ifdef XENO_PC_PORT
-            u16 sz0 = (u16)C2_SZ0;
-            u16 sz1 = (u16)C2_SZ1;
-            u16 sz2 = (u16)C2_SZ2;
-            u16 sz3 = (u16)C2_SZ3;
-            u16 maxSz;
-            s32 otIndex;
-
-            if (sz0 == 0 || sz1 == 0 || sz2 == 0 || sz3 == 0) {
-                continue;
-            }
-            maxSz = sz0;
-            if (sz1 > maxSz) maxSz = sz1;
-            if (sz2 > maxSz) maxSz = sz2;
-            if (sz3 > maxSz) maxSz = sz3;
-            otIndex = (s32)maxSz >> (D_80050100 + 2);
-#else
-            s32 otIndex = (s32)otz >> D_80050100;
-#endif
-            PcPort_LinkModelPrim(ot, otIndex, out, tagLen);
+            int xPass = (xy0 & 0xFFFFu) < xBound || (xy1 & 0xFFFFu) < xBound ||
+                        (xy2 & 0xFFFFu) < xBound || (xy3 & 0xFFFFu) < xBound;
+            /* xy0 is stored in the last x compare's beqz delay slot
+             * (0x8002E81C), so a prim that fails the x test still writes it. */
             *(u32*)(out + 0x08) = (u32)xy0;
-            *(u32*)(out + 0x10) = (u32)xy1;
-            *(u32*)(out + 0x18) = (u32)xy2;
-            *(u32*)(out + 0x20) = (u32)xy3;
-            emitted++;
+            if (!xPass) continue;
         }
+        *(u32*)(out + 0x10) = (u32)xy1;
+        *(u32*)(out + 0x18) = (u32)xy2;
+        maxSz = (s32)MFC2(16);
+        if (maxSz == 0) continue;
+        sz = (s32)MFC2(17);
+        *(u32*)(out + 0x20) = (u32)xy3;
+        if (sz == 0) continue;
+        if (!(sz < maxSz)) maxSz = sz;
+        sz = (s32)MFC2(18);
+        if (sz == 0) continue;
+        if (!(sz < maxSz)) maxSz = sz;
+        sz = (s32)MFC2(19);
+        if (sz == 0) continue;
+        emitted++;
+        if (!(sz < maxSz)) maxSz = sz;
+        if (maxSz == 0) continue;
+        PcPort_LinkModelPrim(ot, maxSz >> shift, out, tagLen);
     }
 
     D_80059578 = emitted;
     D_80059424 = out + packetStep;
-    return 1;
+    return (s32)yBound;
 }
 
 s32 func_8002C700(u8* a0, u8* a1, u32* a2, s32 a3) {
@@ -1923,7 +1923,9 @@ s32 func_8002DAFC(void) {
     return 1;
 }
 #else
-void func_8002DAFC(void) {
+/* Returns 1 like retail (ori $v0, 1 at 0x8002DB64): it is row 0x10's
+ * buildProc and the build dispatcher advances the cursors on nonzero. */
+s32 func_8002DAFC(void) {
     u8* pPoly = D_80059424;
     SetPolyFT3((POLY_FT3*)pPoly);
     SetShadeTex(pPoly, 1);
@@ -1935,6 +1937,7 @@ void func_8002DAFC(void) {
         s32 clut = GetClut(0, 0x1E0);
         *(u16*)(pPoly + 0x0E) = (clut & 0xF) | D_80059314;
     }
+    return 1;
 }
 #endif
 
@@ -2703,9 +2706,143 @@ void func_800306D0(u8* pAnimInfo) {
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80030750);
-#endif
-
 extern s16 D_800308D0[];
+#else
+/* Retail D_800308D0 is CODE: func_80030750's instruction stream from
+ * 0x800308D0, which func_80030988 patches at run time (self-modifying
+ * code).  The patched halfwords are the shamt field (bits 6..10) of the
+ * four `srl tN, tN, 6` UV scale shifts and the immediates of the
+ * `addiu tN, tN, 0x40` UV offsets, at halfword indices
+ *   U: shift 0x18/0x2E/0x3E, offset 0x1A/0x30/0x40
+ *   V: shift 0x1E/0x34/0x44, offset 0x20/0x36/0x46.
+ * The port keeps those fields as data (retail defaults: shift 6, offset
+ * 0x40); func_80030988 writes them with the retail masks and the native
+ * func_80030750 below decodes them.  Only the two operand fields are
+ * modelled -- not the instruction bytes. */
+s16 D_800308D0[0x48] = {
+    [0x18] = 6 << 6, [0x1A] = 0x40, [0x1E] = 6 << 6, [0x20] = 0x40,
+    [0x2E] = 6 << 6, [0x30] = 0x40, [0x34] = 6 << 6, [0x36] = 0x40,
+    [0x3E] = 6 << 6, [0x40] = 0x40, [0x44] = 6 << 6, [0x46] = 0x40,
+};
+
+/* srl shamt field / addiu immediate of a patched D_800308D0 site. */
+static u32 ModelPrimEnvUvShift(s32 index) {
+    return ((u32)(u16)D_800308D0[index] >> 6) & 31u;
+}
+
+static u8 ModelPrimEnvUv(u32 mac, s32 shiftIndex) {
+    /* srl (logical, on the 32-bit MAC word) then addiu, then sb. */
+    return (u8)((mac >> ModelPrimEnvUvShift(shiftIndex)) +
+                (u32)(s32)D_800308D0[shiftIndex + 2]);
+}
+
+/* Retail 0x80030750..0x80030984 with the shared walker tail at 0x8002E1F4:
+ * D_8004FE50 row 0x10 (all six variants), the environment-mapped POLY_FT3
+ * walker (packet 0x20, tag 0x07000000).  Hand-written MIPS translated
+ * instruction by instruction:
+ *   - per-vertex normals at D_8005952C + index*8 (a3 = D_8005952C - base);
+ *   - v1/v2 preloaded; each iteration loads v0 and issues RTPT in the count
+ *     test's delay slot (also for count == 0) on the lookahead command;
+ *   - LZCR gate (inert), y then x overlap, MAC0 read with xy0 stored before
+ *     the backface test and xy1 in its delay slot, then AVSZ3 and xy2;
+ *   - zero-OTZ reject with lwc2 V0 <- normal0 in its delay slot; emitted
+ *     counts only linked prims;
+ *   - three MVMVA (sf=1, RT * V0, no translation): u/v bytes at +0xC/+0xD,
+ *     +0x14/+0x15, +0x1C/+0x1D = (MAC1|MAC2 >> shift) + offset with the
+ *     shift/offset fields patched by func_80030988;
+ *   - OT index OTZ >> D_80050100; $v0 = D_800500FC. */
+s32 func_80030750(u8* pCmd, s32 count) {
+    u8* vertexBase = (u8*)(uintptr_t)D_8005953C;
+    u8* normalBase = (u8*)(uintptr_t)D_8005952C;
+    u8* out = D_80059424;
+    u32* ot = (u32*)(uintptr_t)D_80059568;
+    s32 emitted = D_80059578;
+    u32 yBound = (u32)D_800500FC;
+    u32 xBound = (u32)D_800500F8;
+    u32 shift = (u32)D_80050100 & 31u;
+    u32 cmd = *(u32*)pCmd;
+    u32 off0 = (cmd & 0xFFFFu) << 3;
+    u32 off1 = (cmd >> 13) & 0xFFF8u;
+    u32 off2 = (u32)*(u16*)(pCmd + 4) << 3;
+
+    MTC2(*(u32*)(vertexBase + off1), 2);
+    MTC2(*(u32*)(vertexBase + off1 + 4), 3);
+    MTC2(*(u32*)(vertexBase + off2), 4);
+    MTC2(*(u32*)(vertexBase + off2 + 4), 5);
+    out -= 0x20;
+
+    for (;;) {
+        u8 *n0, *n1, *n2;
+        u32 xy0, xy1, xy2, otz, mac1, mac2;
+        s32 mac0;
+
+        MTC2(*(u32*)(vertexBase + off0), 0);
+        MTC2(*(u32*)(vertexBase + off0 + 4), 1);
+        gte_rtpt(); /* count test's delay slot */
+        if (count == 0) break;
+        n0 = normalBase + off0;
+        n1 = normalBase + off1;
+        n2 = normalBase + off2;
+        count--;
+        pCmd += 8;
+        cmd = *(u32*)pCmd;
+        out += 0x20;
+        off0 = (cmd & 0xFFFFu) << 3;
+        off1 = (cmd >> 13) & 0xFFF8u;
+        off2 = (u32)*(u16*)(pCmd + 4) << 3;
+        MTC2(*(u32*)(vertexBase + off1), 2);
+        MTC2(*(u32*)(vertexBase + off1 + 4), 3);
+        MTC2(*(u32*)(vertexBase + off2), 4);
+        MTC2(*(u32*)(vertexBase + off2 + 4), 5);
+
+        if ((s32)MFC2(31) < 0) continue; /* LZCR, inert on hardware */
+        xy0 = MFC2(12);
+        xy1 = MFC2(13);
+        xy2 = MFC2(14);
+        gte_nclip();
+        if (!(xy0 < yBound || xy1 < yBound || xy2 < yBound)) continue;
+        if (!((xy0 & 0xFFFFu) < xBound || (xy1 & 0xFFFFu) < xBound ||
+              (xy2 & 0xFFFFu) < xBound)) continue;
+        mac0 = (s32)MFC2(24);
+        *(u32*)(out + 0x08) = xy0;
+        *(u32*)(out + 0x10) = xy1; /* backface test's delay slot */
+        if (mac0 <= 0) continue;
+        gte_avsz3();
+        *(u32*)(out + 0x18) = xy2;
+        otz = MFC2(7);
+        /* Retail masks the packet pointer to 24 bits here; host pointers
+         * stay host pointers until the link adapter. */
+        MTC2(*(u32*)n0, 0); /* zero-OTZ branch delay slot */
+        if (otz == 0) continue;
+        MTC2(*(u32*)(n0 + 4), 1);
+        doCOP2(0x0486012); /* MVMVA sf=1, RT, V0, no translation */
+        emitted++;
+        mac1 = MFC2(25);
+        mac2 = MFC2(26);
+        MTC2(*(u32*)n1, 0);
+        MTC2(*(u32*)(n1 + 4), 1);
+        doCOP2(0x0486012);
+        out[0x0C] = ModelPrimEnvUv(mac1, 0x18);
+        out[0x0D] = ModelPrimEnvUv(mac2, 0x1E);
+        mac1 = MFC2(25);
+        mac2 = MFC2(26);
+        MTC2(*(u32*)n2, 0);
+        MTC2(*(u32*)(n2 + 4), 1);
+        doCOP2(0x0486012);
+        out[0x14] = ModelPrimEnvUv(mac1, 0x2E);
+        out[0x15] = ModelPrimEnvUv(mac2, 0x34);
+        mac1 = MFC2(25);
+        mac2 = MFC2(26);
+        out[0x1C] = ModelPrimEnvUv(mac1, 0x3E);
+        out[0x1D] = ModelPrimEnvUv(mac2, 0x44);
+        PcPort_LinkModelPrim(ot, (s32)otz >> shift, out, 0x07000000u);
+    }
+
+    D_80059578 = emitted;
+    D_80059424 = out + 0x20;
+    return (s32)yBound;
+}
+#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80030988);

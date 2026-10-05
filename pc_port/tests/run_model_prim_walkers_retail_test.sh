@@ -128,10 +128,10 @@ MUT_GAME_OVERRIDES=(
     "ModelPrimQuadSZSelectSpine:D_80050100 \+ 2:D_80050100 + 3"
     "ModelPrimQuadF4LitVariant1:colour & 0xFF000000u:colour & 0xFE000000u"
     "ModelPrimTriMediumLitVariant1:out \+ 0x0C\) = MFC2\(21\):out + 0x0E) = MFC2(21)"
-                "ModelPrimTriDepthCueVariant4:out\[0x7\] << 24:out[0x6] << 24"
+    "ModelPrimTriDepthCueVariant4:out\[0x7\] << 24:out[0x6] << 24"
     "ModelPrimTriDepthCueMaxSZVariant5:out\[0x7\] << 24:out[0x6] << 24"
-    "ModelPrimQuadFT4DepthCueVariant4:out \+ 0x10\) = \(u32\)xy1:out + 0x12) = (u32)xy1"
-    "ModelPrimQuadFT4DepthCueMaxSZVariant5:>> \(D_80050100 \+ 2\):>> (D_80050100 + 3)"
+    "ModelPrimQuadFT4DepthCueVariant4:out \+ 0x10\) = xy1:out + 0x12) = xy1"
+    "ModelPrimQuadFT4DepthCueMaxSZVariant5:D_80050100 \+ 2\) & 31u:D_80050100 + 3) & 31u"
 )
 mutate_span() {
     # $1 source TU, $2 function name (start-of-line "static s32 NAME(" or
@@ -188,30 +188,37 @@ for entry in "${MUT_GAME_OVERRIDES[@]}"; do
     MUTANTS_REJECTED=$((MUTANTS_REJECTED + 1))
 done
 
-mutate_span src/slus_006.64/system/temp2.c func_8002E688 \
-    'out \+ 0x10\) = \(u32\)xy1' 'out + 0x12) = (u32)xy1' "$OUT/func_8002E688.c"
-gcc "${COMMON[@]}" "${GAME[@]}" -O2 -fpermissive -w \
-    -c "$OUT/func_8002E688.c" -o "$OUT/func_8002E688.o"
-# Same port-owned-override weakening as the production temp2 object above.
-for sym in $(cut -d'|' -f1 pc_port/port_owned_overrides.txt | grep -v '^#'); do
-    syms=$(nm "$OUT/func_8002E688.o")
-    if grep -q " T $sym\$" <<<"$syms"; then
-        objcopy --weaken-symbol="$sym" "$OUT/func_8002E688.o"
+# temp2.c bodies: same span mutation, temp2 object replaced, port-owned
+# override weakening replicated as for the production temp2 object.
+MUT_TEMP2=(
+    "func_8002E688:out \+ 0x10\) = \(u32\)xy1:out + 0x12) = (u32)xy1"
+    "func_80030750:out\[0x0D\] = :out[0x0E] = "
+)
+for entry in "${MUT_TEMP2[@]}"; do
+    fn=${entry%%:*}; rest=${entry#*:}; find=${rest%%:*}; repl=${rest#*:}
+    mutate_span src/slus_006.64/system/temp2.c "$fn" "$find" "$repl" "$OUT/$fn.c"
+    gcc "${COMMON[@]}" "${GAME[@]}" -O2 -fpermissive -w \
+        -c "$OUT/$fn.c" -o "$OUT/$fn.o"
+    for sym in $(cut -d'|' -f1 pc_port/port_owned_overrides.txt | grep -v '^#'); do
+        syms=$(nm "$OUT/$fn.o")
+        if grep -q " T $sym\$" <<<"$syms"; then
+            objcopy --weaken-symbol="$sym" "$OUT/$fn.o"
+        fi
+    done
+    # (object list on one line: this bash build mis-parses multi-line $( ))
+    clang++ -no-pie -O2 -Wl,--gc-sections "$OUT/$fn.o" \
+        $(mut_objects overrides test cpu ed20 model_link guest_link leaf normlight testinput compat LIBGTE.C INLINE_C.C PsyX_GTE.cpp) -ldl -o "$OUT/$fn.test"
+    if timeout 60s "$OUT/$fn.test" > "$OUT/$fn.log" 2>&1; then
+        echo "MODEL PRIM WALKERS MUTANT SURVIVED: $fn" >&2
+        exit 1
     fi
+    if ! grep -q 'MODEL PRIM WALKERS FAIL' "$OUT/$fn.log"; then
+        echo "MODEL PRIM WALKERS MUTANT BROKEN (no FAIL line): $fn" >&2
+        exit 1
+    fi
+    echo "  mutant rejected: $fn"
+    MUTANTS_REJECTED=$((MUTANTS_REJECTED + 1))
 done
-# (object list on one line: this bash build mis-parses multi-line $( ))
-clang++ -no-pie -O2 -Wl,--gc-sections "$OUT/func_8002E688.o" \
-    $(mut_objects overrides test cpu ed20 model_link guest_link leaf normlight testinput compat LIBGTE.C INLINE_C.C PsyX_GTE.cpp) -ldl -o "$OUT/func_8002E688.test"
-if timeout 60s "$OUT/func_8002E688.test" > "$OUT/func_8002E688.log" 2>&1; then
-    echo "MODEL PRIM WALKERS MUTANT SURVIVED: func_8002E688" >&2
-    exit 1
-fi
-if ! grep -q 'MODEL PRIM WALKERS FAIL' "$OUT/func_8002E688.log"; then
-    echo "MODEL PRIM WALKERS MUTANT BROKEN (no FAIL line): func_8002E688" >&2
-    exit 1
-fi
-echo "  mutant rejected: func_8002E688"
-MUTANTS_REJECTED=$((MUTANTS_REJECTED + 1))
 
 mutate_span pc_port/src/model_prim_ed20.c func_8002ED20 \
     'otz >> shift' 'otz >> (shift + 1)' "$OUT/func_8002ED20.c"
