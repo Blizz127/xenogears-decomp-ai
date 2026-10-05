@@ -203,3 +203,4 @@
  * proven by the mesh/slot/heap fixtures in the differential harness. */
     "func_800A5A48",
     "func_800A579C",
+    "func_800A5D54",

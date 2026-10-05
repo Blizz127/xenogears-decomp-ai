@@ -169,7 +169,6 @@ void func_800A5BE8(s32 a0, s32 a1, s32 a2, s32 a3, VECTOR* normal) {
 #endif
 #ifndef XENO_PC_PORT
 #endif
-#ifndef XENO_PC_PORT
 /* Depth-limited search from triangle `tri` through its three neighbours
  * (+6/+8/+A): the first triangle not yet visited this pass (+0xD != the pass
  * counter) for which func_800A5A48 returns -1; -1 when none is found. */
@@ -179,11 +178,11 @@ s32 func_800A5D54(s32 arg0, s32 tri, s32 depth) {
     if (tri < 0) {
         return -1;
     }
-    if (*(u8*)(tri * 14 + D_800D39CC + 0xD) != D_800D2F64) {
+    if (*GPTR(u8, tri * 14 + D_800D39CC + 0xD) != D_800D2F64) {
         s16* t;
 
-        *(u8*)(tri * 14 + D_800D39CC + 0xD) = D_800D2F64;
-        t = (s16*)(tri * 14 + D_800D39CC);
+        *GPTR(u8, tri * 14 + D_800D39CC + 0xD) = D_800D2F64;
+        t = GPTR(s16, tri * 14 + D_800D39CC);
         if (func_800A5A48(t[0] * 8 + D_800D3344, t[1] * 8 + D_800D3344, t[2] * 8 + D_800D3344, arg0) == -1) {
             return tri;
         }
@@ -191,14 +190,13 @@ s32 func_800A5D54(s32 arg0, s32 tri, s32 depth) {
     if (depth <= 0) {
         return -1;
     }
-    if ((r = func_800A5D54(arg0, ((s16*)(tri * 14 + D_800D39CC))[3], depth - 1)) < 0
-        && (r = func_800A5D54(arg0, ((s16*)(tri * 14 + D_800D39CC))[4], depth - 1)) < 0
-        && (r = func_800A5D54(arg0, ((s16*)(tri * 14 + D_800D39CC))[5], depth - 1)) < 0) {
+    if ((r = func_800A5D54(arg0, GPTR(s16, tri * 14 + D_800D39CC)[3], depth - 1)) < 0
+        && (r = func_800A5D54(arg0, GPTR(s16, tri * 14 + D_800D39CC)[4], depth - 1)) < 0
+        && (r = func_800A5D54(arg0, GPTR(s16, tri * 14 + D_800D39CC)[5], depth - 1)) < 0) {
         r = -1;
     }
     return r;
 }
-#endif
 #ifndef XENO_PC_PORT
 #endif
 
