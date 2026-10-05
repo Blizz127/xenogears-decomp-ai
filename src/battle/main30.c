@@ -1,4 +1,5 @@
 #include "common.h"
+#include "battle_guest_abi.h"
 
 
 #ifndef XENO_PC_PORT
@@ -48,12 +49,12 @@ void func_8007E8AC(u8** ppBoard) {
     *(u8*)(pBase + off + 0x140) = p[3];
 }
 /* func_8007E8E0.s */
-void func_8007E8E0(u8** ppBoard, u8 index) {
-    u8* p = *ppBoard;
+void func_8007E8E0(GSLOT(u8) ppBoard, u8 index) {
+    u8* p = GLOAD(u8, ppBoard);
     u32 i1 = p[1];
-    u32 row = (u32)D_800D3420 + ((u32)index << 6);
+    u32 row = GADDR(D_800D3420) + ((u32)index << 6);
 
-    D_800D2DC0 = (u8)(func_80079E7C(*(u16*)((i1 << 1) + row)) + 1);
+    D_800D2DC0 = (u8)(func_80079E7C(*GPTR(u16, (i1 << 1) + row)) + 1);
 }
 /* func_8007E934.s */
 void func_8007E934(void) {
@@ -75,9 +76,9 @@ u32 func_8007E98C(u8** ppBoard, u8 index) {
     u32 i1 = p[1];
     u32 i2 = p[2];
     u32 i3s = i3 << 8;
-    u32 row = (u32)D_800D3420 + ((u32)index << 6);
+    u32 row = GADDR(D_800D3420) + ((u32)index << 6);
 
-    return (*(u16*)((i1 << 1) + row) ^ (i2 | i3s)) == 0;
+    return (*GPTR(u16, (i1 << 1) + row) ^ (i2 | i3s)) == 0;
 }
 /* func_8007E9D0.s */
 u32 func_8007E9D0(u8** ppBoard, u8 index) {
@@ -93,8 +94,8 @@ u32 func_8007EA08(u8** ppBoard, u8 index) {
     u32 i1 = p[1];
     u32 i2 = p[2];
     u32 i3s = i3 << 8;
-    u32 row = (u32)D_800D3420 + ((u32)index << 6);
-    u32 a = *(u16*)((i1 << 1) + row);
+    u32 row = GADDR(D_800D3420) + ((u32)index << 6);
+    u32 a = *GPTR(u16, (i1 << 1) + row);
 
     return (i2 | i3s) >= a;
 }
@@ -112,8 +113,8 @@ u32 func_8007EA84(u8** ppBoard, u8 index) {
     u32 i1 = p[1];
     u32 i2 = p[2];
     u32 i3s = i3 << 8;
-    u32 row = (u32)D_800D3420 + ((u32)index << 6);
-    u32 a = *(u16*)((i1 << 1) + row);
+    u32 row = GADDR(D_800D3420) + ((u32)index << 6);
+    u32 a = *GPTR(u16, (i1 << 1) + row);
 
     return a >= (i2 | i3s);
 }
@@ -129,9 +130,9 @@ u32 func_8007EB08(u8** ppBoard, u8 index) {
     u8* p = *ppBoard;
     u32 i2 = p[2];
     u32 i1 = p[1];
-    u32 row = (u32)D_800D3420 + ((u32)index << 6);
-    u32 a = *(u16*)((i1 << 1) + row);
-    u32 b = *(u16*)((i2 << 1) + row);
+    u32 row = GADDR(D_800D3420) + ((u32)index << 6);
+    u32 a = *GPTR(u16, (i1 << 1) + row);
+    u32 b = *GPTR(u16, (i2 << 1) + row);
 
     return (a ^ b) == 0;
 }
@@ -149,9 +150,9 @@ u32 func_8007EB90(u8** ppBoard, u8 index) {
     u8* p = *ppBoard;
     u32 i2 = p[2];
     u32 i1 = p[1];
-    u32 row = (u32)D_800D3420 + ((u32)index << 6);
-    u32 a = *(u16*)((i1 << 1) + row);
-    u32 b = *(u16*)((i2 << 1) + row);
+    u32 row = GADDR(D_800D3420) + ((u32)index << 6);
+    u32 a = *GPTR(u16, (i1 << 1) + row);
+    u32 b = *GPTR(u16, (i2 << 1) + row);
 
     return b >= a;
 }
@@ -171,8 +172,8 @@ u32 func_8007EC10(u8** ppBoard, u8 index) {
     u32 i1 = p[1];
     u32 i2 = p[2];
     u32 i3s = i3 << 8;
-    u32 row = (u32)D_800D3420 + ((u32)index << 6);
-    u32 a = *(u16*)((i1 << 1) + row);
+    u32 row = GADDR(D_800D3420) + ((u32)index << 6);
+    u32 a = *GPTR(u16, (i1 << 1) + row);
 
     return (a & (i2 + i3s)) != 0;
 }
@@ -190,9 +191,9 @@ u32 func_8007EC94(u8** ppBoard, u8 index) {
     u8* p = *ppBoard;
     u32 i2 = p[2];
     u32 i1 = p[1];
-    u32 row = (u32)D_800D3420 + ((u32)index << 6);
-    u32 a = *(u16*)((i1 << 1) + row);
-    u32 b = *(u16*)((i2 << 1) + row);
+    u32 row = GADDR(D_800D3420) + ((u32)index << 6);
+    u32 a = *GPTR(u16, (i1 << 1) + row);
+    u32 b = *GPTR(u16, (i2 << 1) + row);
 
     return (a & b) != 0;
 }
@@ -210,8 +211,8 @@ u32 func_8007ED14(u8** ppBoard, u8 index) {
     u32 i1 = p[1];
     u32 i2 = p[2];
     u32 i3s = i3 << 8;
-    u32 row = (u32)D_800D3420 + ((u32)index << 6);
-    u32 a = *(u16*)((i1 << 1) + row);
+    u32 row = GADDR(D_800D3420) + ((u32)index << 6);
+    u32 a = *GPTR(u16, (i1 << 1) + row);
 
     return (a ^ (i2 | i3s)) != 0;
 }
@@ -227,9 +228,9 @@ u32 func_8007ED98(u8** ppBoard, u8 index) {
     u8* p = *ppBoard;
     u32 i2 = p[2];
     u32 i1 = p[1];
-    u32 row = (u32)D_800D3420 + ((u32)index << 6);
-    u32 a = *(u16*)((i1 << 1) + row);
-    u32 b = *(u16*)((i2 << 1) + row);
+    u32 row = GADDR(D_800D3420) + ((u32)index << 6);
+    u32 a = *GPTR(u16, (i1 << 1) + row);
+    u32 b = *GPTR(u16, (i2 << 1) + row);
 
     return (a ^ b) != 0;
 }
@@ -238,9 +239,9 @@ u32 func_8007EDE0(u8** ppBoard, u8 index) {
     u8* p = *ppBoard;
     u32 i2 = p[2];
     u32 i1 = p[1];
-    u32 row = (u32)D_800D3410 + ((u32)index << 6);
-    u32 a = *(u32*)((i1 << 2) + row);
-    u32 b = *(u32*)((i2 << 2) + row);
+    u32 row = GADDR(D_800D3410) + ((u32)index << 6);
+    u32 a = *GPTR(u32, (i1 << 2) + row);
+    u32 b = *GPTR(u32, (i2 << 2) + row);
 
     return (a ^ b) == 0;
 }
@@ -249,9 +250,9 @@ u32 func_8007EE28(u8** ppBoard, u8 index) {
     u8* p = *ppBoard;
     u32 i2 = p[2];
     u32 i1 = p[1];
-    u32 row = (u32)D_800D3410 + ((u32)index << 6);
-    u32 a = *(u32*)((i1 << 2) + row);
-    u32 b = *(u32*)((i2 << 2) + row);
+    u32 row = GADDR(D_800D3410) + ((u32)index << 6);
+    u32 a = *GPTR(u32, (i1 << 2) + row);
+    u32 b = *GPTR(u32, (i2 << 2) + row);
 
     return b >= a;
 }
