@@ -7,8 +7,8 @@ void func_800A5BE8(s32 a0, s32 a1, s32 a2, s32 a3, VECTOR* normal);
 #ifndef XENO_PC_PORT
 extern s32 D_800D3344;
 extern s32 D_800D39CC;
-s32 func_800A5870(s32 arg0, s32 arg1, s32 arg2);
 #endif
+s32 func_800A5870(s32 arg0, s32 arg1, s32 arg2);
 
 #ifndef XENO_PC_PORT
 #endif
@@ -36,9 +36,6 @@ s32 func_800A579C(s32 arg0) {
     }
     return -1;
 }
-#ifndef XENO_PC_PORT
-
-#ifndef XENO_PC_PORT
 s32 func_800A5870(s32 arg0, s32 arg1, s32 arg2) {
     s32 temp_s0;
     void *temp_v0;
@@ -47,13 +44,10 @@ s32 func_800A5870(s32 arg0, s32 arg1, s32 arg2) {
         return -1;
     }
     temp_s0 = arg1 * 0xE;
-    temp_v0 = temp_s0 + D_800D39CC;
-    func_800A5BE8((*(s16 *)((s8*)(temp_v0) + 0) * 8) + D_800D3344, (*(s16 *)((s8*)(temp_v0) + 2) * 8) + D_800D3344, (*(s16 *)((s8*)(temp_v0) + 4) * 8) + D_800D3344, arg0, arg2);
-    return *(u8 *)((s8*)((temp_s0 + D_800D39CC)) + 0xC);
+    temp_v0 = GPTR(void, temp_s0 + D_800D39CC);
+    func_800A5BE8((*(s16 *)((s8*)(temp_v0) + 0) * 8) + D_800D3344, (*(s16 *)((s8*)(temp_v0) + 2) * 8) + D_800D3344, (*(s16 *)((s8*)(temp_v0) + 4) * 8) + D_800D3344, arg0, GPTR(VECTOR, arg2));
+    return *(u8 *)((s8*)(GPTR(void, temp_s0 + D_800D39CC)) + 0xC);
 }
-#endif
-
-#endif
 #ifndef XENO_PC_PORT
 extern u8 D_800D2F64; /* pass counter; its wrap clears every triangle's +0xD flag */
 #endif
