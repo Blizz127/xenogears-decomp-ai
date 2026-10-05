@@ -26,6 +26,22 @@ static int refuse(const char *command, const char *why)
 
 static void status(const char *text) { PcPort_DevMenuSetStatus(text); }
 
+/* A warp the game cannot take right now (the menu has already closed with
+ * "WARP REQUESTED"): say why on screen, with the quick save/load notice,
+ * instead of only in the log (owner report 2026-10-05: "the warps don't
+ * work").  Warps need free field control, like F11. */
+static int warp_refused(const char *command)
+{
+    const char *why = PcPort_QuickCheckpointFieldIsSafe()
+        ? "a room change or checkpoint is already pending"
+        : "only in free field control (not during a scene, menu or the title)";
+    PcPort_QuickCheckpointNoticeSet(PcPort_QuickCheckpointFieldIsSafe()
+        ? "WARP UNAVAILABLE: ANOTHER ROOM CHANGE IS PENDING"
+        : "WARP UNAVAILABLE: ONLY WHEN YOU CAN WALK FREELY");
+    status("WARP UNAVAILABLE");
+    return refuse(command, why);
+}
+
 /* Harness/diagnostic read-out: one line, always available while the dev menu
  * is enabled (no field-safety gate; it only reads). */
 static void print_state(void)
@@ -100,7 +116,7 @@ static int finish_step(const char *command, int index)
     char toast[96];
     int i;
     if (warp_with(command, st->next_map, st->next_entrance, st->writes, st->nwrites, -1) != 0)
-        return refuse(command, "a room change or checkpoint is already pending");
+        return warp_refused(command);
     fprintf(stderr, "[DEV_MENU] step finished: %s '%s' (area %s), %d writes:", st->id, st->name, st->area, st->nwrites);
     for (i = 0; i < st->nwrites; i++) fprintf(stderr, " var[0x%x]=%u", st->writes[i].addr, st->writes[i].value);
     fprintf(stderr, " -> map %d entrance %d\n", st->next_map, st->next_entrance);
@@ -167,6 +183,11 @@ int PcPort_DevMenuAction(const char *command)
         char why[160];
         PcPort_QuickCheckpointSafetyDescribe(why, sizeof why);
         status("NOT ON A FREE FIELD - NO CHANGE");
+        /* Warps and steps close the menu first, so the status line above is
+         * never seen: show the refusal on screen as well. */
+        PcPort_QuickCheckpointNoticeSet(!strncmp(command, "warp", 4) || !strncmp(command, "step", 4)
+            ? "WARP UNAVAILABLE: ONLY WHEN YOU CAN WALK FREELY"
+            : "DEV MENU: ONLY WHEN YOU CAN WALK FREELY");
         return refuse(command, why);
     }
     if (!strcmp(command, "heal")) {
@@ -220,7 +241,7 @@ int PcPort_DevMenuAction(const char *command)
         w = &g_PcPortDevWarps[index];
         if (warp_with(command, w->map, w->entrance, NULL, 0,
                       w->progression == PC_DEV_NO_SCENARIO ? -1 : (int)w->progression) != 0)
-            return refuse(command, "a room change or checkpoint is already pending");
+            return warp_refused(command);
         fprintf(stderr, "[CHEATS] warp requested: %s / %s (map %d entrance %d scenario %d)\n",
                 w->area, w->spot, w->map, w->entrance,
                 w->progression == PC_DEV_NO_SCENARIO ? -1 : (int)w->progression);
