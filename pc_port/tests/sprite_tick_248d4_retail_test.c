@@ -121,6 +121,9 @@ static int bridge(void* u, PcPortMipsCpu* c, u32 t)
     return 0;
 }
 
+static const u32 kStaleS3[] = { 0, 1, 5, 0x10, 0x7FF, 0xFFFFFFFFu, 0x80000000u, 0x01234567u, 0x100, 0xFFFFFF00u };
+extern u32 g_SpriteTickEntryS3;
+
 static const u8 kOperands[][2] = {
     { 3, 0 }, { 0xFD, 0xFF }, { 5, 0 }, { 0xFF, 0xFF }, { 1, 0 }, { 0x80, 0 },
     { 0x7F, 0 }, { 0, 4 }, { 0x12, 0x80 }, { 0x34, 0x0C }, { 0x05, 0x7B }, { 0, 1 },
@@ -294,7 +297,8 @@ int main(int argc, char** argv)
             bus.cop2_write = NULL;
             bus.cop2_command = NULL;
             PcPortMipsCpuInit(&cpu, &bus);
-            if (getenv("T248D4_S3")) { cpu.gpr[19] = (u32)atoi(getenv("T248D4_S3")); }
+            /* $s3 at entry is caller state in retail (read by 0x40-0x7F). */
+            cpu.gpr[19] = g_SpriteTickEntryS3 = kStaleS3[v % (sizeof(kStaleS3) / 4)];
             cpu.gpr[4] = (u32)(uintptr_t)fx.sprite;
             cpu.gpr[29] = 0x801FF000u;
             cpu.gpr[31] = 0xFFFFFFFCu;

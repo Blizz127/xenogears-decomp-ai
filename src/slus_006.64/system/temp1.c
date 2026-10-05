@@ -1437,6 +1437,9 @@ extern void func_8001FBE4(void* pSpriteData, u32 opcodeIndex, void* operands);
 #ifndef XENO_PC_PORT
 INCLUDE_ASM(TEMP1_ASM, func_800248D4);
 #else
+/* Port-only input: $s3 at func_800248D4 entry (see opcodes 0x40-0x7F). */
+u32 g_SpriteTickEntryS3;
+
 #ifdef XENO_PC_PORT
 /* Port-only inline of func_8001FBA4 (animation_scripts.c): variable slot
  * selected by index byte *pIndex: bit7 clear -> sprite stack slot
@@ -1665,10 +1668,18 @@ reenter:
     }
 
     /* asm 800249C0-80024A54: 0x40-0x7F fall through to the shared delay
-     * tail with stale $s3 (no 1D2B0). A first-opcode stale delay of 0
-     * clamps to 1, same as the 0x00-0x3F tail. */
+     * tail WITHOUT assigning $s3, so the delay is whatever $s3 held at
+     * function entry. $s3 is callee-saved and is never written before this
+     * point on any path that reaches here (all paths that set it return, the
+     * 0x82 recursion saves/restores it), so it is exactly the caller's $s3:
+     * AnimScriptTick does not touch $s3, so it is the register value of
+     * AnimScriptTick's own caller (many different sites). That is
+     * genuinely caller-dependent stale state; the port models it as the
+     * port-only input g_SpriteTickEntryS3 (default 0 -> delay clamps to 1).
+     * Opcodes 0x40-0x7F are outside the script ISA; retail scripts are not
+     * expected to contain them. */
     if (opcode >= 0x40 && opcode < 0x80) {
-        s32 delay = 0;
+        s32 delay = (s32)g_SpriteTickEntryS3;
         s32 speed = (*(u32*)(pData + 0xAC) >> 7) & 0xFFF;
         s32 scaledDelay;
         u32 flags;
@@ -1676,7 +1687,7 @@ reenter:
 
         *(u32*)(pData + 0x64) = (u32)(uintptr_t)(pc + 1);
 
-        scaledDelay = delay * speed;
+        scaledDelay = (s32)((u32)delay * (u32)speed); /* mult lo, wraps */
         if (scaledDelay < 0) {
             scaledDelay += 0xFF;
         }

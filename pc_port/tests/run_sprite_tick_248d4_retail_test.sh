@@ -25,3 +25,5 @@ d2_mutant call_ret '^void func_800248D4(' 's/u32 ret = (u32)(uintptr_t)pc + 3u;/
 echo "SPRITE TICK 248D4 mutant rejected: call_ret"
 d2_mutant pop24_keep '^void func_800248D4(' 's/\& 0xFF000000u) | value/\& 0xFF000000u) | (value \& 0xFFFFu)/'
 echo "SPRITE TICK 248D4 mutant rejected: pop24_keep"
+d2_mutant stale_s3 '^void func_800248D4(' 's/s32 delay = (s32)g_SpriteTickEntryS3;/s32 delay = 0;/'
+echo "SPRITE TICK 248D4 mutant rejected: stale_s3"
