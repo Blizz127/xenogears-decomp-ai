@@ -133,6 +133,7 @@ static const WalkerSpec walkers[] = {
     {"8002EAE0", 0x8002EAE0u, 0x08, 3, 0x18, "ModelPrimQuadF4MinSZVariant3"},
     {"8002EAF4", 0x8002EAF4u, 0x09, 3, 0x28, "ModelPrimQuadFT4MinSZVariant3"},
     {"8002F8D0", 0x8002F8D0u, 0x08, 1, 0x18, "ModelPrimQuadF4LitVariant1"},
+    {"8002F6B4", 0x8002F6B4u, 0x02, 1, 0x1C, "ModelPrimTriMediumLitVariant1"},
     {"8002E470", 0x8002E470u, 0x00, 2, 0x14, "ModelPrimTriSmallMaxSZVariant2"},
     {"8002E484", 0x8002E484u, 0x05, 2, 0x20, "ModelPrimTriMaxSZVariant2"},
     {"8002E448", 0x8002E448u, 0x03, 2, 0x28, "ModelPrimTriGT3MaxSZVariant2"},
@@ -376,6 +377,13 @@ static int run_case(const WalkerSpec *w, const Case *c, ModelPrimProc port)
                 w->name, c->name, cpu.error);
         return 0;
     }
+    /* The shared .L8002E1F4 epilogue restores $s7 with an lw in the jr $ra
+     * delay slot.  The interpreter halts at the return address before that
+     * load-delayed value is committed; the caller's first instruction would
+     * see it, so commit it here (first visible with F6B4, which uses $s7). */
+    if (cpu.load_valid && cpu.load_reg != 0)
+        cpu.gpr[cpu.load_reg] =
+            (cpu.gpr[cpu.load_reg] & cpu.load_mask) | cpu.load_value;
     if (cpu.gpr[29] != STACK) {
         fprintf(stderr, "MODEL PRIM WALKERS FAIL %s %s retail stack ptr %08x\n",
                 w->name, c->name, cpu.gpr[29]);

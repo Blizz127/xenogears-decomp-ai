@@ -417,6 +417,7 @@ static s32 ModelPrimQuadGT4MaxSZVariant2(u8* pCmd, s32 count);
 static s32 ModelPrimQuadG4MaxSZVariant2(u8* pCmd, s32 count);
 static s32 ModelPrimQuadF4MaxSZVariant2(u8* pCmd, s32 count);
 static s32 ModelPrimQuadF4LitVariant1(u8* pCmd, s32 count);
+static s32 ModelPrimTriMediumLitVariant1(u8* pCmd, s32 count);
 static s32 ModelPrimQuadGT4MinSZVariant3(u8* pCmd, s32 count);
 static s32 ModelPrimQuadG4MinSZVariant3(u8* pCmd, s32 count);
 static s32 ModelPrimQuadF4MinSZVariant3(u8* pCmd, s32 count);
@@ -495,10 +496,10 @@ ModelPrimDesc D_8004FE50[17] = {
          * 0x8002E024 is the medium alternate entry of the shared hand-written
          * tri walker (see ModelPrimTriAverageShared) -- packet 0x1C, tag
          * 0x06000000, matching this row's outputStride exactly.  proc[1]
-         * 0x8002F6B4 (the separate lit path) and proc[2]/proc[3]
-         * 0x8002E45C / 0x8002E8C8 stay unported -> NULL, as in rows 0x00/0x03.
+         * 0x8002F6B4 is the lit G3 walker (ModelPrimTriMediumLitVariant1);
+         * proc[3] 0x8002E8C8 stays unported -> NULL, as in rows 0x00/0x03.
          * buildProc func_8002D6AC is already real C in temp2.c. */
-        .proc = { ModelPrimTriMediumAverageVariant0, NULL,
+        .proc = { ModelPrimTriMediumAverageVariant0, ModelPrimTriMediumLitVariant1,
                   ModelPrimTriMediumMaxSZVariant2, NULL,
                   ModelPrimTriMediumAverageVariant0,
                   ModelPrimTriMediumAverageVariant0 },
@@ -830,7 +831,9 @@ void func_80284EA4(void) { FieldDebugOverlayUnreachable("func_80284EA4"); }
 
 extern u8* D_80059424;
 extern u32 D_8005953C;
-extern u32 D_80059498; /* lighting-record cursor (func_8002F8D0) */
+extern u32 D_80059498; /* lighting-record cursor (func_8002F8D0/F6B4) */
+extern u32 D_8005952C; /* lit-walker normal table (func_8002F6B4) */
+extern uint8_t g_PsxScratchpad[];
 extern u32 D_80059568;
 extern s32 D_80059578;
 
@@ -1555,6 +1558,119 @@ static s32 ModelPrimQuadF4Variant0(u8* pCmd, s32 count) {
 /* Retail entry 0x8002E268: packet 0x28, tag 0x09000000, t9 0x8 (POLY_FT4). */
 static s32 ModelPrimQuadFT4Variant0(u8* pCmd, s32 count) {
     return ModelPrimQuadSharedSpine(pCmd, count, 0x28, 0x8, 0x09000000);
+}
+
+/* Retail func_8002F6B4 (row 02 var 1): lit POLY_G3 walker (packet 0x1C),
+ * a standalone hand-written body exiting through the shared .L8002E1F4
+ * epilogue (a3 = 0x1C).  Translated instruction by instruction:
+ *   - all six VXY/VZ regs reloaded from the current v0/v1/v2 addresses at
+ *     every loop head, RTPT before the count test (count+1 transforms);
+ *   - after the count test, the three addresses rebased into the normal
+ *     table (+ D_8005952C - D_8005953C) are stored to scratchpad words
+ *     0x1F800000/4/8, the records cursor D_80059498 advances by 4 per
+ *     command and is written back on exit;
+ *   - LZCR + SXY0 read, LZCR branch, SXY1/SXY2 read, NCLIP, then the
+ *     y/x-overlap gates over three SXY;
+ *   - xy0 at +8 and xy1 at +0x10 (delay slot) stored before the MAC0 <= 0
+ *     reject; AVSZ3, xy2 at +0x18, OTZ == 0 reject, THEN emitted++;
+ *   - NCCT on the three scratchpad normals with RGBC = record word,
+ *     colour word +4 = record code byte | RGB0, RGB1 -> +0xC, RGB2 -> +0x14;
+ *     link tag 0x06000000, OT index OTZ >> D_80050100.
+ */
+static s32 ModelPrimTriMediumLitVariant1(u8* pCmd, s32 count) {
+    u32 vertices = D_8005953C;
+    u32 normalDelta = D_8005952C - vertices;
+    u32* scratch = (u32*)g_PsxScratchpad; /* retail 0x1F800000 */
+    u8* records = (u8*)(uintptr_t)D_80059498;
+    u8* out = D_80059424 - 0x1C;
+    u32* ot = (u32*)(uintptr_t)D_80059568;
+    s32 emitted = D_80059578;
+    u32 yBound = (u32)D_800500FC; /* also the return value ($v0) */
+    u32 xBound = (u32)D_800500F8;
+    u32 shift = (u32)D_80050100;
+    u32 cmd = *(u32*)pCmd;
+    u32 v0 = vertices + ((cmd & 0xFFFFu) << 3);
+    u32 v1 = vertices + ((cmd >> 13) & 0xFFF8u);
+    u32 v2 = vertices + ((u32)*(u16*)(pCmd + 4) << 3);
+
+    for (;;) {
+        u32 xy0, xy1, xy2, lzcr, colour;
+        s32 mac0, otz;
+        u8* n;
+
+        MTC2(*(u32*)(uintptr_t)v0, 0);
+        MTC2(*(u32*)(uintptr_t)(v0 + 4), 1);
+        MTC2(*(u32*)(uintptr_t)v1, 2);
+        MTC2(*(u32*)(uintptr_t)(v1 + 4), 3);
+        MTC2(*(u32*)(uintptr_t)v2, 4);
+        MTC2(*(u32*)(uintptr_t)(v2 + 4), 5);
+        gte_rtpt();
+        if (count == 0) break;
+        scratch[0] = v0 + normalDelta;
+        scratch[1] = v1 + normalDelta;
+        scratch[2] = v2 + normalDelta;
+        count--;
+        pCmd += 8;
+        records += 4;
+        cmd = *(u32*)pCmd;
+        out += 0x1C;
+        v0 = vertices + ((cmd & 0xFFFFu) << 3);
+        v1 = vertices + ((cmd >> 13) & 0xFFF8u);
+        v2 = vertices + ((u32)*(u16*)(pCmd + 4) << 3);
+
+        lzcr = MFC2(31);
+        xy0 = MFC2(12);
+        if ((s32)lzcr < 0) continue; /* LZCR, inert on hardware */
+        xy1 = MFC2(13);
+        xy2 = MFC2(14);
+        gte_nclip();
+        if (!(xy0 < yBound || xy1 < yBound || xy2 < yBound)) {
+            CullCamDrop(CC_OVERLAP, 0);
+            continue;
+        }
+        if (!((xy0 & 0xFFFFu) < xBound || (xy1 & 0xFFFFu) < xBound ||
+              (xy2 & 0xFFFFu) < xBound)) {
+            CullCamDrop(CC_OVERLAP, 0);
+            continue;
+        }
+        mac0 = (s32)MFC2(24);
+        *(u32*)(out + 0x08) = xy0;
+        *(u32*)(out + 0x10) = xy1; /* MAC0 branch delay slot */
+        if (mac0 <= 0) {
+            CullCamDrop(CC_NCLIP_BACKFACE, 0);
+            continue;
+        }
+        gte_avsz3();
+        *(u32*)(out + 0x18) = xy2;
+        otz = (s32)MFC2(7);
+        if (otz == 0) {
+            CullCamDrop(CC_OTZ, 0);
+            continue;
+        }
+        emitted++;
+        n = (u8*)(uintptr_t)scratch[0];
+        MTC2(*(u32*)n, 0);
+        MTC2(*(u32*)(n + 4), 1);
+        n = (u8*)(uintptr_t)scratch[1];
+        MTC2(*(u32*)n, 2);
+        MTC2(*(u32*)(n + 4), 3);
+        n = (u8*)(uintptr_t)scratch[2];
+        MTC2(*(u32*)n, 4);
+        MTC2(*(u32*)(n + 4), 5);
+        colour = *(u32*)(records - 4);
+        MTC2(colour, 6);
+        gte_ncct();
+        *(u32*)(out + 0x04) = (colour & 0xFF000000u) | (MFC2(20) & 0x00FFFFFFu);
+        *(u32*)(out + 0x0C) = MFC2(21);
+        *(u32*)(out + 0x14) = MFC2(22);
+        PcPort_LinkModelPrim(ot, otz >> shift, out, 0x06000000);
+        CullCamEmit(0);
+    }
+
+    D_80059498 = (u32)(uintptr_t)records;
+    D_80059578 = emitted;
+    D_80059424 = out + 0x1C;
+    return (s32)yBound;
 }
 
 /* Retail func_8002F8D0 (row 08 var 1): lit POLY_F4 walker, a standalone
