@@ -1035,6 +1035,91 @@ static void hand_cases_abi_slots(void)
     }
 }
 
+/* Codemod sweep batch 1 (ppBoard family, main19/main30): slot fixture with
+ * forced operands.  Variant 0 leaves the fixture's pattern bytes, variant 1
+ * forces the "low" class (no saturation / comparison false), variant 2 the
+ * "high" class (saturation / comparison true).  Every forced variant must be
+ * proven for each leaf, so neither result class is left to chance. */
+typedef struct SlotSweepLeaf {
+    const char *name;
+    int wide;      /* operands are u16 at D_800D3420 rows, else u8 at D_800D3430 */
+    int forced;    /* 1 when variants 1/2 mean something for this leaf */
+    /* operand values for variant 1 and 2: row[p[1]], row[p[2]] */
+    uint32_t lo_a, lo_b, hi_a, hi_b;
+    int imm;       /* compare against the immediate p[2] (| p[3] << 8 when wide) */
+} SlotSweepLeaf;
+
+static const SlotSweepLeaf kSlotSweep[] = {
+    { "func_8007AE98", 0, 1, 9, 4, 4, 9, 0 },             /* u8 sat sub: low = no clamp */
+    { "func_8007AFFC", 0, 0, 0, 0, 0, 0, 0 },             /* u8 and */
+    { "func_8007B040", 0, 0, 0, 0, 0, 0, 0 },             /* u8 or */
+    { "func_8007B084", 0, 0, 0, 0, 0, 0, 0 },             /* u8 xor */
+    { "func_8007B0C8", 1, 1, 0x100, 0x22, 0xFFF0, 0x40, 0 }, /* u16 sat add */
+    { "func_8007B134", 1, 1, 0x300, 0x22, 0x22, 0x300, 0 },  /* u16 sat sub */
+    { "func_8007E954", 0, 1, 0x11, 0, 0x2B, 0, 1 },       /* row[p1] == p2 */
+    { "func_8007E98C", 1, 1, 0x1111, 0, 0x2B2B, 0, 1 },   /* u16 row[p1] == p2|p3<<8 */
+    { "func_8007E9D0", 0, 1, 0x7F, 0, 0x20, 0, 1 },       /* p2 >= row[p1] */
+    { "func_8007EAC8", 0, 1, 0x11, 0x12, 0x5A, 0x5A, 0 }, /* row[p1] == row[p2] */
+};
+
+static void hand_cases_slot_sweep(void)
+{
+    uint32_t args[4];
+    unsigned l, salt, variant;
+
+    for (l = 0; l < sizeof(kSlotSweep) / sizeof(kSlotSweep[0]); l++) {
+        const SlotSweepLeaf *s = &kSlotSweep[l];
+        unsigned proven_variant[3] = {0, 0, 0};
+        unsigned seen = 0;
+        if (!abi_leaf_listed(s->name))
+            continue;
+        for (salt = 0; salt < 12; salt++) {
+            for (variant = 0; variant < 3; variant++) {
+                uint32_t index = salt % 5u;
+                uint8_t *ops = (uint8_t *)PSX_ADDR(SRC);
+                if (variant != 0 && !s->forced)
+                    break;
+                begin_case(0, 0);
+                slot_fixture(salt, 0);
+                if (ops[2] == ops[1])
+                    ops[2] = (uint8_t)((ops[1] + 1u) & 0x3Fu);
+                if (variant != 0) {
+                    uint32_t a = variant == 1 ? s->lo_a : s->hi_a;
+                    uint32_t b = variant == 1 ? s->lo_b : s->hi_b;
+                    if (s->imm) {
+                        /* immediate compare: p[2] (and p[3]) carry the value */
+                        ops[2] = (uint8_t)(s->hi_a & 0xFFu);
+                        ops[3] = (uint8_t)((s->hi_a >> 8) & 0xFFu);
+                    }
+                    if (s->wide) {
+                        uint8_t *row = (uint8_t *)PSX_ADDR(0x800D3420u + (index << 6));
+                        *(uint16_t *)(row + 2u * ops[1]) = (uint16_t)a;
+                        if (!s->imm)
+                            *(uint16_t *)(row + 2u * ops[2]) = (uint16_t)b;
+                    } else {
+                        uint8_t *row = (uint8_t *)PSX_ADDR(0x800D3430u + (index << 6));
+                        row[ops[1]] = (uint8_t)a;
+                        if (!s->imm)
+                            row[ops[2]] = (uint8_t)b;
+                    }
+                }
+                args[0] = PTRT; args[1] = index; args[2] = args[3] = 0;
+                compare_name(s->name, args);
+                if (last_case_proven) {
+                    proven_variant[variant]++;
+                    seen |= last_retail_v0 != 0 ? 1u : 2u;
+                }
+            }
+        }
+        if (proven_variant[0] == 0 ||
+            (s->forced && (proven_variant[1] == 0 || proven_variant[2] == 0)))
+            fail(s->name, "coverage", "a forced operand class has no proven case");
+        /* Comparison leaves (u32 return) must prove both results. */
+        if (strncmp(s->name, "func_8007E", 10) == 0)
+            require_outcomes(s->name, seen, 3u);
+    }
+}
+
 /* One case per adopted leaf, with the arguments the port's bridge test already
  * established as meaningful for it. */
 static void hand_cases(void)
@@ -1045,6 +1130,7 @@ static void hand_cases(void)
     hand_cases_mesh();
     hand_cases_indirect();
     hand_cases_abi_slots();
+    hand_cases_slot_sweep();
     hand_cases_mesh_height();
 
     /* AA80AE4's result is undefined when no rotation slot qualifies. Seed a

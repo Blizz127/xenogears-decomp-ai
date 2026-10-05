@@ -172,6 +172,17 @@ mutants = {
     "b": [("main69.c", "D_800D2F64 = 1;", "D_800D2F64 = 2;"),                        # 800A5914
           ("main69.c", "+ 0xC);", "+ 0xB);"),                                        # 800A5870
           ("main28.c", "D_800C3EB7[idx * 0x1C] = ", "D_800C3EB7[idx * 0x1C + 1] = ")],  # 8007E154
+    # Codemod sweep batch 1 (ppBoard family): independent leaves, one build.
+    "c": [("main19.c", "s32 v = pRow[p[1]] - pRow[p[2]];", "s32 v = pRow[p[1]] - pRow[p[2]] - 1;"),  # 8007AE98
+          ("main19.c", "row[p[1]] & row[p[2]]", "row[p[1]] & row[p[1]]"),                    # 8007AFFC
+          ("main19.c", "row[p[1]] | row[p[2]]", "row[p[1]] | row[p[2]] | 1"),                # 8007B040
+          ("main19.c", "row[p[1]] ^ row[p[2]];", "row[p[1]] ^ row[p[2]] ^ 2;"),              # 8007B084
+          ("main19.c", "s32 v = row[p[1]] + row[p[2]];", "s32 v = row[p[1]] + row[p[2]] + 1;"),  # 8007B0C8
+          ("main19.c", "s32 v = row[p[1]] - row[p[2]];", "s32 v = row[p[1]] - row[p[2]] - 1;"),  # 8007B134
+          ("main30.c", "return (pRow[p[1]] ^ p[2]) == 0;", "return (pRow[p[1]] ^ p[2]) != 0;"),  # 8007E954
+          ("main30.c", "^ (i2 | i3s)) == 0;", "^ (i2 | i3)) == 0;"),                          # 8007E98C
+          ("main30.c", "return (u32)p[2] >= pRow[p[1]];", "return (u32)p[2] > pRow[p[1]];"),  # 8007E9D0
+          ("main30.c", "return (pRow[p[1]] ^ pRow[p[2]]) == 0;", "return (pRow[p[1]] ^ pRow[p[2]]) != 0;")],  # 8007EAC8
 }
 for group, edits in mutants.items():
     d = out / ("mutants-" + group)
@@ -355,9 +366,10 @@ if ! grep -q '^BATTLE OVERLAY DIFFERENTIAL FAIL func_800A5A48 indirect ' "$OUT/m
     exit 1
 fi
 grep -m1 'indirect-native' "$OUT/mutant-abi.log" >&2
-# Negative controls 4-12: one mutant per further guest-ABI leaf.
-for group in a b; do
+# Negative controls 4-22: one mutant per further guest-ABI leaf.
+for group in a b c; do
     case "$group" in
+        c) want="func_8007AE98 func_8007AFFC func_8007B040 func_8007B084 func_8007B0C8 func_8007B134 func_8007E954 func_8007E98C func_8007E9D0 func_8007EAC8" ;;
         a) want="func_800A579C func_800A5D54 func_800A5BE8 func_8007AE38 func_8007E8E0 func_8007FEC4" ;;
         b) want="func_800A5914 func_800A5870 func_8007E154" ;;
     esac
@@ -388,4 +400,4 @@ fi
 grep -m1 'bridge-domain func_800A5914' "$OUT/legacy-bridge.log" >&2
 grep -m1 '^BATTLE OVERLAY DIFFERENTIAL FAIL func_800A5914 return ' "$OUT/legacy-bridge.log" >&2 || true
 grep -m1 '^BATTLE OVERLAY DIFFERENTIAL FAIL func_800A5914 bridge-domain ' "$OUT/legacy-bridge.log" >&2
-echo "BATTLE OVERLAY DIFFERENTIAL PASS (O0/O2/UBSan + wrong-result, store-path, 10 guest-ABI mutant, indirect-native and legacy-bridge controls rejected)"
+echo "BATTLE OVERLAY DIFFERENTIAL PASS (O0/O2/UBSan + wrong-result, store-path, 20 guest-ABI mutant, indirect-native and legacy-bridge controls rejected)"

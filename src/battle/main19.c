@@ -33,8 +33,8 @@ void func_8007AE38(GSLOT(u8) ppBoard, u8 index) {
 #endif /* BATTLE_SUB(1) */
 /* func_8007AE98.s: u8 saturating sub row[p[3]] = max(row[p[1]] - row[p[2]], 0) */
 #if BATTLE_SUB(1)
-void func_8007AE98(u8** ppBoard, u8 index) {
-    u8* p = *ppBoard;
+void func_8007AE98(GSLOT(u8) ppBoard, u8 index) {
+    u8* p = GLOAD(u8, ppBoard);
     u8* pRow = D_800D3430 + ((u32)index << 6);
     s32 v = pRow[p[1]] - pRow[p[2]];
     u8 value = v;
@@ -67,8 +67,8 @@ void func_8007AFAC(u8** ppBoard, u8 index) {
 #endif /* BATTLE_SUB(2) */
 /* func_8007AFFC.s */
 #if BATTLE_SUB(2)
-void func_8007AFFC(u8** ppBoard, u8 index) {
-    u8* p = *ppBoard;
+void func_8007AFFC(GSLOT(u8) ppBoard, u8 index) {
+    u8* p = GLOAD(u8, ppBoard);
     u8* row = D_800D3430 + ((u32)index << 6);
 
     row[p[3]] = row[p[1]] & row[p[2]];
@@ -76,8 +76,8 @@ void func_8007AFFC(u8** ppBoard, u8 index) {
 #endif /* BATTLE_SUB(2) */
 /* func_8007B040.s */
 #if BATTLE_SUB(2)
-void func_8007B040(u8** ppBoard, u8 index) {
-    u8* p = *ppBoard;
+void func_8007B040(GSLOT(u8) ppBoard, u8 index) {
+    u8* p = GLOAD(u8, ppBoard);
     u8* row = D_800D3430 + ((u32)index << 6);
 
     row[p[3]] = row[p[1]] | row[p[2]];
@@ -85,8 +85,8 @@ void func_8007B040(u8** ppBoard, u8 index) {
 #endif /* BATTLE_SUB(2) */
 /* func_8007B084.s */
 #if BATTLE_SUB(2)
-void func_8007B084(u8** ppBoard, u8 index) {
-    u8* p = *ppBoard;
+void func_8007B084(GSLOT(u8) ppBoard, u8 index) {
+    u8* p = GLOAD(u8, ppBoard);
     u8* row = D_800D3430 + ((u32)index << 6);
 
     row[p[3]] = row[p[1]] ^ row[p[2]];
@@ -94,8 +94,8 @@ void func_8007B084(u8** ppBoard, u8 index) {
 #endif /* BATTLE_SUB(2) */
 /* func_8007B0C8.s */
 #if BATTLE_SUB(2)
-void func_8007B0C8(u8** ppBoard, u8 index) {
-    u8* p = *ppBoard;
+void func_8007B0C8(GSLOT(u8) ppBoard, u8 index) {
+    u8* p = GLOAD(u8, ppBoard);
     u16* row = (u16*)(D_800D3420 + ((u32)index << 6));
     s32 v = row[p[1]] + row[p[2]];
 
@@ -107,8 +107,8 @@ void func_8007B0C8(u8** ppBoard, u8 index) {
 #endif /* BATTLE_SUB(2) */
 /* func_8007B134.s */
 #if BATTLE_SUB(2)
-void func_8007B134(u8** ppBoard, u8 index) {
-    u8* p = *ppBoard;
+void func_8007B134(GSLOT(u8) ppBoard, u8 index) {
+    u8* p = GLOAD(u8, ppBoard);
     u16* row = (u16*)(D_800D3420 + ((u32)index << 6));
     s32 v = row[p[1]] - row[p[2]];
 
