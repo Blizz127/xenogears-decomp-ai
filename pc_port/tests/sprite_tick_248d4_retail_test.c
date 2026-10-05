@@ -15,8 +15,8 @@
  * timer 0, speed 0..0xFFF, sub-index wrap, flip/left-facing bits in +0x3C /
  * +0xAC, frame pose, +0x68 callback present/absent, ...), multi-frame
  * progression through the 0x01 wait opcodes following the tested opcode.
- * Opcodes the port body asserts on (0x85 0x8E 0x98 0xC8 0xD4 0xE2 0xFA) are
- * reported as PORT-UNPORTED and not executed natively.
+ * Every opcode runs natively against retail; there is no skip list and no
+ * known-divergence list.
  */
 #include "sprite_retail_harness.h"
 
@@ -121,18 +121,6 @@ static int bridge(void* u, PcPortMipsCpu* c, u32 t)
     return 0;
 }
 
-static const u8 kUnported[] = { 0x85, 0x8E, 0x98, 0xC8, 0xD4, 0xE2, 0xFA };
-static int unported(unsigned op)
-{
-    unsigned i;
-    for (i = 0; i < sizeof(kUnported); ++i) {
-        if (kUnported[i] == op) {
-            return 1;
-        }
-    }
-    return 0;
-}
-
 static const u8 kOperands[][2] = {
     { 3, 0 }, { 0xFD, 0xFF }, { 5, 0 }, { 0xFF, 0xFF }, { 1, 0 }, { 0x80, 0 },
     { 0x7F, 0 }, { 0, 4 }, { 0x12, 0x80 }, { 0x34, 0x0C }, { 0x05, 0x7B }, { 0, 1 },
@@ -186,8 +174,41 @@ static void make_case(unsigned op, unsigned v, unsigned* gate, unsigned* nopr)
     PC0[1] = kOperands[pair][0];
     PC0[2] = kOperands[pair][1];
     *(u32*)SB(0x64) = (u32)(uintptr_t)PC0;
-    if ((op == 0xE1 || op == 0xE4) && PC0[1] == 0 && PC0[2] == 0) {
+    if ((op == 0xE1 || op == 0xE4 || op == 0xD4 || op == 0xE2) && PC0[1] == 0 && PC0[2] == 0) {
         PC0[2] = 1;
+    }
+    /* 0xFA: operand 0 = variable index, jump offset = PC0[2] | PC0[3]<<8. */
+    if (op == 0xFA) {
+        PC0[3] = (u8)(v % 4 == 0 ? 0xFF : v % 4 == 1 ? 0 : 1);
+        if (PC0[2] == 0 && PC0[3] == 0) {
+            PC0[3] = 1;
+        }
+    }
+    /* variable slots with bit7 set live at the +0x88 base. */
+    *(u32*)SB(0x88) = (u32)(uintptr_t)fx.table + (h_lcg(&s) & 0x3Fu);
+    if (op == 0x98) {
+        /* linked sprite (+0x70): none / animation mismatch / match with
+         * +0xA8 bits 28-29 == 2 or not. */
+        u8* link = fx.table + 0x10;
+
+        *(u32*)SB(0x70) = (v % 4 == 0) ? 0u : (u32)(uintptr_t)link;
+        link[0xAF] = (v % 4 == 1) ? (u8)(*(u8*)SB(0x8D) + 1) : *(u8*)SB(0x8D);
+        link[0xA8 + 3] = (u8)((link[0xA8 + 3] & 0xCF) | ((v & 8) ? 0x20 : 0x10));
+    }
+    if (op == 0x85) {
+        /* pc is rebuilt from the popped 24 bits: keep them a valid script
+         * address and out of the window that aliases the index byte. */
+        s8 si = (s8)(v % 7);
+        u32 target = (u32)(uintptr_t)(PC0 + 0x40 + (v & 0xF));
+
+        if ((uintptr_t)PC0 >= 0x1000000u) {
+            fprintf(stderr, "T248D4 FAIL script not below 16MiB\n");
+            exit(2);
+        }
+        *(s8*)SB(0x8C) = si;
+        SB(0x8E)[si] = (u8)target;
+        SB(0x8F)[si] = (u8)(target >> 8);
+        SB(0x90)[si] = (u8)(target >> 16);
     }
     *gate = (v % 13 == 0);
     D_800591AD = (u8)*gate;
@@ -238,7 +259,6 @@ int main(int argc, char** argv)
 {
     unsigned nvar = 300, op, v;
     unsigned bad_ops = 0;
-    unsigned skipped = 0;
     s32 want_timer;
     u8 want_gate;
 
@@ -257,11 +277,6 @@ int main(int argc, char** argv)
         char firstmsg[256] = "";
         unsigned gate;
 
-        if (unported(op)) {
-            printf("T248D4 PORT-UNPORTED op=0x%02X (native body asserts; not executed)\n", op);
-            ++skipped;
-            continue;
-        }
         for (v = 0; v < nvar; ++v) {
             PcPortMipsBus bus;
             PcPortMipsCpu cpu;
@@ -320,7 +335,7 @@ int main(int argc, char** argv)
             printf(" op=0x%02X %u/%u cases; first v=%u: %s\n", op, fails, nvar, first_v, firstmsg);
         }
     }
-    printf("T248D4 %s: %u comparisons, %u unexpected-diverging opcodes, %u divergent cases, %u port-unported\n",
-           bad_ops ? "FAIL" : "PASS", ncomp, bad_ops, nfail_total, skipped);
+    printf("T248D4 %s: %u comparisons, %u unexpected-diverging opcodes, %u divergent cases, all 256 opcodes executed natively\n",
+           bad_ops ? "FAIL" : "PASS", ncomp, bad_ops, nfail_total);
     return bad_ops ? 1 : 0;
 }

@@ -17,3 +17,11 @@ d2_regimes
 echo "SPRITE TICK 248D4 O0/O2/UBSAN PASS"
 d2_mutant pose_plus2 '^void func_800248D4(' 's/\*(u16\*)(pData + 0x34) + 1)/*(u16*)(pData + 0x34) + 2)/'
 echo "SPRITE TICK 248D4 mutant rejected: pose_plus2"
+d2_mutant link_state '^void func_800248D4(' 's/>> 28) \& 0x3) == 2) {/>> 28) \& 0x3) == 1) {/'
+echo "SPRITE TICK 248D4 mutant rejected: link_state"
+d2_mutant fa_offset '^void func_800248D4(' 's/(u16)pc\[2\] | ((u16)pc\[3\] << 8)/(u16)pc[1] | ((u16)pc[3] << 8)/'
+echo "SPRITE TICK 248D4 mutant rejected: fa_offset"
+d2_mutant call_ret '^void func_800248D4(' 's/u32 ret = (u32)(uintptr_t)pc + 3u;/u32 ret = (u32)(uintptr_t)pc + 2u;/'
+echo "SPRITE TICK 248D4 mutant rejected: call_ret"
+d2_mutant pop24_keep '^void func_800248D4(' 's/\& 0xFF000000u) | value/\& 0xFF000000u) | (value \& 0xFFFFu)/'
+echo "SPRITE TICK 248D4 mutant rejected: pop24_keep"

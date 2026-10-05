@@ -1437,6 +1437,23 @@ extern void func_8001FBE4(void* pSpriteData, u32 opcodeIndex, void* operands);
 #ifndef XENO_PC_PORT
 INCLUDE_ASM(TEMP1_ASM, func_800248D4);
 #else
+#ifdef XENO_PC_PORT
+/* Port-only inline of func_8001FBA4 (animation_scripts.c): variable slot
+ * selected by index byte *pIndex: bit7 clear -> sprite stack slot
+ * (+0x8E + (s8)+0x8C + (s8)index), bit7 set -> guest pointer at +0x88 plus
+ * (index & 0x7F). Inlined so this TU stays self-contained for the retail
+ * differential test. */
+static void* SpriteTickVarSlot(u8* pData, const u8* pIndex)
+{
+    u8 index = *pIndex;
+
+    if (!(index & 0x80)) {
+        return pData + 0x8E + (s8)pData[0x8C] + (s8)index;
+    }
+    return (void*)(uintptr_t)((*(u32*)(pData + 0x88)) + (u32)(index & 0x7F));
+}
+#endif
+
 void func_800248D4(void* pSpriteData) {
     u8* pData = pSpriteData;
     u8* pc;
@@ -1929,15 +1946,99 @@ reenter:
         goto reenter;
     }
 
-    /* jtbl_800186E0 dedicated handlers still unported — keep loud. */
-    if (opcode == 0x85 || opcode == 0x8E ||
-        opcode == 0x98 || opcode == 0xC8 ||
-        opcode == 0xD4 || opcode == 0xE2 || opcode == 0xFA) {
-#ifdef XENO_PC_PORT
-        fprintf(stderr, "{\"event\":\"sprite_animation_dedicated_unimplemented\",\"opcode\":%u,\"pc\":\"%p\"}\n", (unsigned)opcode, (void*)pc);
-        fflush(stderr);
-#endif
-        assert(0 && "func_800248D4 dedicated opcode path is not implemented");
+    /* asm 80024BE4 (jtbl[0x85-0x80]): AnimScriptStackPopU24 into the low 24
+     * bits of the script pc (upper byte kept), re-enter. */
+    if (opcode == 0x85) {
+        u8 idx = *(u8*)(pData + 0x8C);
+        u8* slot = pData + 0x8E + (s8)idx;
+        u32 value = (u32)slot[0] | ((u32)slot[1] << 8) | ((u32)slot[2] << 16);
+
+        *(u8*)(pData + 0x8C) = (u8)(idx + 3);
+        *(u32*)(pData + 0x64) = (*(u32*)(pData + 0x64) & 0xFF000000u) | value;
+        goto reenter;
+    }
+
+    /* asm 80024BA0 (jtbl[0x8E-0x80]): script pc cleared, tick ends. */
+    if (opcode == 0x8E) {
+        *(u32*)(pData + 0x64) = 0;
+        return;
+    }
+
+    /* asm 80024CF8 (jtbl[0x98-0x80]): wait on the linked sprite at +0x70.
+     * No link: advance. Else wait=1; if its +0xAF animation differs from our
+     * +0x8D advance, else stay (pc unchanged) while its +0xA8 bits 28-29 == 2,
+     * otherwise advance by D_8004FC40[0x98] and re-enter. */
+    if (opcode == 0x98) {
+        extern const u8 D_8004FC40[256];
+        u8* link = (u8*)(uintptr_t)*(u32*)(pData + 0x70);
+
+        if (link != NULL) {
+            *(s16*)(pData + 0x9E) = 1;
+            if (*(s8*)(link + 0xAF) == *(s8*)(pData + 0x8D) &&
+                ((*(u32*)(link + 0xA8) >> 28) & 0x3) == 2) {
+                return;
+            }
+        }
+        *(u32*)(pData + 0x64) = (u32)(uintptr_t)(pc + D_8004FC40[opcode]);
+        goto reenter;
+    }
+
+    /* asm 80024EAC (jtbl[0xC8-0x80]): FBE4(sprite, pc[1], FBA4(sprite, pc+2)),
+     * then the default advance D_8004FC40[0xC8], re-enter. */
+    if (opcode == 0xC8) {
+        extern const u8 D_8004FC40[256];
+        void* slot = SpriteTickVarSlot(pData, pc + 2);
+
+        func_8001FBE4(pData, pc[1], slot);
+        *(u32*)(pData + 0x64) = (u32)(uintptr_t)(pc + D_8004FC40[opcode]);
+        goto reenter;
+    }
+
+    /* asm 80024C30 (jtbl[0xD4-0x80]): signed 16-bit pc-relative jump
+     * (operand pc[1] | pc[2]<<8) stored BEFORE the +0x68 callback (if any)
+     * runs; then re-enter. */
+    if (opcode == 0xD4) {
+        void (*callback)(void*) = (void (*)(void*))(uintptr_t)*(u32*)(pData + 0x68);
+        s32 offset = (s16)((u16)pc[1] | ((u16)pc[2] << 8));
+
+        *(u32*)(pData + 0x64) = (u32)(uintptr_t)(pc + offset);
+        if (callback != NULL) {
+            callback(pData);
+        }
+        goto reenter;
+    }
+
+    /* asm 80024BA8 (jtbl[0xE2-0x80]): call. Push pc+3 (AnimScriptStackPushU24,
+     * 24 bits), then jump by the signed 16-bit operand pc[1] | pc[2]<<8. */
+    if (opcode == 0xE2) {
+        u32 ret = (u32)(uintptr_t)pc + 3u;
+        s32 offset = (s16)((u16)pc[1] | ((u16)pc[2] << 8));
+
+        /* AnimScriptStackPushU24: the index byte is re-read before each store
+         * (the stack window can alias +0x8C itself). */
+        *(u8*)(pData + 0x8C) = (u8)(*(u8*)(pData + 0x8C) - 3);
+        *(u8*)(pData + 0x8E + (s8)*(u8*)(pData + 0x8C)) = (u8)ret;
+        *(u8*)(pData + 0x8F + (s8)*(u8*)(pData + 0x8C)) = (u8)(ret >> 8);
+        *(u8*)(pData + 0x90 + (s8)*(u8*)(pData + 0x8C)) = (u8)(ret >> 16);
+        *(u32*)(pData + 0x64) = (u32)(uintptr_t)(pc + offset);
+        goto reenter;
+    }
+
+    /* asm 80024C04 (jtbl[0xFA-0x80]): if the byte at FBA4(sprite, pc+1) is
+     * zero advance by D_8004FC40[0xFA]; else jump by the signed 16-bit
+     * operand pc[2] | pc[3]<<8. Re-enter either way. */
+    if (opcode == 0xFA) {
+        extern const u8 D_8004FC40[256];
+        u8* slot = (u8*)SpriteTickVarSlot(pData, pc + 1);
+
+        if (*slot == 0) {
+            *(u32*)(pData + 0x64) = (u32)(uintptr_t)(pc + D_8004FC40[opcode]);
+        } else {
+            s32 offset = (s16)((u16)pc[2] | ((u16)pc[3] << 8));
+
+            *(u32*)(pData + 0x64) = (u32)(uintptr_t)(pc + offset);
+        }
+        goto reenter;
     }
 
     if (opcode >= 0x80) {

@@ -39,7 +39,7 @@ d2_build_run() {
     fi
     "$linker" -no-pie "$@" "$BUILD_DIR/$name.test.o" "$BUILD_DIR/$name.cpu.o" \
         "$BUILD_DIR/$name.uut.o" ${EXTRA_OBJS:-} -Wl,--gc-sections -lm -o "$BUILD_DIR/$name"
-    "$BUILD_DIR/$name" "${TEST_ARGS[@]}" >"$BUILD_DIR/$name.stdout" 2>"$BUILD_DIR/$name.stderr" || rc=$?
+    timeout "${D2_RUN_TIMEOUT:-30}" "$BUILD_DIR/$name" "${TEST_ARGS[@]}" >"$BUILD_DIR/$name.stdout" 2>"$BUILD_DIR/$name.stderr" || rc=$?
     return $rc
 }
 
