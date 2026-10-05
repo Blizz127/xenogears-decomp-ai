@@ -29,6 +29,13 @@ printf 'BATTLE OVERLAY DIFFERENTIAL artifacts=%s\n' "$OUT"
 # The allowlist is the single source of truth for both the names and the TUs.
 LEAVES=$(python3 tools/scripts/battle_overlay_host_tus.py --leaves)
 TUS=$(python3 tools/scripts/battle_overlay_host_tus.py --verify)
+# Battle guest ABI TUs (include/battle_guest_abi.h): compiled with the strict
+# int/pointer errors the port build uses for them, and in the mode's own
+# regime (O0 = the port's gcc -O0; O2 = gcc -O2; UBSan = clang -O1 with
+# -fsanitize=undefined, shift-base included), so the macro-ised matched C is
+# itself exercised in all three regimes rather than only at -O0.
+ABI_TUS=" $(python3 tools/scripts/battle_overlay_host_tus.py --abi-tus | tr '\n' ' ') "
+read -r -a ABI_STRICT <<<"$(python3 tools/scripts/battle_overlay_host_tus.py --abi-strict-flags)"
 python3 tools/scripts/battle_overlay_host_tus.py --leaf-types \
     > "$OUT/overlay_leaf_types.inc"
 # Pointer-typed overlay globals: the sweep seeds the guest word with a live RAM
@@ -94,6 +101,22 @@ for obj in pc_port/build_native/obj/src_slus_006.64_system_memory.c.o \
     fi
     PORT_REAL_OBJS+=("$obj")
 done
+# GTE helpers the battle guest ABI bodies call (OuterProduct0 for
+# func_800A5A48), copied verbatim out of the port's pc_port/src/psyq_compat.c:
+# that object as a whole collides with this harness's host hooks, and the
+# shipped definitions are what both sides must reach.
+python3 - "$OUT/abi_gte_real.c" <<'PY'
+import re, sys
+src = open("pc_port/src/psyq_compat.c").read()
+out = ['#include <stdint.h>', '#include "psyq/libgte.h"']
+for name in ("OuterProduct0",):
+    m = re.search(r"^void " + name + r"\(VECTOR\* v0, VECTOR\* v1, VECTOR\* out\)\n\{.*?^\}\n", src, re.S | re.M)
+    assert m, name
+    out.append(m.group(0))
+open(sys.argv[1], "w").write("\n".join(out) + "\n")
+PY
+clang "${COMMON[@]}" -O0 -c "$OUT/abi_gte_real.c" -o "$OUT/abi_gte_real.o"
+PORT_REAL_OBJS+=("$OUT/abi_gte_real.o")
 PSYLIB=$(find pc_port/build -name libpsycross.a 2>/dev/null | head -1)
 if [ -z "$PSYLIB" ]; then
     echo "BATTLE OVERLAY DIFFERENTIAL FAIL missing libpsycross.a (build the port first)" >&2
@@ -120,6 +143,12 @@ src = Path("src/battle/main14.c").read_text()
 old = "        ret = 0;\n#endif"
 assert src.count(old) == 2, src.count(old)
 (out / "mutant_main14.c").write_text(src.replace(old, "        ret = 1;\n#endif", 1))
+# Third control (battle guest ABI): func_800A5A48 with its inside result
+# inverted must be rejected on the mesh fixture.
+src = Path("src/battle/main69.c").read_text()
+old = "return ~cross.vy >> 31;"
+assert src.count(old) == 1, src.count(old)
+(out / "mutant_main69.c").write_text(src.replace(old, "return cross.vy >> 31;", 1))
 PY
 
 mode_flags() {
@@ -134,6 +163,7 @@ mode_flags() {
 build_link() {
     local mode="$1" hostdir="$2" main12="$3" suffix="${4:-}"
     local main14="${5:-src/battle/main14.c}"
+    local main69="${6:-src/battle/main69.c}"
     local flags; flags=$(mode_flags "$mode")
     local target="$OUT/$mode$suffix"
     local err="$OUT/$mode$suffix-bridge.err"
@@ -144,6 +174,22 @@ build_link() {
         local src="$tu"
         [ "$tu" = "src/battle/main12.c" ] && src="$main12"
         [ "$tu" = "src/battle/main14.c" ] && src="$main14"
+        [ "$tu" = "src/battle/main69.c" ] && src="$main69"
+        case "$ABI_TUS" in
+            *" $tu "*)
+                local abi_host=()
+                local f
+                for f in "${HOST_FLAGS[@]}"; do
+                    case "$f" in -w|-fpermissive|-O0) ;; *) abi_host+=("$f") ;; esac
+                done
+                local cc=gcc
+                [ "$mode" = UBSan ] && cc=clang
+                # shellcheck disable=SC2086
+                "$cc" -c "$src" "${abi_host[@]}" $flags "${ABI_STRICT[@]}" \
+                    -I"$(dirname "$tu")" "${HOST_INC[@]}" \
+                    -o "$hostdir/$(basename "$tu" .c).o"
+                continue ;;
+        esac
         gcc -c "$src" "${HOST_FLAGS[@]}" "${HOST_INC[@]}" \
             -o "$hostdir/$(basename "$tu" .c).o"
     done
@@ -252,4 +298,15 @@ if [ "$status" -eq 0 ] || ! grep -q 'store-path v0' "$OUT/mutant-store.log"; the
     exit 1
 fi
 grep -m1 'store-path v0' "$OUT/mutant-store.log" >&2
-echo "BATTLE OVERLAY DIFFERENTIAL PASS (O0/O2/UBSan + wrong-result and store-path controls rejected)"
+# Negative control 3 (battle guest ABI): a macro-ised main69.c body with an
+# inverted result must be rejected by the mesh fixture.
+build_link O2 "$OUT/host-mutant-abi" src/battle/main12.c "-mutant-abi" src/battle/main14.c "$OUT/mutant_main69.c"
+status=0
+"$OUT/O2-mutant-abi" >"$OUT/mutant-abi.log" 2>&1 || status=$?
+if [ "$status" -eq 0 ] || ! grep -q '^BATTLE OVERLAY DIFFERENTIAL FAIL func_800A5A48 ' "$OUT/mutant-abi.log"; then
+    cat "$OUT/mutant-abi.log" >&2
+    echo "BATTLE OVERLAY DIFFERENTIAL CONTROL FAILURE inverted func_800A5A48 accepted" >&2
+    exit 1
+fi
+grep -m1 '^BATTLE OVERLAY DIFFERENTIAL FAIL func_800A5A48 ' "$OUT/mutant-abi.log" >&2
+echo "BATTLE OVERLAY DIFFERENTIAL PASS (O0/O2/UBSan + wrong-result, store-path and guest-ABI controls rejected)"

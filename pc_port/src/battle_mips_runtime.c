@@ -11,6 +11,7 @@ void PcPort_BattleStateHashBeforeGuest(PcPortMipsCpu*, uint32_t);
 void PcPort_BattleResultsTraceBeforeGuest(PcPortMipsCpu*, uint32_t);
 #include "battle_mips_runtime_internal.h"
 #include "psx_memory.h"
+#include "battle_guest_resolver.h"
 #include "psyq/libgpu.h"
 #include "psyq/libgte.h"
 #include "PsyX/PsyX_public.h"
@@ -93,6 +94,7 @@ typedef struct BridgeCallCacheSlot {
 
 struct BattleMipsRuntime {
     int initialized;
+    int resolving_write; /* write flag of the access being resolved (diagnostic only) */
     int trace_calls;
     /* Verification hook, off in production. When set, overlay targets are never
      * adopted: every guest call resolves to the interpreter. The differential
@@ -392,43 +394,54 @@ static void note_unshared_access(uint32_t address, unsigned width, int write)
             write ? "write" : "read", address, width);
 }
 
+/* Shared-data lookup used by the one guest resolver (battle_guest_resolver.h)
+ * on behalf of the interpreter (context = its runtime). */
+static uint8_t *runtime_shared_lookup(void *context, uint32_t canonical,
+                                      unsigned width)
+{
+    BattleMipsRuntime *runtime = context;
+    ResolvedData *entry = find_data(runtime, canonical, width);
+    if (entry != NULL)
+        return entry->host + (canonical - entry->address);
+    /* Also flag data accesses into main-exe .text: the port never copies that
+     * range into guest RAM (functions are bridged), so a guest reading a table
+     * that the compiler placed there sees zeros. */
+    if (canonical >= PSX_EXE_SDATA_START ||
+        (canonical >= PSX_EXE_TEXT_START && canonical < PSX_EXE_TEXT_END))
+        note_unshared_access(canonical, width, runtime->resolving_write);
+    return NULL;
+}
+
+/* The same lookup for native battle bodies (bg_ptr/GPTR): the active battle's
+ * runtime, or none.  Declared weak in battle_guest_resolver.h. */
+uint8_t *PcPort_BattleSharedData(void *context, uint32_t canonical,
+                                 unsigned width)
+{
+    BattleMipsRuntime *runtime = g_ActiveBattleRuntime;
+    ResolvedData *entry;
+    (void)context;
+    if (runtime == NULL || !runtime->initialized)
+        return NULL;
+    entry = find_data(runtime, canonical, width);
+    return entry != NULL ? entry->host + (canonical - entry->address) : NULL;
+}
+
 static uint8_t *resolve_memory(BattleMipsRuntime *runtime, uint32_t address,
                                unsigned width, int write)
 {
+    uint8_t *p = NULL;
     uintptr_t host;
-    uint32_t canonical = address;
 
-    if ((address & 0xfffff000u) == 0x1f800000u) {
-        unsigned offset = address & 0xfffu;
-        if (offset + width > 4096u)
-            return NULL;
-        return g_PsxScratchpad + offset;
+    runtime->resolving_write = write;
+    switch (battle_guest_resolve(address, width, runtime_shared_lookup,
+                                 runtime, &p)) {
+    case BATTLE_GUEST_RESOLVED:
+        return p;
+    case BATTLE_GUEST_INVALID:
+        return NULL;
+    default:
+        break;
     }
-
-    if ((address & 0xff800000u) == 0x80000000u ||
-        (address & 0xff800000u) == 0xa0000000u) {
-        /* KSEG0 and KSEG1 are cached/uncached aliases of the same physical
-         * RAM.  The retail symbol table is KSEG0-shaped, so canonicalize the
-         * KSEG1 form before resolving a native shared global. */
-        if ((address & 0xff800000u) == 0xa0000000u)
-            canonical = address - 0x20000000u;
-        if ((canonical & 0x1fffffffu) <
-            (BATTLE_BASE & 0x1fffffffu)) {
-            ResolvedData *entry = find_data(runtime, canonical, width);
-            if (entry != NULL)
-                return entry->host + (canonical - entry->address);
-            /* Also flag data accesses into main-exe .text: the port never
-             * copies that range into guest RAM (functions are bridged), so
-             * a guest reading a table that the compiler placed there sees
-             * zeros. */
-            if (canonical >= PSX_EXE_SDATA_START ||
-                (canonical >= PSX_EXE_TEXT_START &&
-                 canonical < PSX_EXE_TEXT_END))
-                note_unshared_access(canonical, width, write);
-        }
-        return (uint8_t *)PSX_ADDR(canonical);
-    }
-
     host = (uintptr_t)address;
     if (host_address_valid(runtime, host, width, write))
         return (uint8_t *)host;

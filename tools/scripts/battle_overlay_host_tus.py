@@ -186,10 +186,30 @@ def pointer_params() -> dict[str, int]:
             for index, param in enumerate(params.split(",")):
                 if index >= 8:
                     break
-                if "*" in param:
+                # GSLOT(T) is the guest-ABI spelling of a T** slot parameter.
+                if "*" in param or "GSLOT(" in param:
                     mask |= 1 << index
             masks[name] = mask
     return masks
+
+
+# Strict int/pointer diagnostics for battle host TUs that adopted the battle
+# guest ABI (include/battle_guest_abi.h).  They replace the port's blanket
+# `-w -fpermissive` for those TUs, so a pointer-width or address-domain slip in
+# a macro-ised body is a compile error instead of a silent truncation.
+ABI_STRICT_FLAGS = (
+    "-Werror=int-to-pointer-cast -Werror=pointer-to-int-cast "
+    "-Werror=int-conversion -Werror=incompatible-pointer-types"
+)
+
+
+def abi_tus() -> list[str]:
+    """src/battle TUs that include the battle guest ABI header."""
+    return [
+        f"src/battle/{path.name}"
+        for path in sorted(BATTLE_SRC.glob("*.c"))
+        if '#include "battle_guest_abi.h"' in path.read_text(errors="ignore")
+    ]
 
 
 def owners(name: str, found: dict[str, list[tuple[str, bool]]]) -> list[str]:
@@ -326,6 +346,12 @@ def main() -> int:
         )
         return 1
 
+    if "--abi-tus" in sys.argv:
+        print("\n".join(abi_tus()))
+        return 0
+    if "--abi-strict-flags" in sys.argv:
+        print(ABI_STRICT_FLAGS)
+        return 0
     if "--leaves" in sys.argv:
         for name in wanted:
             print(name)

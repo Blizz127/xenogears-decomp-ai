@@ -1,7 +1,6 @@
 #include "common.h"
-#ifndef XENO_PC_PORT
 #include "psyq/libgte.h"
-#endif
+#include "battle_guest_abi.h"
 
 
 #ifndef XENO_PC_PORT
@@ -92,16 +91,18 @@ s32 func_800A5914(s32 arg0, s32 tri, s32 tries, s32 result) {
 #endif
 #ifndef XENO_PC_PORT
 #endif
-#ifndef XENO_PC_PORT
 extern void OuterProduct0(VECTOR* v0, VECTOR* v1, VECTOR* v2);
 
 /* Point-in-triangle test on the XZ plane: -1 when point a3 lies on the inner
- * side of all three edges of (a0, a1, a2) (SVECTOR addresses), else 0. */
+ * side of all three edges of (a0, a1, a2) (SVECTOR addresses), else 0.
+ * Native under the port (battle guest ABI): the four words are guest
+ * addresses, or host pointers when the bridge translated them; GPTR resolves
+ * both through the interpreter's resolver. */
 s32 func_800A5A48(s32 a0, s32 a1, s32 a2, s32 a3) {
-    SVECTOR* v0 = (SVECTOR*)a0;
-    SVECTOR* v1 = (SVECTOR*)a1;
-    SVECTOR* v2 = (SVECTOR*)a2;
-    SVECTOR* p = (SVECTOR*)a3;
+    SVECTOR* v0 = GPTR(SVECTOR, a0);
+    SVECTOR* v1 = GPTR(SVECTOR, a1);
+    SVECTOR* v2 = GPTR(SVECTOR, a2);
+    SVECTOR* p = GPTR(SVECTOR, a3);
     VECTOR edge;
     VECTOR toP;
     VECTOR cross;
@@ -135,7 +136,6 @@ s32 func_800A5A48(s32 a0, s32 a1, s32 a2, s32 a3) {
     }
     return 0;
 }
-#endif
 #ifndef XENO_PC_PORT
 #endif
 #ifndef XENO_PC_PORT

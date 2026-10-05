@@ -198,3 +198,7 @@
     "func_800BEEB4",
     "func_800BA59C",
     "func_800B9258",
+/* Battle guest ABI prototype (M-a; include/battle_guest_abi.h): matched C
+ * re-typed at its guest dereferences, built with strict int/pointer errors,
+ * proven by the mesh/slot/heap fixtures in the differential harness. */
+    "func_800A5A48",

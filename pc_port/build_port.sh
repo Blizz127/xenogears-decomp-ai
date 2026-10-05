@@ -1284,13 +1284,22 @@ BATTLE_HOST_TUS="$(python3 tools/scripts/battle_overlay_host_tus.py --verify)" |
     exit 1
 }
 BATTLE_HOST_OBJS=()
+# TUs on the battle guest ABI (include/battle_guest_abi.h) drop the blanket
+# `-w -fpermissive` and compile with strict int/pointer errors instead.
+BATTLE_ABI_TUS=" $(python3 tools/scripts/battle_overlay_host_tus.py --abi-tus | tr '\n' ' ') "
+BATTLE_ABI_FLAGS="$(python3 tools/scripts/battle_overlay_host_tus.py --abi-strict-flags)"
+BATTLE_ABI_GFLAGS="$(echo " $GFLAGS " | sed 's/ -w / /; s/ -fpermissive / /')"
 for btu in $BATTLE_HOST_TUS; do
     bo="$OBJ/battle_host_$(basename "$btu").o"
     berr="$OUT/$(echo "$btu" | tr '/' '_').host.err"
     rm -f "$bo" "$berr"
+    btu_flags="$GFLAGS"
+    case "$BATTLE_ABI_TUS" in
+        *" $btu "*) btu_flags="$BATTLE_ABI_GFLAGS $BATTLE_ABI_FLAGS" ;;
+    esac
     # XENO_BATTLE_OVERLAY_HOST_BODIES is what activates the guest-RAM D_*
     # aliases (see include/common.h); it must not be set for any other TU.
-    if ! gcc -c "$btu" $GFLAGS -DXENO_BATTLE_OVERLAY_HOST_BODIES $INC \
+    if ! gcc -c "$btu" $btu_flags -DXENO_BATTLE_OVERLAY_HOST_BODIES $INC \
         -o "$bo" 2>"$berr"; then
         echo "ERROR: adopted battle overlay host TU failed to compile: $btu"
         sed 's/^/       | /' "$berr"

@@ -326,6 +326,10 @@ static void placeholder_inconclusive(const Leaf *leaf, const char *side)
  * whose bridge returns a guest-domain value (typed 8008ABB8). */
 static void (*pre_side)(void);
 static unsigned force_return_bits;
+/* Outcome of the most recent compare(): set only when it proved a match, so
+ * a hand case can require non-vacuous coverage (both result classes). */
+static int last_case_proven;
+static uint32_t last_retail_v0;
 
 static void compare(const Leaf *leaf, const uint32_t *args)
 {
@@ -338,6 +342,7 @@ static void compare(const Leaf *leaf, const uint32_t *args)
     uint32_t first = 0;
     char detail[200];
 
+    last_case_proven = 0;
     memcpy(before, g_PsxRam, sizeof(before));
     if (native_gs != NULL)
         memcpy(native_before, native_gs, NATIVE_GS_SIZE);
@@ -487,6 +492,8 @@ static void compare(const Leaf *leaf, const uint32_t *args)
     }
     checks++;
     proven[(unsigned)(leaf - kLeaves)]++;
+    last_case_proven = 1;
+    last_retail_v0 = iv0;
 }
 
 static const Leaf *leaf_by_name(const char *name)
@@ -538,6 +545,284 @@ static void hand_cases_8008ABB8(void)
     force_return_bits = 0;
 }
 
+
+/* ---- Battle guest ABI prototype (M-a): mesh fixture --------------------
+ * The main69.c ground-mesh family reads two guest tables through guest
+ * pointers held in overlay globals: D_800D3344 -> 8-byte SVECTOR vertices,
+ * D_800D39CC -> 14-byte triangles (s16 v0,v1,v2; s16 neighbours n0,n1,n2,
+ * -1 = none; u8 +0xC attribute; u8 +0xD pass mark), D_800D3348 = triangle
+ * count, D_800D2F64 = pass counter.  The fixture is a 4x4-vertex grid (18
+ * triangles) with real neighbour links, in either winding, so the
+ * point-in-triangle test sees both inside and outside points. */
+#define MESH_VERT   0x800C6000u
+#define MESH_TRI    0x800C6800u
+#define MESH_PT     0x800C7000u
+#define MESH_NORMAL 0x800C7100u
+#define MESH_N      4
+static unsigned mesh_tri_count;
+
+static void mesh_fixture(int winding, int seed)
+{
+    int i, j, t, u, e, f;
+    int16_t tri[2 * (MESH_N - 1) * (MESH_N - 1)][3];
+
+    for (i = 0; i < MESH_N; i++) {
+        for (j = 0; j < MESH_N; j++) {
+            int16_t *v = (int16_t *)PSX_ADDR(MESH_VERT + 8u * (unsigned)(i * MESH_N + j));
+            v[0] = (int16_t)(i * 256 - 384 + ((i * 7 + j * 3 + seed) % 5) * 9);
+            v[1] = (int16_t)((i * 37 + j * 53 + seed * 11) % 97 - 48);
+            v[2] = (int16_t)(j * 256 - 384 + ((i * 5 + j * 11 + seed) % 7) * 6);
+            v[3] = 0;
+        }
+    }
+    t = 0;
+    for (i = 0; i + 1 < MESH_N; i++) {
+        for (j = 0; j + 1 < MESH_N; j++) {
+            int16_t a = (int16_t)(i * MESH_N + j), b = (int16_t)((i + 1) * MESH_N + j);
+            int16_t c = (int16_t)(i * MESH_N + j + 1), d = (int16_t)((i + 1) * MESH_N + j + 1);
+            tri[t][0] = a; tri[t][1] = winding ? d : b; tri[t][2] = winding ? b : d; t++;
+            tri[t][0] = a; tri[t][1] = winding ? c : d; tri[t][2] = winding ? d : c; t++;
+        }
+    }
+    mesh_tri_count = (unsigned)t;
+    for (u = 0; u < t; u++) {
+        uint8_t *r = (uint8_t *)PSX_ADDR(MESH_TRI + 14u * (unsigned)u);
+        int16_t *h = (int16_t *)r;
+        h[0] = tri[u][0]; h[1] = tri[u][1]; h[2] = tri[u][2];
+        for (e = 0; e < 3; e++) {
+            int16_t p0 = tri[u][e], p1 = tri[u][(e + 1) % 3];
+            int found = -1;
+            for (f = 0; f < t && found < 0; f++) {
+                int k;
+                if (f == u) continue;
+                for (k = 0; k < 3; k++) {
+                    if (tri[f][k] == p1 && tri[f][(k + 1) % 3] == p0)
+                        found = f;
+                }
+            }
+            h[3 + e] = (int16_t)found;
+        }
+        r[0xC] = (uint8_t)(u ^ 0x5A);
+        r[0xD] = 0;
+    }
+    *(uint32_t *)PSX_ADDR(0x800D3344u) = MESH_VERT;
+    *(uint32_t *)PSX_ADDR(0x800D39CCu) = MESH_TRI;
+    *(uint32_t *)PSX_ADDR(0x800D3348u) = mesh_tri_count;
+    *(uint8_t *)PSX_ADDR(0x800D2F64u) = 1;
+}
+
+static void mesh_point(int x, int y, int z)
+{
+    int16_t *p = (int16_t *)PSX_ADDR(MESH_PT);
+    p[0] = (int16_t)x; p[1] = (int16_t)y; p[2] = (int16_t)z; p[3] = 0;
+}
+
+/* Fails the run unless `name` proved a case for every listed retail result
+ * class -- a prover that only ever saw one branch is vacuous. */
+static void require_outcomes(const char *name, unsigned seen_mask,
+                             unsigned want_mask)
+{
+    if ((seen_mask & want_mask) != want_mask) {
+        char detail[80];
+        snprintf(detail, sizeof(detail), "outcome classes seen=%x want=%x",
+                 seen_mask, want_mask);
+        fail(name, "coverage", detail);
+    }
+}
+
+static int abi_leaf_listed(const char *name)
+{
+    unsigned i;
+    for (i = 0; i < LEAF_COUNT; i++)
+        if (strcmp(kLeaves[i].name, name) == 0)
+            return 1;
+    return 0;
+}
+
+static void hand_cases_mesh(void)
+{
+    uint32_t args[4];
+    int winding, x, z;
+    unsigned tri, seen;
+
+    if (!abi_leaf_listed("func_800A5A48"))
+        return;
+    /* 800A5A48(v0, v1, v2, point): every triangle against a 5x5 point grid
+     * that covers the mesh and its outside, both windings.  Outcome class 1 =
+     * retail returned -1 (inside), 2 = retail returned 0. */
+    seen = 0;
+    for (winding = 0; winding < 2; winding++) {
+        begin_case(0, 0);
+        mesh_fixture(winding, winding + 1);
+        for (x = -450; x <= 450; x += 225) {
+            for (z = -450; z <= 450; z += 225) {
+                mesh_point(x + 17, 5, z - 23);
+                for (tri = 0; tri < mesh_tri_count; tri++) {
+                    const int16_t *h = (const int16_t *)PSX_ADDR(MESH_TRI + 14u * tri);
+                    args[0] = MESH_VERT + 8u * (uint16_t)h[0];
+                    args[1] = MESH_VERT + 8u * (uint16_t)h[1];
+                    args[2] = MESH_VERT + 8u * (uint16_t)h[2];
+                    args[3] = MESH_PT;
+                    compare_name("func_800A5A48", args);
+                    if (last_case_proven)
+                        seen |= last_retail_v0 == 0xFFFFFFFFu ? 1u : 2u;
+                }
+            }
+        }
+    }
+    require_outcomes("func_800A5A48", seen, 3u);
+
+    /* 800A579C(point): first containing triangle or -1; plus the
+     * tables-not-loaded early-outs.  Class 1 = a triangle index, 2 = -1. */
+    if (abi_leaf_listed("func_800A579C")) {
+        seen = 0;
+        for (winding = 0; winding < 2; winding++) {
+            begin_case(0, 0);
+            mesh_fixture(winding, winding + 3);
+            for (x = -500; x <= 500; x += 125) {
+                for (z = -500; z <= 500; z += 250) {
+                    mesh_point(x + 9, 0, z + 31);
+                    args[0] = MESH_PT; args[1] = args[2] = args[3] = 0;
+                    compare_name("func_800A579C", args);
+                    if (last_case_proven)
+                        seen |= last_retail_v0 == 0xFFFFFFFFu ? 2u : 1u;
+                }
+            }
+            *(uint32_t *)PSX_ADDR(0x800D39CCu) = 0;
+            compare_name("func_800A579C", args);
+            *(uint32_t *)PSX_ADDR(0x800D39CCu) = MESH_TRI;
+            *(uint32_t *)PSX_ADDR(0x800D3344u) = 0;
+            compare_name("func_800A579C", args);
+        }
+        require_outcomes("func_800A579C", seen, 3u);
+    }
+
+    /* 800A5D54(point, tri, depth): neighbour search with pass marks.  The
+     * RAM diff covers the +0xD marks it writes.  Class 1 = found, 2 = -1. */
+    if (abi_leaf_listed("func_800A5D54")) {
+        int depth, start;
+        seen = 0;
+        for (winding = 0; winding < 2; winding++) {
+            for (depth = 0; depth <= 3; depth++) {
+                for (start = -1; start < 18; start += 3) {
+                    begin_case(0, 0);
+                    mesh_fixture(winding, depth + 5);
+                    /* Some triangles already carry this pass's mark. */
+                    *(uint8_t *)PSX_ADDR(MESH_TRI + 14u * 4u + 0xDu) = 1;
+                    mesh_point(-130 + depth * 60, 0, 200 - depth * 90);
+                    args[0] = MESH_PT; args[1] = (uint32_t)start;
+                    args[2] = (uint32_t)depth; args[3] = 0;
+                    compare_name("func_800A5D54", args);
+                    if (last_case_proven)
+                        seen |= last_retail_v0 == 0xFFFFFFFFu ? 2u : 1u;
+                }
+            }
+        }
+        require_outcomes("func_800A5D54", seen, 3u);
+    }
+
+    /* 800A5914(point, tri, tries, result): tries loop over 800A5D54, the
+     * pass-counter increment and its 0xFF -> 0 wrap that clears every +0xD
+     * mark.  Class 1 = found, 2 = -1 / pass-through. */
+    if (abi_leaf_listed("func_800A5914")) {
+        int tries, start, wrap;
+        seen = 0;
+        for (wrap = 0; wrap < 2; wrap++) {
+            for (tries = 0; tries <= 3; tries++) {
+                for (start = -1; start <= 19; start += 4) {
+                    begin_case(0, 0);
+                    mesh_fixture(tries & 1, tries + 7);
+                    if (wrap) {
+                        unsigned t;
+                        *(uint8_t *)PSX_ADDR(0x800D2F64u) = 0xFF;
+                        for (t = 0; t < mesh_tri_count; t++)
+                            *(uint8_t *)PSX_ADDR(MESH_TRI + 14u * t + 0xDu) = (uint8_t)(t * 37u);
+                    }
+                    mesh_point(60 - tries * 70, 0, -40 + tries * 80);
+                    args[0] = MESH_PT; args[1] = (uint32_t)start;
+                    args[2] = (uint32_t)tries; args[3] = (uint32_t)(0x1234 + tries);
+                    compare_name("func_800A5914", args);
+                    if (last_case_proven)
+                        seen |= (int32_t)last_retail_v0 >= 0 && last_retail_v0 < 0x100u ? 1u : 2u;
+                }
+            }
+            /* Tables not loaded. */
+            begin_case(0, 0);
+            args[0] = MESH_PT; args[1] = 0; args[2] = 1; args[3] = 0;
+            compare_name("func_800A5914", args);
+        }
+        require_outcomes("func_800A5914", seen, 3u);
+    }
+}
+
+/* ---- Battle guest ABI prototype: slot and heap fixtures -----------------
+ * Board opcodes take ppBoard, the address of a 4-byte GUEST slot holding the
+ * script IP (guest address of the operand bytes).  The slot is at PTRT, the
+ * operands at SRC, and the D_800D3410/20/30 rows get small values. */
+static void slot_fixture(uint32_t salt, int high_bit)
+{
+    unsigned i;
+    uint8_t *ops = (uint8_t *)PSX_ADDR(SRC);
+    *(uint32_t *)PSX_ADDR(PTRT) = SRC;
+    ops[0] = 0x2A;
+    ops[1] = (uint8_t)((salt * 7u + 3u) & 0x3Fu);
+    if (high_bit)
+        ops[1] |= 0x80u;
+    ops[2] = (uint8_t)((salt * 13u + 5u) & 0x3Fu);
+    ops[3] = (uint8_t)((salt * 29u + 1u) & 0x3Fu);
+    for (i = 0; i < 0x40u * 8u; i++)
+        *(uint8_t *)PSX_ADDR(0x800D3410u + i) = (uint8_t)((i * 31u + salt * 17u) & 0xFFu);
+}
+
+static void hand_cases_abi_slots(void)
+{
+    uint32_t args[4];
+    uint32_t salt;
+
+    for (salt = 0; salt < 12; salt++) {
+        if (abi_leaf_listed("func_8007AE38")) {
+            begin_case(0, 0);
+            slot_fixture(salt, 0);
+            args[0] = PTRT; args[1] = salt % 6u; args[2] = args[3] = 0;
+            compare_name("func_8007AE38", args);
+        }
+        if (abi_leaf_listed("func_8007E8E0")) {
+            begin_case(0, 0);
+            slot_fixture(salt, 0);
+            args[0] = PTRT; args[1] = salt % 5u; args[2] = args[3] = 0;
+            compare_name("func_8007E8E0", args);
+        }
+        if (abi_leaf_listed("func_8007E154")) {
+            int arm;
+            for (arm = 0; arm < 2; arm++) {
+                begin_case(0, 0);
+                slot_fixture(salt, arm);
+                args[0] = PTRT; args[1] = salt % 4u; args[2] = args[3] = 0;
+                compare_name("func_8007E154", args);
+            }
+        }
+    }
+    /* 8007FEC4: allocate 0x5DA4 bytes through the native 8008ABB8, store the
+     * block's GUEST address at 0x800D2DB4, clear it, and set the two halves
+     * at +0x5D9C/+0x5D9E.  The heap fixture is re-initialised for each side;
+     * the RAM diff covers the slot word (domain) and the whole block. */
+    if (abi_leaf_listed("func_8007FEC4")) {
+        int pattern;
+        for (pattern = 0; pattern < 3; pattern++) {
+            begin_case((uint32_t)pattern, 0);
+            pre_side = abb8_heap;
+            args[0] = args[1] = args[2] = args[3] = 0;
+            compare_name("func_8007FEC4", args);
+            pre_side = NULL;
+            if (last_case_proven) {
+                uint32_t slot = *(uint32_t *)PSX_ADDR(0x800D2DB4u);
+                if ((slot & 0xFF800000u) != 0x80000000u)
+                    fail("func_8007FEC4", "domain", "0x800D2DB4 does not hold a guest address");
+            }
+        }
+    }
+}
+
 /* One case per adopted leaf, with the arguments the port's bridge test already
  * established as meaningful for it. */
 static void hand_cases(void)
@@ -545,6 +830,8 @@ static void hand_cases(void)
     uint32_t args[4];
 
     hand_cases_8008ABB8();
+    hand_cases_mesh();
+    hand_cases_abi_slots();
 
     /* AA80AE4's result is undefined when no rotation slot qualifies. Seed a
      * valid 11-entry cycle so both sides return a defined selected value. */
@@ -679,6 +966,11 @@ static void sweep(void)
         /* The dedicated hand case and remu differential cover AA80AE4's
          * valid input domain. Random scalar values can leave best undefined. */
         if (strcmp(kLeaves[index].name, "func_80080AE4") == 0)
+            continue;
+        /* 8007FEC4 allocates from the native heap, whose globals are not
+         * part of the snapshot: only its hand case (fresh heap per side)
+         * is a fair comparison. */
+        if (strcmp(kLeaves[index].name, "func_8007FEC4") == 0)
             continue;
         /* Each leaf draws its own sequence, seeded from its address, so
          * adding or removing an allowlist entry does not silently change the
