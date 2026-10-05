@@ -101,22 +101,29 @@ for obj in pc_port/build_native/obj/src_slus_006.64_system_memory.c.o \
     fi
     PORT_REAL_OBJS+=("$obj")
 done
-# GTE helpers the battle guest ABI bodies call (OuterProduct0 for
-# func_800A5A48), copied verbatim out of the port's pc_port/src/psyq_compat.c:
-# that object as a whole collides with this harness's host hooks, and the
-# shipped definitions are what both sides must reach.
-python3 - "$OUT/abi_gte_real.c" <<'PY'
-import re, sys
-src = open("pc_port/src/psyq_compat.c").read()
-out = ['#include <stdint.h>', '#include "psyq/libgte.h"']
-for name in ("OuterProduct0",):
-    m = re.search(r"^void " + name + r"\(VECTOR\* v0, VECTOR\* v1, VECTOR\* out\)\n\{.*?^\}\n", src, re.S | re.M)
-    assert m, name
-    out.append(m.group(0))
-open(sys.argv[1], "w").write("\n".join(out) + "\n")
-PY
-clang "${COMMON[@]}" -O0 -c "$OUT/abi_gte_real.c" -o "$OUT/abi_gte_real.o"
-PORT_REAL_OBJS+=("$OUT/abi_gte_real.o")
+# GTE for the battle guest ABI bodies (OuterProduct0, VectorNormal,
+# OuterProduct12, reached by the main69.c mesh family): the port's own
+# pc_port/src/psyq_compat.c object (only those three exported), over
+# PsyCross's real GTE register file (PsyX_GTE.cpp) instead of the aborting
+# MFC2/MTC2 placeholders.  Both sides reach the same native helpers, so this
+# proves the battle C, not GTE fidelity (run_battle_gte_retail_test.sh does).
+if [ ! -f pc_port/build_native/obj/psyq_compat.c.o ]; then
+    echo "BATTLE OVERLAY DIFFERENTIAL FAIL missing psyq_compat.c.o (build the port first)" >&2
+    exit 1
+fi
+# Only the three GTE helpers stay global; every other psyq_compat definition
+# (rand, Vsync, ReadTIM, the pad hooks, ...) is localised, so the rest of the
+# harness resolves exactly as before this object was linked.
+objcopy --keep-global-symbol=OuterProduct0 --keep-global-symbol=OuterProduct12 \
+    --keep-global-symbol=VectorNormal \
+    pc_port/build_native/obj/psyq_compat.c.o "$OUT/psyq_compat_gte.o"
+for gte_src in psx/INLINE_C.C gte/PsyX_GTE.cpp; do
+    g++ -std=c++17 -fno-pie -O0 -fpermissive -w -DUSE_EXTENDED_PRIM_POINTERS=0 \
+        -Ipc_port/extern/PsyCross/include -Ipc_port/extern/PsyCross/include/psx \
+        -include pc_port/src/port_compat.h \
+        -c "pc_port/extern/PsyCross/src/$gte_src" -o "$OUT/gte_${gte_src##*/}.o"
+done
+PORT_REAL_OBJS+=("$OUT/psyq_compat_gte.o" "$OUT/gte_INLINE_C.C.o" "$OUT/gte_PsyX_GTE.cpp.o")
 PSYLIB=$(find pc_port/build -name libpsycross.a 2>/dev/null | head -1)
 if [ -z "$PSYLIB" ]; then
     echo "BATTLE OVERLAY DIFFERENTIAL FAIL missing libpsycross.a (build the port first)" >&2
@@ -149,6 +156,29 @@ src = Path("src/battle/main69.c").read_text()
 old = "return ~cross.vy >> 31;"
 assert src.count(old) == 1, src.count(old)
 (out / "mutant_main69.c").write_text(src.replace(old, "return cross.vy >> 31;", 1))
+# One mutant per further guest-ABI leaf, in two builds (a mutated callee is
+# never in the same build as its mutated caller).  Each leaf must FAIL.
+mutants = {
+    "a": [("main69.c", "            return i;\n", "            return i + 1;\n"),       # 800A579C
+          ("main69.c", "return tri;", "return tri ^ 1;"),                            # 800A5D54
+          ("main69.c", "p->vy = 0;", "p->vy = 1;"),                                  # 800A5BE8
+          ("main19.c", "s32 v = pRow[p[1]] + pRow[p[2]];", "s32 v = pRow[p[1]] + pRow[p[2]] + 1;"),  # 8007AE38
+          ("main30.c", ")) + 1);", ")) + 2);"),                                     # 8007E8E0
+          ("main33.c", "= 0xA0;", "= 0xA1;")],                                       # 8007FEC4
+    "b": [("main69.c", "D_800D2F64 = 1;", "D_800D2F64 = 2;"),                        # 800A5914
+          ("main69.c", "+ 0xC);", "+ 0xB);"),                                        # 800A5870
+          ("main28.c", "D_800C3EB7[idx * 0x1C] = ", "D_800C3EB7[idx * 0x1C + 1] = ")],  # 8007E154
+}
+for group, edits in mutants.items():
+    d = out / ("mutants-" + group)
+    d.mkdir(exist_ok=True)
+    texts = {}
+    for tu, old, new in edits:
+        text = texts.get(tu) or Path("src/battle/" + tu).read_text()
+        assert text.count(old) == 1, (tu, old, text.count(old))
+        texts[tu] = text.replace(old, new, 1)
+    for tu, text in texts.items():
+        (d / tu).write_text(text)
 PY
 
 mode_flags() {
@@ -164,6 +194,7 @@ build_link() {
     local mode="$1" hostdir="$2" main12="$3" suffix="${4:-}"
     local main14="${5:-src/battle/main14.c}"
     local main69="${6:-src/battle/main69.c}"
+    local mutant_dir="${7:-}"
     local flags; flags=$(mode_flags "$mode")
     local target="$OUT/$mode$suffix"
     local err="$OUT/$mode$suffix-bridge.err"
@@ -175,6 +206,9 @@ build_link() {
         [ "$tu" = "src/battle/main12.c" ] && src="$main12"
         [ "$tu" = "src/battle/main14.c" ] && src="$main14"
         [ "$tu" = "src/battle/main69.c" ] && src="$main69"
+        if [ -n "$mutant_dir" ] && [ -f "$mutant_dir/$(basename "$tu")" ]; then
+            src="$mutant_dir/$(basename "$tu")"
+        fi
         case "$ABI_TUS" in
             *" $tu "*)
                 local abi_host=()
@@ -195,7 +229,7 @@ build_link() {
     done
     # shellcheck disable=SC2086
     clang "${COMMON[@]}" $flags -Wall -Wextra -Werror \
-        -DBATTLE_RUNTIME_SOURCE="\"$PWD/pc_port/src/battle_mips_runtime.c\"" \
+        -DBATTLE_RUNTIME_SOURCE="\"$PWD/pc_port/src/battle_mips_runtime.c\"" -DPROVER_REAL_GTE \
         -c pc_port/tests/battle_overlay_host_differential_test.c \
         -o "$OUT/$mode.test.o"
     clang "${COMMON[@]}" $flags -Wall -Wextra -Werror \
@@ -211,7 +245,7 @@ build_link() {
     local extra=()
     if ! clang -no-pie -rdynamic $flags -Wl,--gc-sections -Wl,--no-demangle \
         "$OUT/$mode.test.o" "$OUT/$mode.cpu.o" "$hostdir"/*.o "${PORT_REAL_OBJS[@]}" "$OUT/stubs.o" \
-        -ldl -o "$target" 2>"$err"; then
+        -ldl -lstdc++ -o "$target" 2>"$err"; then
         local missing
         missing=$(grep -oE "undefined reference to \`[A-Za-z0-9_]+'" "$err" \
             | sed "s/.*\`//; s/'//" | sort -u)
@@ -262,7 +296,7 @@ build_link() {
     # shellcheck disable=SC2086
     clang -no-pie -rdynamic $flags -Wl,--gc-sections \
         "$OUT/$mode.test.o" "$OUT/$mode.cpu.o" "$hostdir"/*.o "${PORT_REAL_OBJS[@]}" "$OUT/stubs.o" \
-        "${extra[@]}" -ldl -o "$target"
+        "${extra[@]}" -ldl -lstdc++ -o "$target"
 }
 
 # build_link <mode> <host-object-dir> <main12 source>
@@ -309,4 +343,22 @@ if [ "$status" -eq 0 ] || ! grep -q '^BATTLE OVERLAY DIFFERENTIAL FAIL func_800A
     exit 1
 fi
 grep -m1 '^BATTLE OVERLAY DIFFERENTIAL FAIL func_800A5A48 ' "$OUT/mutant-abi.log" >&2
-echo "BATTLE OVERLAY DIFFERENTIAL PASS (O0/O2/UBSan + wrong-result, store-path and guest-ABI controls rejected)"
+# Negative controls 4-12: one mutant per further guest-ABI leaf.
+for group in a b; do
+    case "$group" in
+        a) want="func_800A579C func_800A5D54 func_800A5BE8 func_8007AE38 func_8007E8E0 func_8007FEC4" ;;
+        b) want="func_800A5914 func_800A5870 func_8007E154" ;;
+    esac
+    build_link O2 "$OUT/host-mutant-$group" src/battle/main12.c "-mutant-$group" \
+        src/battle/main14.c src/battle/main69.c "$OUT/mutants-$group"
+    status=0
+    "$OUT/O2-mutant-$group" >"$OUT/mutant-$group.log" 2>&1 || status=$?
+    for leaf in $want; do
+        if [ "$status" -eq 0 ] || ! grep -q "^BATTLE OVERLAY DIFFERENTIAL FAIL $leaf " "$OUT/mutant-$group.log"; then
+            echo "BATTLE OVERLAY DIFFERENTIAL CONTROL FAILURE mutated $leaf accepted" >&2
+            exit 1
+        fi
+        grep -m1 "^BATTLE OVERLAY DIFFERENTIAL FAIL $leaf " "$OUT/mutant-$group.log" >&2
+    done
+done
+echo "BATTLE OVERLAY DIFFERENTIAL PASS (O0/O2/UBSan + wrong-result, store-path and 10 guest-ABI mutant controls rejected)"

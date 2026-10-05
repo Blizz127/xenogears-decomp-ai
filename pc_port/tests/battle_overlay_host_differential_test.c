@@ -43,11 +43,13 @@
  * reported instead of crashing. Only the first PSX_RAM_SIZE bytes are compared. */
 uint8_t g_PsxRam[PSX_RAM_SIZE + 0x1000];
 uint8_t g_PsxScratchpad[4096];
+#ifndef PROVER_REAL_GTE
 unsigned int MFC2(int reg) { (void)reg; abort(); }
 unsigned int CFC2(int reg) { (void)reg; abort(); }
 void MTC2(unsigned int v, int reg) { (void)v; (void)reg; abort(); }
 void CTC2(unsigned int v, int reg) { (void)v; (void)reg; abort(); }
 int doCOP2(int op) { (void)op; abort(); }
+#endif
 int g_GPUDisabledState;
 unsigned g_PcPortPresentedFrames;
 void ControllerPushState(void) {}
@@ -755,6 +757,87 @@ static void hand_cases_mesh(void)
     }
 }
 
+/* 800A5BE8 takes a fifth argument (VECTOR *normal) from the guest stack
+ * frame, o32 slot sp+0x10.  Both sides start at BATTLE_STACK_TOP and the
+ * bridge reads that slot, so it is written before each side. */
+static uint32_t stack_arg4;
+static void stack_arg4_side(void)
+{
+    *(uint32_t *)PSX_ADDR(BATTLE_STACK_TOP + 0x10u) = stack_arg4;
+}
+
+static void hand_cases_mesh_height(void)
+{
+    uint32_t args[4];
+    int winding, x;
+    unsigned tri, seen;
+
+    /* 800A5BE8(v0, v1, v2, point, normal): plane normal into *normal and the
+     * height into point.vy.  Class 1 = sloped plane, 2 = vertical plane
+     * (normal.vy == 0 path), checked on the retail RAM after the case. */
+    if (abi_leaf_listed("func_800A5BE8")) {
+        seen = 0;
+        stack_arg4 = MESH_NORMAL;
+        pre_side = stack_arg4_side;
+        for (winding = 0; winding < 2; winding++) {
+            begin_case(0, 0);
+            mesh_fixture(winding, winding + 9);
+            for (x = -300; x <= 300; x += 200) {
+                for (tri = 0; tri < mesh_tri_count; tri += 2) {
+                    const int16_t *h = (const int16_t *)PSX_ADDR(MESH_TRI + 14u * tri);
+                    mesh_point(x + 11, 777, -x / 2 + 5);
+                    args[0] = MESH_VERT + 8u * (uint16_t)h[0];
+                    args[1] = MESH_VERT + 8u * (uint16_t)h[1];
+                    args[2] = MESH_VERT + 8u * (uint16_t)h[2];
+                    args[3] = MESH_PT;
+                    compare_name("func_800A5BE8", args);
+                    if (last_case_proven)
+                        seen |= *(int32_t *)PSX_ADDR(MESH_NORMAL + 4u) != 0 ? 1u : 2u;
+                }
+            }
+        }
+        /* A vertical triangle (plane z = const): normal.vy == 0. */
+        begin_case(0, 0);
+        {
+            int16_t *v = (int16_t *)PSX_ADDR(MESH_VERT);
+            v[0] = 0;   v[1] = 0;   v[2] = 40;  v[3] = 0;
+            v[4] = 300; v[5] = 0;   v[6] = 40;  v[7] = 0;
+            v[8] = 0;   v[9] = 300; v[10] = 40; v[11] = 0;
+        }
+        mesh_point(50, 999, 60);
+        args[0] = MESH_VERT; args[1] = MESH_VERT + 8u; args[2] = MESH_VERT + 16u;
+        args[3] = MESH_PT;
+        compare_name("func_800A5BE8", args);
+        if (last_case_proven)
+            seen |= *(int32_t *)PSX_ADDR(MESH_NORMAL + 4u) != 0 ? 1u : 2u;
+        pre_side = NULL;
+        require_outcomes("func_800A5BE8", seen, 3u);
+    }
+
+    /* 800A5870(point, tri, normal): 800A5BE8 on triangle `tri`, returns its
+     * +0xC attribute byte; -1 for tri < 0 or tables not loaded. */
+    if (abi_leaf_listed("func_800A5870")) {
+        int t;
+        seen = 0;
+        for (winding = 0; winding < 2; winding++) {
+            begin_case(0, 0);
+            mesh_fixture(winding, winding + 13);
+            for (t = -2; t < 18; t += 3) {
+                mesh_point(t * 23 - 100, 3, 150 - t * 17);
+                args[0] = MESH_PT; args[1] = (uint32_t)t; args[2] = MESH_NORMAL;
+                args[3] = 0;
+                compare_name("func_800A5870", args);
+                if (last_case_proven)
+                    seen |= last_retail_v0 == 0xFFFFFFFFu ? 2u : 1u;
+            }
+        }
+        begin_case(0, 0);
+        args[0] = MESH_PT; args[1] = 1; args[2] = MESH_NORMAL; args[3] = 0;
+        compare_name("func_800A5870", args);
+        require_outcomes("func_800A5870", seen, 3u);
+    }
+}
+
 /* ---- Battle guest ABI prototype: slot and heap fixtures -----------------
  * Board opcodes take ppBoard, the address of a 4-byte GUEST slot holding the
  * script IP (guest address of the operand bytes).  The slot is at PTRT, the
@@ -832,6 +915,7 @@ static void hand_cases(void)
     hand_cases_8008ABB8();
     hand_cases_mesh();
     hand_cases_abi_slots();
+    hand_cases_mesh_height();
 
     /* AA80AE4's result is undefined when no rotation slot qualifies. Seed a
      * valid 11-entry cycle so both sides return a defined selected value. */
