@@ -26,7 +26,26 @@ extern u8 D_80059460Bytes[] asm("D_80059460");
 /* Card file calls go to the port's memory-card layer, not host libc. */
 #define XENO_MEMCARD_REMAP
 #include "../../../pc_port/src/memcard_port.h"
+/* Every HeapAlloc in this TU must see the pointer-returning prototype: an
+ * implicit int return would truncate the 64-bit host pointer. */
+extern void* HeapAlloc(u_int allocSize, u_int allocFlags);
 #endif
+
+/* MenuUnk6 (g_Menu->unk330) table words and the g_Menu+0x330 word, for
+ * shared bodies (cardsave audit): the PSX expansions are the retail
+ * expressions; the port reads the PSX-width words of the host structs. */
+#ifdef XENO_PC_PORT
+#define MENU_U6_TABLE(ctx, off) \
+    ((u8*)(uintptr_t)*(u32*)&((MenuUnk6*)(uintptr_t)(u32)(uintptr_t)(ctx)) \
+         ->unk8[(off) - 8])
+#define MENU_U6_TABLE_P(ctx, off) MENU_U6_TABLE(ctx, off)
+#define MENU_U330_WORD() ((s32)(uintptr_t)g_Menu->unk330)
+#else
+#define MENU_U6_TABLE(ctx, off) (*(u8**)((u8*)(uintptr_t)(ctx) + (off)))
+#define MENU_U6_TABLE_P(ctx, off) (*(u8**)((u8*)(ctx) + (off)))
+#define MENU_U330_WORD() (*(s32*)((u8*)g_Menu + 0x330))
+#endif
+
 
 extern s32 func_801C8D78(u8 port);
 
@@ -344,7 +363,6 @@ s32 func_801C531C(s32 arg0) {
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C55A0);
 #else
 extern void func_801C8574(s32);
-extern void PcPort_NotifyUnsupportedFileMenu(void);
 extern void func_801D22C4(void);
 extern void func_801E8044(s32, void*);
 extern s32 func_801C531C(s32);
@@ -389,13 +407,15 @@ void func_801C55A0(void) {
             }
         } else if (input == 4) {
             u8 ok = 1;
-            /* File still reaches the unimplemented native card screen
-             * 801D9F98. Reject entry before nav teardown or card cleanup;
-             * otherwise its stub return frees never-created card objects. */
-            if (g_Menu->menu1Choice == 1) {
-                PcPort_NotifyUnsupportedFileMenu();
-                ok = 0;
-            }
+            /* Port diagnostics (not retail): the card-screen tests key on it. */
+            printf("[xeno-port][menu] root confirm choice=%d\n",
+                   (int)g_Menu->menu1Choice);
+            fflush(stdout);
+            /* File (entry 1) opens the retail card screen func_801D9F98.
+             * The port once refused it here with a host notice
+             * (PcPort_NotifyUnsupportedFileMenu) because that screen and its
+             * Save/Load/Copy/Delete actions had no port bodies; retail has
+             * no such check. */
             if (g_Menu->menu1Choice == 2 && g_Menu->unk33B == 0) {
                 ok = 0;
                 func_801C8574(4);
@@ -449,12 +469,12 @@ void func_801C57A4(void) {
     D_80059171 = 1;
     D_801E977A = 0;
     func_801D1E80();
-    {
-        void* pMenu = g_Menu;
-        if (*(u8*)((u8*)pMenu + 0x329) != 0) {
-            while (*(u8*)((u8*)g_Menu + 0x329) != 0) {
-                func_801C7BF4();
-            }
+    /* Retail waits on g_Menu+0x329 (transitionEffectState).  The port once
+     * read that raw byte offset, which on the pointer-inflated host
+     * SystemMenu is an unrelated byte. */
+    if (g_Menu->transitionEffectState != 0) {
+        while (g_Menu->transitionEffectState != 0) {
+            func_801C7BF4();
         }
     }
     func_801D22F4(0);
@@ -1190,8 +1210,14 @@ void func_801C6F70(void) {
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C72BC);
 #else
-/* Retail resource dispatcher: Items, Abilities and Equip lifecycle modes.
- * Remaining modes retain an explicit unresolved boundary. */
+/* Retail resource dispatcher: Items, Abilities, Equip and the card-load
+ * status tables.  Remaining modes retain an explicit unresolved boundary.
+ * Mode 1 (retail 801C7398..801C7400, then the shared 801C74F8 tail) is what
+ * the title Load (func_801CB304) runs before func_801CB28C: it decompresses
+ * archive entries 0x11/0x12/0x13 into MenuUnk6 +0x08/+0x10/+0x0C and entry
+ * 0x14 into +0x14 -- the tables func_801E41C0/4258/42AC/433C read while
+ * func_801E4D10 rebuilds the party records.  Mode 0x11 (801C77CC) frees the
+ * four in the order +0x08, +0x10, +0x0C, +0x14. */
 void func_801C72BC(s32 mode) {
     u32* archive = NULL;
     u8 resourceMode = (u8)mode;
@@ -1243,6 +1269,20 @@ void func_801C72BC(s32 mode) {
         } else {
             HeapFree((void*)(uintptr_t)work->abilityBank);
         }
+    } else if (resourceMode == 1) {
+        *(u32*)&g_Menu->unk330->unk8[0x00] = (u32)(uintptr_t)
+            LZSSHeapDecompress((void*)(uintptr_t)archive[0x11], 0);
+        *(u32*)&g_Menu->unk330->unk8[0x08] = (u32)(uintptr_t)
+            LZSSHeapDecompress((void*)(uintptr_t)archive[0x12], 0);
+        *(u32*)&g_Menu->unk330->unk8[0x04] = (u32)(uintptr_t)
+            LZSSHeapDecompress((void*)(uintptr_t)archive[0x13], 0);
+        *(u32*)&g_Menu->unk330->unk8[0x0C] = (u32)(uintptr_t)
+            LZSSHeapDecompress((void*)(uintptr_t)archive[0x14], 0);
+    } else if (resourceMode == 0x11) {
+        HeapFree((void*)(uintptr_t)*(u32*)&g_Menu->unk330->unk8[0x00]);
+        HeapFree((void*)(uintptr_t)*(u32*)&g_Menu->unk330->unk8[0x08]);
+        HeapFree((void*)(uintptr_t)*(u32*)&g_Menu->unk330->unk8[0x04]);
+        HeapFree((void*)(uintptr_t)*(u32*)&g_Menu->unk330->unk8[0x0C]);
     } else if (resourceMode == 3) {
         /* Retail 801C748C..801C7518. Native pointer members are widened;
          * the unnamed resource slots in unk8 remain packed 32-bit values. */
@@ -1294,7 +1334,7 @@ void func_801C72BC(s32 mode) {
         if (bit == 0 || (warnedModes & bit) == 0) {
             warnedModes |= bit;
             printf("[xeno-port][stub-path] func_801C72BC mode %u not ported "
-                   "(ported: 0, 2, 3, 7, 0x10, 0x12, 0x13, 0x17)\n",
+                   "(ported: 0, 1, 2, 3, 7, 0x10, 0x11, 0x12, 0x13, 0x17)\n",
                    resourceMode);
             fflush(stdout);
         }
@@ -2820,6 +2860,14 @@ s32 func_801CA750(s32 direction, s32 unused, s32 limit) {
         data = (u8*)g_Menu->unk32C;
         *(s32*)(data + MENU_CARD_OFF(0x4F80)) = *(s32*)(data + MENU_CARD_OFF(0x4F7C));
     }
+#ifdef XENO_PC_PORT
+    /* Port diagnostics (not retail): the card save/load tests key on it. */
+    if (result != 0) {
+        printf("[xeno-port][menu] card pick result=%d selection=%d\n",
+               (int)result, (int)*(s32*)(data + MENU_CARD_OFF(0x4F7C)));
+        fflush(stdout);
+    }
+#endif
     return result;
 }
 
@@ -2882,6 +2930,9 @@ u32 func_801CAA38(u8 interactive) {
         }
         func_801C7BF4();
         if (interactive != 0 && D_801E977A != 0) {
+            /* +0x4F88 is cleared only when card 0 changed: retail's
+             * `sb $zero,0x4F88` (0x801CAB64) follows the beq's nop delay
+             * slot.  A draft once cleared it on every frame. */
             if (card0 != g_Menu->unk32C->unk4F80[0x64]) {
                 g_Menu->unk32C->unk4F80[8] = 0;
                 g_Menu->input = MENU_INPUT_BACK;
@@ -2927,6 +2978,13 @@ extern s32 func_801D32B4(s32);
 
 u8 func_801CACF8(u8 arg0, u8 arg1, u8 arg2) {
     u8 result;
+#ifdef XENO_PC_PORT
+    /* Port diagnostics (not retail): the card save/load tests answer the
+     * yes/no prompts by message id. */
+    printf("[xeno-port][menu] prompt msg=0x%02x interactive=%d\n",
+           (int)arg0, (int)arg2);
+    fflush(stdout);
+#endif
     func_801D2F4C(arg0);
     g_Menu->pCursors->shouldRender[3] = 1;
     result = func_801CAA38(arg2);
@@ -3004,6 +3062,68 @@ void func_801CAE08(s32 arg0) {
         break;
     }
 }
+#else
+extern void func_80039E60(s32 packedId);
+extern s32 func_8002675C(u8*, s32, void*, s32, s32, s32, s32);
+
+/* Retail 0x801CAE08..0x801CB17C (retail C still asm): the card-access
+ * indicator of the Save/Load screen, a 0x7BC work buffer in the PSX-width
+ * slot g_Menu+0x44C (drawn by func_801CFF64 while pManager+0x52 is set).
+ *   mode 1: allocate + clear it, build the POLY_F4 bar for the current render
+ *           context (rgb 0xA0,0xA0,0), the two label sprite lists (ids
+ *           0x160 at +0x30 and 0x161 at +0x3F0, at 0xA0,0x64), remember the
+ *           render context at +0x7B8, set pManager+0x52 = 1, speed word
+ *           +0x7B4 = 8, and play SED effects 0xE0, 0xE1, 0x8F.
+ *   mode 2: if shown: fill word +0x7B0 = 0x100, bar colour (0,0xA0,0),
+ *           pManager+0x52 = 2 (access finished).
+ *   mode 0: if shown: pManager+0x52 = 0, one menu frame, free the buffer.
+ * Other modes do nothing. */
+void func_801CAE08(s32 mode) {
+    u8* buf;
+
+    switch ((u8)mode) {
+    case 0:
+        if (((u8*)g_Menu->pManager)[0x52] != 0) {
+            ((u8*)g_Menu->pManager)[0x52] = 0;
+            func_801C7BF4();
+            HeapFree(MENU_RAW(0x44C));
+        }
+        break;
+    case 1:
+        buf = HeapAlloc(0x7BC, 0);
+        MENU_STORE_RAW(0x44C, buf);
+        bzero(buf, 0x7BC);
+        SetPolyF4((POLY_F4*)(MENU_RAW(0x44C) + g_Menu->renderContext * 0x18));
+        (MENU_RAW(0x44C) + g_Menu->renderContext * 0x18)[4] = 0xA0;
+        (MENU_RAW(0x44C) + g_Menu->renderContext * 0x18)[5] = 0xA0;
+        (MENU_RAW(0x44C) + g_Menu->renderContext * 0x18)[6] = 0;
+        func_8002675C((u8*)g_Menu->unk2DC, 0x160, MENU_RAW(0x44C) + 0x30,
+                      g_Menu->renderContext, 0xA0, 0x64, 0x1000);
+        func_8002675C((u8*)g_Menu->unk2DC, 0x161, MENU_RAW(0x44C) + 0x3F0,
+                      g_Menu->renderContext, 0xA0, 0x64, 0x1000);
+        MENU_RAW(0x44C)[0x7B8] = (u8)g_Menu->renderContext;
+        ((u8*)g_Menu->pManager)[0x52] = 1;
+        *(u32*)(MENU_RAW(0x44C) + 0x7B4) = 8;
+        func_80039E60(((s32)g_Menu->unk2E4->sedId << 16) | 0xE0);
+        func_80039E60(((s32)g_Menu->unk2E4->sedId << 16) | 0xE1);
+        func_80039E60(((s32)g_Menu->unk2E4->sedId << 16) | 0x8F);
+        break;
+    case 2:
+        if (((u8*)g_Menu->pManager)[0x52] != 0) {
+            u8* bar;
+
+            *(u32*)(MENU_RAW(0x44C) + 0x7B0) = 0x100;
+            bar = MENU_RAW(0x44C) + MENU_RAW(0x44C)[0x7B8] * 0x18;
+            bar[4] = 0;
+            bar = MENU_RAW(0x44C) + MENU_RAW(0x44C)[0x7B8] * 0x18;
+            bar[5] = 0xA0;
+            bar = MENU_RAW(0x44C) + MENU_RAW(0x44C)[0x7B8] * 0x18;
+            bar[6] = 0;
+            ((u8*)g_Menu->pManager)[0x52] = 2;
+        }
+        break;
+    }
+}
 #endif
 
 #ifndef XENO_PC_PORT
@@ -3046,7 +3166,7 @@ extern void* func_801E4D10(s32, s32);
  * return value (a pointer 0x1920 into g_GameState, not arg0). */
 void func_801CB28C(s32 arg0) {
     s32 i;
-    func_801E4D10(arg0, *(s32*)((u8*)g_Menu + 0x330));
+    func_801E4D10(arg0, MENU_U330_WORD());
     D_80059488 = *(s32*)(uintptr_t)arg0;
     for (i = 0; i < 0x10; i++) {
         D_8005A3A0[i] = D_8006F958[i];
@@ -3056,6 +3176,214 @@ void func_801CB28C(s32 arg0) {
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CB304);
+#else
+extern s32 func_801C9BCC(s32);
+extern s32 func_801C9D34(s32);
+extern s32 func_801CA750(s32, s32, s32);
+extern u8 func_801CACF8(u8, u8, u8);
+extern void func_801CADB0(void);
+extern void func_801CAE08(s32);
+extern void func_801CB28C(s32);
+extern void func_801C72BC(s32);
+extern void func_801C8574(s32);
+extern void func_801C8CA4(u8);
+extern void func_801D2F4C(u8);
+extern s32 func_801C93A8(void);
+extern u32 D_801E981C[];
+extern char D_801C50A8[];
+extern char D_801C50AC;
+extern char D_801C50B0[];
+extern char D_801C50B4;
+
+#define CB304_CARD(off) (((u8*)g_Menu->unk32C)[MENU_CARD_OFF(off)])
+
+/* Retail 0x801CB304..0x801CB8A8 (retail C still asm): the title card
+ * screen's LOAD action (func_801CD710, menu2Choice 2 with D_80059460 == 2).
+ *
+ * Each pass scans the cards (func_801C93A8; nonzero = card screen closing ->
+ * leave).  On the first pass it closes a pending prompt (pManager+0x33) and
+ * shows pointer cursor 0.  If the current slot cannot be loaded
+ * (func_801C9BCC(1)) the first loadable one is chosen (func_801C9D34(1)); if
+ * there is none, message 0x62 is shown and the action returns 0.  Otherwise
+ * the cursor is driven by func_801CA750(1):
+ *   BACK    -> return 0.
+ *   CONFIRM -> the "Load this file?" prompt (0x65, func_801CACF8).  On yes:
+ *     message 0x3B, open "bu00:"/"bu10:" + the entry's directory name (read
+ *     mode, up to 5 tries, func_801C8CA4 on each failure), read the file in
+ *     0x100-byte pieces into a 0x2100 heap buffer (one menu frame per piece,
+ *     5 tries each; the block count is card+0x4B97), show the access
+ *     indicator (func_801CAE08), then check the data: the byte sum of
+ *     buf[0x100..0x1FFE] must equal buf[0x1FFF].  A good file is applied:
+ *     func_801C72BC(1) (item tables), func_801CB28C(buf + 0x100) (copy into
+ *     g_GameState), func_801C72BC(0x11).  Success plays SE 0x34, shows 0x5C
+ *     and returns 1; failure shows 0x3E and stays on the screen.  Either way
+ *     the card state bytes are reset so the next pass rescans.
+ * On exit card+0x4FE6 = 1 and g_Menu+0x334 = 1.
+ *
+ * Retail oddity kept: after a failed read the retry passes descriptor 0 (the
+ * register holding the descriptor was cleared by the failure), so a retry
+ * never succeeds; the port's card layer rejects fd 0 with -1 like any unknown
+ * descriptor.  func_801CA750's second and third arguments are left unset by
+ * retail; the port passes 0: func_801CA750 forwards limit only to
+ * func_801CA480/5F0, which ignore it. */
+u8 func_801CB304(void) {
+    u8 result = 1;    /* retail sp+0x58 */
+    s32 first = 1;    /* retail sp+0x50 */
+    s32 running = 1;  /* retail $s7 */
+    s32 port;         /* retail $s5 */
+    s32 fd;           /* retail $s2 */
+    s32 openedFd;     /* retail $s6 */
+    s32 tries;        /* retail $s1 */
+    s32 offset;       /* retail $s3 */
+    u8* buf;          /* retail $s4 */
+    u8* p;            /* retail $s0 */
+    char path[0x40];  /* retail sp+0x10 */
+
+    func_801CADB0();
+    do {
+        if (func_801C93A8() & 0xFF) {
+            break;
+        }
+        if (first) {
+            if (((u8*)g_Menu->pManager)[0x33] != 0) {
+                MENU_CALL_D32B4();
+            }
+            first = 0;
+            g_Menu->pCursors->shouldRender[0] = 1;
+        }
+        if (func_801C9BCC(1) == 0) {
+            s32 slot = func_801C9D34(1);
+
+            g_Menu->unk32C->unk4F7C = slot;
+            if (slot == 0xFF) {
+                ((u8*)g_Menu->pManager)[0x2F] = 0;
+                ((u8*)g_Menu->pManager)[0xB] = 0;
+                g_Menu->unk4CC[0xC] = 1;
+                result = 0;
+                ((u8*)g_Menu->pManager)[0xB] = 0;
+                func_801CACF8(0x62, 0xFF, 0);
+                break;
+            }
+        }
+
+        ((u8*)g_Menu->pManager)[0x2F] = 1;
+        switch (func_801CA750(1, 0, 0)) {
+        case 1:
+            g_Menu->pCursors->unk144[0] = 0;
+            CB304_CARD(0x4FE6) = 0;
+            port = 0;
+            if (g_Menu->unk32C->unk4F7C < 0xF) {
+                memcpy(path, D_801C50A8, 4);
+                memcpy(path + 4, &D_801C50AC, 2);
+            } else {
+                memcpy(path, D_801C50B0, 4);
+                memcpy(path + 4, &D_801C50B4, 2);
+                port = 1;
+            }
+            {
+                u8 entry = CB304_CARD(
+                    0x4FAE + D_801E981C[g_Menu->unk32C->unk4F7C]);
+
+                strcat(path, (char*)g_Menu->unk32C + entry * 0x5C + 0x18);
+            }
+            if ((func_801CACF8(0x65, 0xFF, 1) & 0xFF) == 0) {
+                *(s32*)&CB304_CARD(0x4F80) = 0xFF;
+            } else {
+                func_801D2F4C(0x3B);
+                tries = 5;
+                g_Menu->unk32A = 0;
+                do {
+                    fd = open(path, 1);
+                    if (fd == -1) {
+                        fd = 0;
+                        func_801C8CA4(port);
+                    }
+                    openedFd = fd;
+                } while (fd == 0 && (--tries & 0xFF));
+
+                if (fd != 0) {
+                    ((u8*)g_Menu->pManager)[0x2F] = 0;
+                    offset = 0;
+                    buf = HeapAlloc(0x2100, 1);
+                    p = buf;
+                    ((u8*)g_Menu->pManager)[0xB] = 0;
+                    func_801CAE08(1);
+                    for (;;) {
+                        func_801C7BF4();
+                        tries = 5;
+                        do {
+                            /* fd is 0 on a retry (retail $s2). */
+                            if (read(fd, p, 0x100) != 0x100) {
+                                fd = 0;
+                                func_801C8CA4(port);
+                            }
+                        } while (fd == 0 && (--tries & 0xFF));
+                        if (fd == 0) {
+                            close(openedFd);
+                            goto free_buffer;
+                        }
+                        offset += 0x100;
+                        p += 0x100;
+                        if (offset >= (s32)(CB304_CARD(0x4B97) << 13)) {
+                            break;
+                        }
+                    }
+                    close(fd);
+                    {
+                        u8 sum = 0;
+                        s32 i;
+
+                        p = buf + 0x100;
+                        for (i = 0x1EFE; i >= 0; i--) {
+                            sum += *p++;
+                        }
+                        if (sum == *p) {
+                            p = buf + 0x100;
+                            func_801C72BC(1);
+                            func_801CB28C((s32)(uintptr_t)p);
+                            func_801C72BC(0x11);
+                        } else {
+                            fd = 0;
+                        }
+                    }
+                free_buffer:
+                    HeapFree(buf);
+                }
+
+                func_801CAE08(2);
+                MENU_CALL_D32B4();
+                if (fd != 0) {
+                    running = 0;
+                    g_Menu->unk32A = 1;
+                    func_801C8574(0x34);
+                    g_Menu->unk32A = 0;
+                    func_801CACF8(0x5C, 0xFF, 0);
+                } else {
+                    func_801CACF8(0x3E, 0xFF, 0);
+                    CB304_CARD(0x4FE6) = 2;
+                }
+                func_801CAE08(0);
+                CB304_CARD(0x4F88) = 0;
+                CB304_CARD(0x4F89) = 0;
+                CB304_CARD(0x4F8C) = 0xFF;
+                CB304_CARD(0x4F8D) = 0xFF;
+            }
+            g_Menu->pCursors->unk144[0] = 1;
+            break;
+        case 2:
+            running = 0;
+            result = 0;
+            g_Menu->unk32A = 1;
+            break;
+        }
+    } while (running);
+
+    CB304_CARD(0x4FE6) = 1;
+    g_Menu->unk334 = 1;
+    return result;
+}
+
+#undef CB304_CARD
 #endif
 
 /* Retail 0x801CB8AC: show prompt arg0 * 3 + 0x29, then pump frames while
@@ -3127,9 +3455,15 @@ done:
     return startIdx;
 }
 #else
+/* Retail 0x801CB9E8: with startIdx 0xFF, scan the 15-byte row idx of
+ * D_801EA6D0 for its first zero byte and return that index (0 when the row
+ * has none); otherwise return startIdx.  On a zero byte retail branches to
+ * .L801CBA38 with a nop delay slot, so the counter increment at 0x801CBA20
+ * does not run and `addu $a2,$a1,$zero` copies the bare index.  A draft once
+ * returned index + 1, which put the wrong save digit into the file name. */
 u8 func_801CB9E8(u8 idx, u8 startIdx) {
     s32 result = 0;
-    s32 i = 0;
+    s32 i;
     if (startIdx == 0xFF) {
         u8* pEntry = &D_801EA6D0[idx * 16];
         for (i = 0; i < 0xF; i++, pEntry++) {
@@ -3146,15 +3480,1000 @@ u8 func_801CB9E8(u8 idx, u8 startIdx) {
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CBA4C);
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CBD90);
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CC6D8);
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CD2AC);
+#else
+extern u16 D_8006F958[];
+extern u16 D_8005A3A0[];
+extern s32 D_80059488;
+extern u8 D_801E96A5;
+extern s32 func_80033C20(u8* pString, u16* pOutIndices);
+extern void* func_801E4A28(void* arg0);
+extern void func_801CB184(void);
+extern int ArchiveGetDiscNumber(void);
+
+/* Retail 0x801CBA4C (retail C still asm): fill the 0x1F00-byte save payload
+ * `buf` for save number `saveNum`.  Snapshots the 16 halfwords D_8005A3A0 into
+ * D_8006F958, then the directory summary at the payload head:
+ *   +0x00 u32  D_80059488 (play time)
+ *   +0x04 u16[3] party HP, +0x0A u16[3] max HP (g_GameState+0x2B8/+0x2BA of
+ *         character pManager[0x30+i], 0xA4 per character)
+ *   +0x10/+0x13/+0x16/+0x19 u8[3] the character's +0x2BC/+0x2BE/+0x2CE/+0x2CF
+ *   +0x1C u8[3] character ids (0xFF = empty slot, other fields untouched)
+ *   +0x1F 0, +0x23 saveNum.
+ * Then it encodes the 31 0x14-byte name entries at g_GameState+0 in place
+ * (func_80033C20; func_801CB184 decodes them again at the end), stores the
+ * disc word g_GameState+0x19D4 (1 when D_801E96A5 is set, else disc - 1) and
+ * copies the game state into the payload body (func_801E4A28).
+ * Retail's second argument (the card port) is overwritten before use. */
+void func_801CBA4C(u8* buf, s32 unusedPort, u8 saveNum) {
+    u8* gs = (u8*)&g_GameState;
+    u8 src[0x18];
+    u16 encWords[0xC];
+    u8* enc = (u8*)encWords;
+    s32 i;
+    s32 j;
+
+    (void)unusedPort;
+    for (i = 0; i < 0x10; i++) {
+        D_8006F958[i] = D_8005A3A0[i];
+    }
+    for (i = 0; i < 3; i++) {
+        u8 id = ((u8*)g_Menu->pManager)[0x30 + i];
+
+        if (id == 0xFF) {
+            buf[0x1C + i] = 0xFF;
+        } else {
+            buf[0x1C + i] = ((u8*)g_Menu->pManager)[0x30 + i];
+            id = ((u8*)g_Menu->pManager)[0x30 + i];
+            *(u16*)(buf + 0x4 + i * 2) = *(u16*)(gs + 0x2B8 + id * 0xA4);
+            id = ((u8*)g_Menu->pManager)[0x30 + i];
+            *(u16*)(buf + 0xA + i * 2) = *(u16*)(gs + 0x2BA + id * 0xA4);
+            id = ((u8*)g_Menu->pManager)[0x30 + i];
+            buf[0x10 + i] = gs[0x2BC + id * 0xA4];
+            id = ((u8*)g_Menu->pManager)[0x30 + i];
+            buf[0x13 + i] = gs[0x2BE + id * 0xA4];
+            id = ((u8*)g_Menu->pManager)[0x30 + i];
+            buf[0x16 + i] = gs[0x2CE + id * 0xA4];
+            id = ((u8*)g_Menu->pManager)[0x30 + i];
+            buf[0x19 + i] = gs[0x2CF + id * 0xA4];
+        }
+    }
+    buf[0x1F] = 0;
+    buf[0x23] = saveNum;
+    *(u32*)buf = (u32)D_80059488;
+    for (i = 0; i < 0x1F; i++) {
+        u8* entry = gs + i * 0x14;
+
+        for (j = 0; j < 0x14; j++) {
+            src[j] = entry[j];
+            enc[j] = 0;
+        }
+        func_80033C20(src, encWords);
+        for (j = 0; j < 0x14; j++) {
+            entry[j] = enc[j];
+        }
+    }
+    if (D_801E96A5 == 0) {
+        *(u16*)(gs + 0x19D4) = (u16)(ArchiveGetDiscNumber() - 1);
+    } else {
+        *(u16*)(gs + 0x19D4) = 1;
+    }
+    func_801E4A28(buf);
+    func_801CB184();
+}
 #endif
 
-extern void func_801CC6D8(void);
-extern void func_801CD2AC(void);
-extern void func_801CBD90(u8);
-extern void func_801CB304(void);
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CBD90);
+#else
+extern u32 D_801E981C[];
+extern char D_801C50A8[];
+extern char D_801C50AC;
+extern char D_801C50B0[];
+extern char D_801C50B4;
+extern char D_801C50B8[]; /* "__tmp_file" */
+extern s32 func_801C93A8(void);
+extern s32 func_801C9BCC(s32 mode);
+extern s32 func_801C9D34(s32 mode);
+extern s32 func_801CA750(s32 direction, s32 unused, s32 limit);
+extern u8 func_801CACF8(u8 arg0, u8 arg1, u8 arg2);
+extern void func_801CADB0(void);
+extern void func_801CAE08(s32 mode);
+extern u8 func_801CB8AC(u8 arg0);
+extern u8 func_801CB9E8(u8 idx, u8 startIdx);
+extern void func_801CA8C0(s32 arg0);
+extern void func_801C8CA4(u8 idx);
+extern void func_801C8574(s32 soundId);
+extern void func_801D2F4C(u8);
+extern s32 func_801D32B4(s32);
+extern void func_801C7BF4(void);
+
+#define CS_CARD(off) (((u8*)g_Menu->unk32C)[MENU_CARD_OFF(off)])
+#define CS_CARD32(off) (*(s32*)((u8*)g_Menu->unk32C + MENU_CARD_OFF(off)))
+
+/* Retail 0x801CBD90..0x801CC6D4 (retail C still asm): the card screen's Save
+ * action (func_801CD710 with menu2Choice 2 outside the title).  Each pass
+ * scans the cards (func_801C93A8; nonzero ends with result 1), lets the
+ * cursor pick a slot (func_801CA750(2): 1 confirm, 2 back), and on confirm:
+ *  - on a card whose status word (+0x4F74 + port*4) is -2 (unformatted),
+ *    asks to format (func_801CB8AC) and formats it (message 0x26, then 0x5C
+ *    on success);
+ *  - on a used slot, asks to overwrite (0x38) -- not allowed (0xC4) when its
+ *    +0x4F8E flag is clear -- then erases the old file and keeps its save
+ *    number; an empty slot asks 0x5F;
+ *  - writes "buXY:__tmp_file" (message 0x32) with FCREAT and the header's
+ *    block count (+0x4B97): the 0x100-byte directory header from +0x4B94
+ *    (func_801CA8C0 builds its title), then the 0x1F00-byte payload
+ *    (func_801CBA4C, a byte checksum of its first 0x1EFF bytes in the last
+ *    one) in 0x100-byte writes, and renames it to "buXY:" + product code
+ *    (+0x4FCE) + the save digit (func_801CB9E8 + '0').  Every card call is
+ *    tried 3 times; failures report through func_801C8CA4 and end with
+ *    message 0x35, success with sound 0x34 and message 0x5C.
+ * arg0 nonzero keeps the screen for another save; zero leaves after one
+ * confirm.  Returns the scan result (1 when func_801C93A8 ended it).
+ *
+ * Retail quirks kept: after a failed write the retries use fd 0 (the fd
+ * register was cleared), a failed header write closes fd 0, and a failed
+ * temp-file create closes the saved-fd slot, which retail leaves
+ * uninitialised if no create ever succeeded (-1 here).  func_801CA750's
+ * limit argument is left in $a2 by retail; func_801CA480/5F0 overwrite it
+ * before use, so 0 is passed. */
+s32 func_801CBD90(u8 arg0) {
+    u8 saveNum = 0xFF;   /* sp+0xD0 */
+    u8 first = 1;        /* sp+0xC0 */
+    s32 again = 1;       /* sp+0xB0 */
+    u8 result = 0;       /* sp+0xC8 */
+    s32 createdFd = -1;  /* sp+0xB8 (uninitialised in retail) */
+    char name[0x40];     /* sp+0x10 */
+    char tmp[0x40];      /* sp+0x50, $s7 */
+    char prefix[8];      /* sp+0x90 */
+    char digit[2];       /* sp+0x98 */
+    s32 ok;              /* $s0 */
+    s32 port;            /* $s5 */
+    s32 digitValue = 0;  /* $s6 */
+    s32 fd = 0;          /* $s1 */
+    s32 tries;
+    s32 action;
+    u8* buf = NULL;      /* $s4 */
+    u8* chunk;           /* $s2 */
+    s32 written;         /* $s3 */
+
+    func_801CADB0();
+    do {
+        if (func_801C93A8() & 0xFF) {
+            result = 1;
+            goto end;
+        }
+        if (first) {
+            if (((u8*)g_Menu->pManager)[0x33] != 0) {
+                MENU_CALL_D32B4();
+            }
+            first = 0;
+            g_Menu->pCursors->shouldRender[0] = 1;
+        }
+        if (func_801C9BCC(2) == 0) {
+            s32 found = func_801C9D34(2);
+
+            CS_CARD32(0x4F7C) = found;
+            if (found == 0xFF) {
+                func_801CACF8(0xAC, 0xFF, 0);
+                goto end;
+            }
+        }
+        ((u8*)g_Menu->pManager)[0x2F] = 1;
+        action = func_801CA750(2, 0, 0);
+        if (action == 2) {
+            again = 0;
+            continue;
+        }
+        if (action != 1) {
+            continue;
+        }
+
+        g_Menu->pCursors->unk144[0] = 0;
+        CS_CARD(0x4FE6) = 0;
+        ok = 1;
+        if (CS_CARD32(0x4F7C) < 0xF) {
+            memcpy(prefix, D_801C50A8, 4);
+            memcpy(prefix + 4, &D_801C50AC, 2);
+            port = 0;
+        } else {
+            memcpy(prefix, D_801C50B0, 4);
+            memcpy(prefix + 4, &D_801C50B4, 2);
+            port = 1;
+        }
+        if (CS_CARD32(0x4F74 + (port & 0xFF) * 4) == -2) {
+            if ((func_801CB8AC(port & 0xFF) & 0xFF) == 0) {
+                goto noAction;
+            }
+            func_801D2F4C(0x26);
+            if (format(prefix) != 0) {
+                MENU_CALL_D32B4();
+                func_801CACF8(0x5C, 0xFF, 0);
+            } else {
+                ok = 0;
+                MENU_CALL_D32B4();
+                again = 0;
+            }
+        }
+        if (!(ok & 0xFF)) {
+            goto passEnd;
+        }
+
+        {
+            u32 selected = D_801E981C[CS_CARD32(0x4F7C)];
+            u8* entry = (u8*)g_Menu->unk32C + selected;
+
+            if (entry[MENU_CARD_OFF(0x4FAE)] == 0xFF) {
+                if ((func_801CACF8(0x5F, 0xFF, 1) & 0xFF) == 0) {
+                    ok = 0;
+                    CS_CARD32(0x4F80) = 0xFF;
+                }
+            } else if (entry[MENU_CARD_OFF(0x4F8E)] == 0) {
+                func_801CACF8(0xC4, 0xFF, 0);
+                goto noAction;
+            } else if ((func_801CACF8(0x38, 0xFF, 1) & 0xFF) != 0) {
+                u8 file;
+
+                strcpy(tmp, prefix);
+                file = CS_CARD(0x4FAE + D_801E981C[CS_CARD32(0x4F7C)]);
+                strcat(tmp, (char*)g_Menu->unk32C + file * 0x5C + 0x18);
+                erase(tmp);
+                file = CS_CARD(0x4FAE + D_801E981C[CS_CARD32(0x4F7C)]);
+                saveNum = CS_CARD(0xCB7 + file * 0x200);
+            } else {
+                ok = 0;
+                CS_CARD32(0x4F80) = 0xFF;
+            }
+        }
+        if (!(ok & 0xFF)) {
+            goto passEnd;
+        }
+
+        ((u8*)g_Menu->pManager)[0x2F] = 0;
+        ((u8*)g_Menu->pManager)[0xB] = 0;
+        CS_CARD32(0x4F80) = 0xFF;
+        CS_CARD(0x4F8C) = 0xFF;
+        CS_CARD(0x4F8D) = 0xFF;
+        digitValue = func_801CB9E8(port, saveNum);
+        digit[0] = (char)(digitValue + 0x30);
+        digit[1] = 0;
+        strcpy(name, prefix);
+        strcpy(tmp, prefix);
+        strcat(name, (char*)&CS_CARD(0x4FCE));
+        strcat(name, digit);
+        strcat(tmp, D_801C50B8);
+        func_801D2F4C(0x32);
+        g_Menu->unk32A = 0;
+        erase(tmp);
+
+        /* Create the temp file with the header's block count. */
+        tries = 3;
+        do {
+            fd = open(tmp, (CS_CARD(0x4B97) << 16) | 0x200);
+            if (fd == -1) {
+                fd = 0;
+                func_801C8CA4(port & 0xFF);
+            } else {
+                createdFd = fd;
+            }
+            if (fd != 0) {
+                break;
+            }
+        } while (--tries & 0xFF);
+        close(createdFd);
+        if (fd == 0) {
+            goto finish;
+        }
+
+        /* Reopen it for writing. */
+        tries = 3;
+        for (;;) {
+            fd = open(tmp, 2);
+            if (fd == -1) {
+                fd = 0;
+                func_801C8CA4(port & 0xFF);
+            }
+            if (fd != 0) {
+                break;
+            }
+            if ((--tries & 0xFF) == 0) {
+                erase(tmp);
+                break;
+            }
+        }
+        func_801C7BF4();
+        if (fd == 0) {
+            goto finish;
+        }
+
+        /* Directory header (0x100 bytes from card +0x4B94). */
+        func_801CA8C0(digitValue & 0xFF);
+        tries = 3;
+        for (;;) {
+            if (write(fd, (u8*)g_Menu->unk32C + MENU_CARD_OFF(0x4B94), 0x100) == -1) {
+                fd = 0;
+                func_801C8CA4(port & 0xFF);
+            }
+            tries--;
+            if (fd != 0) {
+                break;
+            }
+            if ((tries & 0xFF) == 0) {
+                close(0);
+                erase(tmp);
+                goto finish;
+            }
+        }
+
+        /* Payload, 0x100 bytes per write, checksum in its last byte. */
+        written = 0x100;
+        buf = (u8*)HeapAlloc(0x1F00, 1);
+        bzero(buf, 0x1F00);
+        chunk = buf;
+        func_801CBA4C(buf, port, digitValue & 0xFF);
+        {
+            u8* p = buf;
+            u32 sum = 0;
+            s32 n;
+
+            for (n = 0x1EFE; n >= 0; n--) {
+                sum += *p++;
+            }
+            *p = (u8)sum;
+        }
+        func_801CAE08(1);
+        do {
+            func_801C7BF4();
+            tries = 3;
+            for (;;) {
+                if (write(fd, chunk, 0x100) != 0x100) {
+                    fd = 0;
+                    func_801C8CA4(port & 0xFF);
+                }
+                tries--;
+                if (fd != 0) {
+                    break;
+                }
+                if ((tries & 0xFF) == 0) {
+                    /* Retail 0x801CC3C0. */
+                    close(createdFd);
+                    strcpy(tmp, prefix);
+                    strcat(tmp, D_801C50B8);
+                    erase(tmp);
+                    HeapFree(buf);
+                    goto finish;
+                }
+            }
+            written += 0x100;
+            chunk += 0x100;
+        } while (written < (CS_CARD(0x4B97) << 13));
+        close(fd);
+
+        /* Publish: rename the temp file to the save's name. */
+        strcpy(tmp, prefix);
+        strcat(tmp, D_801C50B8);
+        tries = 3;
+        for (;;) {
+            if (rename(tmp, name) == 0) {
+                fd = 0;
+                func_801C8CA4(port & 0xFF);
+            }
+            if (fd != 0) {
+                break;
+            }
+            if ((--tries & 0xFF) == 0) {
+                erase(tmp);
+                break;
+            }
+        }
+        HeapFree(buf);
+
+    finish:
+        /* Retail 0x801CC53C. */
+        MENU_CALL_D32B4();
+        func_801CAE08(2);
+        if (fd != 0) {
+            g_Menu->unk32A = 1;
+            func_801C8574(0x34);
+            g_Menu->unk32A = 0;
+            func_801CACF8(0x5C, 0xFF, 0);
+        } else {
+            func_801CACF8(0x35, 0xFF, 0);
+        }
+        func_801CAE08(0);
+        CS_CARD(0x4FE6) = 2;
+        while (g_Menu->unk326 != 1) {
+            func_801C7BF4();
+        }
+        CS_CARD(0x4F88) = 0;
+        CS_CARD(0x4F89) = 0;
+
+    passEnd:
+        /* Retail 0x801CC62C. */
+        g_Menu->pCursors->unk144[0] = 1;
+        g_Menu->unk32A = 1;
+        if (arg0 == 0) {
+            again = 0;
+        }
+        continue;
+
+    noAction:
+        /* Retail 0x801CC138. */
+        g_Menu->pCursors->unk144[0] = 1;
+    } while (again);
+
+end:
+    CS_CARD(0x4FE6) = 1;
+    g_Menu->unk334 = 1;
+    return result;
+}
+
+#undef CS_CARD
+#undef CS_CARD32
+#endif
+
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CC6D8);
+#else
+extern void func_801CAE08(s32 mode);
+extern s32 func_801CA750(s32 direction, s32 unused, s32 limit);
+extern u8 func_801CACF8(u8 arg0, u8 arg1, u8 arg2);
+extern void func_801CADB0(void);
+extern void func_801C8CA4(u8 idx);
+extern void func_801C8574(s32 soundId);
+extern u8 func_801CB8AC(u8 arg0);
+extern void func_801D2F4C(u8);
+extern s32 func_801D32B4(s32);
+extern s32 func_801C9BCC(s32 mode);
+extern s32 func_801C9D34(s32 mode);
+extern s32 func_801C93A8(void);
+extern void func_801C7BF4(void);
+extern char D_801C50A8[];
+extern char D_801C50AC;
+extern char D_801C50B0[];
+extern char D_801C50B4;
+extern char D_801C50B8[]; /* "__tmp_file" */
+extern u32 D_801E981C[];
+extern s32 D_801EA900;    /* s32[2]: blocks used per card */
+extern u8 D_801E9778;
+
+#define CC6D8_CARD(off) (((u8*)g_Menu->unk32C)[MENU_CARD_OFF(off)])
+#define CC6D8_NAME(index) \
+    ((char*)g_Menu->unk32C + MENU_CARD_OFF((index) * 0x5C + 0x18))
+/* Directory index (port*16 + slot) of the cursor's entry. */
+#define CC6D8_SELECTED() \
+    CC6D8_CARD(0x4FAE + D_801E981C[g_Menu->unk32C->unk4F7C])
+
+/* Retail 0x801CC6D8..0x801CD2A8 (retail C still asm): card screen action 1,
+ * COPY.  The cursor picks a save on one card; it is copied to the OTHER card
+ * (destination port = 1 when the cursor is on card 1's side, i.e.
+ * +0x4F7C / 15 == 0, else 0), under the same file name.
+ *
+ * Per pass: func_801C93A8 scans the cards (nonzero: leave, returning 1).  With
+ * no copyable entry (func_801C9BCC(0) fails and func_801C9D34(0) finds none)
+ * it shows 0x62 and leaves.  func_801CA750 reads the cursor; confirm runs:
+ *   - prompt 0x47 / 0xBB (dest 0 / 1) "copy?" (no: +0x4F80 = 0xFF);
+ *   - no destination card: message 0x4A / 0xBE and, if still absent, a
+ *     179-vblank wait, then leave the screen;
+ *   - destination full (D_801EA900[dest] >= 15 blocks): message 0xAC, the
+ *     count is reset and the screen is left;
+ *   - unformatted destination (+0x4F74[dest] == -2): func_801CB8AC asks;
+ *     yes: message 0x26 and format("buX0:") (then 0x5C "done", or give up on
+ *     failure); no: back to the cursor;
+ *   - a file with the same name on the destination: message 0x4D / 0xC1;
+ *   - otherwise message 0x41 and the copy: open the source (FREAD, 3 tries),
+ *     read its 0x200-byte header, erase "buX0:__tmp_file", create it with
+ *     FCREAT and the header's block count (header[3]), reopen it FWRITE,
+ *     write the header, then copy 0x200-byte frames (read, frame, write,
+ *     frame) until header[3] * 0x2000 bytes are written, and rename the temp
+ *     file to "buX0:<name>".  Any I/O failure calls func_801C8CA4 (the
+ *     card-error pause), cleans up the temp file and shows 0x44 (0xAC when
+ *     the create failed); success plays sound 0x34 and shows 0x5C.  The
+ *     directory caches are then invalidated so the next scan rereads both
+ *     cards, and D_801E9778 re-shows the prompt.
+ * Back (func_801CA750 == 2) leaves.  On exit +0x4FE6 = 1, g_Menu+0x334 = 1.
+ *
+ * Retail quirks kept: after one failed header read, frame read or open, the
+ * fd variable ($s1) is 0, so the remaining retries call read(0, ...) / the
+ * loop test and cannot succeed; a failed header write falls through into
+ * the frame loop with $s1 = $s2 = 0 (it then fails the first read, closes
+ * the source a second time and closes fd 0).  Retail's func_801CA750 call
+ * leaves $a1/$a2 unset; the port's CA480/CA5F0 ignore them (they recompute
+ * the limit), so 0 is passed. */
+u8 func_801CC6D8(void) {
+    char dstName[0x40];   /* sp+0x10 */
+    char dstPrefix[8];    /* sp+0x50 */
+    char srcName[0x40];   /* sp+0x58 */
+    char tmpName[0x40];   /* sp+0x98 ($fp) */
+    char srcPrefix[8];    /* sp+0xD8 */
+    u8 frame[0x200];      /* sp+0xE0 */
+    u8 header[0x200];     /* sp+0x2E0 */
+    u8 srcPort;           /* sp+0x4E0 */
+    u8 first;             /* sp+0x4E8 */
+    u8 result;            /* sp+0x4F0 */
+    u8 createFailed;      /* sp+0x4F8 */
+    s32 s0;
+    s32 s1 = 1;           /* loop flag, then the source fd / success */
+    s32 s2;               /* destination fd */
+    s32 s3;               /* bytes copied */
+    s32 s6;               /* source fd */
+    s32 s7;               /* still ok */
+    u8 s4;                /* destination port */
+    u8 msgMissing;
+    u8 msgExists;
+    s32 i;
+
+    createFailed = 0;
+    first = 1;
+    result = 0;
+    func_801CADB0();
+    do {
+        if (func_801C93A8() & 0xFF) {
+            result = 1;
+            goto end;
+        }
+        if (first) {
+            if (((u8*)g_Menu->pManager)[0x33] != 0) {
+                MENU_CALL_D32B4();
+            }
+            first = 0;
+            g_Menu->pCursors->shouldRender[0] = 1;
+        }
+        if (func_801C9BCC(0) == 0) {
+            s32 slot = func_801C9D34(0);
+
+            g_Menu->unk32C->unk4F7C = slot;
+            if (slot == 0xFF) {
+                g_Menu->pCursors->shouldRender[0] = 0;
+                ((u8*)g_Menu->pManager)[0xB] = 0;
+                func_801CACF8(0x62, 0xFF, 0);
+                goto end;
+            }
+        }
+        ((u8*)g_Menu->pManager)[0x2F] = 1;
+        {
+            s32 action = func_801CA750(0, 0, 0);
+
+            if (action == 2) {
+                s1 = 0;
+                continue;
+            }
+            if (action != 1) {
+                continue;
+            }
+        }
+
+        g_Menu->pCursors->unk144[0] = 0;
+        CC6D8_CARD(0x4FE6) = 0;
+        s4 = (g_Menu->unk32C->unk4F7C / 15) == 0;
+        s7 = 1;
+        if (s4) {
+            msgMissing = 0xBE;
+            msgExists = 0xC1;
+            i = 0xBB;
+        } else {
+            msgMissing = 0x4A;
+            msgExists = 0x4D;
+            i = 0x47;
+        }
+        if ((func_801CACF8(i, 0xFF, 1) & 0xFF) == 0) {
+            s7 = 0;
+            *(s32*)&CC6D8_CARD(0x4F80) = 0xFF;
+        }
+        if (!(s7 & 0xFF)) {
+            goto done;
+        }
+        if (CC6D8_CARD(0x4FE4 + s4) == 0) {
+            func_801D2F4C(msgMissing);
+            if (CC6D8_CARD(0x4FE4 + s4) == 0) {
+                for (i = 0xB3; i != 0; i--) {
+                    Vsync(0);
+                }
+                s7 = 0;
+                s1 = 0;
+            }
+            MENU_CALL_D32B4();
+        }
+        if (!(s7 & 0xFF)) {
+            goto done;
+        }
+        if ((&D_801EA900)[s4] >= 0xF) {
+            s7 = 0;
+            (&D_801EA900)[s4] = 0;
+            s1 = 0;
+            ((u8*)g_Menu->pManager)[0x2F] = 0;
+            func_801CACF8(0xAC, 0xFF, 0);
+        }
+        if (!(s7 & 0xFF)) {
+            goto done;
+        }
+
+        s4 = (g_Menu->unk32C->unk4F7C / 15) == 0;
+        if (s4) {
+            memcpy(srcPrefix, D_801C50A8, 4);        /* "bu00:" */
+            memcpy(srcPrefix + 4, &D_801C50AC, 2);
+            memcpy(dstPrefix, D_801C50B0, 4);        /* "bu10:" */
+            memcpy(dstPrefix + 4, &D_801C50B4, 2);
+            srcPort = 0;
+        } else {
+            memcpy(srcPrefix, D_801C50B0, 4);
+            memcpy(srcPrefix + 4, &D_801C50B4, 2);
+            memcpy(dstPrefix, D_801C50A8, 4);
+            memcpy(dstPrefix + 4, &D_801C50AC, 2);
+            srcPort = 1;
+        }
+        if (*(s32*)&CC6D8_CARD(0x4F74 + s4 * 4) == -2) {
+            if (func_801CB8AC(s4) & 0xFF) {
+                func_801D2F4C(0x26);
+                if (format(dstPrefix) == 0) {
+                    s7 = 0;
+                    MENU_CALL_D32B4();
+                } else {
+                    MENU_CALL_D32B4();
+                    func_801CACF8(0x5C, 0xFF, 0);
+                }
+            } else {
+                g_Menu->pCursors->unk144[0] = 1;
+                continue;
+            }
+        }
+        if (!(s7 & 0xFF)) {
+            goto done;
+        }
+
+        /* Refuse when the destination already holds this file name. */
+        s0 = 0;
+        if (CC6D8_CARD(0x4F8A + s4) != 0) {
+            do {
+                s32 cmp = strcmp(CC6D8_NAME(CC6D8_SELECTED()),
+                                 CC6D8_NAME(s4 * 16 + s0));
+
+                s0++;
+                if (cmp == 0) {
+                    s0 = 0xFF;
+                    break;
+                }
+            } while (s0 < CC6D8_CARD(0x4F8A + s4));
+        }
+        if (s0 == 0xFF) {
+            func_801CACF8(msgExists, 0xFF, 0);
+            s7 = 0;
+        }
+        if (!(s7 & 0xFF)) {
+            goto done;
+        }
+
+        func_801D2F4C(0x41);
+        g_Menu->unk32A = 0;
+        ((u8*)g_Menu->pManager)[0x2F] = 0;
+        ((u8*)g_Menu->pManager)[0xB] = 0;
+        *(s32*)&CC6D8_CARD(0x4F80) = 0xFF;
+        CC6D8_CARD(0x4F8C) = 0xFF;
+        CC6D8_CARD(0x4F8D) = 0xFF;
+        strcpy(srcName, srcPrefix);
+        strcpy(dstName, dstPrefix);
+        strcpy(tmpName, dstPrefix);
+        strcat(srcName, CC6D8_NAME(CC6D8_SELECTED()));
+        strcat(dstName, CC6D8_NAME(CC6D8_SELECTED()));
+        strcat(tmpName, D_801C50B8);
+
+        /* Source: open (FREAD) and read its header. */
+        s0 = 3;
+        do {
+            s1 = open(srcName, 1);
+            if (s1 == -1) {
+                s1 = 0;
+                func_801C8CA4(srcPort);
+            }
+            if (s1 != 0) {
+                break;
+            }
+            s0--;
+        } while (s0 & 0xFF);
+        if (s1 == 0) {
+            goto report;
+        }
+        s6 = s1;
+        s0 = 3;
+        do {
+            if (read(s1, header, 0x200) == -1) {
+                s1 = 0;
+                func_801C8CA4(srcPort);
+            }
+            if (s1 != 0) {
+                break;
+            }
+            s0--;
+        } while (s0 & 0xFF);
+        if (s1 == 0) {
+            close(s6);
+            goto report;
+        }
+
+        /* Destination temp file: create with the header's block count,
+         * reopen for writing, write the header. */
+        erase(tmpName);
+        s0 = 1;
+        for (;;) {
+            s2 = open(tmpName, (header[3] << 16) | 0x200);
+            if (s2 == -1) {
+                s1 = 0;
+                createFailed = 1;
+            }
+            if (s1 != 0) {
+                break;
+            }
+            s0--;
+            if ((s0 & 0xFF) == 0) {
+                close(s6);
+                break;
+            }
+        }
+        close(s2);
+        if (s1 == 0) {
+            goto report;
+        }
+        s0 = 3;
+        do {
+            s2 = open(tmpName, 2);
+            if (s2 == -1) {
+                s1 = 0;
+                func_801C8CA4(s4);
+            }
+            if (s1 != 0) {
+                break;
+            }
+            s0--;
+        } while (s0 & 0xFF);
+        if (s1 == 0) {
+            close(s6);
+            erase(tmpName);
+            goto report;
+        }
+        s0 = 3;
+        for (;;) {
+            if (write(s2, header, 0x200) == -1) {
+                s1 = 0;
+                func_801C8CA4(s4);
+            }
+            s3 = 0x200;
+            if (s1 != 0) {
+                break;
+            }
+            s0--;
+            if ((s0 & 0xFF) == 0) {
+                /* Retail falls through into the frame loop from here. */
+                close(s6);
+                close(s2);
+                s2 = 0;
+                erase(tmpName);
+                break;
+            }
+        }
+
+        /* Frames after the header: read one, frame, write it, frame. */
+        s0 = 0;
+        func_801CAE08(1);
+        for (;;) {
+            func_801C7BF4();
+            if (s0 == 0) {
+                s0 = 3;
+                do {
+                    if (read(s1, frame, 0x200) != 0x200) {
+                        s1 = 0;
+                        func_801C8CA4(srcPort);
+                    }
+                    if (s1 != 0) {
+                        break;
+                    }
+                    s0--;
+                } while (s0 & 0xFF);
+                if (s1 == 0) {
+                    goto copyFailed;
+                }
+                s0 = 1;
+                continue;
+            }
+            s0 = 3;
+            do {
+                if (write(s2, frame, 0x200) != 0x200) {
+                    s1 = 0;
+                    func_801C8CA4(s4);
+                }
+                if (s1 != 0) {
+                    break;
+                }
+                s0--;
+            } while (s0 & 0xFF);
+            if (s1 == 0) {
+                goto copyFailed;
+            }
+            s3 += 0x200;
+            s0 = 0;
+            if (s3 < (header[3] << 13)) {
+                continue;
+            }
+            break;
+        }
+        close(s2);
+        close(s1);
+        strcpy(tmpName, dstPrefix);
+        strcat(tmpName, D_801C50B8);
+        rename(tmpName, dstName);
+        goto report;
+
+    copyFailed:
+        close(s6);
+        close(s2);
+        strcpy(tmpName, dstPrefix);
+        strcat(tmpName, D_801C50B8);
+        erase(tmpName);
+
+    report:
+        if (!(s7 & 0xFF)) {
+            goto done;
+        }
+        func_801CAE08(2);
+        MENU_CALL_D32B4();
+        if (s1 != 0) {
+            g_Menu->unk32A = 1;
+            func_801C8574(0x34);
+            g_Menu->unk32A = 0;
+            func_801CACF8(0x5C, 0xFF, 0);
+        } else {
+            func_801CACF8(createFailed ? 0xAC : 0x44, 0xFF, 0);
+        }
+        func_801CAE08(0);
+        CC6D8_CARD(0x4FE6) = 2;
+        while (g_Menu->unk326 != 1) {
+            func_801C7BF4();
+        }
+        for (i = 0; i < 0x20; i++) {
+            CC6D8_CARD(0x4FAE + i) = 0xFF;
+            CC6D8_CARD(0x4F8E + i) = 0;
+            CC6D8_CARD(i * 0x5C + 0x58) = 0;
+        }
+        CC6D8_CARD(0x4F88) = 0;
+        CC6D8_CARD(0x4F89) = 0;
+        D_801E9778 = 1;
+
+    done:
+        g_Menu->pCursors->unk144[0] = 1;
+        g_Menu->unk32A = 1;
+        s1 = 0;
+    } while (s1);
+
+end:
+    CC6D8_CARD(0x4FE6) = 1;
+    g_Menu->unk334 = 1;
+    return result;
+}
+
+#undef CC6D8_SELECTED
+#undef CC6D8_NAME
+#undef CC6D8_CARD
+#endif
+
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CD2AC);
+#else
+/* Retail 0x801CD2AC..0x801CD6FC (retail C still asm): the card screen's
+ * DELETE action (func_801CD710, menu2Choice 0; g_Menu+0x334 = 7).
+ *
+ * func_801CADB0 puts the file cursor on the first present card.  Each pass
+ * scans the cards (func_801C93A8; nonzero = no card -> leave, return 1).  On
+ * the first pass it closes a pending prompt (pManager+0x33) and shows the
+ * file cursor (pCursors->shouldRender[0]).  If the entry under the cursor
+ * cannot be deleted (func_801C9BCC(0) == 0) the cursor moves to the first
+ * one that can (func_801C9D34(0)); with none, message 0x62 is shown and the
+ * action ends.  Otherwise the pointer cursor is armed (pManager+0x2F) and
+ * func_801CA750(0) reads the pad: Circle asks the two-step confirmation
+ * (func_801CACF8(0x56, 0x59, 1)); on yes it shows message 0x50, erases
+ * "bu00:"/"bu10:" + the entry's file name (card +entry*0x5C+0x18), plays
+ * SFX 0x34, shows message 0x5C, waits for the card poller to report
+ * (g_Menu+0x326 == 1) and invalidates the whole directory cache (+0x4FAE /
+ * +0x4F8E / +0x58 per entry, +0x4F88/89 = 0, +0x4F8C/8D = 0xFF) so the next
+ * scan re-reads both cards; D_801E9778 = 1 flags the change.  Cross (2)
+ * leaves; any other input keeps looping.
+ *
+ * Retail calls func_801D32B4 twice with $a0 left over (MENU_CALL_D32B4);
+ * func_801CA750's $a1/$a2 are left over too, and it ignores them. */
+s32 func_801CD2AC(void) {
+    s32 running = 1;   /* retail $s0 */
+    s32 firstPass = 1; /* retail $s2 */
+    s32 noCard = 0;    /* retail $s4 */
+    s32 action;
+    s32 i;
+    char path[0x40];   /* retail sp+0x10 */
+    u8* card;
+
+    func_801CADB0();
+    do {
+        if (func_801C93A8() & 0xFF) {
+            noCard = 1;
+            break;
+        }
+        if (firstPass & 0xFF) {
+            if (((u8*)g_Menu->pManager)[0x33] != 0) {
+                MENU_CALL_D32B4();
+            }
+            firstPass = 0;
+            g_Menu->pCursors->shouldRender[0] = 1;
+        }
+        if (func_801C9BCC(0) == 0) {
+            s32 first = func_801C9D34(0);
+
+            g_Menu->unk32C->unk4F7C = first;
+            if (first == 0xFF) {
+                g_Menu->pCursors->shouldRender[0] = 0;
+                ((u8*)g_Menu->pManager)[0xB] = 0;
+                func_801CACF8(0x62, 0xFF, 0);
+                break;
+            }
+        }
+        ((u8*)g_Menu->pManager)[0x2F] = 1;
+        action = func_801CA750(0, 0, 0);
+        if (action == 1) {
+            g_Menu->pCursors->unk144[0] = 0;
+            ((u8*)g_Menu->unk32C)[MENU_CARD_OFF(0x4FE6)] = 0;
+            if ((func_801CACF8(0x56, 0x59, 1) & 0xFF) != 0) {
+                func_801D2F4C(0x50);
+                ((u8*)g_Menu->pManager)[0x2F] = 0;
+                ((u8*)g_Menu->pManager)[0xB] = 0;
+                *(s32*)((u8*)g_Menu->unk32C + MENU_CARD_OFF(0x4F80)) = 0xFF;
+                if (g_Menu->unk32C->unk4F7C < 0xF) {
+                    memcpy(path, D_801C50A8, 4);     /* "bu00:" */
+                    memcpy(path + 4, &D_801C50AC, 2);
+                } else {
+                    memcpy(path, D_801C50B0, 4);     /* "bu10:" */
+                    memcpy(path + 4, &D_801C50B4, 2);
+                }
+                card = (u8*)g_Menu->unk32C;
+                strcat(path, (char*)card + MENU_CARD_OFF(
+                    card[MENU_CARD_OFF(0x4FAE) +
+                         D_801E981C[g_Menu->unk32C->unk4F7C]] * 0x5C + 0x18));
+                erase(path);
+                MENU_CALL_D32B4();
+                g_Menu->unk32A = 1;
+                func_801C8574(0x34);
+                g_Menu->unk32A = 0;
+                func_801CACF8(0x5C, 0xFF, 0);
+                ((u8*)g_Menu->unk32C)[MENU_CARD_OFF(0x4FE6)] = 2;
+                while (g_Menu->unk326 != 1) {
+                    func_801C7BF4();
+                }
+                for (i = 0; i < 0x20; i++) {
+                    card = (u8*)g_Menu->unk32C;
+                    card[MENU_CARD_OFF(0x4FAE) + i] = 0xFF;
+                    card[MENU_CARD_OFF(0x4F8E) + i] = 0;
+                    card[i * 0x5C + 0x58] = 0;
+                }
+                card = (u8*)g_Menu->unk32C;
+                card[MENU_CARD_OFF(0x4F88)] = 0;
+                card[MENU_CARD_OFF(0x4F89)] = 0;
+                card[MENU_CARD_OFF(0x4F8C)] = 0xFF;
+                card[MENU_CARD_OFF(0x4F8D)] = 0xFF;
+                D_801E9778 = 1;
+            }
+            g_Menu->pCursors->unk144[0] = 1;
+            running = 0;
+        } else if (action == 2) {
+            running = 0;
+        }
+    } while (running);
+
+    ((u8*)g_Menu->unk32C)[MENU_CARD_OFF(0x4FE6)] = 1;
+    g_Menu->unk334 = 1;
+    g_Menu->unk32A = 1;
+    return noCard;
+}
+#endif
+
+
+extern u8 func_801CC6D8(void);
+extern s32 func_801CD2AC(void);
+extern s32 func_801CBD90(u8);
+extern u8 func_801CB304(void);
 extern void func_801D2484(void);
 
 #ifndef XENO_PC_PORT
@@ -3163,33 +4482,49 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CD710);
 s32 func_801CD710(u8 arg0) {
     void* pMenu;
     s32 result = 1;
+    s32 handled = 0;
     func_801D22F4(0);
     pMenu = g_Menu;
     ((u8*)g_Menu->pManager)[0x2F] = 0;
     /* Retail reads g_Menu+0x338 (menu2Choice) and stores g_Menu+0x334
      * (unk334).  The port once used those raw byte offsets, which on the
-     * pointer-inflated host SystemMenu read and wrote unrelated fields. */
+     * pointer-inflated host SystemMenu read and wrote unrelated fields.
+     * Retail returns 0 when the action handler returned nonzero (0x801CD7EC
+     * beqz; its delay slot is a nop, so `addu $s0,$zero,$zero` runs only on
+     * the nonzero path), else 1.  The port once ignored the handler result
+     * and always returned 1. */
     {
         u8 state = g_Menu->menu2Choice;
+        /* Port diagnostics (not retail): the card-screen tests key on it. */
+        printf("[xeno-port][menu] card action begin choice=%d D_80059460=%d\n",
+               (int)state, (int)D_80059460);
+        fflush(stdout);
         switch (state) {
             case 0:
                 g_Menu->unk334 = 7; /* retail: 7 */
-                func_801CD2AC();
+                handled = func_801CD2AC() & 0xFF;
                 break;
             case 1:
                 g_Menu->unk334 = 6;
-                func_801CC6D8();
+                handled = func_801CC6D8() & 0xFF;
                 break;
             case 2:
                 if (D_80059460 == 2) {
                     g_Menu->unk334 = 2;
-                    func_801CB304();
+                    handled = func_801CB304() & 0xFF;
                 } else {
                     g_Menu->unk334 = 3;
-                    func_801CBD90(arg0);
+                    handled = func_801CBD90(arg0) & 0xFF;
                 }
                 break;
         }
+        if (state <= 2 && handled) {
+            result = 0;
+        }
+        /* Port diagnostics (not retail): the card-screen tests key on it. */
+        printf("[xeno-port][menu] card action choice=%d handled=%d result=%d\n",
+               (int)state, (int)handled, (int)result);
+        fflush(stdout);
     }
     func_801D2484();
     return result;
@@ -7297,8 +8632,9 @@ s32 func_801D9F98(s32 mode, s32 slotArg) {
 
     g_XenoCardScreenActive = 1;
     g_XenoCardScreenEntries++;
-    printf("[xeno-port][menu] card screen enter mode=%d D_80059460=%d\n",
-           (int)(mode & 0xFF), (int)D_80059460);
+    printf("[xeno-port][menu] card screen enter mode=%d D_80059460=%d "
+           "saveflag=%d\n",
+           (int)(mode & 0xFF), (int)D_80059460, (int)D_80059171);
     fflush(stdout);
 
     D_801E9784 = 0;
@@ -10707,7 +12043,7 @@ void func_801E4170(s32 arg0, u8 arg1) {
  * stores it in the branch delay slot). */
 void func_801E41C0(s32 arg0, u8 idx) {
     u8* pEntry = (u8*)&g_GameState + 0x978 + idx * 0xA4;
-    u8* pTable = *(u8**)((u8*)(uintptr_t)arg0 + 8);
+    u8* pTable = MENU_U6_TABLE(arg0, 8);
     pTable += pEntry[2] * 0x18;
     *(u32*)(pEntry + 0x60) = *(u32*)(pTable + 4);
     *(u32*)(pEntry + 0x64) = *(u32*)(pTable + 4);
@@ -10724,7 +12060,7 @@ void func_801E41C0(s32 arg0, u8 idx) {
  * with the same stride). */
 void func_801E4258(void* pCtx, u8 idx) {
     u8* pEntry = (u8*)&g_GameState + 0x978 + idx * 0xA4;
-    u8* pTbl = *(u8**)((u8*)pCtx + 0x10);
+    u8* pTbl = MENU_U6_TABLE_P(pCtx, 0x10);
     pTbl += pEntry[8] * 0x14;
     *(u16*)(pEntry + 0x70) = *(u16*)(pTbl + 8);
     *(u16*)(pEntry + 0x72) = *(u16*)(pTbl + 0xA);
@@ -10733,7 +12069,7 @@ void func_801E4258(void* pCtx, u8 idx) {
 /* Party records are 0xA4 bytes (see func_801E4258). */
 void func_801E42AC(s32 arg0, u8 idx) {
     u8* pEntry = (u8*)&g_GameState + 0x978 + idx * 0xA4;
-    u8* pTable = *(u8**)((u8*)(uintptr_t)arg0 + 0xC);
+    u8* pTable = MENU_U6_TABLE(arg0, 0xC);
     u16 prev;
     pTable += pEntry[3] * 0x10;
     prev = *(u16*)(pEntry + 0x38);

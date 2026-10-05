@@ -97,6 +97,15 @@ int PcPort_CheatExec(const char* line)
         extern void PcPort_PadConsoleHold(unsigned short gameMask, int frames);
         PcPort_PadConsoleHold((unsigned short)strtoul(argv[1], NULL, 0),
                               argc == 3 ? atoi(argv[2]) : 4);
+    } else if (!strcmp(argv[0], "saveflag") && argc == 2) {
+        /* TEST TOOLING for headless drivers (pc_port/tests/
+         * card_save_load_test.py): set the field save-point flag D_800B236C
+         * as opcode FE99 (func_8008848C) does inside a save point's area, so
+         * a driver reaches the retail menu Save entry without walking there.
+         * The game only reads it; nothing else changes. */
+        extern short D_800B236C;
+        D_800B236C = (short)atoi(argv[1]);
+        printf("[cheat] saveflag %d\n", (int)D_800B236C);
     } else if (!strcmp(argv[0], "hold") && argc == 3) {
         /* harness only: hold a CTRL_BTN_* mask for N field frames */
         PcPort_FieldTestInputHold((unsigned)strtoul(argv[1], NULL, 0), (unsigned)strtoul(argv[2], NULL, 0));

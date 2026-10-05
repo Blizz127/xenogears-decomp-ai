@@ -16,10 +16,11 @@ u8 D_80059460;
 static unsigned last;
 void func_801D22F4(s32 a) { (void)a; }
 void func_801D2484(void) {}
-void func_801CD2AC(void) { last = 0x2AC; }
-void func_801CC6D8(void) { last = 0x6D8; }
-void func_801CB304(void) { last = 0x304; }
-void func_801CBD90(u8 a) { (void)a; last = 0xD90; }
+static int handlerResult;
+s32 func_801CD2AC(void) { last = 0x2AC; return handlerResult; }
+u8 func_801CC6D8(void) { last = 0x6D8; return handlerResult; }
+u8 func_801CB304(void) { last = 0x304; return handlerResult; }
+s32 func_801CBD90(u8 a) { (void)a; last = 0xD90; return handlerResult; }
 #include "state.inc"
 static u8 run(u8 mode) {
     menu.menu2Choice = mode;
@@ -35,6 +36,13 @@ int main(void) {
     assert(run(1) == 6 && last == 0x6D8);
     D_80059460 = 2; assert(run(2) == 2 && last == 0x304);
     D_80059460 = 1; assert(run(2) == 3 && last == 0xD90);
+    /* Retail returns 0 when the action handler returned nonzero (the screen
+     * then leaves), else 1. */
+    handlerResult = 1; D_80059460 = 2;
+    menu.menu2Choice = 2; last = 0;
+    assert(func_801CD710(0) == 0 && last == 0x304);
+    menu.menu2Choice = 0;
+    assert(func_801CD710(0) == 0 && last == 0x2AC);
     printf("PASS menu card state pins (CD710 0->7, 1->6, 2->2/3)\n");
     return 0;
 }

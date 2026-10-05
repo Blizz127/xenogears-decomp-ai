@@ -88,7 +88,7 @@ them (they're still INCLUDE_ASM in retail); the port bodies are unchanged.
 | `func_801E4998` | port fixed in 433db88e (retail C still asm) | run_menu_party_record_pins_test ((v/10)*2/9, rounded to x10; extra-halving mutant rejected); run_menu_gear_weapon passes |
 | `func_801E35BC` | port fixed in 433db88e (retail C still asm) | run_menu_party_record_pins_test (0xA4 strides, charIdx slot index, reverse path) |
 | `func_801CB184` | port fixed in 433db88e (retail C still asm) | run_menu_name_decode_pins_test (one contiguous pair buffer, pair count) |
-| `func_801CD710` | port partly fixed in 433db88e (retail C still asm): mode 0 now stores 7. Still open: retail returns 0 when the handler returns nonzero, but func_801CD2AC / CC6D8 / CB304 / CBD90 have no port implementation, so there is no result to use yet | run_menu_card_state_pins_test (7/6/2/3) |
+| `func_801CD710` | port partly fixed in 433db88e (retail C still asm): mode 0 now stores 7. Retail returns 0 when the handler returns nonzero; that became usable once func_801CD2AC / CC6D8 / CB304 / CBD90 got port bodies (see "Card-screen actions") | run_menu_card_state_pins_test (7/6/2/3) |
 
 ## Resolutions (continued, 3)
 
@@ -177,18 +177,57 @@ the case in r6.4 (68d68c75).
 | `func_801C6400` (card state init, every title/field menu open) | Card offsets 0x4F88..0x501B without `MENU_CARD_OFF`, which wrote host bytes 0x10 low; a NULL guard retail does not have | `MENU_CARD_OFF` |
 | `GameHandleError` | Retail behaviour is kept: the red screen and spin, or the error text loop. The port adds one stderr line with the code and the host call chain before the spin (`pc_port/src/game_error_report.c`), because the retail source address is a MIPS `$ra` the host cannot capture | Port diagnostics only |
 
-Still open:
+Resolved since (card-screen actions, below): the four actions have port
+bodies, and the `func_801CD710` note that stood here was wrong. Retail returns
+0 only when the handler returned nonzero: `beqz $v0` at 0x801CD7EC has a nop
+delay slot, and `addu $s0,$zero,$zero` (0x801CD7F4) is on the fall-through.
+The port does that. `func_801CB28C` reads g_Menu+0x330 through `MENU_U330_WORD`
+and `func_801C57A4` reads `transitionEffectState` (g_Menu+0x329).
 
-- The card-screen actions `func_801CD2AC` / `func_801CC6D8` / `func_801CB304` /
-  `func_801CBD90` (Load, Save, Copy, Delete) have no port bodies. Confirming an
-  action on the card screen reaches their generic stubs, so Continue cannot load
-  a save yet. Correction to the `func_801CD710` row above: after any of the three
-  handler cases, retail returns 0 whatever the handler returns (the delay-slot
-  `addu $s0,$zero,$zero` at 0x801CD7EC runs on both paths). The port still
-  returns 1, which keeps the card screen open instead of continuing with an
-  unloaded game state.
-- Seen, not on this path, not changed: `func_801CB28C` reads g_Menu+0x330 and
-  `func_801C57A4` reads g_Menu+0x329 by raw host offset.
+## Card-screen actions (2026-09-30, r6.6 t3)
+
+The Save/Load card screen (`func_801D9F98`) dispatches its slot action through
+`func_801CD710` on `menu2Choice`: 0 Delete, 1 Copy, 2 Load (title, D_80059460 == 2)
+or Save (field). Until now the four actions had no port bodies.
+
+| Function | Port bug / state | Fix / verification |
+| --- | --- | --- |
+| `func_801CD2AC` (Delete), `func_801CC6D8` (Copy), `func_801CB304` (Load), `func_801CBD90` (Save) | No port bodies: generated stubs, so every card action returned 0 without touching the card | Translated from retail (retail C still asm) and checked instruction by instruction against the asm, including control flow, delay slots, call arguments, the u8 masks and every card offset (through `MENU_CARD_OFF`). Retail quirks kept: a retry after a failed read or write uses fd 0 (the register was cleared), so it cannot succeed; a failed header write closes fd 0. Save's failed temp-file create closes the saved fd, which retail leaves uninitialised if no create ever succeeded (-1 here). The `func_801CA750` limit argument that retail leaves in `$a2` is passed as 0; its callees ignore it |
+| `func_801CAE08` (card-access indicator), `func_801CBA4C` (save payload), `func_801CB184`, `func_801C72BC` modes 1 / 0x11 | No port bodies / modes | Translated from retail and checked against the asm. The indicator's 0x7BC buffer uses the PSX-width slot g_Menu+0x44C through `MENU_RAW` / `MENU_STORE_RAW`. `func_801CB28C` gets the payload as a 32-bit value (`(s32)(uintptr_t)`), which relies on the port's `-no-pie` link keeping guest RAM below 2 GiB, as the other menu callers do |
+| `func_801CB9E8` (save digit) | A draft returned the first free index + 1 | Returns the index, as retail does: `.L801CBA38` is reached with a nop delay slot, so the increment at 0x801CBA20 does not run before `addu $a2,$a1,$zero`. Index + 1 wrote the wrong digit into the save's file name |
+| `func_801CAA38` (yes/no prompt loop) | A draft cleared card +0x4F88 on every frame | Cleared only when card 0 changed: `sb $zero,0x4F88` (0x801CAB64) follows the `beq`'s nop delay slot. `run_menu_prompt_selection_test.sh` pins it |
+| `func_801C57A4` (save-point prompt, MenuExecute slot 6, field opcode FEDA) | Read g_Menu+0x329 by raw host offset | `transitionEffectState` |
+| `func_801C55A0` root confirm | The port refused File (entry 1) with a host notice | Removed: retail checks only entry 2 (Gear) against `unk33B` |
+
+Port-only additions, not game changes:
+
+- Diagnostics (log lines): `prompt msg=` (`func_801CACF8`), `card action begin`
+  (`func_801CD710`) and `card pick result=` (`func_801CA750`). The card
+  save/load test keys on them.
+- TEST TOOLING: the cheat console's `saveflag N` sets `D_800B236C`, as field
+  opcode FE99 (`func_8008848C`) does inside a save point's area.
+  `pc_port/tests/card_save_load_test.py` uses it to reach the retail menu Save
+  entry without walking to a save point. Nothing in the game calls it.
+
+Acceptance (`pc_port/tests/card_save_load_test.py`: field Save, new process,
+title Continue, Load, saved field): PASS on the blizzpc runner (job
+20260930-124541-xeno-cardsave-t5, 0afb2ad6). The save flag was forced by test
+tooling; the menu, card screen, card I/O and load are retail code. On a
+Continue load retail spawns the player at the entrance in script var 0x54
+(`func_800799D4`, 0x80079F88..0x80079F90), not at the saved x/z. The test
+compares the loaded position with a warp to that entrance (delta 0).
+
+Still open (card screen):
+
+- Copy and Delete are checked against the asm but not run in the game.
+- The save-point prompt path (field opcode FEDA -> MenuExecute slot 6 ->
+  `func_801C57A4`) is checked against the asm but not run: no save point has
+  been reached headlessly yet (map 15 actor 60 runs FE99 at load).
+- After any field menu closes (with or without a save), the test diagnostic
+  POSDIAG stops printing while the field loop keeps running. It isn't known
+  yet whether that is only the diagnostic's gate or whether field input is
+  affected. It was seen in a control run with no card action, so it is not
+  caused by the card code.
 
 ## World map 1:1 pass (2026-09-30, r6.5)
 
