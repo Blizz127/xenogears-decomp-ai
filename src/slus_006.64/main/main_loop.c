@@ -12,6 +12,8 @@
 /* pc_port/src/game_error_report.c */
 extern void PcPort_ReportGameError(unsigned int errorCode,
                                    unsigned int sourceAddress);
+/* pc_port/src/battling_unavailable.c (TEMPORARY STOPGAP) */
+extern int PcPort_BattlingUnavailableGuard(unsigned int state, int entryBound);
 #endif
 
 extern unsigned int g_CurGameState;
@@ -103,7 +105,16 @@ void MainLoop(int errorCode) {
 #endif
         GameHandleError(errorCode, nCallerAddr);
     }
-    
+
+#ifdef XENO_PC_PORT
+    /* TEMPORARY STOPGAP until the native port of Battling (state 4) lands:
+     * its table entry is unbound, so entering it would relocate the heap to
+     * a NULL-based address and call a NULL main.  Return to the field the
+     * way retail leaves Battling (pc_port/src/battling_unavailable.c). */
+    PcPort_BattlingUnavailableGuard(
+        g_CurGameState, g_MainGameStates[g_CurGameState].pFnMain != NULL);
+#endif
+
     pGameState = &g_MainGameStates[g_CurGameState];
     ResetGraph(1);
     DrawSyncCallback(NULL);
