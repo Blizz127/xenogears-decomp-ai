@@ -1572,49 +1572,54 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", SoundSpuMemoryAllocateB
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_800394B8);
 #else
 void* func_800394B8(s32 size) {
-    u8* pEntry = g_SoundSpuMemoryBlocks;
-    u8* pBest = NULL;
-    s32 bestSpace = 0;
-    u8* pBase = g_SoundSpuMemoryBlocks;
-    while (1) {
-        s16 type = *(s16*)(pEntry + 2);
-        u8* pEnd = *(u32*)(pEntry + 4) + *(u32*)(pEntry + 8);
-        if (type == 0) {
-            s32 space = 0x80000 - (s32)(uintptr_t)pEnd;
-            if (space >= size) {
-                pBest = pEntry;
-                bestSpace = 0x80000 - size;
+    /* retail 0x800394B8: walk the whole next-chain; every gap (and the tail
+     * up to 0x80000) that holds `size` becomes the candidate, the LAST one
+     * wins and the new block is placed at the END of that gap.  Quirk kept
+     * from retail: the new descriptor is spliced in after the FINAL block of
+     * the chain (the one the walk ended on), not after the block whose gap
+     * was chosen. */
+    SoundSpuMemoryBlock* pBlock = &g_SoundSpuMemoryBlocks[0];
+    SoundSpuMemoryBlock* pNew;
+    s32 bestAddr = 0;
+    s32 haveBest = 0;
+    s32 freeIdx;
+
+    for (;;) {
+        s32 end = (s32)((u32)pBlock->spuAddress + (u32)pBlock->size);
+        s16 nextIdx = pBlock->nextBlockIndex;
+        SoundSpuMemoryBlock* pNext;
+        s32 gapEnd;
+
+        if (nextIdx == 0) {
+            if (!((s32)(0x80000u - (u32)end) < size)) {
+                haveBest = 1;
+                bestAddr = (s32)(0x80000u - (u32)size);
             }
-        } else {
-            s16 nextIdx = *(s16*)(pEntry + 2);
-            u8* pNext = pBase + nextIdx * 16;
-            s32 gap = *(u32*)(pNext + 4) - (s32)(uintptr_t)pEnd;
-            if (gap >= size) {
-                pBest = pEntry;
-                bestSpace = *(u32*)(pNext + 4) - size;
-            }
-            pEntry = pNext;
-            if (*(s32*)(pEntry + 4) != 0) continue;
+            break;
         }
-        if (type == 0) break;
-        if (*(s32*)(pEntry + 4) == 0) break;
-    }
-    if (pBest == NULL) return NULL;
-    {
-        s32 blockIdx = SoundSpuMemoryGetFreeBlock();
-        if (blockIdx < 0) return NULL;
-        {
-            u8* pNew = pBase + blockIdx * 16;
-            s16 prevNext = *(s16*)(pBest + 2);
-            *(u8*)(pNew + 0) = 0x80;
-            *(u8*)(pNew + 1) = 0;
-            *(s16*)(pNew + 2) = prevNext;
-            *(u32*)(pNew + 4) = bestSpace;
-            *(u32*)(pNew + 8) = size;
-            *(s16*)(pBest + 2) = (s16)blockIdx;
-            return (void*)(uintptr_t)bestSpace;
+        pNext = (SoundSpuMemoryBlock*)((u8*)g_SoundSpuMemoryBlocks + (s32)((u32)(s32)nextIdx << 4));
+        gapEnd = pNext->spuAddress;
+        if (!((s32)((u32)gapEnd - (u32)end) < size)) {
+            haveBest = 1;
+            bestAddr = (s32)((u32)gapEnd - (u32)size);
         }
+        pBlock = pNext;
     }
+    if (!haveBest) {
+        return NULL;
+    }
+    freeIdx = SoundSpuMemoryGetFreeBlock();
+    if (freeIdx < 0) {
+        return NULL;
+    }
+    pNew = &g_SoundSpuMemoryBlocks[freeIdx];
+    pNew->flags = SPU_MEMORY_IN_USE;
+    pNew->unk1 = 0;
+    pNew->spuAddress = bestAddr;
+    pNew->size = size;
+    pNew->nextBlockIndex = pBlock->nextBlockIndex;
+    pBlock->nextBlockIndex = (s16)freeIdx;
+    return (void*)(uintptr_t)(u32)bestAddr;
 }
 #endif
 
