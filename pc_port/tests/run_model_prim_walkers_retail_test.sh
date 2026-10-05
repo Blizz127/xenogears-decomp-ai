@@ -89,6 +89,14 @@ for opt in O0 O2 UBSan; do
                 "normlight:pc_port/src/psyq_compat_normal_light_col.c" \
                 "testinput:pc_port/src/test_input.c"; do
         name=${pair%%:*}; source=${pair#*:}
+        if [ "$name" = cpu ]; then
+            # The interpreter is host code with system headers (<signal.h>,
+            # <unistd.h>); the PsyQ sys/types.h pre-include redefines
+            # uid_t/gid_t, so it is compiled without the game pre-includes.
+            gcc "${COMMON[@]}" "${GAME[@]}" "${flags[@]}" -Wall -Wextra -Werror \
+                -c "$source" -o "$OUT/$opt.$name.o"
+            continue
+        fi
         gcc "${COMMON[@]}" "${GAME[@]}" "${flags[@]}" "${STRICT[@]}" \
             -c "$source" -o "$OUT/$opt.$name.o"
     done
@@ -151,7 +159,7 @@ PY
 # object, so never glob the whole $OUT (that would link the original body
 # alongside the mutant and fail on duplicate definitions).
 LINK_WITHOUT_OVERRIDES=(test cpu temp2 ed20 model_link guest_link leaf
-    normlight compat LIBGTE.C INLINE_C.C PsyX_GTE.cpp)
+    normlight testinput compat LIBGTE.C INLINE_C.C PsyX_GTE.cpp)
 mut_objects() {
     # $1... object base names to link (O2.<name>.o)
     local objs=()
@@ -193,7 +201,7 @@ for sym in $(cut -d'|' -f1 pc_port/port_owned_overrides.txt | grep -v '^#'); do
 done
 # (object list on one line: this bash build mis-parses multi-line $( ))
 clang++ -no-pie -O2 -Wl,--gc-sections "$OUT/func_8002E688.o" \
-    $(mut_objects overrides test cpu ed20 model_link guest_link leaf normlight compat LIBGTE.C INLINE_C.C PsyX_GTE.cpp) -ldl -o "$OUT/func_8002E688.test"
+    $(mut_objects overrides test cpu ed20 model_link guest_link leaf normlight testinput compat LIBGTE.C INLINE_C.C PsyX_GTE.cpp) -ldl -o "$OUT/func_8002E688.test"
 if timeout 60s "$OUT/func_8002E688.test" > "$OUT/func_8002E688.log" 2>&1; then
     echo "MODEL PRIM WALKERS MUTANT SURVIVED: func_8002E688" >&2
     exit 1
@@ -210,7 +218,7 @@ mutate_span pc_port/src/model_prim_ed20.c func_8002ED20 \
 gcc "${COMMON[@]}" "${GAME[@]}" -O2 "${STRICT[@]}" \
     -c "$OUT/func_8002ED20.c" -o "$OUT/func_8002ED20.o"
 clang++ -no-pie -O2 -Wl,--gc-sections "$OUT/func_8002ED20.o" \
-    $(mut_objects overrides test cpu temp2 model_link guest_link leaf normlight compat LIBGTE.C INLINE_C.C PsyX_GTE.cpp) -ldl -o "$OUT/func_8002ED20.test"
+    $(mut_objects overrides test cpu temp2 model_link guest_link leaf normlight testinput compat LIBGTE.C INLINE_C.C PsyX_GTE.cpp) -ldl -o "$OUT/func_8002ED20.test"
 if timeout 60s "$OUT/func_8002ED20.test" > "$OUT/func_8002ED20.log" 2>&1; then
     echo "MODEL PRIM WALKERS MUTANT SURVIVED: func_8002ED20" >&2
     exit 1
