@@ -1551,7 +1551,8 @@ reenter:
             flags = *(u32*)(pData + 0xA8) & 0xF03FFFFF;
             subIndex = (((*(u32*)(pData + 0xA8) >> 22) & 0x3F) - 1) & 0x3F;
             *(u32*)(pData + 0xA8) = flags | (subIndex << 22);
-            func_800248D4(pData);
+            /* retail 80024A34-80024DC4 stores A8 and RETURNS here (it does
+             * not re-enter); the next tick resumes at the new pc. */
         }
         return;
     }
@@ -1588,7 +1589,8 @@ reenter:
             flags = *(u32*)(pData + 0xA8) & 0xF03FFFFF;
             subIndex = (((*(u32*)(pData + 0xA8) >> 22) & 0x3F) - 1) & 0x3F;
             *(u32*)(pData + 0xA8) = flags | (subIndex << 22);
-            func_800248D4(pData);
+            /* retail 80024A34-80024DC4 stores A8 and RETURNS here (it does
+             * not re-enter); the next tick resumes at the new pc. */
         }
         return;
     }
@@ -1623,7 +1625,8 @@ reenter:
             flags = *(u32*)(pData + 0xA8) & 0xF03FFFFF;
             subIndex = (((*(u32*)(pData + 0xA8) >> 22) & 0x3F) - 1) & 0x3F;
             *(u32*)(pData + 0xA8) = flags | (subIndex << 22);
-            func_800248D4(pData);
+            /* retail 80024A34-80024DC4 stores A8 and RETURNS here (it does
+             * not re-enter); the next tick resumes at the new pc. */
         }
         return;
     }
@@ -1655,7 +1658,8 @@ reenter:
             flags = *(u32*)(pData + 0xA8) & 0xF03FFFFF;
             subIndex = (((*(u32*)(pData + 0xA8) >> 22) & 0x3F) - 1) & 0x3F;
             *(u32*)(pData + 0xA8) = flags | (subIndex << 22);
-            func_800248D4(pData);
+            /* retail 80024A34-80024DC4 stores A8 and RETURNS here (it does
+             * not re-enter); the next tick resumes at the new pc. */
         }
         return;
     }
@@ -1690,7 +1694,8 @@ reenter:
             flags = *(u32*)(pData + 0xA8) & 0xF03FFFFF;
             subIndex = (((*(u32*)(pData + 0xA8) >> 22) & 0x3F) - 1) & 0x3F;
             *(u32*)(pData + 0xA8) = flags | (subIndex << 22);
-            func_800248D4(pData);
+            /* retail 80024A34-80024DC4 stores A8 and RETURNS here (it does
+             * not re-enter); the next tick resumes at the new pc. */
         }
         return;
     }
