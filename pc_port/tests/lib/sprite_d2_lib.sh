@@ -47,7 +47,7 @@ d2_build_run() {
 d2_regimes() {
     d2_build_run O0 "$UUT_SRC" -O0 -g || { cat "$BUILD_DIR/O0.stdout" "$BUILD_DIR/O0.stderr" >&2; return 1; }
     d2_build_run O2 "$UUT_SRC" -O2 || { cat "$BUILD_DIR/O2.stdout" "$BUILD_DIR/O2.stderr" >&2; return 1; }
-    d2_build_run UBSan "$UUT_SRC" -O1 -g -fsanitize=undefined -fno-sanitize=shift-base -fno-sanitize-recover=all \
+    d2_build_run UBSan "$UUT_SRC" -O1 -g -fsanitize=undefined ${D2_UBSAN_SHIFT--fno-sanitize=shift-base} -fno-sanitize-recover=all \
         || { cat "$BUILD_DIR/UBSan.stdout" "$BUILD_DIR/UBSan.stderr" >&2; return 1; }
     test ! -s "$BUILD_DIR/O0.stderr"
     cmp "$BUILD_DIR/O0.stdout" "$BUILD_DIR/O2.stdout"

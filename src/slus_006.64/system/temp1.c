@@ -1733,7 +1733,8 @@ reenter:
     /* jtbl_800186E0[0xBE] = 0x80024A84. Advances by 3 bytes rather than
      * D_8004FC40[0xBE] == 2. */
     if (opcode == 0xBE) {
-        s32 packed = pc[1] | ((s32)(s8)pc[2] << 8);
+        /* lb pc[2] << 8 | lbu pc[1], computed unsigned (no negative left shift) */
+        s32 packed = (s32)((u32)pc[1] | ((u32)(s32)(s8)pc[2] << 8));
         s32 delay = (((packed >> 11) & 0xF) + 1);
         s32 speed = (*(u32*)(pData + 0xAC) >> 7) & 0xFFF;
         s32 scaledDelay = delay * speed;

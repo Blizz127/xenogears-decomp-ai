@@ -13,6 +13,8 @@ WEAKEN=(--weaken-symbol=func_800245D8 --weaken-symbol=func_80022D44
         --weaken-symbol=func_8001FBE4)
 TEST_ARGS=(${T248D4_NVAR:-300})
 d2_check_disc
+# this unit must be clean under shift-base too (0xBE operand sign-extension)
+D2_UBSAN_SHIFT=
 d2_regimes
 echo "SPRITE TICK 248D4 O0/O2/UBSAN PASS"
 d2_mutant pose_plus2 '^void func_800248D4(' 's/\*(u16\*)(pData + 0x34) + 1)/*(u16*)(pData + 0x34) + 2)/'
