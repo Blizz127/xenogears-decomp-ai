@@ -1835,13 +1835,11 @@ s32 func_8002D814(u8* pColor, s16* pIndices, s32 flags) {
     if (flags & 1) {
         if (flags & 2) {
             func_8002DB84(n0, n1, n2, (SVECTOR*)(uintptr_t)D_80059498);
-#ifdef XENO_PC_PORT
-            /* Retail shade 3 (C8CC mode 2 first pass) stores the face
-             * normal at D_80059498; the matching C body never lit the
-             * packet, so POLY_FT3 rgb stayed 0 and overlay meshes drew
-             * black. Mirror func_8002CDCC: light from that normal. */
-            NormalLightCol((void*)(uintptr_t)D_80059498, pColor, pPoly + 4);
-#endif
+            /* retail 0x8002D8E0 -> .L8002D930: the face normal just stored at
+             * D_80059498 is lit with NormalColor into the packet rgb (+4).
+             * (An earlier port edit lit it with NormalLightCol from pColor and
+             * patched an all-zero result to 0x80 gray: neither is retail.) */
+            NormalColor((SVECTOR*)(uintptr_t)D_80059498, (CVECTOR*)(pPoly + 4));
         } else {
             SVECTOR tmpNormal;
             func_8002DB84(n0, n1, n2, &tmpNormal);
@@ -1853,11 +1851,6 @@ s32 func_8002D814(u8* pColor, s16* pIndices, s32 flags) {
 
     D_80059498 += 8;
     pPoly[7] = pColor[3];
-#ifdef XENO_PC_PORT
-    if ((pPoly[4] | pPoly[5] | pPoly[6]) == 0) {
-        pPoly[4] = pPoly[5] = pPoly[6] = 0x80;
-    }
-#endif
     return 1;
 }
 #endif
@@ -1956,6 +1949,15 @@ s32 func_8002DC9C(s32 x, s32 y, s32 z);
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002DB84);
 #else
+static s32 func_8002DB84_div(s32 n, s32 d) {
+    if (d == 0) {
+        return n >= 0 ? -1 : 1;
+    }
+    if (n == (s32)0x80000000 && d == -1) {
+        return n;
+    }
+    return n / d;
+}
 void func_8002DB84(SVECTOR* v0, SVECTOR* v1, SVECTOR* v2, SVECTOR* outNormal) {
     VECTOR d1;
     VECTOR d2;
@@ -1970,18 +1972,20 @@ void func_8002DB84(SVECTOR* v0, SVECTOR* v1, SVECTOR* v2, SVECTOR* outNormal) {
     d2.vy = v2->vy - v0->vy;
     d2.vz = v2->vz - v0->vz;
 
-    OuterProduct0(&d1, &d2, &cross);
+    /* retail 0x8002DBBC: OuterProduct0(&d2, &d1, &cross) -- a0 is the
+     * second edge (sp+0x20), a1 the first (sp+0x10). */
+    OuterProduct0(&d2, &d1, &cross);
 
     dom = func_8002DC9C(cross.vx, cross.vy, cross.vz);
     if (dom < 0) {
-        dom = -dom;
+        dom = (s32)(0u - (u32)dom); /* retail negu wraps */
     }
     len = SquareRoot0(dom);
-    if (len != 0) {
-        cross.vx /= len;
-        cross.vy /= len;
-        cross.vz /= len;
-    }
+    /* retail divides unconditionally (R3000 div: x/0 -> x >= 0 ? -1 : 1,
+     * INT_MIN / -1 -> INT_MIN) and never traps. */
+    cross.vx = func_8002DB84_div(cross.vx, len);
+    cross.vy = func_8002DB84_div(cross.vy, len);
+    cross.vz = func_8002DB84_div(cross.vz, len);
     VectorNormalS(&cross, outNormal);
 }
 #endif
@@ -2512,18 +2516,20 @@ void func_800301C8(u8* pDst, u8* pSrc, s32 count, s16* pIndices) {
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80030228);
 #else
 void func_80030228(u8* pVertices, s16* pDeltas, s32 count, s32 scale) {
-    s32 i;
-    if (scale == 0 || count == 0) return;
-    for (i = 0; i < count; i++) {
-        s32 idx = pDeltas[i * 4 + 1] * 8;
-        u16* pVert = (u16*)(pVertices + idx);
+    u32 n;
+    if (scale == 0) return;
+    /* retail 0x80030228: 8-byte delta records {dx, dy, dz, vertex index}; the
+     * index is the record's LAST halfword.  mult/mflo keeps the low 32 bits;
+     * count is an unsigned down-counter (count 0 exits at once). */
+    for (n = (u32)count; n != 0; n--, pDeltas += 4) {
+        u16* pVert = (u16*)(pVertices + (s32)((u32)(s32)pDeltas[3] << 3));
         s32 d;
-        d = (pDeltas[i * 4 + 0] * scale) >> 12;
-        pVert[0] += d;
-        d = (pDeltas[i * 4 + 3] * scale) >> 12;
-        pVert[1] += d;
-        d = (pDeltas[i * 4 + 2] * scale) >> 12;
-        pVert[2] += d;
+        d = (s32)((u32)(s32)pDeltas[0] * (u32)scale) >> 12;
+        pVert[0] = (u16)(pVert[0] + d);
+        d = (s32)((u32)(s32)pDeltas[1] * (u32)scale) >> 12;
+        pVert[1] = (u16)(pVert[1] + d);
+        d = (s32)((u32)(s32)pDeltas[2] * (u32)scale) >> 12;
+        pVert[2] = (u16)(pVert[2] + d);
     }
 }
 #endif
@@ -2532,18 +2538,19 @@ void func_80030228(u8* pVertices, s16* pDeltas, s32 count, s32 scale) {
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_800302D4);
 #else
 void func_800302D4(u8* pNormals, s16* pDeltas, s32 count, s32 scale) {
-    s32 i;
-    if (scale == 0 || count == 0) return;
-    for (i = count - 1; i >= 0; i--) {
-        s32 idx = pDeltas[i * 4 + 1] * 8;
-        SVECTOR* pNorm = (SVECTOR*)(pNormals + idx);
+    u32 n;
+    if (scale == 0) return;
+    /* retail 0x800302D4: same record layout as func_80030228, walked
+     * FORWARD; each updated normal is renormalised in place. */
+    for (n = (u32)count; n != 0; n--, pDeltas += 4) {
+        SVECTOR* pNorm = (SVECTOR*)(pNormals + (s32)((u32)(s32)pDeltas[3] << 3));
         s32 d;
-        d = (pDeltas[i * 4 + 0] * scale) >> 12;
-        pNorm->vx += d;
-        d = (pDeltas[i * 4 + 3] * scale) >> 12;
-        pNorm->vy += d;
-        d = (pDeltas[i * 4 + 2] * scale) >> 12;
-        pNorm->vz += d;
+        d = (s32)((u32)(s32)pDeltas[0] * (u32)scale) >> 12;
+        pNorm->vx = (s16)(pNorm->vx + d);
+        d = (s32)((u32)(s32)pDeltas[1] * (u32)scale) >> 12;
+        pNorm->vy = (s16)(pNorm->vy + d);
+        d = (s32)((u32)(s32)pDeltas[2] * (u32)scale) >> 12;
+        pNorm->vz = (s16)(pNorm->vz + d);
         VectorNormalSS(pNorm, pNorm);
     }
 }
@@ -2868,18 +2875,6 @@ void func_80030988(u16 u, u16 v, s16 texX, s16 texY) {
 MATRIX D_80059F64;
 MATRIX D_80059F84;
 
-#ifdef XENO_PC_PORT
-static s16 func_80030A18(s64 value) {
-    value >>= 12;
-    if (value > 0x7FFF) {
-        return 0x7FFF;
-    }
-    if (value < -0x8000) {
-        return -0x8000;
-    }
-    return value;
-}
-#endif
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80030A30);
@@ -2890,9 +2885,9 @@ void func_80030A30(s32 lightId, void* pLight) {
     s16* pLightMatrix = (s16*)&D_80059F64;
     s16* pColorMatrix = (s16*)&D_80059F84;
 
-    lightDirection.vx = -*(s32*)((u8*)pLight + 0x0);
-    lightDirection.vy = -*(s32*)((u8*)pLight + 0x4);
-    lightDirection.vz = -*(s32*)((u8*)pLight + 0x8);
+    lightDirection.vx = (s32)(0u - *(u32*)((u8*)pLight + 0x0)); /* retail negu wraps */
+    lightDirection.vy = (s32)(0u - *(u32*)((u8*)pLight + 0x4));
+    lightDirection.vz = (s32)(0u - *(u32*)((u8*)pLight + 0x8));
     VectorNormalS(&lightDirection, (SVECTOR*)(pLightMatrix + (id * 3)));
 
     pColorMatrix[id] = *(u16*)((u8*)pLight + 0xC);
@@ -2906,19 +2901,37 @@ void func_80030A30(s32 lightId, void* pLight) {
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80030B14);
 #else
 void func_80030B14(MATRIX* pMatrix) {
-    MATRIX matrix;
-    s32 row;
+    /* retail 0x80030B14 (hand-written GTE): load D_80059F64 as the GTE
+     * rotation matrix (control 0-4, i.e. it REPLACES the caller's RT), run
+     * MVMVA 1,0,3,3,0 on each column of pMatrix (IR1..3 = column, saturating
+     * to s16 with lm 0), keep the three result columns in a stack matrix and
+     * load that as the light matrix (control 8-12).  The GTE register file,
+     * not only the light matrix, is the observable result. */
+    u16 stk[16];
+    const u32* pLight = (const u32*)&D_80059F64;
+    const u16* pSrc = (const u16*)pMatrix;
     s32 col;
 
-    for (row = 0; row < 3; row++) {
-        for (col = 0; col < 3; col++) {
-            matrix.m[row][col] = func_80030A18(
-                (s64)D_80059F64.m[row][0] * pMatrix->m[0][col] +
-                (s64)D_80059F64.m[row][1] * pMatrix->m[1][col] +
-                (s64)D_80059F64.m[row][2] * pMatrix->m[2][col]);
-        }
+    memset(stk, 0, sizeof(stk));
+    CTC2(pLight[0], 0);
+    CTC2(pLight[1], 1);
+    CTC2(pLight[2], 2);
+    CTC2(pLight[3], 3);
+    CTC2(pLight[4], 4);
+    for (col = 0; col < 3; col++) {
+        MTC2(pSrc[col + 0], 9);
+        MTC2(pSrc[col + 3], 10);
+        MTC2(pSrc[col + 6], 11);
+        gte_mvmva(1, 0, 3, 3, 0);
+        stk[col + 0] = (u16)MFC2(9);
+        stk[col + 3] = (u16)MFC2(10);
+        stk[col + 6] = (u16)MFC2(11);
     }
-    SetLightMatrix(&matrix);
+    CTC2(*(u32*)&stk[0], 8);
+    CTC2(*(u32*)&stk[2], 9);
+    CTC2(*(u32*)&stk[4], 10);
+    CTC2(*(u32*)&stk[6], 11);
+    CTC2(*(u32*)&stk[8], 12);
 }
 #endif
 
