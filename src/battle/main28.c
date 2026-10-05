@@ -1,4 +1,5 @@
 #include "common.h"
+#include "battle_guest_abi.h"
 
 
 #ifndef XENO_PC_PORT
@@ -8,27 +9,31 @@ INCLUDE_ASM("asm/battle/nonmatchings/main28", func_8007DB78);
 INCLUDE_ASM("asm/battle/nonmatchings/main28", func_8007DCF8);
 INCLUDE_ASM("asm/battle/nonmatchings/main28", func_8007DE78);
 INCLUDE_ASM("asm/battle/nonmatchings/main28", func_8007DFD4);
+#endif
 void func_80087EDC(s32, s32, s32);               /* extern */
 void func_800883AC(s32, void *, s32);            /* extern */
+#ifndef XENO_PC_PORT
 extern u8 D_800C3EB7[];
+#endif
 
-void func_8007E154(void **arg0, s32 arg1) {
+void func_8007E154(GSLOT(void) arg0, s32 arg1) {
     s32 temp_a0;
     s32 temp_a0_2;
     s32 idx;
     void *temp_a1;
 
-    temp_a1 = *arg0;
+    temp_a1 = GLOAD(void, arg0);
     idx = (arg1 & 0xFF) + 3;
     D_800C3EB7[idx * 0x1C] = *(u8 *)((s8*)(temp_a1) + 1);
     temp_a0 = arg1 + 3;
-    if (*(u8 *)((s8*)(*arg0) + 1) & 0x80) {
+    if (*(u8 *)((s8*)(GLOAD(void, arg0)) + 1) & 0x80) {
         temp_a0_2 = temp_a0 & 0xFF;
         func_80087EDC(temp_a0_2, temp_a0_2, arg1);
         return;
     }
     func_800883AC(temp_a0 & 0xFF, temp_a1, arg1);
 }
+#ifndef XENO_PC_PORT
 
 extern u8 D_800D3420[];
 extern u32 func_80089C08(u8 idx);
