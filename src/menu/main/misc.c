@@ -1725,34 +1725,34 @@ void func_801C8324(u8 slot) {
 
     for (i = 0; i < s->speed; i++) {
         if (s->dirX) {
-            s->accX -= s->stepX;
+            s->accX = (s32)((u32)s->accX - (u32)s->stepX);
         } else {
-            s->accX += s->stepX;
+            s->accX = (s32)((u32)s->accX + (u32)s->stepX);
         }
         if (s->dirY) {
-            s->accY -= s->stepY;
+            s->accY = (s32)((u32)s->accY - (u32)s->stepY);
         } else {
-            s->accY += s->stepY;
+            s->accY = (s32)((u32)s->accY + (u32)s->stepY);
         }
     }
 
     if (s->stepX == 0x100) {
         if (s->dirX) {
-            if (s->curX + s->accX / 256 < s->toX) {
+            if ((s32)((u32)s->curX + (u32)(s->accX / 256)) < s->toX) {
                 s->done = 1;
             }
         } else {
-            if (s->toX < s->curX + s->accX / 256) {
+            if (s->toX < (s32)((u32)s->curX + (u32)(s->accX / 256))) {
                 s->done = 1;
             }
         }
     } else {
         if (s->dirY) {
-            if (s->curY + s->accY / 256 < s->toY) {
+            if ((s32)((u32)s->curY + (u32)(s->accY / 256)) < s->toY) {
                 s->done = 1;
             }
         } else {
-            if (s->toY < s->curY + s->accY / 256) {
+            if (s->toY < (s32)((u32)s->curY + (u32)(s->accY / 256))) {
                 s->done = 1;
             }
         }
@@ -6934,10 +6934,10 @@ void func_801D3FF8(u8 windowIndex, s32 x, s32 y, s32 w) {
     p2->u3 = 7;    p2->v3 = 0x94;
 
     halfW = ((w & 0xFFFF) - 0x10) / 2;
-    func_801C851C(pWindow->vertsWindowBorderTop1, (u16)(x + 8), (u16)(y - 8),
+    func_801C851C(pWindow->vertsWindowBorderTop1, (u16)((u32)x + 8), (u16)((u32)y - 8),
                   (u16)halfW, 0x10);
-    func_801C851C(pWindow->vertsWindowBorderTop2, (u16)(x + halfW + 8),
-                  (u16)(y - 8), (u16)halfW, 0x10);
+    func_801C851C(pWindow->vertsWindowBorderTop2, (u16)((u32)x + (u32)halfW + 8),
+                  (u16)((u32)y - 8), (u16)halfW, 0x10);
 
     for (i = 0; i < 2; i++) {
         func_801E91C4(&pWindow->polysWindowBorderTop[i * 2 + rc]);
@@ -6968,10 +6968,10 @@ void func_801D433C(u8 windowIndex, s32 x, s32 y, s32 w, s32 h) {
     p2->u3 = 0xF;  p2->v3 = 0x94;
 
     halfW = ((w & 0xFFFF) - 0x10) / 2;
-    func_801C851C(pWindow->vertsWindowBorderBottom1, (u16)(x + 8),
-                  (u16)(y + h - 8), (u16)halfW, 0x10);
-    func_801C851C(pWindow->vertsWindowBorderBottom2, (u16)(x + halfW + 8),
-                  (u16)(y + h - 8), (u16)halfW, 0x10);
+    func_801C851C(pWindow->vertsWindowBorderBottom1, (u16)((u32)x + 8),
+                  (u16)((u32)y + (u32)h - 8), (u16)halfW, 0x10);
+    func_801C851C(pWindow->vertsWindowBorderBottom2, (u16)((u32)x + (u32)halfW + 8),
+                  (u16)((u32)y + (u32)h - 8), (u16)halfW, 0x10);
 
     for (i = 0; i < 2; i++) {
         func_801E91C4(&pWindow->polysWindowBorderBottom[i * 2 + rc]);
@@ -7002,10 +7002,10 @@ void func_801D4688(u8 windowIndex, s32 x, s32 y, s32 h) {
     p2->u3 = 0x20; p2->v3 = 0x8B;
 
     halfH = ((h & 0xFFFF) - 0x10) / 2;
-    func_801C851C(pWindow->vertsWindowBorderLeft1, (u16)(x - 8), (u16)(y + 8),
+    func_801C851C(pWindow->vertsWindowBorderLeft1, (u16)((u32)x - 8), (u16)((u32)y + 8),
                   0x10, (u16)halfH);
-    func_801C851C(pWindow->vertsWindowBorderLeft2, (u16)(x - 8),
-                  (u16)(y + halfH + 8), 0x10, (u16)halfH);
+    func_801C851C(pWindow->vertsWindowBorderLeft2, (u16)((u32)x - 8),
+                  (u16)((u32)y + (u32)halfH + 8), 0x10, (u16)halfH);
 
     for (i = 0; i < 2; i++) {
         func_801E91C4(&pWindow->polysWindowBorderLeft[i * 2 + rc]);
@@ -7036,10 +7036,10 @@ void func_801D49D0(u8 windowIndex, s32 x, s32 y, s32 w, s32 h) {
     p2->u3 = 0x20; p2->v3 = 0x93;
 
     halfH = ((h & 0xFFFF) - 0x10) / 2;
-    func_801C851C(pWindow->vertsWindowBorderRight1, (u16)(x + w - 8),
-                  (u16)(y + 8), 0x10, (u16)halfH);
-    func_801C851C(pWindow->vertsWindowBorderRight2, (u16)(x + w - 8),
-                  (u16)(y + halfH + 8), 0x10, (u16)halfH);
+    func_801C851C(pWindow->vertsWindowBorderRight1, (u16)((u32)x + (u32)w - 8),
+                  (u16)((u32)y + 8), 0x10, (u16)halfH);
+    func_801C851C(pWindow->vertsWindowBorderRight2, (u16)((u32)x + (u32)w - 8),
+                  (u16)((u32)y + (u32)halfH + 8), 0x10, (u16)halfH);
 
     for (i = 0; i < 2; i++) {
         func_801E91C4(&pWindow->polysWindowBorderRight[i * 2 + rc]);
