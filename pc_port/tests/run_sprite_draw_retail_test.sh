@@ -91,30 +91,12 @@ def mut_in(s, marker, old, new):
     a, b = seg(s, marker); body = s[a:b]
     assert body.count(old) >= 1, (marker, old)
     return s[:a] + body.replace(old, new, 1) + s[b:]
-# witness fixes -------------------------------------------------------------
+# The production sources carry the retail-faithful fixes; the witness is the
+# production source itself (kept as a scratch copy so mutants derive from it).
 w = r
-# W1 8001E3D8: retail negates the direction-transform Z angle when flip-X.
-w = rep(w, "rotation.vz = *(u16*)(pDirection + 0x6);\n",
-        "rotation.vz = *(u16*)(pDirection + 0x6);\n                    if ((flags3C >> 3) & 1) {\n                        rotation.vz = -rotation.vz;\n                    }\n")
-# W2 8001E3D8: retail rounds the scaled direction offsets toward zero (+0xFFF when negative).
-w = rep(w, "dirYOffset = (dirYOffset * *(s16*)(pData + 0x2C)) >> 12;\n                    dirXOffset = (dirXOffset * *(s16*)(pData + 0x2C)) >> 12;\n",
-        "dirYOffset = WitnessScale12(dirYOffset, *(s16*)(pData + 0x2C));\n                    dirXOffset = WitnessScale12(dirXOffset, *(s16*)(pData + 0x2C));\n")
-w = rep(w, "/* Retail8001D4E8:", "static s32 WitnessScale12(s32 v, s32 sc) { s32 r = v * sc; if (r < 0) r += 0xFFF; return r >> 12; }\n/* Retail8001D4E8:")
-# W3 8001DAE8: func_8001F530 writes {x,y} through one pointer (adjacent u16 pair) and the
-# per-part V base (baseClutY) is the low byte of the UPDATED y.
-w = rep(w, "        u16 vramX = *(u16*)(pVramData + 0x4);\n        u16 vramYWord = *(u16*)(pVramData + 0x6);\n",
-        "        u16 vramXY[2]; vramXY[0] = *(u16*)(pVramData + 0x4); vramXY[1] = *(u16*)(pVramData + 0x6);\n#define vramX vramXY[0]\n#define vramYWord vramXY[1]\n")
-w = rep(w, "        /* asm 8001DD0C-8001DD2C", "        baseClutY = (u8)vramYWord;\n        /* asm 8001DD0C-8001DD2C")
-w = rep(w, "        func_800251C8(NULL, (s16)vramX, (s16)vramYWord, pFrame[4], pFrame[5]);\n    }\n}\n#endif",
-        "        func_800251C8(NULL, (s16)vramX, (s16)vramYWord, pFrame[4], pFrame[5]);\n    }\n}\n#undef vramX\n#undef vramYWord\n#endif")
-# W4 8001D53C: the extended tile header is a 16-bit value; its high byte selects the CLUT row.
-w = rep(w, "        u8 tileHeader;\n", "        u32 tileHeader;\n")
 (out / 'witness_rendering.c').write_text(w)
 (out / 'baseline_rendering_copy.c').write_text(r)
 wt = t
-# W5 800278F8: retail rounds the centring half with a LOGICAL sign shift; W6: s16 operands summed unwrapped.
-wt = rep(wt, "half = (t + (t >> 31)) >> 1;", "half = (t + (s32)((u32)t >> 31)) >> 1;")
-wt = rep(wt, "if ((s16)(xCursor + spanPx) > 0x140) {", "if (((s16)xCursor + (s16)spanPx) > 0x140) {")
 (out / 'witness_temp1f.c').write_text(wt)
 # negative controls on the witness ----------------------------------------------
 E = 'void func_8001E3D8(void* pSpriteData, void* ot) {'
@@ -124,8 +106,8 @@ add('e3d8_flip_uv_clamp', 'r', mut_in(w, E, 'texU--;', 'texU++;'))
 add('e3d8_base_x_negate', 'r', mut_in(w, E, 'baseXOffset = -baseXOffset;', 'baseXOffset = baseXOffset;'))
 add('e3d8_flipy', 'r', mut_in(w, E, 'y1 = -y1;', 'y1 = y1;'))
 add('e3d8_ot_depth', 'r', mut_in(w, E, '(u8*)ot - direction * 4, poly', '(u8*)ot - direction * 2, poly'))
-add('e3d8_dir_vz_sign', 'r', mut_in(w, E, 'rotation.vz = -rotation.vz;', 'rotation.vz = rotation.vz;'))
-add('e3d8_dir_round', 'r', mut_in(w, E, 'WitnessScale12(dirXOffset', '(dirXOffset = 0, WitnessScale12)(dirXOffset'))
+add('e3d8_dir_vz_sign', 'r', mut_in(w, E, 'rotation.vz = (s16)-(s32)(u16)rotation.vz;', 'rotation.vz = rotation.vz;'))
+add('e3d8_dir_round', 'r', mut_in(w, E, 'ScaleSpriteFrameByte32(dirXOffset', '(dirXOffset = 0, ScaleSpriteFrameByte32)(dirXOffset'))
 add('dae8_u_base8', 'r', mut_in(w, 'void func_8001DAE8(void* pSpriteData, u16 frameIndex, u32 animPackageAddr) {', 'texU = texUBase8 + (texX << 1);', 'texU = texUBase8 + (texX << 2);'))
 add('dae8_v_base', 'r', mut_in(w, 'void func_8001DAE8(void* pSpriteData, u16 frameIndex, u32 animPackageAddr) {', '*(u8*)(pPrim + 0x5) = texY + baseClutY;', '*(u8*)(pPrim + 0x5) = texY;'))
 add('d53c_clut_row', 'r', mut_in(w, 'void func_8001D53C(void* pSpriteData, u16 frameIndex, void* pAnimPackage) {', '((tileHeader >> 9) & 0xF) + 0x1CC', '((tileHeader >> 9) & 0xF) + 0x1CD'))
@@ -142,13 +124,13 @@ export OUT
 summary() { grep -E "^(SPRITE DRAW func_|HORIZON STRIP func_|ATLAS SWEEP func_)" "$1" | sed -E 's/ (pass|fail)=.*//' ; }
 
 # ---------------- phase A: baseline ledger ----------------
-LEDGER='SPRITE DRAW func_8001E3D8                      DIVERGES
-SPRITE DRAW func_8001E3D8(west/flip targets)   DIVERGES
-SPRITE DRAW func_8001DAE8                      DIVERGES
-SPRITE DRAW func_8001D53C                      DIVERGES
-SPRITE DRAW func_8001DAE8->D53C route          DIVERGES
+LEDGER='SPRITE DRAW func_8001E3D8                      PASS    
+SPRITE DRAW func_8001E3D8(west/flip targets)   PASS    
+SPRITE DRAW func_8001DAE8                      PASS    
+SPRITE DRAW func_8001D53C                      PASS    
+SPRITE DRAW func_8001DAE8->D53C route          PASS    
 SPRITE DRAW func_8001E9BC                      PASS    
-HORIZON STRIP func_800278F8 DIVERGES
+HORIZON STRIP func_800278F8 PASS
 ATLAS SWEEP func_80025FA8 PASS'
 build_deps O0
 build_render O0 "$OUT/baseline_rendering_copy.c" base
@@ -163,7 +145,7 @@ if ! diff -u <(sed -E 's/  +/ /g' "$OUT/ledger.norm") <(sed -E 's/  +/ /g' "$OUT
     echo "SPRITE DRAW RETAIL: observed baseline differs from the documented ledger (a divergence was fixed or a new one appeared)" >&2
     exit 1
 fi
-echo "SPRITE DRAW RETAIL phase A: baseline matches ledger (known divergences: E3D8 dir-transform path [flipX vz sign, offset rounding, RotMatrix backend], DAE8 [F530 aliasing UB + stale baseClutY], D53C [u8 tileHeader drops CLUT row], 800278F8 [centre rounding, s16 sum])"
+echo "SPRITE DRAW RETAIL phase A: production baseline matches ledger (all PASS)"
 
 # ---------------- phase B: witness must be PASS in every mode ----------------
 for opt in O0 O2 UBSan; do
@@ -171,23 +153,17 @@ for opt in O0 O2 UBSan; do
     build_render "$opt" "$OUT/witness_rendering.c" "w$opt"
     build_temp1f "$opt" "$OUT/witness_temp1f.c" "w$opt"
     : > "$OUT/w$opt.log"
-    XENO_SDR_HOST_ROTMATRIX=1 "$OUT/w$opt.sdr" "$CASES" >> "$OUT/w$opt.log" 2>&1 || { cat "$OUT/w$opt.log" >&2; echo "SPRITE DRAW RETAIL: witness not green in $opt" >&2; exit 1; }
+    "$OUT/w$opt.sdr" "$CASES" >> "$OUT/w$opt.log" 2>&1 || { cat "$OUT/w$opt.log" >&2; echo "SPRITE DRAW RETAIL: witness not green in $opt" >&2; exit 1; }
     "$OUT/w$opt.hz" 6000 >> "$OUT/w$opt.log" 2>&1 || { tail -5 "$OUT/w$opt.log" >&2; echo "SPRITE DRAW RETAIL: horizon witness not green in $opt" >&2; exit 1; }
     "$OUT/w$opt.aq" 6000 >> "$OUT/w$opt.log" 2>&1 || { tail -5 "$OUT/w$opt.log" >&2; echo "SPRITE DRAW RETAIL: atlas not green in $opt" >&2; exit 1; }
     grep -E "^(SPRITE DRAW (func_|GREEN)|HORIZON STRIP func_|ATLAS SWEEP func_)" "$OUT/w$opt.log" | sed "s/^/[$opt witness] /"
 done
-# retail-RotMatrix-interpreted residual: only the E3D8 direction-transform rows may differ
-XENO_SDR_HOST_ROTMATRIX=0 "$OUT/wO0.sdr" "$CASES" > "$OUT/w_rotmatrix.log" 2>&1 || true
-grep -E "^SPRITE DRAW func_" "$OUT/w_rotmatrix.log" | sed 's/^/[O0 witness, retail RotMatrix interpreted] /'
-grep -q "func_8001E3D8 .*DIVERGES\|func_8001E3D8  *DIVERGES" "$OUT/w_rotmatrix.log" || { echo "SPRITE DRAW RETAIL: expected the host-vs-retail RotMatrix gap to show" >&2; exit 1; }
-for f in 'func_8001DAE8  ' 'func_8001D53C  ' 'func_8001E9BC  '; do grep -q "$f.*PASS" "$OUT/w_rotmatrix.log" || { echo "SPRITE DRAW RETAIL: $f unexpectedly differs with retail RotMatrix" >&2; exit 1; }; done
-
 # ---------------- phase C: negative controls ----------------
 build_deps O2
 while IFS=$'\t' read -r name kind; do
     if [ "$kind" = r ]; then
         build_render O2 "$OUT/$name.rendering.c" "$name"
-        bin="$OUT/$name.sdr"; env=(XENO_SDR_HOST_ROTMATRIX=1)
+        bin="$OUT/$name.sdr"; env=()
     else
         build_temp1f O2 "$OUT/$name.temp1f.c" "$name"
         case "$name" in a25fa8*) bin="$OUT/$name.aq" ;; *) bin="$OUT/$name.hz" ;; esac; env=()
@@ -199,6 +175,6 @@ while IFS=$'\t' read -r name kind; do
     echo "negative control rejected: $name: $(grep -m1 ' FAIL ' "$OUT/$name.log" | cut -c1-200)"
 done < "$OUT/controls.tsv"
 echo "SPRITE DRAW RETAIL: witness GREEN O0/O2/UBSan, all $(wc -l < "$OUT/controls.tsv") negative controls rejected"
-if [ "${XENO_SDR_STRICT:-0}" = 1 ]; then
+if [ "${XENO_SDR_STRICT:-0}" = 1 ] && grep -q DIVERGES "$OUT/baseline.norm"; then
     echo "SPRITE DRAW RETAIL STRICT: production divergences still present (see ledger)" >&2; exit 1
 fi
