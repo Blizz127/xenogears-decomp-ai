@@ -29,6 +29,29 @@ static uint32_t vblank_now(void)
     return host;
 }
 extern void PcPort_SoundLockstepVblank(void) __attribute__((weak));
+
+/* Host speed-up (F6/F7/Backspace fast-forward, XENO_SPEED) and the retail
+ * controller FIFO: every serviced vblank pushes one controller state, and
+ * the game drains the 16-entry FIFO once per frame; on overflow it drops
+ * that frame's whole input (ControllerResetState, retail behaviour for a
+ * frame that ran too long).  At 5x the host vblank clock runs five times
+ * faster, so a slow frame (the interpreted opening battle) spans far more
+ * than 16 vblanks: the FIFO overflowed every frame and no press ever
+ * reached the game (owner report 2026-10-05: soft-lock on a battle text box
+ * at 5x).  While sped up, stop short of overflowing and drop the vblank
+ * backlog instead: fast-forward then runs only as fast as the game consumes
+ * frames, and input is never lost.  At 1x nothing changes.  Weak: unit
+ * tests link this file without PsyCross or the controller module. */
+extern int PsyX_GetSpeedMultiplier(void) __attribute__((weak));
+extern unsigned int g_ControllerNumStates __attribute__((weak));
+#define XENO_CONTROLLER_FIFO_STATES 16u
+
+static int speedup_fifo_full(void)
+{
+    return PsyX_GetSpeedMultiplier && &g_ControllerNumStates != 0 &&
+           PsyX_GetSpeedMultiplier() > 1 &&
+           g_ControllerNumStates >= XENO_CONTROLLER_FIFO_STATES - 1u;
+}
 static void (*callback)(void);
 static int servicing;
 static int enabled = 1;
@@ -115,6 +138,11 @@ void PcPort_ServiceVblank(void)
     epoch = mask_epoch;
     servicing = 1;
     while (pending || serviced_count != now) {
+        if (speedup_fifo_full()) {
+            serviced_count = now;   /* drop the sped-up backlog, keep the input */
+            pending = 0;
+            break;
+        }
         if (pending)
             pending = 0;
         else
