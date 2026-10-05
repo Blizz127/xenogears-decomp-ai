@@ -56,6 +56,7 @@ s32 func_800A5870(s32 arg0, s32 arg1, s32 arg2) {
 #endif
 #ifndef XENO_PC_PORT
 extern u8 D_800D2F64; /* pass counter; its wrap clears every triangle's +0xD flag */
+#endif
 extern s32 func_800A5D54(s32 arg0, s32 tri, s32 depth);
 
 /* Up to `tries` attempts of func_800A5D54 on triangle `tri`, stopping at the
@@ -83,12 +84,11 @@ s32 func_800A5914(s32 arg0, s32 tri, s32 tries, s32 result) {
     if (D_800D2F64 == 0) {
         D_800D2F64 = 1;
         for (i = 0; i < D_800D3348; i++) {
-            *(u8*)(i * 14 + D_800D39CC + 0xD) = 0;
+            *GPTR(u8, i * 14 + D_800D39CC + 0xD) = 0;
         }
     }
     return result;
 }
-#endif
 #ifndef XENO_PC_PORT
 #endif
 extern void OuterProduct0(VECTOR* v0, VECTOR* v1, VECTOR* v2);
