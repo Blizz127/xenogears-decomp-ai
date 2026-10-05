@@ -202,3 +202,4 @@
  * re-typed at its guest dereferences, built with strict int/pointer errors,
  * proven by the mesh/slot/heap fixtures in the differential harness. */
     "func_800A5A48",
+    "func_800A579C",

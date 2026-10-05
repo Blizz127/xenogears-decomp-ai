@@ -40,6 +40,9 @@
 
 #include <stdint.h>
 #include "battle_host_guest.h"
+#ifdef XENO_BATTLE_OVERLAY_HOST_BODIES
+#include "battle_guest_abi_slots.h" /* extra aliases and <sym>__slot lvalues */
+#endif
 
 #define GPTR(T, x) ((T*)bg_ptr((u32)(uintptr_t)(x)))
 #define GADDR(p) bg_addr((const void*)(uintptr_t)(p))

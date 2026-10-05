@@ -14,6 +14,7 @@ s32 func_800A5870(s32 arg0, s32 arg1, s32 arg2);
 #endif
 #ifndef XENO_PC_PORT
 extern s32 D_800D3348; /* triangle count of the D_800D39CC table */
+#endif
 extern s32 func_800A5A48(s32 v0, s32 v1, s32 v2, s32 arg);
 
 /* First triangle of the D_800D39CC table (14-byte records of three vertex
@@ -26,7 +27,7 @@ s32 func_800A579C(s32 arg0) {
         return -1;
     }
     for (i = 0; i < D_800D3348; i++) {
-        s16* tri = (s16*)(i * 14 + D_800D39CC);
+        s16* tri = GPTR(s16, i * 14 + D_800D39CC);
 
         if (func_800A5A48(tri[0] * 8 + D_800D3344, tri[1] * 8 + D_800D3344,
                           tri[2] * 8 + D_800D3344, arg0) == -1) {
@@ -35,7 +36,6 @@ s32 func_800A579C(s32 arg0) {
     }
     return -1;
 }
-#endif
 #ifndef XENO_PC_PORT
 
 #ifndef XENO_PC_PORT
