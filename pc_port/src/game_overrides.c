@@ -416,6 +416,7 @@ static s32 ModelPrimQuadG4Variant0(u8* pCmd, s32 count);
 static s32 ModelPrimQuadGT4MaxSZVariant2(u8* pCmd, s32 count);
 static s32 ModelPrimQuadG4MaxSZVariant2(u8* pCmd, s32 count);
 static s32 ModelPrimQuadF4MaxSZVariant2(u8* pCmd, s32 count);
+static s32 ModelPrimQuadF4LitVariant1(u8* pCmd, s32 count);
 static s32 ModelPrimQuadGT4MinSZVariant3(u8* pCmd, s32 count);
 static s32 ModelPrimQuadG4MinSZVariant3(u8* pCmd, s32 count);
 static s32 ModelPrimQuadF4MinSZVariant3(u8* pCmd, s32 count);
@@ -608,9 +609,10 @@ ModelPrimDesc D_8004FE50[17] = {
     },
     [0x08] = {
         /* Retail row 0x8004FF90: proc = 8002E254 8002F8D0 8002E674 8002EAE0
-         * 8002E254 8002E254.  The shared quad spines cover every slot but
-         * proc[1]=0x8002F8D0 (lit F4 walker), still unported -> NULL. */
-        .proc = { ModelPrimQuadF4Variant0, NULL, ModelPrimQuadF4MaxSZVariant2,
+         * 8002E254 8002E254.  proc[1]=0x8002F8D0 is the lit F4 walker
+         * (ModelPrimQuadF4LitVariant1); the rest are the shared quad spines. */
+        .proc = { ModelPrimQuadF4Variant0, ModelPrimQuadF4LitVariant1,
+                  ModelPrimQuadF4MaxSZVariant2,
                   ModelPrimQuadF4MinSZVariant3, ModelPrimQuadF4Variant0,
                   ModelPrimQuadF4Variant0 },
         .buildProc = (ModelPrimBuildProc)func_8002CF58,   /* PSX 0x8002CF58 */
@@ -828,6 +830,7 @@ void func_80284EA4(void) { FieldDebugOverlayUnreachable("func_80284EA4"); }
 
 extern u8* D_80059424;
 extern u32 D_8005953C;
+extern u32 D_80059498; /* lighting-record cursor (func_8002F8D0) */
 extern u32 D_80059568;
 extern s32 D_80059578;
 
@@ -1552,6 +1555,113 @@ static s32 ModelPrimQuadF4Variant0(u8* pCmd, s32 count) {
 /* Retail entry 0x8002E268: packet 0x28, tag 0x09000000, t9 0x8 (POLY_FT4). */
 static s32 ModelPrimQuadFT4Variant0(u8* pCmd, s32 count) {
     return ModelPrimQuadSharedSpine(pCmd, count, 0x28, 0x8, 0x09000000);
+}
+
+/* Retail func_8002F8D0 (row 08 var 1): lit POLY_F4 walker, a standalone
+ * hand-written body that exits through the shared .L8002E1F4 epilogue
+ * (a3 = 0x18).  Same quad spine as ModelPrimQuadSharedSpine except, exactly
+ * as the bytes do:
+ *   - the lookahead v0 is decoded as (cmd << 3) & 0xFFF8 (13-bit index) in
+ *     the loop, unlike the prologue's (cmd & 0xFFFF) << 3;
+ *   - the 12-byte lighting-record cursor D_80059498 advances once per
+ *     command after the count test (before any reject) and is written back;
+ *   - after the OTZ gate: record word 0 -> RGBC, words 1/2 -> VXY0/VZ0,
+ *     NCCS; xy0..xy3 at +8/+0xC/+0x10/+0x14, then the colour word at +4 is
+ *     (record code byte) | (RGB2 & 0xFFFFFF); link tag 0x05000000.
+ */
+static s32 ModelPrimQuadF4LitVariant1(u8* pCmd, s32 count) {
+    u8* vertexBase = (u8*)(uintptr_t)D_8005953C;
+    u8* records = (u8*)(uintptr_t)D_80059498;
+    u8* out = D_80059424 - 0x18;
+    u32* ot = (u32*)(uintptr_t)D_80059568;
+    s32 emitted = D_80059578;
+    u32 yBound = (u32)D_800500FC; /* also the return value ($v0) */
+    u32 xBound = (u32)D_800500F8;
+    u32 shift = (u32)D_80050100;
+    u32 cmd = *(u32*)pCmd;
+    u8* nextV0 = vertexBase + ((cmd & 0xFFFFu) << 3);
+    u8* v;
+
+    v = vertexBase + ((cmd >> 13) & 0xFFF8u);
+    MTC2(*(u32*)v, 2);
+    MTC2(*(u32*)(v + 4), 3);
+    v = vertexBase + ((u32)*(u16*)(pCmd + 4) << 3);
+    MTC2(*(u32*)v, 4);
+    MTC2(*(u32*)(v + 4), 5);
+
+    for (;;) {
+        u32 xy0, xy1, xy2, xy3, lzcr, colour;
+        s32 mac0, otz;
+
+        MTC2(*(u32*)nextV0, 0);
+        MTC2(*(u32*)(nextV0 + 4), 1);
+        gte_rtpt();
+        if (count == 0) break;
+        count--;
+        pCmd += 8;
+        cmd = *(u32*)pCmd;
+        out += 0x18;
+        nextV0 = vertexBase + ((cmd << 3) & 0xFFF8u);
+        v = vertexBase + ((cmd >> 13) & 0xFFF8u);
+        MTC2(*(u32*)v, 2);
+        MTC2(*(u32*)(v + 4), 3);
+        v = vertexBase + ((u32)*(u16*)(pCmd + 4) << 3);
+        MTC2(*(u32*)v, 4);
+        MTC2(*(u32*)(v + 4), 5);
+        records += 0xC;
+
+        lzcr = MFC2(31);
+        gte_nclip();
+        if ((s32)lzcr < 0) continue; /* LZCR, inert on hardware */
+        v = vertexBase + ((u32)*(u16*)(pCmd - 2) << 3);
+        xy0 = MFC2(12);
+        mac0 = (s32)MFC2(24);
+        if (mac0 <= 0) {
+            CullCamDrop(CC_NCLIP_BACKFACE, 1);
+            continue;
+        }
+        xy1 = MFC2(13);
+        MTC2(*(u32*)v, 0);
+        MTC2(*(u32*)(v + 4), 1);
+        xy2 = MFC2(14);
+        gte_rtps();
+        lzcr = MFC2(31);
+        xy3 = MFC2(14);
+        gte_avsz4(); /* delay slot of the LZCR branch */
+        if ((s32)lzcr < 0) continue;
+        if (!(xy0 < yBound || xy1 < yBound || xy2 < yBound || xy3 < yBound)) {
+            CullCamDrop(CC_OVERLAP, 1);
+            continue;
+        }
+        if (!((xy0 & 0xFFFFu) < xBound || (xy1 & 0xFFFFu) < xBound ||
+              (xy2 & 0xFFFFu) < xBound || (xy3 & 0xFFFFu) < xBound)) {
+            CullCamDrop(CC_OVERLAP, 1);
+            continue;
+        }
+        otz = (s32)MFC2(7);
+        emitted++;
+        if (otz == 0) {
+            CullCamDrop(CC_OTZ, 1);
+            continue;
+        }
+        colour = *(u32*)(records - 0xC);
+        MTC2(*(u32*)(records - 0x8), 0);
+        MTC2(*(u32*)(records - 0x4), 1);
+        MTC2(colour, 6);
+        gte_nccs();
+        *(u32*)(out + 0x08) = xy0;
+        *(u32*)(out + 0x0C) = xy1;
+        *(u32*)(out + 0x10) = xy2;
+        *(u32*)(out + 0x14) = xy3;
+        *(u32*)(out + 0x04) = (colour & 0xFF000000u) | (MFC2(22) & 0x00FFFFFFu);
+        PcPort_LinkModelPrim(ot, otz >> shift, out, 0x05000000);
+        CullCamEmit(1);
+    }
+
+    D_80059498 = (u32)(uintptr_t)records;
+    D_80059578 = emitted;
+    D_80059424 = out + 0x18;
+    return (s32)yBound;
 }
 
 /* Retail func_8002E64C (max-SZ, variant 2) and func_8002EAB8 (min-SZ,

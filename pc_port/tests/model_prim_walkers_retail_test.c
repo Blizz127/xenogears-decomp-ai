@@ -132,6 +132,7 @@ static const WalkerSpec walkers[] = {
     {"8002EACC", 0x8002EACCu, 0x0A, 3, 0x24, "ModelPrimQuadG4MinSZVariant3"},
     {"8002EAE0", 0x8002EAE0u, 0x08, 3, 0x18, "ModelPrimQuadF4MinSZVariant3"},
     {"8002EAF4", 0x8002EAF4u, 0x09, 3, 0x28, "ModelPrimQuadFT4MinSZVariant3"},
+    {"8002F8D0", 0x8002F8D0u, 0x08, 1, 0x18, "ModelPrimQuadF4LitVariant1"},
     {"8002E470", 0x8002E470u, 0x00, 2, 0x14, "ModelPrimTriSmallMaxSZVariant2"},
     {"8002E484", 0x8002E484u, 0x05, 2, 0x20, "ModelPrimTriMaxSZVariant2"},
     {"8002E448", 0x8002E448u, 0x03, 2, 0x28, "ModelPrimTriGT3MaxSZVariant2"},
