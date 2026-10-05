@@ -1798,30 +1798,10 @@ reenter:
         return;
     }
 
-    if (opcode == 0xB4) {
-        s32 delay;
-        s32 speed;
-
-        *(u32*)(pData + 0x64) = (u32)(uintptr_t)(pc + 4);
-        if (pc[1] & 0x80) {
-            *(s16*)(pData + 0x9E) = *(u16*)(pData + 0x9E) + 1;
-            g_WorkListCurTimer = (pc[1] & 0x7F) + 1;
-            return;
-        }
-
-        delay = pc[1] + 2;
-        speed = (*(u32*)(pData + 0xAC) >> 7) & 0xFFF;
-        delay *= speed;
-        if (delay < 0) {
-            delay += 0xFF;
-        }
-        delay >>= 8;
-        if (delay == 0) {
-            delay = 1;
-        }
-        *(s16*)(pData + 0x9E) = *(u16*)(pData + 0x9E) + delay;
-        return;
-    }
+    /* jtbl_800186E0[0xB4-0x80] is the shared default .L80024EC8 (NOT a
+     * dedicated wait): func_8001FBE4 pushes the operand byte, pc advances by
+     * D_8004FC40[0xB4]==2 and the tick re-enters. Handled by the default
+     * path below. */
 
     if (opcode == 0xB3) {
         /* jtbl default .L80024EC8 + FBE4 0xB3 (asm 800214AC): set +0xA8
@@ -1970,8 +1950,7 @@ reenter:
 
         func_8001FBE4(pData, opcode, pc + 1);
         *(u32*)(pData + 0x64) = (u32)(uintptr_t)(pc + D_8004FC40[opcode]);
-        func_800248D4(pData);
-        return;
+        goto reenter; /* .L8002490C: no gate re-check, as retail */
     }
 
 #ifdef XENO_PC_PORT

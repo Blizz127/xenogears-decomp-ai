@@ -122,23 +122,6 @@ static int bridge(void* u, PcPortMipsCpu* c, u32 t)
 }
 
 static const u8 kUnported[] = { 0x85, 0x8E, 0x98, 0xC8, 0xD4, 0xE2, 0xFA };
-/* Verified divergences kept visible (expected-fail): 0xB4 is a port-invented
- * inline wait (+4 advance) while retail jtbl[0xB4-0x80] is the shared default
- * handler (func_8001FBE4 pushes the operand byte onto the +0x8C stack, advance
- * D_8004FC40[0xB4]==2, re-enter).  The test goes red if the set of diverging
- * opcodes differs from this list in either direction. */
-static const u8 kKnown[] = { 0xB4 };
-static int known(unsigned op)
-{
-    unsigned i;
-    for (i = 0; i < sizeof(kKnown); ++i) {
-        if (kKnown[i] == op) {
-            return 1;
-        }
-    }
-    return 0;
-}
-
 static int unported(unsigned op)
 {
     unsigned i;
@@ -330,22 +313,14 @@ int main(int argc, char** argv)
                 }
             }
         }
-        if (fails == 0 && known(op)) {
-            ++bad_ops;
-            printf("T248D4 FAIL op=0x%02X listed as known-divergent but now matches retail\n", op);
-        }
         if (fails != 0) {
-            if (known(op)) {
-                printf("T248D4 KNOWN-DIVERGENCE");
-            } else {
-                ++bad_ops;
-                printf("T248D4 DIVERGES");
-            }
+            ++bad_ops;
+            printf("T248D4 DIVERGES");
             nfail_total += fails;
             printf(" op=0x%02X %u/%u cases; first v=%u: %s\n", op, fails, nvar, first_v, firstmsg);
         }
     }
-    printf("T248D4 %s: %u comparisons, %u unexpected-diverging opcodes, %u divergent cases (known list incl.), %u port-unported\n",
+    printf("T248D4 %s: %u comparisons, %u unexpected-diverging opcodes, %u divergent cases, %u port-unported\n",
            bad_ops ? "FAIL" : "PASS", ncomp, bad_ops, nfail_total, skipped);
     return bad_ops ? 1 : 0;
 }
