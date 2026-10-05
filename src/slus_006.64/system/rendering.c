@@ -1122,7 +1122,28 @@ extern s16 D_80059194;
 extern s16 D_80059196;
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001F530);
+typedef struct { s16 x; s16 y; } PtF530;
+void *func_8001F530__r(PtF530 *arg0, s32 arg1) asm("func_8001F530");
+void *func_8001F530__r(PtF530 *arg0, s32 arg1) {
+    PtF530 sp;
+    u16 cy;
+    s32 cx;
+
+    if ((D_80059196 + arg1) >= 0x41) {
+        D_80059196 = 0;
+        D_80059194 = D_80059194 + 1;
+        if (D_80059194 >= 3) {
+            D_80059194 = 0;
+        }
+    }
+    cy = D_80059196;
+    cx = D_80059194;
+    sp.x = cy + 0x300;
+    sp.y = (cx << 6) + 0x140;
+    *arg0 = sp;
+    D_80059196 = cy + arg1;
+    return arg0;
+}
 #else
 void func_8001F530(void* pOut, s32 advance) {
     u16* p = (u16*)pOut;
