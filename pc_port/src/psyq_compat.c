@@ -65,6 +65,10 @@ uint32_t g_RandomSeed;
  * from any thread other than the one running the game's vblank dispatch,
  * for XENO_FIELD_STEP_RNG_LOG (determinism investigation, follow-up e). */
 static uint32_t s_rand_calls, s_rand_calls_off_main;
+/* Weak: tests that link this TU without the field-step probe (test_input.c)
+ * or the game globals (game_overrides.c) still link; the trace is then off. */
+extern int g_GameSceneMapNum __attribute__((weak));
+extern int PcPort_FieldStepPadArmedStep(unsigned* step) __attribute__((weak));
 static void* s_rand_last_off_main;
 static __thread int s_rand_on_main;
 
@@ -78,12 +82,11 @@ int rand(void)
     {
         static int trace_state = -1;
         static FILE* trace;
-        extern int g_GameSceneMapNum;
-        extern int PcPort_FieldStepPadArmedStep(unsigned* step);
         unsigned step;
         if (trace_state < 0) {
             const char* e = getenv("XENO_RAND_TRACE");
-            trace = (e != NULL && e[0] != '\0') ? fopen(e, "w") : NULL;
+            trace = (e != NULL && e[0] != '\0' && PcPort_FieldStepPadArmedStep && &g_GameSceneMapNum)
+                ? fopen(e, "w") : NULL;
             trace_state = trace != NULL;
         }
         if (trace_state == 1) {
