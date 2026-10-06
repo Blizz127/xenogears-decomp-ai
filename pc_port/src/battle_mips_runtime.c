@@ -655,21 +655,92 @@ static int target_is_guest_code(uint32_t target)
 /* XENO_CPU_FALLBACK_STATS: per-battle interpreter-vs-native meter (stderr). */
 #include "battle_cpu_fallback_meter.inc"
 
+/* XENO_BATTLE_EXIT_HASH state (battle_exit_hash_print, below). */
+static int g_BattleExitHash = -1;
+static unsigned g_BattleExitHashBattle;
+static unsigned g_BattleExitHashResults;
+
 /* Overlay C adopted onto the host. Pointer-only leaves plus bodies that
  * touch overlay D_* through battle_overlay_guest_ram.h (guest RAM, not a
  * second host copy). Nested guest pointers loaded from structs stay in
  * the interpreter until they grow an explicit translator. */
+static const char *const kOverlayLeaves[] = {
+#include "battle_overlay_host_leaves.inc"
+};
+#define OVERLAY_LEAF_COUNT (sizeof(kOverlayLeaves) / sizeof(kOverlayLeaves[0]))
+/* The first leaf of the "Battle guest ABI prototype" section of
+ * battle_overlay_host_leaves.inc: every name before it is one of the legacy
+ * (pre-guest-ABI) adoptions, every name from it on is a guest-ABI or lifted
+ * body. */
+#define OVERLAY_FIRST_GUEST_ABI_LEAF "func_800A5A48"
+
+/* TEST SWITCH XENO_BATTLE_NATIVE_LEAVES (verification only; unset is the
+ * production default and changes nothing):
+ *   0       decline every adopted overlay leaf -- legacy, guest-ABI and lifted
+ *           alike -- so the interpreter runs the retail bytes instead;
+ *   legacy  keep only the legacy leaves (those before the guest-ABI section);
+ *   1/all   the default (every adopted leaf).
+ * Any other value aborts, so a typo cannot silently compare native with
+ * native.  Read once; one log line when active.  It gates only the overlay
+ * leaf allowlist: the identity-gated RESULTS routines and the file-1
+ * controller keep their own gates.
+ * Returns the number of leading kOverlayLeaves entries that may run natively. */
+static size_t g_OverlayLeafLimit = (size_t)-1;
+
+size_t PcPort_BattleNativeLeafLimit(void)
+{
+    if (g_OverlayLeafLimit == (size_t)-1) {
+        const char *v = getenv("XENO_BATTLE_NATIVE_LEAVES");
+        size_t limit = OVERLAY_LEAF_COUNT, i;
+        const char *mode = NULL;
+
+        if (v == NULL || v[0] == '\0' || strcmp(v, "1") == 0 || strcmp(v, "all") == 0) {
+            limit = OVERLAY_LEAF_COUNT;
+        } else if (strcmp(v, "0") == 0) {
+            limit = 0;
+            mode = "0 (all adopted overlay leaves declined; interpreter runs retail)";
+        } else if (strcmp(v, "legacy") == 0) {
+            for (i = 0; i < OVERLAY_LEAF_COUNT; i++) {
+                if (strcmp(kOverlayLeaves[i], OVERLAY_FIRST_GUEST_ABI_LEAF) == 0)
+                    break;
+            }
+            if (i == OVERLAY_LEAF_COUNT) {
+                fprintf(stderr, "[xeno-port][battle-mips] XENO_BATTLE_NATIVE_LEAVES=legacy: "
+                        "boundary leaf %s missing from the allowlist\n",
+                        OVERLAY_FIRST_GUEST_ABI_LEAF);
+                abort();
+            }
+            limit = i;
+            mode = "legacy (guest-ABI and lifted leaves declined)";
+        } else {
+            fprintf(stderr, "[xeno-port][battle-mips] XENO_BATTLE_NATIVE_LEAVES=%s "
+                    "is not 0, legacy, 1 or all\n", v);
+            abort();
+        }
+        if (mode != NULL)
+            fprintf(stderr, "[xeno-port][battle-mips] TEST XENO_BATTLE_NATIVE_LEAVES=%s: "
+                    "native_leaves=%zu/%zu\n", mode, limit, (size_t)OVERLAY_LEAF_COUNT);
+        g_OverlayLeafLimit = limit;
+    }
+    return g_OverlayLeafLimit;
+}
+
 static int overlay_leaf_host_ok(const char *name)
 {
-    static const char *const kLeaves[] = {
-#include "battle_overlay_host_leaves.inc"
-    };
-    size_t i;
-    for (i = 0; i < sizeof(kLeaves) / sizeof(kLeaves[0]); i++) {
-        if (strcmp(name, kLeaves[i]) == 0)
+    size_t i, limit = PcPort_BattleNativeLeafLimit();
+    for (i = 0; i < limit; i++) {
+        if (strcmp(name, kOverlayLeaves[i]) == 0)
             return 1;
     }
     return 0;
+}
+
+/* For native main-executable code that calls an adopted overlay leaf directly
+ * (game_overrides.c's func_800BA8F4): non-zero when `name` may run natively
+ * under XENO_BATTLE_NATIVE_LEAVES. */
+int PcPort_BattleNativeLeafAllowed(const char *name)
+{
+    return overlay_leaf_host_ok(name);
 }
 
 static int graphics_pointer_to_guest(const void *pointer, uint32_t *value)
@@ -1370,6 +1441,8 @@ static int runtime_bridge(void *opaque, PcPortMipsCpu *cpu, uint32_t target)
         if (god_hook)
             god_hook(cpu, target);
     }
+    if (g_BattleExitHash > 0 && target == 0x801E252Cu)
+        g_BattleExitHashResults++;
     cpu_meter_bridge_enter(runtime, cpu, target, &meter);
     int result = runtime_bridge_call(opaque, cpu, target);
     cpu_meter_bridge_leave(cpu, target, result, &meter);
@@ -1709,6 +1782,94 @@ void func_800C11CC(void* sprite)
  * the guest accessor their native bodies use; after file-1 for its digest. */
 #include "battle_results_gate.inc"
 
+/* TEST TOOLING XENO_BATTLE_EXIT_HASH=1 (off unless set; read once): at battle
+ * exit print one line with a SHA-256 per guest-RAM game-state region, read
+ * through the interpreter's bus (resolve_memory: the canonical view, native
+ * copies included), so a native-leaves run and an XENO_BATTLE_NATIVE_LEAVES=0
+ * run of one deterministic route can be compared line for line.  The line
+ * carries no instruction or timing counts on purpose.  Regions:
+ *   gamestate   g_GameState 0x8006D634, 0x235C (incl. field-transition tuple)
+ *   characters  g_GameState+0x26C  11 x 0xA4 character stats
+ *   gears       g_GameState+0x978  20 x 0xA4 gear stats
+ *   money       g_GameState+0x1924 gold
+ *   field_vars  g_GameState+0x1930 0x400 field-script variables / story flags
+ *               (FieldLoad copies them to g_FieldScriptMemory, misc3.c)
+ *   party       g_GameState+0x1D30 FrMask + party members
+ *   inventory   g_GameState+0x1D38..0x22B8 (all five families + gear ride)
+ *   rng         g_RandomSeed 0x8005A1FC
+ *   results_ws  RESULTS module mutable words 0x801E44C0..0x801E4500
+ *   battlers    D_800CCCE8 11 x 0x170 battler records at exit
+ * plus the battle number, how the battle ended and the number of RESULTS
+ * module (0x801E252C) entries seen by the bridge. */
+
+static int battle_exit_hash_enabled(void)
+{
+    if (g_BattleExitHash < 0) {
+        const char *v = getenv("XENO_BATTLE_EXIT_HASH");
+        g_BattleExitHash = v != NULL && v[0] != '\0' && strcmp(v, "0") != 0;
+    }
+    return g_BattleExitHash;
+}
+
+static void battle_exit_hash_print(BattleMipsRuntime *runtime, const char *how)
+{
+    static const struct { const char *name; uint32_t address, size; } kRegions[] = {
+        {"gamestate",  0x8006D634u,           0x235Cu},
+        {"characters", 0x8006D634u + 0x26Cu,  11u * 0xA4u},
+        {"gears",      0x8006D634u + 0x978u,  20u * 0xA4u},
+        {"money",      0x8006D634u + 0x1924u, 4u},
+        {"field_vars", 0x8006D634u + 0x1930u, 0x400u},
+        {"party",      0x8006D634u + 0x1D30u, 8u},
+        {"inventory",  0x8006D634u + 0x1D38u, 0x22B8u - 0x1D38u},
+        {"rng",        0x8005A1FCu,           4u},
+        {"results_ws", 0x801E44C0u,           0x40u},
+        {"battlers",   0x800CCCE8u,           11u * 0x170u},
+    };
+    static uint8_t buffer[0x2400];
+    char line[2048];
+    size_t used;
+    unsigned r;
+    uint32_t money = 0, rng = 0;
+
+    used = (size_t)snprintf(line, sizeof(line),
+                            "[xeno-port][battle-exit-hash] battle=%u end=%s results_calls=%u",
+                            g_BattleExitHashBattle, how, g_BattleExitHashResults);
+    if (runtime_read(runtime, 0x8006D634u + 0x1924u, 4, &money) != 0)
+        money = 0xffffffffu;
+    if (runtime_read(runtime, 0x8005A1FCu, 4, &rng) != 0)
+        rng = 0xffffffffu;
+    used += (size_t)snprintf(line + used, sizeof(line) - used,
+                             " money_value=%u rng_value=%08x", money, rng);
+    for (r = 0; r < sizeof(kRegions) / sizeof(kRegions[0]); r++) {
+        uint8_t digest[32];
+        uint32_t j, value;
+        unsigned k;
+        int ok = 1;
+        for (j = 0; j < kRegions[r].size; j++) {
+            if (runtime_read(runtime, kRegions[r].address + j, 1, &value) != 0) {
+                ok = 0;
+                break;
+            }
+            buffer[j] = (uint8_t)value;
+        }
+        used += (size_t)snprintf(line + used, sizeof(line) - used, " %s=",
+                                 kRegions[r].name);
+        if (!ok) {
+            used += (size_t)snprintf(line + used, sizeof(line) - used,
+                                     "UNREADABLE@%08x", kRegions[r].address + j);
+            continue;
+        }
+        file1_digest(buffer, kRegions[r].size, digest);
+        for (k = 0; k < 32 && used + 3 < sizeof(line); k++) {
+            line[used++] = file1_hex_digit(digest[k] >> 4);
+            line[used++] = file1_hex_digit(digest[k] & 15u);
+        }
+        line[used] = '\0';
+    }
+    fprintf(stderr, "%s\n", line);
+    fflush(stderr);
+}
+
 void func_80070F40(void)
 {
     BattleMipsRuntime *runtime = &g_BattleRuntime;
@@ -1735,9 +1896,15 @@ void func_80070F40(void)
             BATTLE_ENTRY);
     cpu_meter_begin_battle();
     cpu_meter_mark_entry(&cpu, BATTLE_ENTRY);
+    if (battle_exit_hash_enabled()) {
+        g_BattleExitHashBattle++;
+        g_BattleExitHashResults = 0;
+    }
     rc = PcPortMipsRun(&cpu, BATTLE_ENTRY, BATTLE_HALT_PC,
                        battle_step_limit());
     cpu_meter_end_battle(rc == PC_PORT_MIPS_HALTED ? "returned" : "stopped");
+    if (g_BattleExitHash > 0)
+        battle_exit_hash_print(runtime, rc == PC_PORT_MIPS_HALTED ? "returned" : "stopped");
     g_ActiveBattleRuntime = NULL;
     file1_invalidate(runtime);
     results_invalidate(runtime);

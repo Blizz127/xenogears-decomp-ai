@@ -3379,10 +3379,17 @@ extern int PcPort_BattleMipsDispatchCallback(u32 callback, void* argument);
  * without the battle host bodies (unit tests). */
 extern void battle_func_800BA8F4(u8* s) __attribute__((weak));
 extern int PcPort_BattleMipsActive(void) __attribute__((weak));
+/* XENO_BATTLE_NATIVE_LEAVES test switch (battle_mips_runtime.c). */
+extern int PcPort_BattleNativeLeafAllowed(const char* name) __attribute__((weak));
 
 void func_800BA8F4(void* pSpriteData)
 {
-    if (battle_func_800BA8F4 != NULL && PcPort_BattleMipsActive != NULL) {
+    static int native = -1; /* the switch is read once, so is this verdict */
+    if (native < 0)
+        native = battle_func_800BA8F4 != NULL && PcPort_BattleMipsActive != NULL &&
+                 (PcPort_BattleNativeLeafAllowed == NULL ||
+                  PcPort_BattleNativeLeafAllowed("func_800BA8F4"));
+    if (native) {
         if (!PcPort_BattleMipsActive()) {
             fputs("[xeno-port][battle-mips] sprite floor query called without an active retail battle overlay\n", stderr);
             abort();

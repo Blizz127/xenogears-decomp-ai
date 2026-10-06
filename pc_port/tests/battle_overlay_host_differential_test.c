@@ -2029,6 +2029,91 @@ static void sweep(void)
     }
 }
 
+/* XENO_BATTLE_NATIVE_LEAVES (battle_mips_runtime.c): default keeps every
+ * adopted leaf, 0 declines every one at the bridge and the indirect native
+ * map, legacy keeps only the leaves before the guest-ABI section.  Runs after
+ * the proof; it resets the read-once mode and the adoption caches it touches
+ * and restores the default.  Returns the number of failures. */
+static unsigned native_leaves_switch_test(void)
+{
+    static const char *const modes[] = {NULL, "0", "legacy", "1"};
+    unsigned bad = 0, m;
+    size_t legacy = 0, i;
+
+    for (i = 0; i < OVERLAY_LEAF_COUNT; i++) {
+        if (strcmp(kOverlayLeaves[i], OVERLAY_FIRST_GUEST_ABI_LEAF) == 0)
+            break;
+        legacy++;
+    }
+    if (legacy == 0 || legacy == OVERLAY_LEAF_COUNT) {
+        fprintf(stderr, "BATTLE OVERLAY DIFFERENTIAL FAIL native-leaves switch: "
+                "no legacy/guest-ABI boundary (legacy=%zu)\n", legacy);
+        return 1;
+    }
+    for (m = 0; m < sizeof(modes) / sizeof(modes[0]); m++) {
+        size_t expect = modes[m] == NULL ? OVERLAY_LEAF_COUNT
+                      : strcmp(modes[m], "0") == 0 ? 0
+                      : strcmp(modes[m], "legacy") == 0 ? legacy : OVERLAY_LEAF_COUNT;
+        size_t limit, declined = 0;
+        unsigned t;
+
+        if (modes[m] == NULL)
+            unsetenv("XENO_BATTLE_NATIVE_LEAVES");
+        else
+            setenv("XENO_BATTLE_NATIVE_LEAVES", modes[m], 1);
+        g_OverlayLeafLimit = (size_t)-1;
+        memset(rt.call_cache, 0, sizeof(rt.call_cache));
+        memset(g_GuestNativeState, 0, sizeof(g_GuestNativeState));
+        limit = PcPort_BattleNativeLeafLimit();
+        if (limit != expect) {
+            fprintf(stderr, "BATTLE OVERLAY DIFFERENTIAL FAIL native-leaves switch "
+                    "mode=%s limit=%zu expected=%zu\n",
+                    modes[m] ? modes[m] : "unset", limit, expect);
+            bad++;
+            continue;
+        }
+        for (i = 0; i < OVERLAY_LEAF_COUNT; i++) {
+            int want = i < expect;
+            uint32_t target = (uint32_t)strtoul(kOverlayLeaves[i] + 5, NULL, 16);
+            if (PcPort_BattleNativeLeafAllowed(kOverlayLeaves[i]) != want) {
+                fprintf(stderr, "BATTLE OVERLAY DIFFERENTIAL FAIL native-leaves switch "
+                        "mode=%s %s allowed=%d expected=%d\n",
+                        modes[m] ? modes[m] : "unset", kOverlayLeaves[i], !want, want);
+                bad++;
+            }
+            if (want)
+                continue;
+            /* A declined leaf: the JAL bridge must hand it to the interpreter
+             * (0, no host call), and the indirect native map must not hold it. */
+            initialize_cpu(&cpu, &rt);
+            if (runtime_bridge_call(&rt, &cpu, target) != 0) {
+                fprintf(stderr, "BATTLE OVERLAY DIFFERENTIAL FAIL native-leaves switch "
+                        "mode=%s bridge adopted declined %s\n",
+                        modes[m] ? modes[m] : "unset", kOverlayLeaves[i]);
+                bad++;
+            }
+            for (t = 0; t < BATTLE_GUEST_THUNK_COUNT; t++) {
+                if (kBattleGuestThunks[t].address == target &&
+                    battle_guest_native_host(&kBattleGuestThunks[t]) != NULL) {
+                    fprintf(stderr, "BATTLE OVERLAY DIFFERENTIAL FAIL native-leaves "
+                            "switch mode=%s indirect map kept declined %s\n",
+                            modes[m] ? modes[m] : "unset", kOverlayLeaves[i]);
+                    bad++;
+                }
+            }
+            declined++;
+        }
+        printf("BATTLE OVERLAY DIFFERENTIAL native-leaves switch mode=%s native=%zu "
+               "declined=%zu bridge-declined-ok\n",
+               modes[m] ? modes[m] : "unset", limit, declined);
+    }
+    unsetenv("XENO_BATTLE_NATIVE_LEAVES");
+    g_OverlayLeafLimit = (size_t)-1;
+    memset(rt.call_cache, 0, sizeof(rt.call_cache));
+    memset(g_GuestNativeState, 0, sizeof(g_GuestNativeState));
+    return bad;
+}
+
 int main(void)
 {
     load();
@@ -2075,6 +2160,10 @@ int main(void)
             failures++;
         }
     }
+    failures += native_leaves_switch_test();
+    /* XENO_BATTLE_EXIT_HASH formatter on the harness RAM (smoke: every region
+     * must be readable through the bus). */
+    battle_exit_hash_print(&rt, "harness");
     if (failures != 0) {
         fprintf(stderr, "BATTLE OVERLAY DIFFERENTIAL FAIL total=%u\n", failures);
         return 1;
