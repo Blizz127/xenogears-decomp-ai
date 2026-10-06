@@ -16,6 +16,10 @@
 # register-page hash log (spu.log) and the field-diag map transitions. The
 # run ends by itself at PROLOGUE_EXIT_AT (a field step), which must lie
 # before the opening battle: battle code still runs on the interpreter.
+# Battle test variables are forwarded only when set (opt-in, test only):
+# XENO_BATTLE_NATIVE_LEAVES, XENO_BATTLE_EXIT_HASH, XENO_CPU_FALLBACK_TOP,
+# XENO_BATTLE_TEST_PAD, XENO_BATTLE_STATE_HASH_LOG. The battle identity leg
+# continues the route past map 2 through the opening battle with them.
 set -u
 BINARY=$1; OUT=$2; MODE=$3
 case "$MODE" in reference) DISABLED=0 ;; disabled) DISABLED=1 ;; *) exit 2 ;; esac
@@ -59,6 +63,11 @@ env -i PATH="$PATH" HOME="$OUT/home" XDG_CONFIG_HOME="$OUT/config" XDG_STATE_HOM
     XENO_FIELD_STEP_RNG_LOG="$([ "${PROLOGUE_RNG_LOG:-0}" = 1 ] && echo "$OUT/rng.log")" \
     XENO_RAND_TRACE="$([ "${PROLOGUE_RAND_TRACE:-0}" = 1 ] && echo "$OUT/rand-trace.log")" \
     XENO_FIELD_CAPTURE_DIR="$OUT/captures" XENO_FIELD_CAPTURE_EVERY=100000 \
+    ${XENO_BATTLE_NATIVE_LEAVES+XENO_BATTLE_NATIVE_LEAVES=$XENO_BATTLE_NATIVE_LEAVES} \
+    ${XENO_BATTLE_EXIT_HASH+XENO_BATTLE_EXIT_HASH=$XENO_BATTLE_EXIT_HASH} \
+    ${XENO_CPU_FALLBACK_TOP+XENO_CPU_FALLBACK_TOP=$XENO_CPU_FALLBACK_TOP} \
+    ${XENO_BATTLE_TEST_PAD+XENO_BATTLE_TEST_PAD=$XENO_BATTLE_TEST_PAD} \
+    ${XENO_BATTLE_STATE_HASH_LOG+XENO_BATTLE_STATE_HASH_LOG=$XENO_BATTLE_STATE_HASH_LOG} \
     timeout --signal=INT --kill-after=20 "${PROLOGUE_SLICE_SECONDS:-900}s" "$BINARY" > "$OUT/run.log" 2>&1
 echo "rc=$?" > "$OUT/rc.txt"
 cat "$OUT/rc.txt"
