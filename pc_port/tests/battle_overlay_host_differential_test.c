@@ -357,6 +357,12 @@ static const CoverageLeaf kCoverage[] = {
 #define COVERAGE_COUNT (sizeof(kCoverage) / sizeof(kCoverage[0]))
 #define COVERAGE_MAX_INSNS 4096u
 static uint8_t cov_seen[COVERAGE_COUNT][COVERAGE_MAX_INSNS];
+/* The scratchpad (g_PsxScratchpad, 0x1F800000) is guest-visible state
+ * outside g_PsxRam: both sides start from the same bytes and must leave the
+ * same bytes, like RAM.  Before this, a side inherited the other side's
+ * scratchpad, so a body reading scratch it did not write in this call would
+ * diverge for no reason (seen with the not-adopted 8009F844 draft). */
+static uint8_t pad_before[4096], pad_expected[4096];
 #ifdef PROVER_REAL_GTE
 static uint8_t gte_before[PROVER_GTE_BYTES], gte_expected[PROVER_GTE_BYTES];
 /* The 64 COP2 registers as the R3000 reads them (MFC2/CFC2), from a saved
@@ -553,6 +559,7 @@ static void compare(const Leaf *leaf, const uint32_t *args)
     last_case_proven = 0;
     cov_index = coverage_slot(name);
     memcpy(before, g_PsxRam, sizeof(before));
+    memcpy(pad_before, g_PsxScratchpad, sizeof(pad_before));
 #ifdef PROVER_REAL_GTE
     memcpy(gte_before, gteRegs, PROVER_GTE_BYTES);
 #endif
@@ -628,6 +635,8 @@ static void compare(const Leaf *leaf, const uint32_t *args)
     }
 
     memcpy(g_PsxRam, before, sizeof(g_PsxRam));
+    memcpy(pad_expected, g_PsxScratchpad, sizeof(pad_expected));
+    memcpy(g_PsxScratchpad, pad_before, sizeof(pad_before));
 #ifdef PROVER_REAL_GTE
     memcpy(gte_expected, gteRegs, PROVER_GTE_BYTES);
     memcpy(gteRegs, gte_before, PROVER_GTE_BYTES);
@@ -737,6 +746,16 @@ static void compare(const Leaf *leaf, const uint32_t *args)
                  actual[first], args[0], args[1], args[2], args[3]);
         fail(name, "ram", detail);
         return;
+    }
+    for (a = 0; a < sizeof(pad_expected); a++) {
+        if (pad_expected[a] != g_PsxScratchpad[a]) {
+            snprintf(detail, sizeof(detail),
+                     "scratchpad differs, first at %08x retail=%02x host=%02x a0=%08x a1=%08x",
+                     0x1F800000u + (unsigned)a, pad_expected[a], g_PsxScratchpad[a],
+                     args[0], args[1]);
+            fail(name, "scratchpad", detail);
+            return;
+        }
     }
 #ifdef PROVER_REAL_GTE
     {

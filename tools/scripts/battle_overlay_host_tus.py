@@ -212,6 +212,15 @@ def abi_tus() -> list[str]:
     ]
 
 
+def lift_tus() -> list[str]:
+    """src/battle TUs that hold lifted port bodies (include/battle_lift.h)."""
+    return [
+        f"src/battle/{path.name}"
+        for path in sorted(BATTLE_SRC.glob("*.c"))
+        if '#include "battle_lift.h"' in path.read_text(errors="ignore")
+    ]
+
+
 THUNKS = ROOT / "pc_port" / "src" / "battle_guest_abi_thunks.inc"
 THUNK_RE = re.compile(
     r"^BG_THUNK\(\s*0x([0-9A-Fa-f]+)u\s*,\s*\"(func_\w+)\"\s*,\s*BG_THUNK_RET_(\w+)\s*,"
@@ -465,6 +474,9 @@ def main() -> int:
         )
         return 1
 
+    if "--lift-tus" in sys.argv:
+        print("\n".join(lift_tus()))
+        return 0
     if "--abi-tus" in sys.argv:
         print("\n".join(abi_tus()))
         return 0

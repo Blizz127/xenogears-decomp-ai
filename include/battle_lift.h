@@ -44,6 +44,16 @@
 #include "psyq/libgte.h"
 #endif
 
+/* The COP2 entry points the lifted COP2 statements call (the interpreter's
+ * COP2 bus uses the same PsyCross functions; psx/inline_c.h declares them
+ * identically).  Declared here so a lifted TU compiles under compilers that
+ * reject implicit declarations (the differential's clang UBSan regime). */
+extern void MTC2(unsigned int value, int reg);
+extern void CTC2(unsigned int value, int reg);
+extern unsigned int MFC2(int reg);
+extern unsigned int CFC2(int reg);
+extern int doCOP2(int op);
+
 #define BL_STACK_SIZE 0x8000u
 
 static u8 bl_stack[BL_STACK_SIZE] __attribute__((aligned(16), unused));

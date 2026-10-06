@@ -36,6 +36,12 @@ TUS=$(python3 tools/scripts/battle_overlay_host_tus.py --verify)
 # itself exercised in all three regimes rather than only at -O0.
 ABI_TUS=" $(python3 tools/scripts/battle_overlay_host_tus.py --abi-tus | tr '\n' ' ') "
 read -r -a ABI_STRICT <<<"$(python3 tools/scripts/battle_overlay_host_tus.py --abi-strict-flags)"
+# TUs with lifted port bodies (include/battle_lift.h; main64/65/72/73): not
+# strict-typed (their matched C is the port's ordinary -w C), but compiled in
+# the mode's regime like the ABI TUs -- gcc -O0, gcc -O2, clang -O1 with
+# -fsanitize=undefined -- so the lifted bodies are proven at each, not only
+# at the port's -O0.
+LIFT_TUS=" $(python3 tools/scripts/battle_overlay_host_tus.py --lift-tus | tr '\n' ' ') "
 python3 tools/scripts/battle_overlay_host_tus.py --check-abi-thunks || {
     echo "BATTLE OVERLAY DIFFERENTIAL FAIL typed bridge thunks disagree with the prototypes" >&2
     exit 1
@@ -317,6 +323,21 @@ build_link() {
                 [ "$mode" = UBSan ] && cc=clang
                 # shellcheck disable=SC2086
                 "$cc" -c "$src" "${abi_host[@]}" $flags "${ABI_STRICT[@]}" \
+                    -I"$(dirname "$tu")" "${HOST_INC[@]}" \
+                    -o "$hostdir/$(basename "$tu" .c).o"
+                continue ;;
+        esac
+        case "$LIFT_TUS" in
+            *" $tu "*)
+                local lift_host=()
+                local lf
+                for lf in "${HOST_FLAGS[@]}"; do
+                    case "$lf" in -O0) ;; -fpermissive) [ "$mode" = UBSan ] || lift_host+=("$lf") ;; *) lift_host+=("$lf") ;; esac
+                done
+                local lcc=gcc
+                [ "$mode" = UBSan ] && lcc=clang
+                # shellcheck disable=SC2086
+                "$lcc" -c "$src" "${lift_host[@]}" $flags \
                     -I"$(dirname "$tu")" "${HOST_INC[@]}" \
                     -o "$hostdir/$(basename "$tu" .c).o"
                 continue ;;
