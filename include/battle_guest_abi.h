@@ -17,6 +17,11 @@
  *                    written `*(void **)&sym` in retail C.       (P3 read)
  *   GSTORE(sym, v)   store pointer v into pointer-kind overlay global sym,
  *                    as its guest address.                       (P3 write)
+ *   GMUL32(a, b)     the low 32 bits of retail MULT/MULTU as s32: wraps where
+ *                    C's promoted int multiply would overflow.   (P9)
+ *   GDIVU(a, b)      retail DIVU quotient/remainder for divisions retail
+ *   GREMU(a, b)      emits with no `break 7` zero check: a zero divisor gives
+ *                    0xFFFFFFFF / the dividend, not a host SIGFPE. (P9)
  *
  * In the matching build every macro expands to the original expression (plus
  * redundant parentheses), so gcc 2.7.2 sees the same tree; `make rom-check`
@@ -35,6 +40,9 @@
 #define GLOAD(T, pp) (*(pp))
 #define GGET(sym) (*(void**)&(sym))
 #define GSTORE(sym, v) ((*(void**)&(sym)) = (v))
+#define GMUL32(a, b) ((a) * (b))
+#define GDIVU(a, b) ((a) / (b))
+#define GREMU(a, b) ((a) % (b))
 
 #else
 
@@ -53,6 +61,9 @@
  * of sym itself, which is the dereferencing rvalue alias. */
 #define GGET(sym) ((void*)bg_ptr(sym##__slot))
 #define GSTORE(sym, v) (sym##__slot = GADDR(v))
+#define GMUL32(a, b) ((s32)((u32)(a) * (u32)(b)))
+#define GDIVU(a, b) bg_divu((u32)(a), (u32)(b))
+#define GREMU(a, b) bg_remu((u32)(a), (u32)(b))
 
 #endif
 

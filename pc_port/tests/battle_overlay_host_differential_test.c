@@ -1060,7 +1060,71 @@ static const SlotSweepLeaf kSlotSweep[] = {
     { "func_8007E98C", 1, 1, 0x1111, 0, 0x2B2B, 0, 1 },   /* u16 row[p1] == p2|p3<<8 */
     { "func_8007E9D0", 0, 1, 0x7F, 0, 0x20, 0, 1 },       /* p2 >= row[p1] */
     { "func_8007EAC8", 0, 1, 0x11, 0x12, 0x5A, 0x5A, 0 }, /* row[p1] == row[p2] */
+    /* Wrap-faithful multiply and bare-DIVU siblings: high = clamp / zero divisor. */
+    { "func_8007B198", 1, 1, 0x100, 0x22, 0x300, 0x300, 0 },  /* u16 sat mul */
+    { "func_8007AF5C", 0, 1, 0xC9, 0x0B, 0xC9, 0, 0 },     /* u8 div, 0 -> 0xFF */
+    { "func_8007AFAC", 0, 1, 0xC9, 0x0B, 0xC9, 0, 0 },     /* u8 rem, 0 -> dividend */
+    { "func_8007B208", 1, 1, 0xBEEF, 0x123, 0xBEEF, 0, 0 },  /* u16 div, 0 -> 0xFFFF */
+    { "func_8007B264", 1, 1, 0xBEEF, 0x123, 0xBEEF, 0, 0 },  /* u16 rem, 0 -> dividend */
 };
+
+/* Extra forced operand pairs that must each be proven (class outside lo/hi):
+ * the multiply whose promoted-int product exceeds 0x7FFFFFFF (retail MULT
+ * wraps negative, skips the clamp and stores the low half), and a zero
+ * dividend over a zero divisor for the DIVU siblings. */
+typedef struct SlotSweepExtra {
+    const char *name;
+    int wide;
+    uint32_t a, b;
+} SlotSweepExtra;
+
+static const SlotSweepExtra kSlotSweepExtra[] = {
+    { "func_8007B198", 1, 39033, 55481 },
+    { "func_8007B198", 1, 0xFFFF, 0xFFFF },
+    { "func_8007B198", 1, 3, 21845 },          /* exactly 0xFFFF: no clamp */
+    { "func_8007AF5C", 0, 0, 0 },
+    { "func_8007AFAC", 0, 0, 0 },
+    { "func_8007B208", 1, 0, 0 },
+    { "func_8007B264", 1, 0, 0 },
+    { "func_8007B208", 1, 0xFFFF, 1 },
+    { "func_8007B264", 1, 0x8001, 0x8000 },
+};
+
+static void hand_cases_slot_extra(void)
+{
+    uint32_t args[4];
+    unsigned e, salt;
+
+    for (e = 0; e < sizeof(kSlotSweepExtra) / sizeof(kSlotSweepExtra[0]); e++) {
+        const SlotSweepExtra *x = &kSlotSweepExtra[e];
+        unsigned proven = 0;
+        if (!abi_leaf_listed(x->name))
+            continue;
+        for (salt = 0; salt < 6; salt++) {
+            uint32_t index = salt % 5u;
+            uint8_t *ops = (uint8_t *)PSX_ADDR(SRC);
+            begin_case(0, 0);
+            slot_fixture(salt, 0);
+            if (ops[2] == ops[1])
+                ops[2] = (uint8_t)((ops[1] + 1u) & 0x3Fu);
+            if (x->wide) {
+                uint8_t *row = (uint8_t *)PSX_ADDR(0x800D3420u + (index << 6));
+                *(uint16_t *)(row + 2u * ops[1]) = (uint16_t)x->a;
+                *(uint16_t *)(row + 2u * ops[2]) = (uint16_t)x->b;
+            } else {
+                uint8_t *row = (uint8_t *)PSX_ADDR(0x800D3430u + (index << 6));
+                row[ops[1]] = (uint8_t)x->a;
+                row[ops[2]] = (uint8_t)x->b;
+            }
+            args[0] = PTRT; args[1] = index; args[2] = args[3] = 0;
+            compare_name(x->name, args);
+            if (last_case_proven)
+                proven++;
+        }
+        if (proven == 0)
+            fail(x->name, "coverage", "a forced extra operand pair has no proven case");
+    }
+}
 
 static void hand_cases_slot_sweep(void)
 {
@@ -1131,6 +1195,7 @@ static void hand_cases(void)
     hand_cases_indirect();
     hand_cases_abi_slots();
     hand_cases_slot_sweep();
+    hand_cases_slot_extra();
     hand_cases_mesh_height();
 
     /* AA80AE4's result is undefined when no rotation slot qualifies. Seed a

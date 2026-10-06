@@ -222,3 +222,9 @@
     "func_8007E98C",
     "func_8007E9D0",
     "func_8007EAC8",
+/* main19: wrap-faithful u16 multiply and the four bare-DIVU siblings. */
+    "func_8007AF5C",
+    "func_8007AFAC",
+    "func_8007B198",
+    "func_8007B208",
+    "func_8007B264",

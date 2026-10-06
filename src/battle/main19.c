@@ -47,22 +47,24 @@ void func_8007AE98(GSLOT(u8) ppBoard, u8 index) {
 #endif /* BATTLE_SUB(1) */
 
 
-/* func_8007AF5C.s */
+/* func_8007AF5C.s: u8 row[p[3]] = row[p[1]] / row[p[2]]. Retail emits a bare
+ * DIVU (no break 7): a zero divisor stores 0xFF (LO = 0xFFFFFFFF). */
 #if BATTLE_SUB(2)
-void func_8007AF5C(u8** ppBoard, u8 index) {
-    u8* p = *ppBoard;
+void func_8007AF5C(GSLOT(u8) ppBoard, u8 index) {
+    u8* p = GLOAD(u8, ppBoard);
     u8* pRow = D_800D3430 + ((u32)index << 6);
 
-    pRow[p[3]] = pRow[p[1]] / pRow[p[2]];
+    pRow[p[3]] = GDIVU(pRow[p[1]], pRow[p[2]]);
 }
 #endif /* BATTLE_SUB(2) */
-/* func_8007AFAC.s */
+/* func_8007AFAC.s: u8 remainder; bare DIVU, a zero divisor stores the
+ * dividend (HI). */
 #if BATTLE_SUB(2)
-void func_8007AFAC(u8** ppBoard, u8 index) {
-    u8* p = *ppBoard;
+void func_8007AFAC(GSLOT(u8) ppBoard, u8 index) {
+    u8* p = GLOAD(u8, ppBoard);
     u8* pRow = D_800D3430 + ((u32)index << 6);
 
-    pRow[p[3]] = pRow[p[1]] % pRow[p[2]];
+    pRow[p[3]] = GREMU(pRow[p[1]], pRow[p[2]]);
 }
 #endif /* BATTLE_SUB(2) */
 /* func_8007AFFC.s */
@@ -120,10 +122,12 @@ void func_8007B134(GSLOT(u8) ppBoard, u8 index) {
 #endif /* BATTLE_SUB(2) */
 /* func_8007B198.s */
 #if BATTLE_SUB(2)
-void func_8007B198(u8** ppBoard, u8 index) {
-    u8* p = *ppBoard;
+void func_8007B198(GSLOT(u8) ppBoard, u8 index) {
+    u8* p = GLOAD(u8, ppBoard);
     u16* row = (u16*)(D_800D3420 + ((u32)index << 6));
-    s32 v = row[p[1]] * row[p[2]];
+    /* Retail MULT keeps the low 32 bits: a product above 0x7FFFFFFF is
+     * negative, skips the clamp and stores its low half. */
+    s32 v = GMUL32(row[p[1]], row[p[2]]);
 
     if (v > 0xFFFF) {
         v = 0xFFFF;
@@ -131,21 +135,22 @@ void func_8007B198(u8** ppBoard, u8 index) {
     row[p[3]] = (u16)v;
 }
 #endif /* BATTLE_SUB(2) */
-/* func_8007B208.s */
+/* func_8007B208.s: u16 quotient; bare DIVU, a zero divisor stores 0xFFFF. */
 #if BATTLE_SUB(2)
-void func_8007B208(u8** ppBoard, u8 index) {
-    u8* p = *ppBoard;
+void func_8007B208(GSLOT(u8) ppBoard, u8 index) {
+    u8* p = GLOAD(u8, ppBoard);
     u16* row = (u16*)(D_800D3420 + ((u32)index << 6));
 
-    row[p[3]] = row[p[1]] / row[p[2]];
+    row[p[3]] = GDIVU(row[p[1]], row[p[2]]);
 }
 #endif /* BATTLE_SUB(2) */
-/* func_8007B264.s */
+/* func_8007B264.s: u16 remainder; bare DIVU, a zero divisor stores the
+ * dividend. */
 #if BATTLE_SUB(2)
-void func_8007B264(u8** ppBoard, u8 index) {
-    u8* p = *ppBoard;
+void func_8007B264(GSLOT(u8) ppBoard, u8 index) {
+    u8* p = GLOAD(u8, ppBoard);
     u16* row = (u16*)(D_800D3420 + ((u32)index << 6));
 
-    row[p[3]] = row[p[1]] % row[p[2]];
+    row[p[3]] = GREMU(row[p[1]], row[p[2]]);
 }
 #endif /* BATTLE_SUB(2) */
