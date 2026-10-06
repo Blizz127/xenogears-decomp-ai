@@ -1,4 +1,5 @@
 #include "common.h"
+#include "battle_guest_abi.h"
 
 
 #ifndef XENO_PC_PORT
@@ -297,24 +298,24 @@ u32 func_8007A744(u8 a0) {
 /* func_8007A7BC.s: dst = a1 + 8*a3; dst[0] = 0x80, dst[1..4] = (*a0)[0..3]
  * (retail reloads *a0 for every byte: the dst stores may alias it);
  * returns a3 + 1. a2 unused. */
-u8 func_8007A7BC(u8** a0, u8* a1, u8 a2, u8 a3) {
+u8 func_8007A7BC(GSLOT(u8) a0, u8* a1, u8 a2, u8 a3) {
     /* a1 + a3*8 is respelled per store (retail CSEs it and keeps a1 live). */
     a1[a3 * 8] = 0x80;
-    a1[a3 * 8 + 1] = (*a0)[0];
-    a1[a3 * 8 + 2] = (*a0)[1];
-    a1[a3 * 8 + 3] = (*a0)[2];
-    a1[a3 * 8 + 4] = (*a0)[3];
+    a1[a3 * 8 + 1] = (GLOAD(u8, a0))[0];
+    a1[a3 * 8 + 2] = (GLOAD(u8, a0))[1];
+    a1[a3 * 8 + 3] = (GLOAD(u8, a0))[2];
+    a1[a3 * 8 + 4] = (GLOAD(u8, a0))[3];
     return a3 + 1;
 }
 
 
 /* func_8007A828.s */
-u32 func_8007A828(u8** ppBoard, u8* dst, u8 a2) {
-    u8* p = *ppBoard;
+u32 func_8007A828(GSLOT(u8) ppBoard, u8* dst, u8 a2) {
+    u8* p = GLOAD(u8, ppBoard);
     u8 v = a2;
 
     dst[((a2 & 0xFF) << 3) + p[1]] = p[2];
-    if ((*ppBoard)[1] == 0) {
+    if ((GLOAD(u8, ppBoard))[1] == 0) {
         v = a2 + 1;
     }
     return v & 0xFF;

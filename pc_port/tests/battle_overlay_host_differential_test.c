@@ -1042,7 +1042,7 @@ static void hand_cases_abi_slots(void)
  * proven for each leaf, so neither result class is left to chance. */
 typedef struct SlotSweepLeaf {
     const char *name;
-    int wide;      /* operands are u16 at D_800D3420 rows, else u8 at D_800D3430 */
+    int wide;      /* 2: u32 at D_800D3410 rows; 1: u16 at D_800D3420; 0: u8 at D_800D3430 */
     int forced;    /* 1 when variants 1/2 mean something for this leaf */
     /* operand values for variant 1 and 2: row[p[1]], row[p[2]] */
     uint32_t lo_a, lo_b, hi_a, hi_b;
@@ -1077,6 +1077,16 @@ static const SlotSweepLeaf kSlotSweep[] = {
     { "func_8007EC10", 1, 1, 0xD4D4, 0x0, 0x2B2B, 0x0, 1 },
     { "func_8007EC54", 0, 1, 0xF0, 0xF, 0xF0, 0x30, 0 },
     { "func_8007EC94", 1, 1, 0xF0F0, 0xF0F, 0xF0F0, 0x3030, 0 },
+    /* Codemod sweep batch 3: main30 compare leaves. */
+    { "func_8007ECDC", 0, 1, 0x11, 0x0, 0x2B, 0x0, 1 },
+    { "func_8007ED14", 1, 1, 0x1111, 0x0, 0x2B2B, 0x0, 1 },
+    { "func_8007ED58", 0, 1, 0x11, 0x12, 0x5A, 0x5A, 0 },
+    { "func_8007ED98", 1, 1, 0x1111, 0x1112, 0x5A5A, 0x5A5A, 0 },
+    { "func_8007EDE0", 2, 1, 0x11111111, 0x11111112, 0x5A5A5A5A, 0x5A5A5A5A, 0 },
+    { "func_8007EE28", 2, 1, 0x80000000, 0x7FFFFFFF, 0x7FFFFFFF, 0x80000000, 0 },
+    /* Codemod sweep batch 3: main22 row copies (u16 / u32). */
+    { "func_8007B98C", 1, 0, 0, 0, 0, 0, 0 },
+    { "func_8007B9C8", 2, 0, 0, 0, 0, 0, 0 },
 };
 
 /* Extra forced operand pairs that must each be proven (class outside lo/hi):
@@ -1166,7 +1176,12 @@ static void hand_cases_slot_sweep(void)
                         ops[2] = (uint8_t)(s->hi_a & 0xFFu);
                         ops[3] = (uint8_t)((s->hi_a >> 8) & 0xFFu);
                     }
-                    if (s->wide) {
+                    if (s->wide == 2) {
+                        uint8_t *row = (uint8_t *)PSX_ADDR(0x800D3410u + (index << 6));
+                        *(uint32_t *)(row + 4u * ops[1]) = a;
+                        if (!s->imm)
+                            *(uint32_t *)(row + 4u * ops[2]) = b;
+                    } else if (s->wide) {
                         uint8_t *row = (uint8_t *)PSX_ADDR(0x800D3420u + (index << 6));
                         *(uint16_t *)(row + 2u * ops[1]) = (uint16_t)a;
                         if (!s->imm)
@@ -1195,6 +1210,48 @@ static void hand_cases_slot_sweep(void)
     }
 }
 
+/* 8007A828 (main14): dst[(a2 << 3) + p[1]] = p[2]; returns a2, plus one when
+ * p[1] == 0.  dst is the guest board the dispatcher passes (0x800D2E5C);
+ * both return classes must be proven. */
+static void hand_cases_a828(void)
+{
+    uint32_t args[4];
+    unsigned salt, seen = 0;
+
+    if (!abi_leaf_listed("func_8007A828"))
+        return;
+    for (salt = 0; salt < 12; salt++) {
+        uint8_t *ops = (uint8_t *)PSX_ADDR(SRC);
+        begin_case(0, 0);
+        slot_fixture(salt, 0);
+        if ((salt & 1u) == 0)
+            ops[1] = 0;
+        args[0] = PTRT; args[1] = 0x800D2E5Cu; args[2] = (salt * 37u + 5u) & 0xFFu; args[3] = 0;
+        compare_name("func_8007A828", args);
+        if (last_case_proven)
+            seen |= last_retail_v0 == args[2] ? 1u : 2u;
+    }
+    require_outcomes("func_8007A828", seen, 3u);
+}
+
+/* 8007A7BC (main14): dst = a1 + 8*a3; dst[0] = 0x80, dst[1..4] = the four
+ * operand bytes the slot points at; returns a3 + 1 (u8, so 0xFF wraps). */
+static void hand_cases_a7bc(void)
+{
+    uint32_t args[4];
+    unsigned salt;
+
+    if (!abi_leaf_listed("func_8007A7BC"))
+        return;
+    for (salt = 0; salt < 12; salt++) {
+        begin_case(0, 0);
+        slot_fixture(salt, salt & 1u);
+        args[0] = PTRT; args[1] = 0x800D2E5Cu; args[2] = salt;
+        args[3] = salt == 11u ? 0xFFu : (salt * 23u + 1u) & 0xFFu;
+        compare_name("func_8007A7BC", args);
+    }
+}
+
 /* One case per adopted leaf, with the arguments the port's bridge test already
  * established as meaningful for it. */
 static void hand_cases(void)
@@ -1207,6 +1264,8 @@ static void hand_cases(void)
     hand_cases_abi_slots();
     hand_cases_slot_sweep();
     hand_cases_slot_extra();
+    hand_cases_a828();
+    hand_cases_a7bc();
     hand_cases_mesh_height();
 
     /* AA80AE4's result is undefined when no rotation slot qualifies. Seed a

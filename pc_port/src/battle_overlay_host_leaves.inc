@@ -239,3 +239,15 @@
     "func_8007EC10",
     "func_8007EC54",
     "func_8007EC94",
+/* Codemod sweep batch 3: main30 compare leaves (guest ABI). */
+    "func_8007ECDC",
+    "func_8007ED14",
+    "func_8007ED58",
+    "func_8007ED98",
+    "func_8007EDE0",
+    "func_8007EE28",
+/* Codemod sweep batch 3 (guest ABI): main22 row copies, main14 board store. */
+    "func_8007B98C",
+    "func_8007B9C8",
+    "func_8007A828",
+    "func_8007A7BC",
