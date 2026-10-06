@@ -347,8 +347,12 @@ def c_bodies() -> dict[str, set[str]]:
     bodies: dict[str, set[str]] = {}
     for path in sorted(BATTLE_SRC.glob("*.c")):
         text = path.read_text(errors="ignore")
+        # The port links only port-visible bodies: a retail-only definition
+        # (an `#ifndef XENO_PC_PORT` span, e.g. matched C whose port body
+        # lives in another TU) must not overwrite the port body's edges.
+        retail_only = retail_only_spans(text)
         for m in DEFINITION_RE.finditer(text):
-            if not is_definition(text, m.end() - 1):
+            if not is_definition(text, m.end() - 1) or in_spans(m.start(), retail_only):
                 continue
             depth = 0
             start = m.end() - 1

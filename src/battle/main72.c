@@ -154,6 +154,78 @@ u32 func_800AE220(u8* a0, u32 a1) {
 #endif /* XENO_PC_PORT */
 
 #endif /* BATTLE_PART(2) */
+#if BATTLE_PART(2)
+/* func_800AAA20.s: step obj's motion `steps` times (when +0x34 is set),
+ * OR-ing the per-step flags of func_800A0838, then hand them to
+ * func_800AAD54.  The matched C is main72_p2.c (retail-only there); this is
+ * its port body, statement for statement, with each callee that is still
+ * interpreted (func_800AFF9C, func_8009F1C4, func_8009EF3C, func_800A0838,
+ * func_800AE2A4, func_800AAD54) reached through PcPort_BattleMipsCallGuest
+ * with the retail argument words, the fifth func_800AAD54 word in the guest
+ * stack slot as retail passes it.  obj is the bridge's host pointer into
+ * guest RAM, so it goes back out as its guest address.
+ *
+ * Return: when *obj == 0 retail returns the caller's s2 unchanged (v0 = s2,
+ * never assigned on that path).  The one retail caller, func_800A9A50 at
+ * 800A9DB4, does not read v0, so the port body returns a defined 0 there. */
+#ifdef XENO_PC_PORT
+#include "battle_host_guest.h"
+#include <stdio.h>
+#include <stdlib.h>
+static u32 m72_guest_call(u32 target, const u32* args, unsigned argc) {
+    u32 v0 = 0;
+
+    if (PcPort_BattleMipsCallGuest(target, args, argc, &v0) != 0) {
+        fprintf(stderr, "[xeno-port][battle] func_800AAA20: guest call 0x%08x failed\n",
+                target);
+        abort();
+    }
+    return v0;
+}
+
+s32 func_800AAA20(u8* obj, s32 id, s32 steps, s32 a3, s32 a4) {
+    u32 flags;
+    u32 args[5];
+    s32 i;
+
+    if (*(u32*)obj == 0) {
+        return 0;
+    }
+    flags = 0;
+    if (obj[0x34] != 0) {
+        /* The matched C declares func_800AFF9C(void), but retail reaches
+         * it with a0 still holding obj, and func_800AFF9C reads it. */
+        args[0] = BG_ADDR(obj);
+        m72_guest_call(0x800AFF9Cu, args, 1); /* func_800AFF9C(obj) */
+        args[0] = *(u32*)(obj + 4);
+        args[1] = (u32)(s32)*(s16*)(obj + 0x1C);
+        if (obj[0x37] != 0) {
+            m72_guest_call(0x8009F1C4u, args, 2); /* func_8009F1C4 */
+        } else {
+            m72_guest_call(0x8009EF3Cu, args, 2); /* func_8009EF3C */
+        }
+        for (i = 0; i < steps; i++) {
+            args[0] = (u32)id;
+            args[1] = *(u32*)(obj + 4);
+            args[2] = *(u16*)(obj + 0x3C);
+            args[3] = (u32)(s32)*(s16*)(obj + 0x1C);
+            flags |= m72_guest_call(0x800A0838u, args, 4); /* func_800A0838 */
+            args[0] = BG_ADDR(obj);
+            args[1] = (u32)id;
+            args[2] = (u32)a3;
+            m72_guest_call(0x800AE2A4u, args, 3); /* func_800AE2A4 */
+        }
+    }
+    args[0] = BG_ADDR(obj);
+    args[1] = (u32)id;
+    args[2] = flags;
+    args[3] = (u32)steps;
+    args[4] = (u32)a4;
+    m72_guest_call(0x800AAD54u, args, 5); /* func_800AAD54 */
+    return (s32)flags;
+}
+#endif /* XENO_PC_PORT */
+#endif /* BATTLE_PART(2) */
 #if BATTLE_PART(3)
 #endif /* BATTLE_PART(3) */
 

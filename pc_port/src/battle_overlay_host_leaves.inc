@@ -19,9 +19,10 @@
  * so adoption would be unverified: func_8008AA40, func_8008AB94, both hitting
  * "unresolved native call target=0x80028470"; func_80076A10 and
  * func_80076A6C call func_8002675C, which is not yet linked as a real body;
- * func_80076AC8, func_80076B00, func_80076B68, func_80076BAC,
- * func_80076BF0 and func_80076C34 reach retail SetSemiTrans at
- * 0x80043BFC, which this differential bridge cannot resolve.
+ * func_80076B00, func_80076B68, func_80076BAC and func_80076BF0 were listed
+ * here as reaching retail SetSemiTrans at 0x80043BFC, which the differential
+ * could not resolve; it now links PsyCross LIBGPU, and their siblings
+ * func_80076AC8 and func_80076C34 are adopted (below).
  */
     "func_8008ABB8",
     "func_80079934",
@@ -259,3 +260,6 @@
     "func_800BAC50",
     "func_80076AC8",
     "func_80076C34",
+/* Opening-battle hot set: main72 motion stepper (port body; its callees stay
+ * interpreted through PcPort_BattleMipsCallGuest). */
+    "func_800AAA20",

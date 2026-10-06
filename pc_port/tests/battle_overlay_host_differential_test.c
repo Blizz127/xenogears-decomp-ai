@@ -278,6 +278,7 @@ static const CoverageLeaf kCoverage[] = {
     {"func_800BAC50", 0x800BAC50u, 27},
     {"func_80076AC8", 0x80076AC8u, 14},
     {"func_80076C34", 0x80076C34u, 17},
+    {"func_800AAA20", 0x800AAA20u, 69},
 };
 #define COVERAGE_COUNT (sizeof(kCoverage) / sizeof(kCoverage[0]))
 #define COVERAGE_MAX_INSNS 4096u
@@ -1466,6 +1467,44 @@ static void hand_cases_timer_callbacks(void)
     }
 }
 
+/* 800AAA20 (main72 port body): obj at REC (+4 = model word -> SRC), the
+ * fifth argument in the guest stack slot.  Its callees (800AFF9C,
+ * 8009F1C4/8009EF3C, 800A0838, 800AE2A4, 800AAD54) are interpreted on both
+ * sides (native side through PcPort_BattleMipsCallGuest).  800AAD54 returns
+ * at once for steps == 0 or obj +0x10 == 0.  Classes: 1 = *obj == 0,
+ * 2 = +0x34 clear (800AAD54 only), 4 = +0x34 set (stepping loop). */
+static void hand_cases_aaa20(void)
+{
+    uint32_t args[4];
+    unsigned v, seen = 0;
+
+    if (!abi_leaf_listed("func_800AAA20"))
+        return;
+    pre_side = stack_arg4_side;
+    for (v = 0; v < 48; v++) {
+        uint8_t *o = (uint8_t *)PSX_ADDR(REC);
+        unsigned cls = (v % 3u == 0u) ? 1u : ((v % 3u == 1u) ? 2u : 4u);
+        begin_case(v % 2u, 0);
+        *(uint32_t *)(o + 0x0) = cls == 1u ? 0u : 0x800C5300u;
+        *(uint32_t *)(o + 0x4) = SRC;
+        *(uint32_t *)(o + 0x10) = (v & 4u) ? SRC + 0x40u : 0u;
+        *(int16_t *)(o + 0x1C) = (int16_t)(v * 3u);
+        o[0x34] = cls == 4u ? (uint8_t)(1u + v) : 0u;
+        o[0x37] = (uint8_t)((v >> 3) & 1u);
+        *(uint16_t *)(o + 0x3C) = (uint16_t)(v * 0x111u);
+        stack_arg4 = v * 0x10001u;
+        args[0] = REC;
+        args[1] = v % 4u;
+        args[2] = (v & 8u) ? 0u : (v % 3u);  /* steps */
+        args[3] = v & 1u;
+        compare_name("func_800AAA20", args);
+        if (last_case_proven)
+            seen |= cls;
+    }
+    pre_side = NULL;
+    require_outcomes("func_800AAA20", seen, 7u);
+}
+
 /* One case per adopted leaf, with the arguments the port's bridge test already
  * established as meaningful for it. */
 static void hand_cases(void)
@@ -1483,6 +1522,7 @@ static void hand_cases(void)
     hand_cases_mesh_height();
     hand_cases_ba8f4();
     hand_cases_timer_callbacks();
+    hand_cases_aaa20();
 
     /* AA80AE4's result is undefined when no rotation slot qualifies. Seed a
      * valid 11-entry cycle so both sides return a defined selected value. */
