@@ -231,7 +231,12 @@ mutants = {
         ("main68.c", "    *(u16*)(e + 0x18) = raw;", "    *(u16*)(e + 0x18) = (u16)(raw ^ 1);")],
     # Lifted port bodies (include/battle_lift.h): callees of 800AAA20, so in
     # their own build.  Each mutant is a one-instruction slip.
-    "h": [("main65.c", "r_s5 = r_s5 | 0x100u; /* 800A101C ori", "r_s5 = r_s5 | 0x180u; /* 800A101C ori")],
+    "h": [("main65.c", "r_s5 = r_s5 | 0x100u; /* 800A101C ori", "r_s5 = r_s5 | 0x180u; /* 800A101C ori"),
+          ("main73.c", "bl_sw(r_v1 + 0x60u, r_v0); /* 800B0044 sw", "bl_sw(r_v1 + 0x60u, r_v0 + 1u); /* 800B0044 sw"),
+          ("main64.c", "bl_sw(r_s2 + 0x20u, r_v0); /* 8009F040 sw", "bl_sw(r_s2 + 0x20u, r_v0 ^ 1u); /* 8009F040 sw"),
+          ("main64.c", "bl_sw(r_s3 + 0x20u, r_v0); /* 8009F2CC sw", "bl_sw(r_s3 + 0x20u, r_v0 ^ 1u); /* 8009F2CC sw")],
+    # 800AAD54 calls 8009EF3C/8009F1C4 (mutated in h): its own build.
+    "i": [("main72.c", "bl_sh(r_s4 + 0x70u, r_v0); /* 800AADD8 sh", "bl_sh(r_s4 + 0x70u, r_v0 + 1u); /* 800AADD8 sh")],
 }
 for group, edits in mutants.items():
     d = out / ("mutants-" + group)
@@ -416,9 +421,10 @@ if ! grep -q '^BATTLE OVERLAY DIFFERENTIAL FAIL func_800A5A48 indirect ' "$OUT/m
 fi
 grep -m1 'indirect-native' "$OUT/mutant-abi.log" >&2
 # Negative controls 4-47: one mutant per further guest-ABI leaf.
-for group in a b c d e f g h; do
+for group in a b c d e f g h i; do
     case "$group" in
-        h) want="func_800A0838" ;;
+        i) want="func_800AAD54" ;;
+        h) want="func_800A0838 func_800AFF9C func_8009EF3C func_8009F1C4" ;;
         g) want="func_800BA8F4 func_800BB13C func_800BAC50 func_80076AC8 func_80076C34 func_800AAA20 func_800A3E98" ;;
         f) want="func_8007ECDC func_8007ED14 func_8007ED58 func_8007ED98 func_8007EDE0 func_8007EE28 func_8007B98C func_8007B9C8 func_8007A828 func_8007A7BC" ;;
         e) want="func_8007EA08 func_8007EA4C func_8007EA84 func_8007EB08 func_8007EB50 func_8007EB90 func_8007EBD8 func_8007EC10 func_8007EC54 func_8007EC94" ;;
@@ -454,4 +460,4 @@ fi
 grep -m1 'bridge-domain func_800A5914' "$OUT/legacy-bridge.log" >&2
 grep -m1 '^BATTLE OVERLAY DIFFERENTIAL FAIL func_800A5914 return ' "$OUT/legacy-bridge.log" >&2 || true
 grep -m1 '^BATTLE OVERLAY DIFFERENTIAL FAIL func_800A5914 bridge-domain ' "$OUT/legacy-bridge.log" >&2
-echo "BATTLE OVERLAY DIFFERENTIAL PASS (O0/O2/UBSan + wrong-result, store-path, 53 guest-ABI mutant, indirect-native and legacy-bridge controls rejected)"
+echo "BATTLE OVERLAY DIFFERENTIAL PASS (O0/O2/UBSan + wrong-result, store-path, 57 guest-ABI mutant, indirect-native and legacy-bridge controls rejected)"

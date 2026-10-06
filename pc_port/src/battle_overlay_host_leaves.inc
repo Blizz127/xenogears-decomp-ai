@@ -268,3 +268,11 @@
 /* Opening-battle hot set: main65 motion-track decoder (lifted port body;
  * func_800A23E8 stays interpreted through the guest-call service). */
     "func_800A0838",
+/* 800AAA20's motion callees (lifted port bodies): main73 floor query,
+ * main64 hierarchy matrix rebuilds. */
+    "func_800AFF9C",
+    "func_8009EF3C",
+    "func_8009F1C4",
+/* Opening-battle hot set: main72 motion-state update (lifted port body;
+ * every call through the interpreter's jal path). */
+    "func_800AAD54",

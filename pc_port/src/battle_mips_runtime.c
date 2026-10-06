@@ -1545,6 +1545,76 @@ int PcPort_BattleMipsCallGuest(uint32_t target, const uint32_t *args,
     return 0;
 }
 
+/* A `jal target` made by a native battle body exactly as the interpreter
+ * makes it (include/battle_lift.h, lifted port bodies): the same
+ * runtime_bridge() entry -- RESULTS/file-1 gates, the archive identity hooks,
+ * the typed and special-cased bindings, translate_argument for the generic
+ * path, HeapAlloc's guest-domain return -- on a CPU copied from the current
+ * bridge CPU, with a0..a3 and the o32 stack words below its SP.  A target
+ * the bridge does not bind natively runs in the interpreter, as an
+ * interpreted jal would.  v0/v1 are what the guest would see after the call.
+ * args: a0..a3, then the words the caller's frame holds at sp+0x10.. (a
+ * caller passes as many as its callees can read; a retail callee such as
+ * func_800A3640 takes fifteen).  Returns 0, or -1 when the call cannot be
+ * made. */
+#define BATTLE_JAL_STACK_WORDS 16u
+int PcPort_BattleMipsCallJal(uint32_t target, const uint32_t *args, unsigned argc,
+                            uint32_t *v0, uint32_t *v1)
+{
+    BattleMipsRuntime *runtime = g_ActiveBattleRuntime;
+    PcPortMipsCpu *caller;
+    PcPortMipsCpu cpu;
+    uint32_t sp;
+    int rc;
+
+    if (runtime == NULL || !runtime->initialized ||
+        runtime->bridge_cpu == NULL || argc > 4u + BATTLE_JAL_STACK_WORDS ||
+        (argc != 0 && args == NULL) || (target & 3u) != 0)
+        return -1;
+    caller = runtime->bridge_cpu;
+    sp = caller->gpr[29];
+    /* Room below the live guest frame for the callee's o32 home area and
+     * up to BATTLE_JAL_STACK_WORDS stack argument words. */
+    if ((sp & 7u) != 0 || sp < 0x80000100u || sp > BATTLE_STACK_TOP)
+        return -1;
+    sp -= 0x100u;
+    initialize_cpu(&cpu, runtime);
+    memcpy(cpu.gpr, caller->gpr, sizeof(cpu.gpr));
+    memcpy(cpu.cp0, caller->cp0, sizeof(cpu.cp0));
+    cpu.hi = caller->hi;
+    cpu.lo = caller->lo;
+    cpu.gpr[0] = 0;
+    cpu.gpr[29] = sp;
+    cpu.gpr[31] = BATTLE_HALT_PC;
+    for (unsigned i = 0; i < 4; i++)
+        cpu.gpr[4 + i] = i < argc ? args[i] : 0;
+    for (unsigned i = 4; i < argc; i++) {
+        if (runtime_write(runtime, sp + 0x10u + (i - 4u) * 4u, 4, args[i]) != 0)
+            return -1;
+    }
+    rc = runtime_bridge(runtime, &cpu, target);
+    if (rc < 0) {
+        fprintf(stderr, "[xeno-port][battle-mips] native jal 0x%08x refused\n", target);
+        return -1;
+    }
+    if (rc == 0) {
+        runtime->bridge_cpu = &cpu;
+        cpu_meter_mark_entry(&cpu, target);
+        rc = PcPortMipsRun(&cpu, target, BATTLE_HALT_PC, CALLBACK_STEP_LIMIT);
+        runtime->bridge_cpu = caller;
+        if (rc != PC_PORT_MIPS_HALTED) {
+            fprintf(stderr, "[xeno-port][battle-mips] native jal 0x%08x failed: %s\n",
+                    target, cpu.error);
+            return -1;
+        }
+    }
+    if (v0 != NULL)
+        *v0 = cpu.gpr[2];
+    if (v1 != NULL)
+        *v1 = cpu.gpr[3];
+    return 0;
+}
+
 static int run_guest_callback(BattleMipsRuntime *runtime, uint32_t callback,
                               void *argument)
 {

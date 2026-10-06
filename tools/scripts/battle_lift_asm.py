@@ -297,6 +297,7 @@ class Lifter:
         self.legacy: dict[str, int] = {}
         self.viajal: dict[str, int] = {}
         self.jal_service = False
+        self.void = False
         self.decls: set[str] = set()
 
     def label_name(self, vaddr: int) -> str:
@@ -554,7 +555,7 @@ class Lifter:
             die("no frame adjustment found")
         params = ", ".join(f"u32 arg{x}" for x in range(self.nargs)) or "void"
         out.extend(sorted(self.decls))
-        out.append(f"u32 {self.name}({params}) {{")
+        out.append(f"{'void' if self.void else 'u32'} {self.name}({params}) {{")
         out.append(f"    static const char FN[] = \"{self.name}\";")
         regs = [r for r in REGS if r not in ("zero",)]
         out.append("    u32 " + ", ".join(f"{CVAR[r]} = 0" for r in regs) + ";")
@@ -568,7 +569,7 @@ class Lifter:
         out.append("bl_exit:")
         out.append("    bl_leave(bl_saved);")
         out.append("    (void)hi; (void)lo; (void)r_at; (void)r_v1; (void)r_k0; (void)r_k1; (void)r_gp; (void)r_ra;")
-        out.append("    return r_v0;")
+        out.append("    (void)r_v0;" if self.void else "    return r_v0;")
         out.append("}")
         return "\n".join(out) + "\n"
 
@@ -578,6 +579,8 @@ def main():
     p.add_argument("asm")
     p.add_argument("--args", type=int, required=True)
     p.add_argument("--name")
+    p.add_argument("--void", action="store_true",
+                   help="the function is void (its v0 at return is not part of its contract)")
     p.add_argument("--jal-service", action="store_true",
                    help="route every call through PcPort_BattleMipsCallJal (bl_jal): "
                         "the interpreter's own jal semantics, hooks included")
@@ -587,6 +590,7 @@ def main():
     name = ns.name or path.stem
     lf = Lifter(name, insns, labels, jlabels, ns.args)
     lf.jal_service = ns.jal_service
+    lf.void = ns.void
     text = lf.emit()
     print(f"{name}: {len(insns)} instructions, frame 0x{lf.frame:X}, args read at entry {sorted(lf.arg_reads())}", file=sys.stderr)
     print("  overlay callees (bl_call_guest): " + ", ".join(f"{k} x{v}" for k, v in sorted(lf.bridged.items())), file=sys.stderr)

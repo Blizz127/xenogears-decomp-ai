@@ -281,6 +281,10 @@ static const CoverageLeaf kCoverage[] = {
     {"func_800AAA20", 0x800AAA20u, 69},
     {"func_800A3E98", 0x800A3E98u, 257},
     {"func_800A0838", 0x800A0838u, 1222},
+    {"func_800AAD54", 0x800AAD54u, 3186},
+    {"func_800AFF9C", 0x800AFF9Cu, 49},
+    {"func_8009EF3C", 0x8009EF3Cu, 162},
+    {"func_8009F1C4", 0x8009F1C4u, 251},
 };
 #define COVERAGE_COUNT (sizeof(kCoverage) / sizeof(kCoverage[0]))
 #define COVERAGE_MAX_INSNS 4096u
@@ -1693,6 +1697,128 @@ static void hand_cases_a0838(void)
     require_outcomes("func_800A0838", seen, 15u);
 }
 
+/* 800AFF9C (main73, lifted port body): floor query of object REC on the
+ * mesh fixture: model at DST (+0x5C/+0x60/+0x64 position words), +0x1E
+ * cached triangle, +0x36 keep-height flag.  Its callees 800A5914 / 800A579C /
+ * 800A5870 are typed native leaves, so the body runs with no interpreter.
+ * Classes: 1 = model height written back (+0x36 == 0), 2 = kept. */
+static void hand_cases_aff9c(void)
+{
+    static const int16_t kCached[] = {-1, 0, 5, 11, 17, 40};
+    uint32_t args[4];
+    unsigned seen = 0, c;
+    int winding, x, z;
+
+    if (!abi_leaf_listed("func_800AFF9C"))
+        return;
+    for (winding = 0; winding < 2; winding++) {
+        for (c = 0; c < sizeof(kCached) / sizeof(kCached[0]); c++) {
+            for (x = -500; x <= 500; x += 250) {
+                for (z = -500; z <= 500; z += 250) {
+                    uint8_t *o = (uint8_t *)PSX_ADDR(REC);
+                    uint8_t *m = (uint8_t *)PSX_ADDR(DST);
+                    begin_case(c % 3u == 2u ? 2u : 0u, 0);
+                    mesh_fixture(winding, (int)c + 2 * winding);
+                    *(uint32_t *)(o + 0x4) = DST;
+                    *(int32_t *)(m + 0x5C) = x + 13;
+                    *(int32_t *)(m + 0x60) = z / 10;
+                    *(int32_t *)(m + 0x64) = z - 7;
+                    *(int16_t *)(o + 0x1E) = kCached[c];
+                    o[0x36] = (uint8_t)((x / 250 + z / 250) & 1);
+                    args[0] = REC; args[1] = args[2] = args[3] = 0;
+                    compare_name("func_800AFF9C", args);
+                    if (last_case_proven)
+                        seen |= o[0x36] ? 2u : 1u;
+                }
+            }
+        }
+    }
+    require_outcomes("func_800AFF9C", seen, 3u);
+}
+
+/* 8009EF3C / 8009F1C4 (main64, lifted port bodies): the model hierarchy
+ * matrix rebuild of a model at DST (+0xA entry count, 0x7C-byte entries:
+ * +0 parent entry or 0, +4/+5/+6 flags, +0xC / +0x2C matrices, +0x54
+ * rotation, +0x4C..0x50 scale), argument a1 the frame/scale word.  Parents
+ * point only at earlier entries, as a hierarchy does.  Both are reached
+ * from 800AAA20 too.  Classes: 1 = one entry, 2 = several. */
+static void hand_cases_model_matrices(const char *name)
+{
+    uint32_t args[4];
+    unsigned v, seen = 0;
+
+    if (!abi_leaf_listed(name))
+        return;
+    for (v = 0; v < 400; v++) {
+        uint8_t *m = (uint8_t *)PSX_ADDR(DST);
+        unsigned n = 1u + v % 6u, k;
+
+        begin_case((v % 5u == 0u) ? 1u : 2u, 0);
+        *(uint16_t *)(m + 0xA) = (uint16_t)n;
+        for (k = 0; k < n; k++) {
+            uint8_t *e = m + k * 0x7Cu;
+            *(uint32_t *)(e + 0x0) = (k == 0u || (hrnd() & 3u) == 0u)
+                ? 0u : DST + (hrnd() % k) * 0x7Cu;
+            e[0x4] = (uint8_t)(hrnd() & 1u);
+            e[0x6] = (uint8_t)(hrnd() & 1u);
+            e[0x5] = (uint8_t)(hrnd() & 1u);
+        }
+        args[0] = DST;
+        args[1] = (uint32_t)(int32_t)(int16_t)(hrnd() % 0x2000u);
+        args[2] = args[3] = 0;
+        compare_name(name, args);
+        if (last_case_proven)
+            seen |= n == 1u ? 1u : 2u;
+    }
+    require_outcomes(name, seen, 3u);
+}
+
+/* 800AAD54 (main72, lifted port body; every call through the jal service,
+ * PcPort_BattleMipsCallJal): motion object at REC (+4 model at DST, +0x10
+ * motion state at SRC, the +0x70..0x86 velocity block), a1 id, a2 the
+ * per-step flags 800A0838 returned, a3 steps (0: early return), the fifth
+ * word in the guest stack slot.  Archive, heap, sound and sprite callees are
+ * main-exe code this harness only partly links: cases that reach a
+ * placeholder are inconclusive by construction.  Classes: 1 = no steps,
+ * 2 = stepped and completed. */
+static void hand_cases_aad54(void)
+{
+    static const uint32_t kFlags[] = {0u, 0x1u, 0x2u, 0x4u, 0x100u, 0x200u, 0x400u,
+                                      0x101u, 0x202u, 0x404u, 0x707u};
+    uint32_t args[4];
+    unsigned v, seen = 0;
+
+    if (!abi_leaf_listed("func_800AAD54"))
+        return;
+    pre_side = stack_arg4_side;
+    for (v = 0; v < 600; v++) {
+        uint8_t *o = (uint8_t *)PSX_ADDR(REC);
+        unsigned steps = (v % 6u == 0u) ? 0u : 1u + hrnd() % 2u;
+
+        begin_case((v % 5u == 0u) ? 1u : 2u, 0);
+        *(uint32_t *)(o + 0x0) = (hrnd() & 3u) ? REC + 0x100u : 0u;
+        *(uint32_t *)(o + 0x4) = DST;
+        *(uint32_t *)(o + 0x10) = (hrnd() & 7u) ? SRC : 0u;
+        /* Alternate script slots (+0x4C/+0x50/+0x54) and +0x58: off, or
+         * a second script at SRC + 0x100. */
+        *(uint32_t *)(o + 0x4C) = (hrnd() % 6u) == 0u ? SRC + 0x100u : 0u;
+        *(uint32_t *)(o + 0x50) = (hrnd() % 6u) == 0u ? SRC + 0x100u : 0u;
+        *(uint32_t *)(o + 0x54) = 0u;
+        *(int16_t *)(o + 0x58) = 0;
+        *(uint16_t *)((uint8_t *)PSX_ADDR(DST) + 0xA) = (uint16_t)(1u + hrnd() % 3u);
+        stack_arg4 = hrnd() % 3u;
+        args[0] = REC;
+        args[1] = v % 4u;
+        args[2] = kFlags[hrnd() % (sizeof(kFlags) / sizeof(kFlags[0]))];
+        args[3] = steps;
+        compare_name("func_800AAD54", args);
+        if (last_case_proven)
+            seen |= steps == 0u ? 1u : 2u;
+    }
+    pre_side = NULL;
+    require_outcomes("func_800AAD54", seen, 3u);
+}
+
 /* One case per adopted leaf, with the arguments the port's bridge test already
  * established as meaningful for it. */
 static void hand_cases(void)
@@ -1713,6 +1839,10 @@ static void hand_cases(void)
     hand_cases_aaa20();
     hand_cases_a3e98();
     hand_cases_a0838();
+    hand_cases_aad54();
+    hand_cases_aff9c();
+    hand_cases_model_matrices("func_8009EF3C");
+    hand_cases_model_matrices("func_8009F1C4");
 
     /* AA80AE4's result is undefined when no rotation slot qualifies. Seed a
      * valid 11-entry cycle so both sides return a defined selected value. */
