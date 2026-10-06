@@ -144,3 +144,7 @@ BG_THUNK(0x800aaa20u, "func_800AAA20", BG_THUNK_RET_W32, 5,
          BG_THUNK_ARG_W32)
 BG_THUNK(0x800a3e98u, "func_800A3E98", BG_THUNK_RET_W32, 2,
          BG_THUNK_ARG_HOST, BG_THUNK_ARG_W32)
+/* Lifted port bodies (include/battle_lift.h): every argument is the raw
+ * guest register word. */
+BG_THUNK(0x800a0838u, "func_800A0838", BG_THUNK_RET_W32, 4,
+         BG_THUNK_ARG_W32, BG_THUNK_ARG_W32, BG_THUNK_ARG_W32, BG_THUNK_ARG_W32)

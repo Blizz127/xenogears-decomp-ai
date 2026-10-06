@@ -265,3 +265,6 @@
     "func_800AAA20",
 /* Opening-battle hot set: main68 effect-image stepper (port body). */
     "func_800A3E98",
+/* Opening-battle hot set: main65 motion-track decoder (lifted port body;
+ * func_800A23E8 stays interpreted through the guest-call service). */
+    "func_800A0838",

@@ -280,6 +280,7 @@ static const CoverageLeaf kCoverage[] = {
     {"func_80076C34", 0x80076C34u, 17},
     {"func_800AAA20", 0x800AAA20u, 69},
     {"func_800A3E98", 0x800A3E98u, 257},
+    {"func_800A0838", 0x800A0838u, 1222},
 };
 #define COVERAGE_COUNT (sizeof(kCoverage) / sizeof(kCoverage[0]))
 #define COVERAGE_MAX_INSNS 4096u
@@ -1587,6 +1588,111 @@ static void hand_cases_a3e98(void)
     require_outcomes("func_800A3E98", seen, 15u);
 }
 
+/* 800A0838 (main65, lifted port body): model at REC (+0xA entry count,
+ * 0x7C-byte entries from REC + 4), each entry with up to three track records
+ * (+0x6C, +0x70, +0x74) at A0838_TRK and their byte streams at A0838_DAT.
+ * Every track gets a random kind/skip byte (+2), finished flag (+1), owner
+ * byte (+3, equal to a2 in half the cases), step counter/limit (+0x10/+0x12,
+ * limit nonzero) and nonzero s16 parameters, so the 9-, 6- and third-track
+ * jump tables are all reached; a0 is the track pool (HALF) that
+ * func_800A23E8 (interpreted on both sides) releases a finished track into.
+ * Classes: 1 = no flags, 2 = a running track (0x100), 4 = a finished,
+ * released track (0x200), 8 = a finished looping track (0x400). */
+#define A0838_TRK 0x800C6000u
+#define A0838_DAT 0x800C7000u
+/* High bits of the harness LCG: its low bits have short periods. */
+static uint32_t hrnd(void)
+{
+    return rnd() >> 10;
+}
+static void hand_cases_a0838(void)
+{
+    uint32_t args[4];
+    unsigned v, seen = 0;
+
+    if (!abi_leaf_listed("func_800A0838"))
+        return;
+    for (v = 0; v < 1500; v++) {
+        uint8_t *m = (uint8_t *)PSX_ADDR(REC);
+        unsigned n = 1u + v % 3u, k, j;
+        uint32_t a2 = v % 5u;
+        unsigned cls;
+
+        begin_case((v % 7u == 0u) ? 1u : 2u, 0);
+        *(uint16_t *)(m + 0xA) = (uint16_t)(v % 13u == 0u ? 0u : n);
+        for (k = 0; k < n; k++) {
+            uint8_t *e = m + 4u + k * 0x7Cu;
+            for (j = 0; j < 3; j++) {
+                unsigned idx = k * 3u + j;
+                uint32_t t = A0838_TRK + idx * 0x20u;
+                uint32_t d = A0838_DAT + idx * 0x80u;
+                uint8_t *r = (uint8_t *)PSX_ADDR(t);
+
+                if ((hrnd() & 7u) == 0u) {
+                    *(uint32_t *)(e + 0x6C + j * 4u) = 0u;
+                    continue;
+                }
+                *(uint32_t *)(e + 0x6C + j * 4u) = t;
+                r[1] = (hrnd() % 3u) == 0u ? 1u : 0u;
+                r[2] = (uint8_t)hrnd();
+                r[3] = (hrnd() & 1u) ? (uint8_t)a2 : (uint8_t)(a2 + 1u);
+                *(uint32_t *)(r + 0x4) = d;
+                *(uint32_t *)(r + 0x8) = d + (hrnd() & 0x1Eu);
+                *(int16_t *)(r + 0xA) = (int16_t)(hrnd() % 0x800u) - 0x400;
+                *(int16_t *)(r + 0xC) = (int16_t)(1 + hrnd() % 0x400u);
+                *(int16_t *)(r + 0xE) = (int16_t)(hrnd() % 0x800u) - 0x400;
+                *(int16_t *)(r + 0x12) = (int16_t)(1 + hrnd() % 4u);
+                *(int16_t *)(r + 0x10) = (int16_t)(hrnd() % 6u) - 1;
+                /* +8 (stream cursor) and +0xA (first parameter) share bytes;
+                 * the stream kinds need a live cursor. */
+                if (hrnd() & 1u)
+                    *(uint32_t *)(r + 0x8) = d + (hrnd() & 0x1Eu);
+                if ((hrnd() & 3u) == 0u) {
+                    /* Delta streams: the -0x80 escape (16-bit delta). */
+                    uint8_t *b = (uint8_t *)PSX_ADDR(d);
+                    unsigned q;
+                    for (q = 0; q < 0x40u; q++)
+                        if ((hrnd() & 3u) == 0u)
+                            b[q] = 0x80u;
+                }
+                if ((hrnd() & 3u) == 0u) {
+                    /* Interpolation already at its target (zero step). */
+                    if (j == 0u) {
+                        *(int16_t *)(e + 0x50) = *(int16_t *)(r + 0xA);
+                        *(int16_t *)(e + 0x52) = *(int16_t *)(r + 0xC);
+                        *(int16_t *)(e + 0x54) = *(int16_t *)(r + 0xE);
+                    } else if (j == 1u) {
+                        *(int32_t *)(e + 0x58) = *(int16_t *)(r + 0xA);
+                        *(int32_t *)(e + 0x5C) = *(int16_t *)(r + 0xC);
+                        *(int32_t *)(e + 0x60) = *(int16_t *)(r + 0xE);
+                    } else {
+                        *(int16_t *)(r + 0xA) = *(int16_t *)(r + 0x4);
+                        *(int16_t *)(r + 0xC) = *(int16_t *)(r + 0x6);
+                        *(int16_t *)(r + 0xE) = *(int16_t *)(r + 0x8);
+                    }
+                }
+            }
+        }
+        /* a0 is the track pool func_800A23E8 releases into: +0 base, +4
+         * lowest free index. */
+        *(uint32_t *)PSX_ADDR(HALF) = A0838_TRK;
+        *(uint16_t *)PSX_ADDR(HALF + 4u) = (uint16_t)(v % 16u);
+        args[0] = HALF;
+        args[1] = REC;
+        args[2] = a2;
+        args[3] = (uint32_t)(int32_t)(int16_t)(v * 7u);
+        compare_name("func_800A0838", args);
+        if (!last_case_proven)
+            continue;
+        cls = last_retail_v0 == 0u ? 1u : 0u;
+        if (last_retail_v0 & 0x100u) cls |= 2u;
+        if (last_retail_v0 & 0x200u) cls |= 4u;
+        if (last_retail_v0 & 0x400u) cls |= 8u;
+        seen |= cls;
+    }
+    require_outcomes("func_800A0838", seen, 15u);
+}
+
 /* One case per adopted leaf, with the arguments the port's bridge test already
  * established as meaningful for it. */
 static void hand_cases(void)
@@ -1606,6 +1712,7 @@ static void hand_cases(void)
     hand_cases_timer_callbacks();
     hand_cases_aaa20();
     hand_cases_a3e98();
+    hand_cases_a0838();
 
     /* AA80AE4's result is undefined when no rotation slot qualifies. Seed a
      * valid 11-entry cycle so both sides return a defined selected value. */
