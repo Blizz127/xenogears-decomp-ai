@@ -158,9 +158,9 @@ u32 func_800AE220(u8* a0, u32 a1) {
 /* func_800AAA20.s: step obj's motion `steps` times (when +0x34 is set),
  * OR-ing the per-step flags of func_800A0838, then hand them to
  * func_800AAD54.  The matched C is main72_p2.c (retail-only there); this is
- * its port body, statement for statement, with each callee that is still
- * interpreted (func_800AFF9C, func_8009F1C4, func_8009EF3C, func_800A0838,
- * func_800AE2A4, func_800AAD54) reached through PcPort_BattleMipsCallGuest
+ * its port body, statement for statement, with each callee (func_800AFF9C,
+ * func_8009F1C4, func_8009EF3C, func_800A0838, func_800AE2A4, func_800AAD54;
+ * all now adopted lifted bodies) reached through PcPort_BattleMipsCallGuest
  * with the retail argument words, the fifth func_800AAD54 word in the guest
  * stack slot as retail passes it.  obj is the bridge's host pointer into
  * guest RAM, so it goes back out as its guest address.
@@ -3825,6 +3825,912 @@ bl_exit:
 #endif /* XENO_PC_PORT */
 #endif /* BATTLE_PART(2) */
 #if BATTLE_PART(3)
+#endif /* BATTLE_PART(3) */
+#if BATTLE_PART(3)
+#ifdef XENO_PC_PORT
+/* func_800AE2A4.s (786 instructions; INCLUDE_ASM in main72_p3.c): the
+ * per-step motion-event dispatcher 800AAA20 calls (obj, id, a3), generated
+ * from the retail listing by
+ *   tools/scripts/battle_lift_asm.py asm/battle/nonmatchings/main72_p3/func_800AE2A4.s --args 3 --void
+ * (one statement per MIPS instruction; include/battle_lift.h).  Its legacy
+ * native leaves func_800AF400 / func_800B12D0 / func_800A3484 and the sound
+ * entries func_80039E60 / func_8003A2E4 are direct calls with the bridge's
+ * generic contract; CompMatrix / SetRotMatrix / SetTransMatrix go to the
+ * PsyCross GTE helpers as the bridge binds them.  Overlay callees without a
+ * native binding stay interpreted through the guest-call service:
+ * 800A32D8 800A3640 800A429C 800AA454 800AA564 800AA820 800AE220 800AFB4C
+ * 800BF6CC (800A579C / 800A5870 are typed native leaves). */
+#include "battle_lift.h"
+extern s32 func_800AF400(void);
+extern u32 func_800B12D0(u32 index, u32 mask);
+extern void func_80039E60(s32 packedId);
+extern void func_8003A2E4(s32 pData, s32 volume);
+extern void func_800A3484(s16* p);
+void func_800AE2A4(u32 arg0, u32 arg1, u32 arg2) {
+    static const char FN[] = "func_800AE2A4";
+    u32 r_at = 0, r_v0 = 0, r_v1 = 0, r_a0 = 0, r_a1 = 0, r_a2 = 0, r_a3 = 0, r_t0 = 0, r_t1 = 0, r_t2 = 0, r_t3 = 0, r_t4 = 0, r_t5 = 0, r_t6 = 0, r_t7 = 0, r_s0 = 0, r_s1 = 0, r_s2 = 0, r_s3 = 0, r_s4 = 0, r_s5 = 0, r_s6 = 0, r_s7 = 0, r_t8 = 0, r_t9 = 0, r_k0 = 0, r_k1 = 0, r_gp = 0, r_sp = 0, r_fp = 0, r_ra = 0;
+    u32 hi = 0, lo = 0, bl_saved;
+    r_sp = bl_enter(FN, 0xB8u, &bl_saved);
+    r_a0 = arg0;
+    r_a1 = arg1;
+    r_a2 = arg2;
+    r_sp = r_sp + 0xFFFFFF48u; /* 800AE2A4 addiu $sp, $sp, -0xB8 */
+    bl_sw(r_sp + 0x9Cu, r_s3); /* 800AE2A8 sw $s3, 0x9C($sp) */
+    r_s3 = r_a0 + 0u; /* 800AE2AC addu $s3, $a0, $zero */
+    bl_sw(r_sp + 0xB4u, r_ra); /* 800AE2B0 sw $ra, 0xB4($sp) */
+    bl_sw(r_sp + 0xB0u, r_fp); /* 800AE2B4 sw $fp, 0xB0($sp) */
+    bl_sw(r_sp + 0xACu, r_s7); /* 800AE2B8 sw $s7, 0xAC($sp) */
+    bl_sw(r_sp + 0xA8u, r_s6); /* 800AE2BC sw $s6, 0xA8($sp) */
+    bl_sw(r_sp + 0xA4u, r_s5); /* 800AE2C0 sw $s5, 0xA4($sp) */
+    bl_sw(r_sp + 0xA0u, r_s4); /* 800AE2C4 sw $s4, 0xA0($sp) */
+    bl_sw(r_sp + 0x98u, r_s2); /* 800AE2C8 sw $s2, 0x98($sp) */
+    bl_sw(r_sp + 0x94u, r_s1); /* 800AE2CC sw $s1, 0x94($sp) */
+    bl_sw(r_sp + 0x90u, r_s0); /* 800AE2D0 sw $s0, 0x90($sp) */
+    bl_sw(r_sp + 0x78u, r_a2); /* 800AE2D4 sw $a2, 0x78($sp) */
+    r_v0 = bl_lh(r_s3 + 0x98u); /* 800AE2D8 lh $v0, 0x98($s3) */
+    ; /* 800AE2DC nop  */
+    /* 800AE2E0 bltz $v0, .L800AEEB8 */
+    { int c_ = ((s32)r_v0 < 0); ; if (c_) goto L_800AEEB8; }
+    r_v0 = bl_lh(r_s3 + 0x9Cu); /* 800AE2E8 lh $v0, 0x9C($s3) */
+    r_v1 = bl_lh(r_s3 + 0x9Eu); /* 800AE2EC lh $v1, 0x9E($s3) */
+    ; /* 800AE2F0 nop  */
+    r_v0 = (u32)((s32)r_v0 < (s32)r_v1); /* 800AE2F4 slt $v0, $v0, $v1 */
+    /* 800AE2F8 beqz $v0, .L800AEE80 */
+    { int c_ = (r_v0 == 0); r_t7 = r_sp + 0x50u; if (c_) goto L_800AEE80; }
+    bl_sw(r_sp + 0x88u, r_t7); /* 800AE300 sw $t7, 0x88($sp) */
+L_800AE304:
+    r_s0 = bl_lw(r_s3 + 0xA0u); /* 800AE304 lw $s0, 0xA0($s3) */
+    r_v1 = bl_lh(r_s3 + 0x98u); /* 800AE308 lh $v1, 0x98($s3) */
+    r_v0 = bl_lh(r_s0); /* 800AE30C lh $v0, 0x0($s0) */
+    ; /* 800AE310 nop  */
+    /* 800AE314 bne $v1, $v0, .L800AEE80 */
+    { int c_ = (r_v1 != r_v0); ; if (c_) goto L_800AEE80; }
+    r_v0 = bl_lbu(r_s0 + 0x2u); /* 800AE31C lbu $v0, 0x2($s0) */
+    ; /* 800AE320 nop  */
+    r_v1 = r_v0 + 0xFFFFFFFFu; /* 800AE324 addiu $v1, $v0, -0x1 */
+    r_v0 = (u32)(r_v1 < 0x9u); /* 800AE328 sltiu $v0, $v1, 0x9 */
+    /* 800AE32C beqz $v0, .L800AEE5C */
+    { int c_ = (r_v0 == 0); r_v0 = r_v1 << 2; if (c_) goto L_800AEE5C; }
+    r_at = 0x80070000u; /* 800AE334 lui $at, %hi(jtbl_8007075C) */
+    r_at = r_at + r_v0; /* 800AE338 addu $at, $at, $v0 */
+    r_v0 = bl_lw(r_at + 0x75Cu); /* 800AE33C lw $v0, %lo(jtbl_8007075C)($at) */
+    ; /* 800AE340 nop  */
+    /* 800AE344 jr $v0 */
+    { u32 t_ = r_v0; ; switch (t_) { case 0x800AE34Cu: goto L_800AE34C; case 0x800AE68Cu: goto L_800AE68C; case 0x800AE824u: goto L_800AE824; case 0x800AE93Cu: goto L_800AE93C; case 0x800AEAA4u: goto L_800AEAA4; case 0x800AEAB8u: goto L_800AEAB8; case 0x800AEAE0u: goto L_800AEAE0; case 0x800AEBA4u: goto L_800AEBA4; case 0x800AEBE0u: goto L_800AEBE0; case 0x800AEBECu: goto L_800AEBEC; case 0x800AEBF8u: goto L_800AEBF8; case 0x800AEC88u: goto L_800AEC88; default: bl_fail(FN, "jump-table target", t_); } }
+L_800AE34C:
+    r_s4 = 0u + 0u; /* 800AE34C addu $s4, $zero, $zero */
+    r_s2 = 0x1F800000u; /* 800AE350 lui $s2, (0x1F80001C >> 16) */
+    r_v0 = bl_lbu(r_s0 + 0x4u); /* 800AE354 lbu $v0, 0x4($s0) */
+    ; /* 800AE358 nop  */
+    r_v0 = r_v0 & 0x80u; /* 800AE35C andi $v0, $v0, 0x80 */
+    /* 800AE360 beqz $v0, .L800AE3AC */
+    { int c_ = (r_v0 == 0); r_s1 = r_s0 + 0u; if (c_) goto L_800AE3AC; }
+    r_v1 = bl_lbu(r_s3 + 0x20u); /* 800AE368 lbu $v1, 0x20($s3) */
+    r_a0 = bl_lbu(r_s0 + 0x3u); /* 800AE36C lbu $a0, 0x3($s0) */
+    r_v0 = r_v1 << 1; /* 800AE370 sll $v0, $v1, 1 */
+    r_v0 = r_v0 + r_v1; /* 800AE374 addu $v0, $v0, $v1 */
+    r_v0 = r_v0 << 3; /* 800AE378 sll $v0, $v0, 3 */
+    r_v0 = r_v0 - r_v1; /* 800AE37C subu $v0, $v0, $v1 */
+    r_v0 = r_v0 << 4; /* 800AE380 sll $v0, $v0, 4 */
+    r_v1 = 0x800D0000u; /* 800AE384 lui $v1, %hi(D_800CCDE9) */
+    r_v1 = r_v1 + 0xFFFFCDE9u; /* 800AE388 addiu $v1, $v1, %lo(D_800CCDE9) */
+    r_v0 = r_v0 + r_v1; /* 800AE38C addu $v0, $v0, $v1 */
+    r_v0 = r_v0 + r_a0; /* 800AE390 addu $v0, $v0, $a0 */
+    r_a0 = 0u | 0xFFFFu; /* 800AE394 ori $a0, $zero, 0xFFFF */
+    r_v0 = bl_lbu(r_v0); /* 800AE398 lbu $v0, 0x0($v0) */
+    r_v1 = bl_lbu(r_s0 + 0x3u); /* 800AE39C lbu $v1, 0x3($s0) */
+    r_v0 = r_v0 + r_a0; /* 800AE3A0 addu $v0, $v0, $a0 */
+    /* 800AE3A4 j .L800AE3B0 */
+    r_s5 = r_v1 + r_v0; goto L_800AE3B0;
+L_800AE3AC:
+    r_s5 = bl_lbu(r_s0 + 0x3u); /* 800AE3AC lbu $s5, 0x3($s0) */
+L_800AE3B0:
+    r_v0 = bl_lbu(r_s1 + 0xCu); /* 800AE3B0 lbu $v0, 0xC($s1) */
+    ; /* 800AE3B4 nop  */
+    r_v0 = r_v0 & 0x80u; /* 800AE3B8 andi $v0, $v0, 0x80 */
+    /* 800AE3BC bnez $v0, .L800AE3D8 */
+    { int c_ = (r_v0 != 0); ; if (c_) goto L_800AE3D8; }
+    r_v0 = bl_lbu(r_s1 + 0x4u); /* 800AE3C4 lbu $v0, 0x4($s1) */
+    ; /* 800AE3C8 nop  */
+    r_v0 = r_v0 & 0x80u; /* 800AE3CC andi $v0, $v0, 0x80 */
+    /* 800AE3D0 beqz $v0, .L800AE410 */
+    { int c_ = (r_v0 == 0); r_a0 = r_s3 + 0u; if (c_) goto L_800AE410; }
+L_800AE3D8:
+    /* 800AE3D8 jal func_800AF400 */
+    ;
+    r_v0 = (u32)func_800AF400(); /* func_800AF400 */
+    r_v0 = r_v0 << 2; /* 800AE3E0 sll $v0, $v0, 2 */
+    r_t7 = 0x800D0000u; /* 800AE3E4 lui $t7, %hi(D_800D3368) */
+    r_t7 = r_t7 + 0x3368u; /* 800AE3E8 addiu $t7, $t7, %lo(D_800D3368) */
+    r_v0 = r_v0 + r_t7; /* 800AE3EC addu $v0, $v0, $t7 */
+    r_a0 = bl_lw(r_v0); /* 800AE3F0 lw $a0, 0x0($v0) */
+    ; /* 800AE3F4 nop  */
+    /* 800AE3F8 bnez $a0, .L800AE414 */
+    { int c_ = (r_a0 != 0); r_v0 = r_s5 << 16; if (c_) goto L_800AE414; }
+    /* 800AE400 jal func_800AF400 */
+    ;
+    r_v0 = (u32)func_800AF400(); /* func_800AF400 */
+    r_s4 = r_v0 + 0x1u; /* 800AE408 addiu $s4, $v0, 0x1 */
+    r_a0 = r_s3 + 0u; /* 800AE40C addu $a0, $s3, $zero */
+L_800AE410:
+    r_v0 = r_s5 << 16; /* 800AE410 sll $v0, $s5, 16 */
+L_800AE414:
+    /* 800AE414 bltz $v0, .L800AE680 */
+    { int c_ = ((s32)r_v0 < 0); ; if (c_) goto L_800AE680; }
+    r_v1 = bl_lbu(r_s1 + 0x5u); /* 800AE41C lbu $v1, 0x5($s1) */
+    ; /* 800AE420 nop  */
+    /* 800AE424 beqz $v1, .L800AE454 */
+    { int c_ = (r_v1 == 0); r_a2 = r_s2 + 0u; if (c_) goto L_800AE454; }
+    r_v0 = bl_lw(r_a0 + 0x4u); /* 800AE42C lw $v0, 0x4($a0) */
+    r_a1 = r_v1 << 5; /* 800AE430 sll $a1, $v1, 5 */
+    r_a1 = r_a1 - r_v1; /* 800AE434 subu $a1, $a1, $v1 */
+    r_a1 = r_a1 << 2; /* 800AE438 sll $a1, $a1, 2 */
+    r_a0 = r_v0 + 0xCu; /* 800AE43C addiu $a0, $v0, 0xC */
+    r_a1 = r_a1 + r_v0; /* 800AE440 addu $a1, $a1, $v0 */
+    /* 800AE444 jal CompMatrix */
+    r_a1 = r_a1 + 0x2Cu;
+    r_v0 = bl_CompMatrix(FN, r_a0, r_a1, r_a2); /* CompMatrix */
+    /* 800AE44C j .L800AE4A0 */
+    r_v0 = r_s4 << 16; goto L_800AE4A0;
+L_800AE454:
+    r_v0 = bl_lw(r_a0 + 0x4u); /* 800AE454 lw $v0, 0x4($a0) */
+    ; /* 800AE458 nop  */
+    r_v1 = bl_lw(r_v0 + 0xCu); /* 800AE45C lw $v1, 0xC($v0) */
+    r_a0 = bl_lw(r_v0 + 0x10u); /* 800AE460 lw $a0, 0x10($v0) */
+    r_a1 = bl_lw(r_v0 + 0x14u); /* 800AE464 lw $a1, 0x14($v0) */
+    r_a2 = bl_lw(r_v0 + 0x18u); /* 800AE468 lw $a2, 0x18($v0) */
+    bl_sw(r_s2, r_v1); /* 800AE46C sw $v1, (0x1F800000 & 0xFFFF)($s2) */
+    bl_sw(r_s2 + 0x4u, r_a0); /* 800AE470 sw $a0, (0x1F800004 & 0xFFFF)($s2) */
+    bl_sw(r_s2 + 0x8u, r_a1); /* 800AE474 sw $a1, (0x1F800008 & 0xFFFF)($s2) */
+    bl_sw(r_s2 + 0xCu, r_a2); /* 800AE478 sw $a2, (0x1F80000C & 0xFFFF)($s2) */
+    r_v1 = bl_lw(r_v0 + 0x1Cu); /* 800AE47C lw $v1, 0x1C($v0) */
+    r_a0 = bl_lw(r_v0 + 0x20u); /* 800AE480 lw $a0, 0x20($v0) */
+    r_a1 = bl_lw(r_v0 + 0x24u); /* 800AE484 lw $a1, 0x24($v0) */
+    r_a2 = bl_lw(r_v0 + 0x28u); /* 800AE488 lw $a2, 0x28($v0) */
+    bl_sw(r_s2 + 0x10u, r_v1); /* 800AE48C sw $v1, (0x1F800010 & 0xFFFF)($s2) */
+    bl_sw(r_s2 + 0x14u, r_a0); /* 800AE490 sw $a0, (0x1F800014 & 0xFFFF)($s2) */
+    bl_sw(r_s2 + 0x18u, r_a1); /* 800AE494 sw $a1, (0x1F800018 & 0xFFFF)($s2) */
+    bl_sw(r_s2 + 0x1Cu, r_a2); /* 800AE498 sw $a2, (0x1F80001C & 0xFFFF)($s2) */
+    r_v0 = r_s4 << 16; /* 800AE49C sll $v0, $s4, 16 */
+L_800AE4A0:
+    r_v0 = BL_SRA(r_v0, 16); /* 800AE4A0 sra $v0, $v0, 16 */
+    /* 800AE4A4 beqz $v0, .L800AE4F4 */
+    { int c_ = (r_v0 == 0); r_v1 = r_v0 + 0xFFFFFFFFu; if (c_) goto L_800AE4F4; }
+    r_v0 = r_v1 << 3; /* 800AE4AC sll $v0, $v1, 3 */
+    r_v0 = r_v0 - r_v1; /* 800AE4B0 subu $v0, $v0, $v1 */
+    r_v0 = r_v0 << 2; /* 800AE4B4 sll $v0, $v0, 2 */
+    r_at = 0x800C0000u; /* 800AE4B8 lui $at, %hi(D_800C3EBE) */
+    r_at = r_at + r_v0; /* 800AE4BC addu $at, $at, $v0 */
+    r_v1 = bl_lhu(r_at + 0x3EBEu); /* 800AE4C0 lhu $v1, %lo(D_800C3EBE)($at) */
+    ; /* 800AE4C4 nop  */
+    bl_sw(r_s2 + 0x14u, r_v1); /* 800AE4C8 sw $v1, (0x1F800014 & 0xFFFF)($s2) */
+    r_at = 0x800C0000u; /* 800AE4CC lui $at, %hi(D_800C3EC2) */
+    r_at = r_at + r_v0; /* 800AE4D0 addu $at, $at, $v0 */
+    r_v1 = bl_lhu(r_at + 0x3EC2u); /* 800AE4D4 lhu $v1, %lo(D_800C3EC2)($at) */
+    ; /* 800AE4D8 nop  */
+    bl_sw(r_s2 + 0x18u, r_v1); /* 800AE4DC sw $v1, (0x1F800018 & 0xFFFF)($s2) */
+    r_at = 0x800C0000u; /* 800AE4E0 lui $at, %hi(D_800C3EC0) */
+    r_at = r_at + r_v0; /* 800AE4E4 addu $at, $at, $v0 */
+    r_v0 = bl_lhu(r_at + 0x3EC0u); /* 800AE4E8 lhu $v0, %lo(D_800C3EC0)($at) */
+    ; /* 800AE4EC nop  */
+    bl_sw(r_s2 + 0x1Cu, r_v0); /* 800AE4F0 sw $v0, (0x1F80001C & 0xFFFF)($s2) */
+L_800AE4F4:
+    /* 800AE4F4 jal SetRotMatrix */
+    r_a0 = r_s2 + 0u;
+    SetRotMatrix((MATRIX*)(uintptr_t)bg_arg(r_a0)); /* SetRotMatrix */
+    /* 800AE4FC jal SetTransMatrix */
+    r_a0 = r_s2 + 0u;
+    SetTransMatrix((MATRIX*)(uintptr_t)bg_arg(r_a0)); /* SetTransMatrix */
+    r_v0 = bl_lhu(r_s1 + 0x6u); /* 800AE504 lhu $v0, 0x6($s1) */
+    r_t7 = bl_lw(r_sp + 0x88u); /* 800AE508 lw $t7, 0x88($sp) */
+    bl_sh(r_sp + 0x50u, r_v0); /* 800AE50C sh $v0, 0x50($sp) */
+    r_v0 = bl_lhu(r_s1 + 0x8u); /* 800AE510 lhu $v0, 0x8($s1) */
+    ; /* 800AE514 nop  */
+    bl_sh(r_sp + 0x52u, r_v0); /* 800AE518 sh $v0, 0x52($sp) */
+    r_v0 = bl_lhu(r_s1 + 0xAu); /* 800AE51C lhu $v0, 0xA($s1) */
+    ; /* 800AE520 nop  */
+    bl_sh(r_sp + 0x54u, r_v0); /* 800AE524 sh $v0, 0x54($sp) */
+    MTC2(bl_lw(r_t7), 0); /* 800AE528 lwc2 $0, 0x0($t7) */
+    MTC2(bl_lw(r_t7 + 0x4u), 1); /* 800AE52C lwc2 $1, 0x4($t7) */
+    ; /* 800AE530 nop  */
+    ; /* 800AE534 nop  */
+    doCOP2((int)0x4A480012u); /* MVMVA 1, 0, 0, 0, 0 */ /* 800AE538 MVMVA 1, 0, 0, 0, 0 */
+    r_v0 = r_sp + 0x58u; /* 800AE53C addiu $v0, $sp, 0x58 */
+    bl_sw(r_v0, (u32)MFC2(25)); /* 800AE540 swc2 $25, 0x0($v0) */
+    bl_sw(r_v0 + 0x4u, (u32)MFC2(26)); /* 800AE544 swc2 $26, 0x4($v0) */
+    bl_sw(r_v0 + 0x8u, (u32)MFC2(27)); /* 800AE548 swc2 $27, 0x8($v0) */
+    r_v0 = bl_lhu(r_sp + 0x58u); /* 800AE54C lhu $v0, 0x58($sp) */
+    r_v1 = bl_lhu(r_sp + 0x60u); /* 800AE550 lhu $v1, 0x60($sp) */
+    bl_sh(r_sp + 0x50u, r_v0); /* 800AE554 sh $v0, 0x50($sp) */
+    bl_sh(r_sp + 0x54u, r_v1); /* 800AE558 sh $v1, 0x54($sp) */
+    r_v0 = bl_lbu(r_s1 + 0xCu); /* 800AE55C lbu $v0, 0xC($s1) */
+    r_t7 = 0u | 0x1u; /* 800AE560 ori $t7, $zero, 0x1 */
+    r_v1 = r_v0 & 0x7Fu; /* 800AE564 andi $v1, $v0, 0x7F */
+    /* 800AE568 bne $v1, $t7, .L800AE57C */
+    { int c_ = (r_v1 != r_t7); r_v0 = 0u | 0x2u; if (c_) goto L_800AE57C; }
+    r_v0 = bl_lhu(r_s3 + 0x60u); /* 800AE570 lhu $v0, 0x60($s3) */
+    /* 800AE574 j .L800AE5D8 */
+    bl_sh(r_sp + 0x52u, r_v0); goto L_800AE5D8;
+L_800AE57C:
+    /* 800AE57C bne $v1, $v0, .L800AE5CC */
+    { int c_ = (r_v1 != r_v0); ; if (c_) goto L_800AE5CC; }
+    r_v1 = 0x80060000u; /* 800AE584 lui $v1, %hi(D_800658C8) */
+    r_v1 = bl_lw(r_v1 + 0x58C8u); /* 800AE588 lw $v1, %lo(D_800658C8)($v1) */
+    r_a0 = bl_lw(r_sp + 0x88u); /* 800AE58C lw $a0, 0x88($sp) */
+    r_v0 = bl_lhu(r_v1 + 0x4DCu); /* 800AE590 lhu $v0, 0x4DC($v1) */
+    ; /* 800AE594 nop  */
+    bl_sh(r_sp + 0x50u, r_v0); /* 800AE598 sh $v0, 0x50($sp) */
+    r_v0 = bl_lhu(r_v1 + 0x4DEu); /* 800AE59C lhu $v0, 0x4DE($v1) */
+    ; /* 800AE5A0 nop  */
+    bl_sh(r_sp + 0x52u, r_v0); /* 800AE5A4 sh $v0, 0x52($sp) */
+    r_v0 = bl_lhu(r_v1 + 0x4E0u); /* 800AE5A8 lhu $v0, 0x4E0($v1) */
+    /* 800AE5AC jal func_800A579C */
+    bl_sh(r_sp + 0x54u, r_v0);
+    r_v0 = bl_call_guest(FN, 0x800A579Cu, r_a0, r_a1, r_a2, r_a3, r_sp); /* func_800A579C */
+    r_a1 = r_v0 + 0u; /* 800AE5B4 addu $a1, $v0, $zero */
+    r_a0 = bl_lw(r_sp + 0x88u); /* 800AE5B8 lw $a0, 0x88($sp) */
+    /* 800AE5BC jal func_800A5870 */
+    r_a2 = r_sp + 0x68u;
+    r_v0 = bl_call_guest(FN, 0x800A5870u, r_a0, r_a1, r_a2, r_a3, r_sp); /* func_800A5870 */
+    /* 800AE5C4 j .L800AE5D8 */
+    ; goto L_800AE5D8;
+L_800AE5CC:
+    r_v0 = bl_lhu(r_sp + 0x5Cu); /* 800AE5CC lhu $v0, 0x5C($sp) */
+    ; /* 800AE5D0 nop  */
+    bl_sh(r_sp + 0x52u, r_v0); /* 800AE5D4 sh $v0, 0x52($sp) */
+L_800AE5D8:
+    r_v0 = bl_lbu(r_s1 + 0xDu); /* 800AE5D8 lbu $v0, 0xD($s1) */
+    ; /* 800AE5DC nop  */
+    /* 800AE5E0 beqz $v0, .L800AE5F4 */
+    { int c_ = (r_v0 == 0); ; if (c_) goto L_800AE5F4; }
+    r_s2 = bl_lh(r_s1 + 0xEu); /* 800AE5E8 lh $s2, 0xE($s1) */
+    /* 800AE5EC j .L800AE608 */
+    ; goto L_800AE608;
+L_800AE5F4:
+    r_v0 = bl_lw(r_s3 + 0x4u); /* 800AE5F4 lw $v0, 0x4($s3) */
+    r_v1 = bl_lh(r_s1 + 0xEu); /* 800AE5F8 lh $v1, 0xE($s1) */
+    r_v0 = bl_lh(r_v0 + 0x56u); /* 800AE5FC lh $v0, 0x56($v0) */
+    r_v1 = r_v1 + 0x400u; /* 800AE600 addiu $v1, $v1, 0x400 */
+    r_s2 = r_v0 + r_v1; /* 800AE604 addu $s2, $v0, $v1 */
+L_800AE608:
+    r_v1 = bl_lh(r_s1 + 0x10u); /* 800AE608 lh $v1, 0x10($s1) */
+    r_v0 = bl_lh(r_s3 + 0x1Cu); /* 800AE60C lh $v0, 0x1C($s3) */
+    ; /* 800AE610 nop  */
+    BL_MULT(r_v1, r_v0); /* 800AE614 mult $v1, $v0 */
+    r_s0 = 0x80070000u; /* 800AE618 lui $s0, %hi(D_8006BE10) */
+    r_s0 = r_s0 + 0xFFFFBE10u; /* 800AE61C addiu $s0, $s0, %lo(D_8006BE10) */
+    r_v1 = bl_lbu(r_s1 + 0x12u); /* 800AE620 lbu $v1, 0x12($s1) */
+    r_v0 = lo; /* 800AE624 mflo $v0 */
+    /* 800AE628 beqz $v1, .L800AE638 */
+    { int c_ = (r_v1 == 0); r_s4 = BL_SRA(r_v0, 8); if (c_) goto L_800AE638; }
+    r_s0 = 0x80060000u; /* 800AE630 lui $s0, %hi(D_8005A474) */
+    r_s0 = r_s0 + 0xFFFFA474u; /* 800AE634 addiu $s0, $s0, %lo(D_8005A474) */
+L_800AE638:
+    /* 800AE638 jal func_800AF400 */
+    ;
+    r_v0 = (u32)func_800AF400(); /* func_800AF400 */
+    r_a1 = bl_lbu(r_s1 + 0x4u); /* 800AE640 lbu $a1, 0x4($s1) */
+    /* 800AE644 jal func_800B12D0 */
+    r_a0 = r_v0 + 0u;
+    r_v0 = (u32)func_800B12D0((u32)(uintptr_t)bg_arg(r_a0), (u32)(uintptr_t)bg_arg(r_a1)); /* func_800B12D0 */
+    /* 800AE64C beqz $v0, .L800AE680 */
+    { int c_ = (r_v0 == 0); r_a0 = r_s0 + 0u; if (c_) goto L_800AE680; }
+    r_a1 = r_s5 << 16; /* 800AE654 sll $a1, $s5, 16 */
+    r_a1 = BL_SRA(r_a1, 16); /* 800AE658 sra $a1, $a1, 16 */
+    r_a2 = r_sp + 0x50u; /* 800AE65C addiu $a2, $sp, 0x50 */
+    r_a3 = r_s2 << 16; /* 800AE660 sll $a3, $s2, 16 */
+    r_a3 = BL_SRA(r_a3, 16); /* 800AE664 sra $a3, $a3, 16 */
+    r_v0 = r_s4 << 16; /* 800AE668 sll $v0, $s4, 16 */
+    r_v0 = BL_SRA(r_v0, 16); /* 800AE66C sra $v0, $v0, 16 */
+    bl_sw(r_sp + 0x10u, r_v0); /* 800AE670 sw $v0, 0x10($sp) */
+    bl_sw(r_sp + 0x14u, r_s1); /* 800AE674 sw $s1, 0x14($sp) */
+    /* 800AE678 jal func_800AFB4C */
+    bl_sw(r_sp + 0x18u, r_s3);
+    r_v0 = bl_call_guest(FN, 0x800AFB4Cu, r_a0, r_a1, r_a2, r_a3, r_sp); /* func_800AFB4C */
+L_800AE680:
+    r_v0 = bl_lw(r_s3 + 0xA0u); /* 800AE680 lw $v0, 0xA0($s3) */
+    /* 800AE684 j .L800AEE58 */
+    r_v0 = r_v0 + 0x14u; goto L_800AEE58;
+L_800AE68C:
+    r_v0 = bl_lbu(r_s0 + 0x4u); /* 800AE68C lbu $v0, 0x4($s0) */
+    ; /* 800AE690 nop  */
+    /* 800AE694 beqz $v0, .L800AE7FC */
+    { int c_ = (r_v0 == 0); ; if (c_) goto L_800AE7FC; }
+    r_v1 = bl_lbu(r_s0 + 0x3u); /* 800AE69C lbu $v1, 0x3($s0) */
+    ; /* 800AE6A0 nop  */
+    r_v0 = (u32)(r_v1 < 0x2u); /* 800AE6A4 sltiu $v0, $v1, 0x2 */
+    /* 800AE6A8 beqz $v0, .L800AE7F0 */
+    { int c_ = (r_v0 == 0); ; if (c_) goto L_800AE7F0; }
+    r_v0 = bl_lbu(r_s0 + 0x5u); /* 800AE6B0 lbu $v0, 0x5($s0) */
+    ; /* 800AE6B4 nop  */
+    /* 800AE6B8 beqz $v0, .L800AE6D4 */
+    { int c_ = (r_v0 == 0); r_a1 = r_s0 + 0u; if (c_) goto L_800AE6D4; }
+    r_v0 = r_v1 << 2; /* 800AE6C0 sll $v0, $v1, 2 */
+    r_v0 = r_v0 + r_v1; /* 800AE6C4 addu $v0, $v0, $v1 */
+    r_v0 = r_v0 << 2; /* 800AE6C8 sll $v0, $v0, 2 */
+    /* 800AE6CC j .L800AE6E4 */
+    r_v1 = 0u + 0xFFFFFFFFu; goto L_800AE6E4;
+L_800AE6D4:
+    r_v0 = r_v1 << 2; /* 800AE6D4 sll $v0, $v1, 2 */
+    r_v0 = r_v0 + r_v1; /* 800AE6D8 addu $v0, $v0, $v1 */
+    r_v1 = bl_lbu(r_s3 + 0x20u); /* 800AE6DC lbu $v1, 0x20($s3) */
+    r_v0 = r_v0 << 2; /* 800AE6E0 sll $v0, $v0, 2 */
+L_800AE6E4:
+    r_at = 0x800D0000u; /* 800AE6E4 lui $at, %hi(D_800D3314) */
+    r_at = r_at + r_v0; /* 800AE6E8 addu $at, $at, $v0 */
+    bl_sh(r_at + 0x3314u, r_v1); /* 800AE6EC sh $v1, %lo(D_800D3314)($at) */
+    r_v1 = bl_lbu(r_a1 + 0x3u); /* 800AE6F0 lbu $v1, 0x3($a1) */
+    r_a0 = 0x800D0000u; /* 800AE6F4 lui $a0, %hi(D_800D2FC0) */
+    r_a0 = bl_lw(r_a0 + 0x2FC0u); /* 800AE6F8 lw $a0, %lo(D_800D2FC0)($a0) */
+    r_v0 = r_v1 << 2; /* 800AE6FC sll $v0, $v1, 2 */
+    r_v0 = r_v0 + r_v1; /* 800AE700 addu $v0, $v0, $v1 */
+    r_v1 = bl_lbu(r_a1 + 0x6u); /* 800AE704 lbu $v1, 0x6($a1) */
+    r_v0 = r_v0 << 2; /* 800AE708 sll $v0, $v0, 2 */
+    r_at = 0x800D0000u; /* 800AE70C lui $at, %hi(D_800D3316) */
+    r_at = r_at + r_v0; /* 800AE710 addu $at, $at, $v0 */
+    bl_sh(r_at + 0x3316u, r_v1); /* 800AE714 sh $v1, %lo(D_800D3316)($at) */
+    r_v1 = bl_lbu(r_a1 + 0x3u); /* 800AE718 lbu $v1, 0x3($a1) */
+    r_v0 = bl_lbu(r_a1 + 0x7u); /* 800AE71C lbu $v0, 0x7($a1) */
+    r_v1 = r_v1 << 1; /* 800AE720 sll $v1, $v1, 1 */
+    r_v1 = r_v1 + r_a0; /* 800AE724 addu $v1, $v1, $a0 */
+    r_v0 = r_v0 << 4; /* 800AE728 sll $v0, $v0, 4 */
+    bl_sh(r_v1 + 0x2u, r_v0); /* 800AE72C sh $v0, 0x2($v1) */
+    r_v1 = bl_lbu(r_a1 + 0x3u); /* 800AE730 lbu $v1, 0x3($a1) */
+    r_v0 = bl_lbu(r_a1 + 0x8u); /* 800AE734 lbu $v0, 0x8($a1) */
+    r_v1 = r_v1 << 1; /* 800AE738 sll $v1, $v1, 1 */
+    r_v1 = r_a0 + r_v1; /* 800AE73C addu $v1, $a0, $v1 */
+    r_v0 = r_v0 << 4; /* 800AE740 sll $v0, $v0, 4 */
+    bl_sh(r_v1 + 0x8u, r_v0); /* 800AE744 sh $v0, 0x8($v1) */
+    r_v0 = bl_lbu(r_a1 + 0x3u); /* 800AE748 lbu $v0, 0x3($a1) */
+    r_v1 = bl_lbu(r_a1 + 0x9u); /* 800AE74C lbu $v1, 0x9($a1) */
+    r_v0 = r_v0 << 1; /* 800AE750 sll $v0, $v0, 1 */
+    r_a0 = r_a0 + r_v0; /* 800AE754 addu $a0, $a0, $v0 */
+    r_v1 = r_v1 << 4; /* 800AE758 sll $v1, $v1, 4 */
+    bl_sh(r_a0 + 0xEu, r_v1); /* 800AE75C sh $v1, 0xE($a0) */
+    r_v1 = bl_lbu(r_a1 + 0x3u); /* 800AE760 lbu $v1, 0x3($a1) */
+    ; /* 800AE764 nop  */
+    r_v0 = r_v1 << 2; /* 800AE768 sll $v0, $v1, 2 */
+    r_v0 = r_v0 + r_v1; /* 800AE76C addu $v0, $v0, $v1 */
+    r_v1 = bl_lhu(r_a1 + 0xAu); /* 800AE770 lhu $v1, 0xA($a1) */
+    r_v0 = r_v0 << 2; /* 800AE774 sll $v0, $v0, 2 */
+    r_at = 0x800D0000u; /* 800AE778 lui $at, %hi(D_800D330C) */
+    r_at = r_at + r_v0; /* 800AE77C addu $at, $at, $v0 */
+    bl_sh(r_at + 0x330Cu, r_v1); /* 800AE780 sh $v1, %lo(D_800D330C)($at) */
+    r_v1 = bl_lbu(r_a1 + 0x3u); /* 800AE784 lbu $v1, 0x3($a1) */
+    ; /* 800AE788 nop  */
+    r_v0 = r_v1 << 2; /* 800AE78C sll $v0, $v1, 2 */
+    r_v0 = r_v0 + r_v1; /* 800AE790 addu $v0, $v0, $v1 */
+    r_v1 = bl_lhu(r_a1 + 0xCu); /* 800AE794 lhu $v1, 0xC($a1) */
+    r_v0 = r_v0 << 2; /* 800AE798 sll $v0, $v0, 2 */
+    r_at = 0x800D0000u; /* 800AE79C lui $at, %hi(D_800D330E) */
+    r_at = r_at + r_v0; /* 800AE7A0 addu $at, $at, $v0 */
+    bl_sh(r_at + 0x330Eu, r_v1); /* 800AE7A4 sh $v1, %lo(D_800D330E)($at) */
+    r_v1 = bl_lbu(r_a1 + 0x3u); /* 800AE7A8 lbu $v1, 0x3($a1) */
+    ; /* 800AE7AC nop  */
+    r_v0 = r_v1 << 2; /* 800AE7B0 sll $v0, $v1, 2 */
+    r_v0 = r_v0 + r_v1; /* 800AE7B4 addu $v0, $v0, $v1 */
+    r_v1 = bl_lhu(r_a1 + 0xEu); /* 800AE7B8 lhu $v1, 0xE($a1) */
+    r_v0 = r_v0 << 2; /* 800AE7BC sll $v0, $v0, 2 */
+    r_at = 0x800D0000u; /* 800AE7C0 lui $at, %hi(D_800D3310) */
+    r_at = r_at + r_v0; /* 800AE7C4 addu $at, $at, $v0 */
+    bl_sh(r_at + 0x3310u, r_v1); /* 800AE7C8 sh $v1, %lo(D_800D3310)($at) */
+    r_v1 = bl_lbu(r_a1 + 0x3u); /* 800AE7CC lbu $v1, 0x3($a1) */
+    ; /* 800AE7D0 nop  */
+    r_v0 = r_v1 << 2; /* 800AE7D4 sll $v0, $v1, 2 */
+    r_v0 = r_v0 + r_v1; /* 800AE7D8 addu $v0, $v0, $v1 */
+    r_v1 = bl_lhu(r_a1 + 0x10u); /* 800AE7DC lhu $v1, 0x10($a1) */
+    r_v0 = r_v0 << 2; /* 800AE7E0 sll $v0, $v0, 2 */
+    r_at = 0x800D0000u; /* 800AE7E4 lui $at, %hi(D_800D330A) */
+    r_at = r_at + r_v0; /* 800AE7E8 addu $at, $at, $v0 */
+    bl_sh(r_at + 0x330Au, r_v1); /* 800AE7EC sh $v1, %lo(D_800D330A)($at) */
+L_800AE7F0:
+    r_v0 = bl_lw(r_s3 + 0xA0u); /* 800AE7F0 lw $v0, 0xA0($s3) */
+    /* 800AE7F4 j .L800AEE58 */
+    r_v0 = r_v0 + 0x12u; goto L_800AEE58;
+L_800AE7FC:
+    r_v0 = bl_lbu(r_s0 + 0x3u); /* 800AE7FC lbu $v0, 0x3($s0) */
+    ; /* 800AE800 nop  */
+    r_v1 = r_v0 << 2; /* 800AE804 sll $v1, $v0, 2 */
+    r_v1 = r_v1 + r_v0; /* 800AE808 addu $v1, $v1, $v0 */
+    r_v1 = r_v1 << 2; /* 800AE80C sll $v1, $v1, 2 */
+    r_at = 0x800D0000u; /* 800AE810 lui $at, %hi(D_800D330A) */
+    r_at = r_at + r_v1; /* 800AE814 addu $at, $at, $v1 */
+    bl_sh(r_at + 0x330Au, 0u); /* 800AE818 sh $zero, %lo(D_800D330A)($at) */
+    /* 800AE81C j .L800AEE4C */
+    ; goto L_800AEE4C;
+L_800AE824:
+    r_v0 = bl_lbu(r_s0 + 0x3u); /* 800AE824 lbu $v0, 0x3($s0) */
+    r_a1 = bl_lw(r_sp + 0x78u); /* 800AE828 lw $a1, 0x78($sp) */
+    r_a0 = r_v0 << 3; /* 800AE82C sll $a0, $v0, 3 */
+    r_a0 = r_a0 - r_v0; /* 800AE830 subu $a0, $a0, $v0 */
+    r_v0 = bl_lw(r_s3 + 0x110u); /* 800AE834 lw $v0, 0x110($s3) */
+    r_a0 = r_a0 << 4; /* 800AE838 sll $a0, $a0, 4 */
+    /* 800AE83C jal func_800A3484 */
+    r_a0 = r_a0 + r_v0;
+    func_800A3484((s16*)(uintptr_t)bg_arg(r_a0)); /* func_800A3484 */
+    r_v0 = bl_lbu(r_s0 + 0x4u); /* 800AE844 lbu $v0, 0x4($s0) */
+    ; /* 800AE848 nop  */
+    /* 800AE84C beqz $v0, .L800AEE4C */
+    { int c_ = (r_v0 == 0); ; if (c_) goto L_800AEE4C; }
+    r_t0 = bl_lbu(r_s0 + 0x3u); /* 800AE854 lbu $t0, 0x3($s0) */
+    r_v0 = bl_lbu(r_s3 + 0x10Cu); /* 800AE858 lbu $v0, 0x10C($s3) */
+    ; /* 800AE85C nop  */
+    r_v0 = (u32)(r_t0 < r_v0); /* 800AE860 sltu $v0, $t0, $v0 */
+    /* 800AE864 beqz $v0, .L800AE930 */
+    { int c_ = (r_v0 == 0); r_a0 = r_t0 << 3; if (c_) goto L_800AE930; }
+    r_v0 = bl_lbu(r_s0 + 0x6u); /* 800AE86C lbu $v0, 0x6($s0) */
+    r_v1 = bl_lw(r_s3 + 0x110u); /* 800AE870 lw $v1, 0x110($s3) */
+    r_a2 = bl_lbu(r_s0 + 0x5u); /* 800AE874 lbu $a2, 0x5($s0) */
+    r_a3 = bl_lbu(r_s0 + 0x2u); /* 800AE878 lbu $a3, 0x2($s0) */
+    bl_sw(r_sp + 0x10u, r_v0); /* 800AE87C sw $v0, 0x10($sp) */
+    r_v0 = bl_lbu(r_s0 + 0x7u); /* 800AE880 lbu $v0, 0x7($s0) */
+    ; /* 800AE884 nop  */
+    bl_sw(r_sp + 0x14u, r_v0); /* 800AE888 sw $v0, 0x14($sp) */
+    r_v0 = bl_lbu(r_s0 + 0x8u); /* 800AE88C lbu $v0, 0x8($s0) */
+    ; /* 800AE890 nop  */
+    bl_sw(r_sp + 0x18u, r_v0); /* 800AE894 sw $v0, 0x18($sp) */
+    r_v0 = bl_lbu(r_s0 + 0x9u); /* 800AE898 lbu $v0, 0x9($s0) */
+    ; /* 800AE89C nop  */
+    bl_sw(r_sp + 0x1Cu, r_v0); /* 800AE8A0 sw $v0, 0x1C($sp) */
+    r_v0 = bl_lbu(r_s0 + 0xAu); /* 800AE8A4 lbu $v0, 0xA($s0) */
+    ; /* 800AE8A8 nop  */
+    bl_sw(r_sp + 0x20u, r_v0); /* 800AE8AC sw $v0, 0x20($sp) */
+    r_v0 = bl_lbu(r_s0 + 0xBu); /* 800AE8B0 lbu $v0, 0xB($s0) */
+    ; /* 800AE8B4 nop  */
+    bl_sw(r_sp + 0x24u, r_v0); /* 800AE8B8 sw $v0, 0x24($sp) */
+    r_v0 = bl_lbu(r_s0 + 0xCu); /* 800AE8BC lbu $v0, 0xC($s0) */
+    ; /* 800AE8C0 nop  */
+    bl_sw(r_sp + 0x28u, r_v0); /* 800AE8C4 sw $v0, 0x28($sp) */
+    r_v0 = bl_lbu(r_s0 + 0xDu); /* 800AE8C8 lbu $v0, 0xD($s0) */
+    ; /* 800AE8CC nop  */
+    bl_sw(r_sp + 0x2Cu, r_v0); /* 800AE8D0 sw $v0, 0x2C($sp) */
+    r_v0 = bl_lh(r_s0 + 0xEu); /* 800AE8D4 lh $v0, 0xE($s0) */
+    ; /* 800AE8D8 nop  */
+    bl_sw(r_sp + 0x30u, r_v0); /* 800AE8DC sw $v0, 0x30($sp) */
+    r_v0 = bl_lh(r_s0 + 0x10u); /* 800AE8E0 lh $v0, 0x10($s0) */
+    r_a1 = 0x800C0000u; /* 800AE8E4 lui $a1, %hi(D_800C3D04) */
+    r_a1 = r_a1 + 0x3D04u; /* 800AE8E8 addiu $a1, $a1, %lo(D_800C3D04) */
+    bl_sw(r_sp + 0x34u, r_v0); /* 800AE8EC sw $v0, 0x34($sp) */
+    r_v0 = bl_lh(r_s0 + 0x12u); /* 800AE8F0 lh $v0, 0x12($s0) */
+    ; /* 800AE8F4 nop  */
+    bl_sw(r_sp + 0x38u, r_v0); /* 800AE8F8 sw $v0, 0x38($sp) */
+    r_v0 = bl_lh(r_s0 + 0x14u); /* 800AE8FC lh $v0, 0x14($s0) */
+    r_a0 = r_a0 - r_t0; /* 800AE900 subu $a0, $a0, $t0 */
+    bl_sw(r_sp + 0x3Cu, r_v0); /* 800AE904 sw $v0, 0x3C($sp) */
+    r_v0 = bl_lh(r_s0 + 0x16u); /* 800AE908 lh $v0, 0x16($s0) */
+    r_a0 = r_a0 << 4; /* 800AE90C sll $a0, $a0, 4 */
+    bl_sw(r_sp + 0x40u, r_v0); /* 800AE910 sw $v0, 0x40($sp) */
+    r_v0 = bl_lh(r_s0 + 0x18u); /* 800AE914 lh $v0, 0x18($s0) */
+    r_a0 = r_a0 + r_v1; /* 800AE918 addu $a0, $a0, $v1 */
+    bl_sw(r_sp + 0x44u, r_v0); /* 800AE91C sw $v0, 0x44($sp) */
+    r_v0 = bl_lbu(r_s0 + 0x1Au); /* 800AE920 lbu $v0, 0x1A($s0) */
+    r_a3 = r_a3 + 0xFFFFFFFDu; /* 800AE924 addiu $a3, $a3, -0x3 */
+    /* 800AE928 jal func_800A32D8 */
+    bl_sw(r_sp + 0x48u, r_v0);
+    r_v0 = bl_call_guest(FN, 0x800A32D8u, r_a0, r_a1, r_a2, r_a3, r_sp); /* func_800A32D8 */
+L_800AE930:
+    r_v0 = bl_lw(r_s3 + 0xA0u); /* 800AE930 lw $v0, 0xA0($s3) */
+    /* 800AE934 j .L800AEE58 */
+    r_v0 = r_v0 + 0x1Cu; goto L_800AEE58;
+L_800AE93C:
+    /* 800AE93C jal func_800AF400 */
+    r_s1 = r_s0 + 0u;
+    r_v0 = (u32)func_800AF400(); /* func_800AF400 */
+    r_a1 = bl_lbu(r_s0 + 0x4u); /* 800AE944 lbu $a1, 0x4($s0) */
+    /* 800AE948 jal func_800B12D0 */
+    r_a0 = r_v0 + 0u;
+    r_v0 = (u32)func_800B12D0((u32)(uintptr_t)bg_arg(r_a0), (u32)(uintptr_t)bg_arg(r_a1)); /* func_800B12D0 */
+    /* 800AE950 beqz $v0, .L800AEA98 */
+    { int c_ = (r_v0 == 0); r_t7 = 0u | 0x1u; if (c_) goto L_800AEA98; }
+    r_v0 = bl_lbu(r_s0 + 0x7u); /* 800AE958 lbu $v0, 0x7($s0) */
+    ; /* 800AE95C nop  */
+    /* 800AE960 bne $v0, $t7, .L800AE9A8 */
+    { int c_ = (r_v0 != r_t7); r_s4 = 0u + 0u; if (c_) goto L_800AE9A8; }
+    r_v0 = 0x80060000u; /* 800AE968 lui $v0, %hi(D_800658C8) */
+    r_v0 = bl_lw(r_v0 + 0x58C8u); /* 800AE96C lw $v0, %lo(D_800658C8)($v0) */
+    ; /* 800AE970 nop  */
+    r_v1 = bl_lbu(r_v0 + 0x35Fu); /* 800AE974 lbu $v1, 0x35F($v0) */
+    ; /* 800AE978 nop  */
+    /* 800AE97C beqz $v1, .L800AE9A8 */
+    { int c_ = (r_v1 == 0); ; if (c_) goto L_800AE9A8; }
+    r_v0 = bl_lw(r_s3 + 0xB0u); /* 800AE984 lw $v0, 0xB0($s3) */
+    ; /* 800AE988 nop  */
+    r_v0 = bl_lw(r_v0 + 0x8u); /* 800AE98C lw $v0, 0x8($v0) */
+    ; /* 800AE990 nop  */
+    r_a0 = bl_lhu(r_v0 + 0x14u); /* 800AE994 lhu $a0, 0x14($v0) */
+    r_v0 = r_v1 + 0xAu; /* 800AE998 addiu $v0, $v1, 0xA */
+    r_a0 = r_a0 << 16; /* 800AE99C sll $a0, $a0, 16 */
+    /* 800AE9A0 jal func_80039E60 */
+    r_a0 = r_a0 | r_v0;
+    func_80039E60((s32)(uintptr_t)bg_arg(r_a0)); /* func_80039E60 */
+L_800AE9A8:
+    r_a1 = bl_lbu(r_s1 + 0x5u); /* 800AE9A8 lbu $a1, 0x5($s1) */
+    /* 800AE9AC jal func_800AE220 */
+    r_a0 = r_s3 + 0u;
+    r_v0 = bl_call_guest(FN, 0x800AE220u, r_a0, r_a1, r_a2, r_a3, r_sp); /* func_800AE220 */
+    r_v1 = 0x80060000u; /* 800AE9B4 lui $v1, %hi(D_800658C8) */
+    r_v1 = bl_lw(r_v1 + 0x58C8u); /* 800AE9B8 lw $v1, %lo(D_800658C8)($v1) */
+    r_s2 = r_v0 + 0u; /* 800AE9BC addu $s2, $v0, $zero */
+    r_v1 = bl_lbu(r_v1 + 0x35Fu); /* 800AE9C0 lbu $v1, 0x35F($v1) */
+    r_v0 = 0u | 0x3u; /* 800AE9C4 ori $v0, $zero, 0x3 */
+    /* 800AE9C8 bne $v1, $v0, .L800AE9E4 */
+    { int c_ = (r_v1 != r_v0); r_v0 = 0u | 0x2u; if (c_) goto L_800AE9E4; }
+    r_v1 = bl_lbu(r_s1 + 0x7u); /* 800AE9D0 lbu $v1, 0x7($s1) */
+    ; /* 800AE9D4 nop  */
+    /* 800AE9D8 bne $v1, $v0, .L800AE9E4 */
+    { int c_ = (r_v1 != r_v0); ; if (c_) goto L_800AE9E4; }
+    r_s4 = 0u | 0x8u; /* 800AE9E0 ori $s4, $zero, 0x8 */
+L_800AE9E4:
+    r_a0 = bl_lbu(r_s1 + 0x3u); /* 800AE9E4 lbu $a0, 0x3($s1) */
+    ; /* 800AE9E8 nop  */
+    r_a0 = r_s2 + r_a0; /* 800AE9EC addu $a0, $s2, $a0 */
+    /* 800AE9F0 jal func_80039E60 */
+    r_a0 = r_a0 + r_s4;
+    func_80039E60((s32)(uintptr_t)bg_arg(r_a0)); /* func_80039E60 */
+    r_v0 = bl_lbu(r_s1 + 0x6u); /* 800AE9F8 lbu $v0, 0x6($s1) */
+    ; /* 800AE9FC nop  */
+    /* 800AEA00 beqz $v0, .L800AEA10 */
+    { int c_ = (r_v0 == 0); r_a0 = r_s2 + r_v0; if (c_) goto L_800AEA10; }
+    /* 800AEA08 jal func_80039E60 */
+    r_a0 = r_a0 + r_s4;
+    func_80039E60((s32)(uintptr_t)bg_arg(r_a0)); /* func_80039E60 */
+L_800AEA10:
+    r_v0 = 0x80060000u; /* 800AEA10 lui $v0, %hi(D_800658C8) */
+    r_v0 = bl_lw(r_v0 + 0x58C8u); /* 800AEA14 lw $v0, %lo(D_800658C8)($v0) */
+    r_a0 = bl_lbu(r_s3 + 0x39u); /* 800AEA18 lbu $a0, 0x39($s3) */
+    r_v1 = bl_lbu(r_v0 + 0x35Fu); /* 800AEA1C lbu $v1, 0x35F($v0) */
+    r_v0 = 0u | 0x3u; /* 800AEA20 ori $v0, $zero, 0x3 */
+    /* 800AEA24 bne $v1, $v0, .L800AEA64 */
+    { int c_ = (r_v1 != r_v0); r_v0 = r_a0 << 16; if (c_) goto L_800AEA64; }
+    r_v1 = bl_lbu(r_s1 + 0x7u); /* 800AEA2C lbu $v1, 0x7($s1) */
+    r_v0 = 0u | 0x2u; /* 800AEA30 ori $v0, $zero, 0x2 */
+    /* 800AEA34 beq $v1, $v0, .L800AEA60 */
+    { int c_ = (r_v1 == r_v0); r_v0 = 0x4C8F0000u; if (c_) goto L_800AEA60; }
+    r_v0 = r_v0 | 0x8D29u; /* 800AEA3C ori $v0, $v0, (0x4C8F8D29 & 0xFFFF) */
+    r_v1 = r_a0 << 4; /* 800AEA40 sll $v1, $a0, 4 */
+    r_v1 = r_v1 - r_a0; /* 800AEA44 subu $v1, $v1, $a0 */
+    r_v1 = r_v1 << 2; /* 800AEA48 sll $v1, $v1, 2 */
+    BL_MULT(r_v1, r_v0); /* 800AEA4C mult $v1, $v0 */
+    r_v1 = BL_SRA(r_v1, 31); /* 800AEA50 sra $v1, $v1, 31 */
+    r_v0 = hi; /* 800AEA54 mfhi $v0 */
+    r_v0 = BL_SRA(r_v0, 5); /* 800AEA58 sra $v0, $v0, 5 */
+    r_a0 = r_v0 - r_v1; /* 800AEA5C subu $a0, $v0, $v1 */
+L_800AEA60:
+    r_v0 = r_a0 << 16; /* 800AEA60 sll $v0, $a0, 16 */
+L_800AEA64:
+    r_s0 = BL_SRA(r_v0, 16); /* 800AEA64 sra $s0, $v0, 16 */
+    r_a0 = bl_lbu(r_s1 + 0x3u); /* 800AEA68 lbu $a0, 0x3($s1) */
+    r_a1 = r_s0 + 0u; /* 800AEA6C addu $a1, $s0, $zero */
+    r_a0 = r_s2 + r_a0; /* 800AEA70 addu $a0, $s2, $a0 */
+    /* 800AEA74 jal func_8003A2E4 */
+    r_a0 = r_a0 + r_s4;
+    func_8003A2E4((s32)(uintptr_t)bg_arg(r_a0), (s32)(uintptr_t)bg_arg(r_a1)); /* func_8003A2E4 */
+    r_v0 = bl_lbu(r_s1 + 0x6u); /* 800AEA7C lbu $v0, 0x6($s1) */
+    ; /* 800AEA80 nop  */
+    /* 800AEA84 beqz $v0, .L800AEA98 */
+    { int c_ = (r_v0 == 0); r_a0 = r_s2 + r_v0; if (c_) goto L_800AEA98; }
+    r_a0 = r_a0 + r_s4; /* 800AEA8C addu $a0, $a0, $s4 */
+    /* 800AEA90 jal func_8003A2E4 */
+    r_a1 = r_s0 + 0u;
+    func_8003A2E4((s32)(uintptr_t)bg_arg(r_a0), (s32)(uintptr_t)bg_arg(r_a1)); /* func_8003A2E4 */
+L_800AEA98:
+    r_v0 = bl_lw(r_s3 + 0xA0u); /* 800AEA98 lw $v0, 0xA0($s3) */
+    /* 800AEA9C j .L800AEE58 */
+    r_v0 = r_v0 + 0x8u; goto L_800AEE58;
+L_800AEAA4:
+    /* 800AEAA4 jal func_800BF6CC */
+    ;
+    r_v0 = bl_call_guest(FN, 0x800BF6CCu, r_a0, r_a1, r_a2, r_a3, r_sp); /* func_800BF6CC */
+    r_v0 = bl_lw(r_s3 + 0xA0u); /* 800AEAAC lw $v0, 0xA0($s3) */
+    /* 800AEAB0 j .L800AEE58 */
+    r_v0 = r_v0 + 0x4u; goto L_800AEE58;
+L_800AEAB8:
+    r_v1 = bl_lbu(r_s0 + 0x4u); /* 800AEAB8 lbu $v1, 0x4($s0) */
+    r_a0 = bl_lw(r_s3 + 0x4u); /* 800AEABC lw $a0, 0x4($s3) */
+    r_v0 = r_v1 << 5; /* 800AEAC0 sll $v0, $v1, 5 */
+    r_v0 = r_v0 - r_v1; /* 800AEAC4 subu $v0, $v0, $v1 */
+    r_v0 = r_v0 << 2; /* 800AEAC8 sll $v0, $v0, 2 */
+    r_v1 = bl_lbu(r_s0 + 0x5u); /* 800AEACC lbu $v1, 0x5($s0) */
+    r_v0 = r_v0 + r_a0; /* 800AEAD0 addu $v0, $v0, $a0 */
+    r_v1 = r_v1 & 0x1u; /* 800AEAD4 andi $v1, $v1, 0x1 */
+    /* 800AEAD8 j .L800AEE4C */
+    bl_sb(r_v0 + 0x7u, r_v1); goto L_800AEE4C;
+L_800AEAE0:
+    r_s2 = r_s0 + 0u; /* 800AEAE0 addu $s2, $s0, $zero */
+    r_s1 = 0u + 0u; /* 800AEAE4 addu $s1, $zero, $zero */
+    r_s4 = 0x800D0000u; /* 800AEAE8 lui $s4, %hi(D_800D3368) */
+    r_s4 = r_s4 + 0x3368u; /* 800AEAEC addiu $s4, $s4, %lo(D_800D3368) */
+    r_t7 = 0u | 0x1u; /* 800AEAF0 ori $t7, $zero, 0x1 */
+    r_v0 = 0x800C0000u; /* 800AEAF4 lui $v0, %hi(D_800C3D40) */
+    r_v0 = bl_lh(r_v0 + 0x3D40u); /* 800AEAF8 lh $v0, %lo(D_800C3D40)($v0) */
+    r_fp = 0x800C0000u; /* 800AEAFC lui $fp, %hi(D_800C3E30) */
+    r_fp = bl_lhu(r_fp + 0x3E30u); /* 800AEB00 lhu $fp, %lo(D_800C3E30)($fp) */
+    r_s7 = r_v0 + 0u; /* 800AEB04 addu $s7, $v0, $zero */
+    r_s6 = r_t7 << (r_v0 & 31); /* 800AEB08 sllv $s6, $t7, $v0 */
+L_800AEB0C:
+    r_v0 = bl_lhu(r_s3 + 0x10Au); /* 800AEB0C lhu $v0, 0x10A($s3) */
+    ; /* 800AEB10 nop  */
+    r_v0 = BL_SRA(r_v0, r_s1); /* 800AEB14 srav $v0, $v0, $s1 */
+    r_v0 = r_v0 & 0x1u; /* 800AEB18 andi $v0, $v0, 0x1 */
+    /* 800AEB1C beqz $v0, .L800AEC5C */
+    { int c_ = (r_v0 == 0); ; if (c_) goto L_800AEC5C; }
+    r_v0 = bl_lw(r_s4); /* 800AEB24 lw $v0, 0x0($s4) */
+    r_s5 = bl_lbu(r_s2 + 0x4u); /* 800AEB28 lbu $s5, 0x4($s2) */
+    /* 800AEB2C beqz $v0, .L800AEB4C */
+    { int c_ = (r_v0 == 0); r_s0 = 0u + 0xFFFFFFFFu; if (c_) goto L_800AEB4C; }
+    r_v0 = bl_lhu(r_v0 + 0x4Au); /* 800AEB34 lhu $v0, 0x4A($v0) */
+    ; /* 800AEB38 nop  */
+    r_v0 = r_v0 & 0x2u; /* 800AEB3C andi $v0, $v0, 0x2 */
+    /* 800AEB40 beqz $v0, .L800AEB4C */
+    { int c_ = (r_v0 == 0); ; if (c_) goto L_800AEB4C; }
+    r_s5 = 0u + 0u; /* 800AEB48 addu $s5, $zero, $zero */
+L_800AEB4C:
+    r_v1 = 0x800C0000u; /* 800AEB4C lui $v1, %hi(D_800C360C) */
+    r_v1 = bl_lw(r_v1 + 0x360Cu); /* 800AEB50 lw $v1, %lo(D_800C360C)($v1) */
+    ; /* 800AEB54 nop  */
+    r_v1 = r_v1 + 0xFFFFFFFFu; /* 800AEB58 addiu $v1, $v1, -0x1 */
+    r_v0 = r_v1 << 3; /* 800AEB5C sll $v0, $v1, 3 */
+    r_v0 = r_v0 + r_v1; /* 800AEB60 addu $v0, $v0, $v1 */
+    r_v0 = r_v0 << 3; /* 800AEB64 sll $v0, $v0, 3 */
+    r_v1 = 0x800C0000u; /* 800AEB68 lui $v1, %hi(D_800C4000) */
+    r_v1 = r_v1 + 0x4000u; /* 800AEB6C addiu $v1, $v1, %lo(D_800C4000) */
+    r_v0 = r_v0 + r_v1; /* 800AEB70 addu $v0, $v0, $v1 */
+    r_v0 = r_v0 + r_s1; /* 800AEB74 addu $v0, $v0, $s1 */
+    r_v1 = bl_lbu(r_v0); /* 800AEB78 lbu $v1, 0x0($v0) */
+    ; /* 800AEB7C nop  */
+    r_v0 = (u32)(r_v1 < 0x6u); /* 800AEB80 sltiu $v0, $v1, 0x6 */
+    /* 800AEB84 beqz $v0, .L800AEBFC */
+    { int c_ = (r_v0 == 0); r_v0 = r_v1 << 2; if (c_) goto L_800AEBFC; }
+    r_at = 0x80070000u; /* 800AEB8C lui $at, %hi(jtbl_80070784) */
+    r_at = r_at + r_v0; /* 800AEB90 addu $at, $at, $v0 */
+    r_v0 = bl_lw(r_at + 0x784u); /* 800AEB94 lw $v0, %lo(jtbl_80070784)($at) */
+    ; /* 800AEB98 nop  */
+    /* 800AEB9C jr $v0 */
+    { u32 t_ = r_v0; ; switch (t_) { case 0x800AE34Cu: goto L_800AE34C; case 0x800AE68Cu: goto L_800AE68C; case 0x800AE824u: goto L_800AE824; case 0x800AE93Cu: goto L_800AE93C; case 0x800AEAA4u: goto L_800AEAA4; case 0x800AEAB8u: goto L_800AEAB8; case 0x800AEAE0u: goto L_800AEAE0; case 0x800AEBA4u: goto L_800AEBA4; case 0x800AEBE0u: goto L_800AEBE0; case 0x800AEBECu: goto L_800AEBEC; case 0x800AEBF8u: goto L_800AEBF8; case 0x800AEC88u: goto L_800AEC88; default: bl_fail(FN, "jump-table target", t_); } }
+L_800AEBA4:
+    r_v0 = bl_lw(r_s4); /* 800AEBA4 lw $v0, 0x0($s4) */
+    ; /* 800AEBA8 nop  */
+    /* 800AEBAC beqz $v0, .L800AEBD4 */
+    { int c_ = (r_v0 == 0); ; if (c_) goto L_800AEBD4; }
+    r_v0 = bl_lhu(r_v0 + 0x4Au); /* 800AEBB4 lhu $v0, 0x4A($v0) */
+    ; /* 800AEBB8 nop  */
+    r_v0 = r_v0 & 0x2u; /* 800AEBBC andi $v0, $v0, 0x2 */
+    /* 800AEBC0 beqz $v0, .L800AEBD4 */
+    { int c_ = (r_v0 == 0); ; if (c_) goto L_800AEBD4; }
+    r_s0 = bl_lbu(r_s2 + 0x6u); /* 800AEBC8 lbu $s0, 0x6($s2) */
+    /* 800AEBCC j .L800AEBFC */
+    ; goto L_800AEBFC;
+L_800AEBD4:
+    r_s0 = bl_lbu(r_s2 + 0x5u); /* 800AEBD4 lbu $s0, 0x5($s2) */
+    /* 800AEBD8 j .L800AEBFC */
+    ; goto L_800AEBFC;
+L_800AEBE0:
+    r_s0 = bl_lbu(r_s2 + 0x7u); /* 800AEBE0 lbu $s0, 0x7($s2) */
+    /* 800AEBE4 j .L800AEBFC */
+    ; goto L_800AEBFC;
+L_800AEBEC:
+    r_s0 = bl_lbu(r_s2 + 0x8u); /* 800AEBEC lbu $s0, 0x8($s2) */
+    /* 800AEBF0 j .L800AEBFC */
+    ; goto L_800AEBFC;
+L_800AEBF8:
+    r_s0 = bl_lbu(r_s2 + 0x9u); /* 800AEBF8 lbu $s0, 0x9($s2) */
+L_800AEBFC:
+    r_a1 = bl_lbu(r_s2 + 0x3u); /* 800AEBFC lbu $a1, 0x3($s2) */
+    /* 800AEC00 jal func_800B12D0 */
+    r_a0 = r_s1 + 0u;
+    r_v0 = (u32)func_800B12D0((u32)(uintptr_t)bg_arg(r_a0), (u32)(uintptr_t)bg_arg(r_a1)); /* func_800B12D0 */
+    /* 800AEC08 bnez $v0, .L800AEC14 */
+    { int c_ = (r_v0 != 0); ; if (c_) goto L_800AEC14; }
+    r_s0 = 0u + 0xFFFFFFFFu; /* 800AEC10 addiu $s0, $zero, -0x1 */
+L_800AEC14:
+    r_v0 = bl_lw(r_s4); /* 800AEC14 lw $v0, 0x0($s4) */
+    ; /* 800AEC18 nop  */
+    /* 800AEC1C beqz $v0, .L800AEC5C */
+    { int c_ = (r_v0 == 0); ; if (c_) goto L_800AEC5C; }
+    /* 800AEC24 blez $s0, .L800AEC5C */
+    { int c_ = ((s32)r_s0 <= 0); ; if (c_) goto L_800AEC5C; }
+    /* 800AEC2C beqz $s5, .L800AEC4C */
+    { int c_ = (r_s5 == 0); r_a0 = r_s3 + 0u; if (c_) goto L_800AEC4C; }
+    r_a1 = r_s1 & 0xFFFFu; /* 800AEC34 andi $a1, $s1, 0xFFFF */
+    r_a2 = r_s6 & 0xFFFFu; /* 800AEC38 andi $a2, $s6, 0xFFFF */
+    /* 800AEC3C jal func_800AA564 */
+    r_a3 = r_s0 + 0u;
+    r_v0 = bl_call_guest(FN, 0x800AA564u, r_a0, r_a1, r_a2, r_a3, r_sp); /* func_800AA564 */
+    /* 800AEC44 j .L800AEC60 */
+    r_s1 = r_s1 + 0x1u; goto L_800AEC60;
+L_800AEC4C:
+    r_a0 = r_s1 & 0xFFFFu; /* 800AEC4C andi $a0, $s1, 0xFFFF */
+    r_a1 = r_s6 & 0xFFFFu; /* 800AEC50 andi $a1, $s6, 0xFFFF */
+    /* 800AEC54 jal func_800AA454 */
+    r_a2 = r_s0 + 0u;
+    r_v0 = bl_call_guest(FN, 0x800AA454u, r_a0, r_a1, r_a2, r_a3, r_sp); /* func_800AA454 */
+L_800AEC5C:
+    r_s1 = r_s1 + 0x1u; /* 800AEC5C addiu $s1, $s1, 0x1 */
+L_800AEC60:
+    r_v0 = (u32)((s32)r_s1 < 13); /* 800AEC60 slti $v0, $s1, 0xD */
+    /* 800AEC64 bnez $v0, .L800AEB0C */
+    { int c_ = (r_v0 != 0); r_s4 = r_s4 + 0x4u; if (c_) goto L_800AEB0C; }
+    r_v0 = bl_lw(r_s3 + 0xA0u); /* 800AEC6C lw $v0, 0xA0($s3) */
+    r_at = 0x800C0000u; /* 800AEC70 lui $at, %hi(D_800C3D40) */
+    bl_sh(r_at + 0x3D40u, r_s7); /* 800AEC74 sh $s7, %lo(D_800C3D40)($at) */
+    r_at = 0x800C0000u; /* 800AEC78 lui $at, %hi(D_800C3E30) */
+    bl_sh(r_at + 0x3E30u, r_fp); /* 800AEC7C sh $fp, %lo(D_800C3E30)($at) */
+    /* 800AEC80 j .L800AEE58 */
+    r_v0 = r_v0 + 0xAu; goto L_800AEE58;
+L_800AEC88:
+    r_v0 = bl_lbu(r_s0 + 0x4u); /* 800AEC88 lbu $v0, 0x4($s0) */
+    ; /* 800AEC8C nop  */
+    /* 800AEC90 beqz $v0, .L800AEE2C */
+    { int c_ = (r_v0 == 0); ; if (c_) goto L_800AEE2C; }
+    r_v0 = bl_lbu(r_s0 + 0x3u); /* 800AEC98 lbu $v0, 0x3($s0) */
+    r_a0 = bl_lbu(r_s3 + 0x10Eu); /* 800AEC9C lbu $a0, 0x10E($s3) */
+    ; /* 800AECA0 nop  */
+    r_v0 = (u32)(r_v0 < r_a0); /* 800AECA4 sltu $v0, $v0, $a0 */
+    /* 800AECA8 beqz $v0, .L800AEE20 */
+    { int c_ = (r_v0 == 0); ; if (c_) goto L_800AEE20; }
+    r_v1 = bl_lbu(r_s0 + 0x5u); /* 800AECB0 lbu $v1, 0x5($s0) */
+    r_v0 = 0u | 0xFFu; /* 800AECB4 ori $v0, $zero, 0xFF */
+    /* 800AECB8 beq $v1, $v0, .L800AECDC */
+    { int c_ = (r_v1 == r_v0); r_v0 = (u32)(r_v1 < r_a0); if (c_) goto L_800AECDC; }
+    /* 800AECC0 beqz $v0, .L800AECDC */
+    { int c_ = (r_v0 == 0); r_v0 = r_v1 << 1; if (c_) goto L_800AECDC; }
+    r_v0 = r_v0 + r_v1; /* 800AECC8 addu $v0, $v0, $v1 */
+    r_v1 = bl_lw(r_s3 + 0x118u); /* 800AECCC lw $v1, 0x118($s3) */
+    r_v0 = r_v0 << 4; /* 800AECD0 sll $v0, $v0, 4 */
+    /* 800AECD4 j .L800AECE0 */
+    r_s2 = r_v0 + r_v1; goto L_800AECE0;
+L_800AECDC:
+    r_s2 = 0u + 0u; /* 800AECDC addu $s2, $zero, $zero */
+L_800AECE0:
+    r_v0 = bl_lbu(r_s0 + 0x6u); /* 800AECE0 lbu $v0, 0x6($s0) */
+    ; /* 800AECE4 nop  */
+    r_v0 = r_v0 & 0x7Fu; /* 800AECE8 andi $v0, $v0, 0x7F */
+    r_v0 = (u32)(r_v0 < 0x4u); /* 800AECEC sltiu $v0, $v0, 0x4 */
+    /* 800AECF0 bnez $v0, .L800AED00 */
+    { int c_ = (r_v0 != 0); r_s1 = 0u + 0u; if (c_) goto L_800AED00; }
+    r_s1 = 0x800D0000u; /* 800AECF8 lui $s1, %hi(D_800D2FC0) */
+    r_s1 = bl_lw(r_s1 + 0x2FC0u); /* 800AECFC lw $s1, %lo(D_800D2FC0)($s1) */
+L_800AED00:
+    r_a0 = bl_lbu(r_s0 + 0x7u); /* 800AED00 lbu $a0, 0x7($s0) */
+    /* 800AED04 jal func_800AA820 */
+    ;
+    r_v0 = bl_call_guest(FN, 0x800AA820u, r_a0, r_a1, r_a2, r_a3, r_sp); /* func_800AA820 */
+    r_a0 = bl_lhu(r_s0 + 0x8u); /* 800AED0C lhu $a0, 0x8($s0) */
+    r_t2 = bl_lhu(r_s0 + 0xAu); /* 800AED10 lhu $t2, 0xA($s0) */
+    r_t3 = bl_lhu(r_s0 + 0xCu); /* 800AED14 lhu $t3, 0xC($s0) */
+    r_t4 = bl_lhu(r_s0 + 0xEu); /* 800AED18 lhu $t4, 0xE($s0) */
+    r_v1 = bl_lbu(r_s0 + 0x6u); /* 800AED1C lbu $v1, 0x6($s0) */
+    r_t5 = bl_lhu(r_s0 + 0x10u); /* 800AED20 lhu $t5, 0x10($s0) */
+    r_v1 = r_v1 & 0x80u; /* 800AED24 andi $v1, $v1, 0x80 */
+    /* 800AED28 beqz $v1, .L800AED78 */
+    { int c_ = (r_v1 == 0); r_t6 = r_v0 + 0u; if (c_) goto L_800AED78; }
+    r_v0 = bl_lh(r_s3 + 0x90u); /* 800AED30 lh $v0, 0x90($s3) */
+    ; /* 800AED34 nop  */
+    /* 800AED38 bltz $v0, .L800AEE5C */
+    { int c_ = ((s32)r_v0 < 0); r_t7 = 0u | 0x1u; if (c_) goto L_800AEE5C; }
+    r_a1 = bl_lhu(r_s3 + 0x94u); /* 800AED40 lhu $a1, 0x94($s3) */
+    r_a2 = bl_lhu(r_s3 + 0x96u); /* 800AED44 lhu $a2, 0x96($s3) */
+    r_v0 = r_a0 + r_a1; /* 800AED48 addu $v0, $a0, $a1 */
+    r_a0 = r_v0 + 0u; /* 800AED4C addu $a0, $v0, $zero */
+    r_v1 = r_t2 + r_a2; /* 800AED50 addu $v1, $t2, $a2 */
+    r_v0 = bl_lbu(r_s0 + 0x12u); /* 800AED54 lbu $v0, 0x12($s0) */
+    ; /* 800AED58 nop  */
+    r_v0 = r_v0 >> 4; /* 800AED5C srl $v0, $v0, 4 */
+    /* 800AED60 bne $v0, $t7, .L800AED78 */
+    { int c_ = (r_v0 != r_t7); r_t2 = r_v1 + 0u; if (c_) goto L_800AED78; }
+    r_v0 = r_t3 + r_a1; /* 800AED68 addu $v0, $t3, $a1 */
+    r_t3 = r_v0 + 0u; /* 800AED6C addu $t3, $v0, $zero */
+    r_v0 = r_t4 + r_a2; /* 800AED70 addu $v0, $t4, $a2 */
+    r_t4 = r_v0 + 0u; /* 800AED74 addu $t4, $v0, $zero */
+L_800AED78:
+    r_a0 = r_a0 << 16; /* 800AED78 sll $a0, $a0, 16 */
+    r_a0 = BL_SRA(r_a0, 16); /* 800AED7C sra $a0, $a0, 16 */
+    r_v1 = r_t2 << 16; /* 800AED80 sll $v1, $t2, 16 */
+    r_v1 = BL_SRA(r_v1, 16); /* 800AED84 sra $v1, $v1, 16 */
+    r_v0 = r_t3 << 16; /* 800AED88 sll $v0, $t3, 16 */
+    r_t0 = bl_lbu(r_s0 + 0x3u); /* 800AED8C lbu $t0, 0x3($s0) */
+    r_t1 = bl_lw(r_s3 + 0x118u); /* 800AED90 lw $t1, 0x118($s3) */
+    r_a2 = bl_lbu(r_s0 + 0x6u); /* 800AED94 lbu $a2, 0x6($s0) */
+    r_a3 = bl_lbu(r_s0 + 0x12u); /* 800AED98 lbu $a3, 0x12($s0) */
+    r_v0 = BL_SRA(r_v0, 16); /* 800AED9C sra $v0, $v0, 16 */
+    bl_sw(r_sp + 0x20u, r_v0); /* 800AEDA0 sw $v0, 0x20($sp) */
+    r_v0 = r_t4 << 16; /* 800AEDA4 sll $v0, $t4, 16 */
+    r_v0 = BL_SRA(r_v0, 16); /* 800AEDA8 sra $v0, $v0, 16 */
+    bl_sw(r_sp + 0x24u, r_v0); /* 800AEDAC sw $v0, 0x24($sp) */
+    r_v0 = r_t5 << 16; /* 800AEDB0 sll $v0, $t5, 16 */
+    r_v0 = BL_SRA(r_v0, 16); /* 800AEDB4 sra $v0, $v0, 16 */
+    r_a1 = r_s2 + 0u; /* 800AEDB8 addu $a1, $s2, $zero */
+    bl_sw(r_sp + 0x10u, r_s1); /* 800AEDBC sw $s1, 0x10($sp) */
+    bl_sw(r_sp + 0x14u, r_a0); /* 800AEDC0 sw $a0, 0x14($sp) */
+    bl_sw(r_sp + 0x18u, r_v1); /* 800AEDC4 sw $v1, 0x18($sp) */
+    bl_sw(r_sp + 0x1Cu, 0u); /* 800AEDC8 sw $zero, 0x1C($sp) */
+    bl_sw(r_sp + 0x28u, r_v0); /* 800AEDCC sw $v0, 0x28($sp) */
+    bl_sw(r_sp + 0x2Cu, r_a0); /* 800AEDD0 sw $a0, 0x2C($sp) */
+    bl_sw(r_sp + 0x30u, r_v1); /* 800AEDD4 sw $v1, 0x30($sp) */
+    r_v0 = bl_lbu(r_s0 + 0x13u); /* 800AEDD8 lbu $v0, 0x13($s0) */
+    r_a0 = r_t0 << 1; /* 800AEDDC sll $a0, $t0, 1 */
+    r_a0 = r_a0 + r_t0; /* 800AEDE0 addu $a0, $a0, $t0 */
+    bl_sw(r_sp + 0x34u, r_v0); /* 800AEDE4 sw $v0, 0x34($sp) */
+    r_v0 = bl_lbu(r_s0 + 0x14u); /* 800AEDE8 lbu $v0, 0x14($s0) */
+    r_a0 = r_a0 << 4; /* 800AEDEC sll $a0, $a0, 4 */
+    bl_sw(r_sp + 0x38u, r_v0); /* 800AEDF0 sw $v0, 0x38($sp) */
+    r_v0 = bl_lh(r_s0 + 0x16u); /* 800AEDF4 lh $v0, 0x16($s0) */
+    r_a0 = r_a0 + r_t1; /* 800AEDF8 addu $a0, $a0, $t1 */
+    bl_sw(r_sp + 0x3Cu, r_v0); /* 800AEDFC sw $v0, 0x3C($sp) */
+    r_v0 = bl_lh(r_s0 + 0x18u); /* 800AEE00 lh $v0, 0x18($s0) */
+    r_a2 = r_a2 & 0x7Fu; /* 800AEE04 andi $a2, $a2, 0x7F */
+    bl_sw(r_sp + 0x40u, r_v0); /* 800AEE08 sw $v0, 0x40($sp) */
+    r_v0 = bl_lh(r_s0 + 0x1Au); /* 800AEE0C lh $v0, 0x1A($s0) */
+    r_a3 = r_a3 | 0x700u; /* 800AEE10 ori $a3, $a3, 0x700 */
+    bl_sw(r_sp + 0x48u, r_t6); /* 800AEE14 sw $t6, 0x48($sp) */
+    /* 800AEE18 jal func_800A3640 */
+    bl_sw(r_sp + 0x44u, r_v0);
+    r_v0 = bl_call_guest(FN, 0x800A3640u, r_a0, r_a1, r_a2, r_a3, r_sp); /* func_800A3640 */
+L_800AEE20:
+    r_v0 = bl_lw(r_s3 + 0xA0u); /* 800AEE20 lw $v0, 0xA0($s3) */
+    /* 800AEE24 j .L800AEE58 */
+    r_v0 = r_v0 + 0x1Cu; goto L_800AEE58;
+L_800AEE2C:
+    r_v0 = bl_lbu(r_s0 + 0x3u); /* 800AEE2C lbu $v0, 0x3($s0) */
+    ; /* 800AEE30 nop  */
+    r_a0 = r_v0 << 1; /* 800AEE34 sll $a0, $v0, 1 */
+    r_a0 = r_a0 + r_v0; /* 800AEE38 addu $a0, $a0, $v0 */
+    r_v0 = bl_lw(r_s3 + 0x118u); /* 800AEE3C lw $v0, 0x118($s3) */
+    r_a0 = r_a0 << 4; /* 800AEE40 sll $a0, $a0, 4 */
+    /* 800AEE44 jal func_800A429C */
+    r_a0 = r_a0 + r_v0;
+    r_v0 = bl_call_guest(FN, 0x800A429Cu, r_a0, r_a1, r_a2, r_a3, r_sp); /* func_800A429C */
+L_800AEE4C:
+    r_v0 = bl_lw(r_s3 + 0xA0u); /* 800AEE4C lw $v0, 0xA0($s3) */
+    ; /* 800AEE50 nop  */
+    r_v0 = r_v0 + 0x6u; /* 800AEE54 addiu $v0, $v0, 0x6 */
+L_800AEE58:
+    bl_sw(r_s3 + 0xA0u, r_v0); /* 800AEE58 sw $v0, 0xA0($s3) */
+L_800AEE5C:
+    r_v0 = bl_lhu(r_s3 + 0x9Cu); /* 800AEE5C lhu $v0, 0x9C($s3) */
+    r_v1 = bl_lh(r_s3 + 0x9Eu); /* 800AEE60 lh $v1, 0x9E($s3) */
+    r_v0 = r_v0 + 0x1u; /* 800AEE64 addiu $v0, $v0, 0x1 */
+    bl_sh(r_s3 + 0x9Cu, r_v0); /* 800AEE68 sh $v0, 0x9C($s3) */
+    r_v0 = r_v0 << 16; /* 800AEE6C sll $v0, $v0, 16 */
+    r_v0 = BL_SRA(r_v0, 16); /* 800AEE70 sra $v0, $v0, 16 */
+    r_v0 = (u32)((s32)r_v0 < (s32)r_v1); /* 800AEE74 slt $v0, $v0, $v1 */
+    /* 800AEE78 bnez $v0, .L800AE304 */
+    { int c_ = (r_v0 != 0); ; if (c_) goto L_800AE304; }
+L_800AEE80:
+    r_v0 = bl_lhu(r_s3 + 0x98u); /* 800AEE80 lhu $v0, 0x98($s3) */
+    r_v1 = bl_lh(r_s3 + 0x9Au); /* 800AEE84 lh $v1, 0x9A($s3) */
+    r_v0 = r_v0 + 0x1u; /* 800AEE88 addiu $v0, $v0, 0x1 */
+    /* 800AEE8C bltz $v1, .L800AEEB8 */
+    { int c_ = ((s32)r_v1 < 0); bl_sh(r_s3 + 0x98u, r_v0); if (c_) goto L_800AEEB8; }
+    r_v0 = r_v0 << 16; /* 800AEE94 sll $v0, $v0, 16 */
+    r_v0 = BL_SRA(r_v0, 16); /* 800AEE98 sra $v0, $v0, 16 */
+    r_v0 = (u32)((s32)r_v0 < (s32)r_v1); /* 800AEE9C slt $v0, $v0, $v1 */
+    /* 800AEEA0 bnez $v0, .L800AEEB8 */
+    { int c_ = (r_v0 != 0); ; if (c_) goto L_800AEEB8; }
+    r_v0 = bl_lw(r_s3 + 0xA4u); /* 800AEEA8 lw $v0, 0xA4($s3) */
+    bl_sh(r_s3 + 0x98u, 0u); /* 800AEEAC sh $zero, 0x98($s3) */
+    bl_sh(r_s3 + 0x9Cu, 0u); /* 800AEEB0 sh $zero, 0x9C($s3) */
+    bl_sw(r_s3 + 0xA0u, r_v0); /* 800AEEB4 sw $v0, 0xA0($s3) */
+L_800AEEB8:
+    r_ra = bl_lw(r_sp + 0xB4u); /* 800AEEB8 lw $ra, 0xB4($sp) */
+    r_fp = bl_lw(r_sp + 0xB0u); /* 800AEEBC lw $fp, 0xB0($sp) */
+    r_s7 = bl_lw(r_sp + 0xACu); /* 800AEEC0 lw $s7, 0xAC($sp) */
+    r_s6 = bl_lw(r_sp + 0xA8u); /* 800AEEC4 lw $s6, 0xA8($sp) */
+    r_s5 = bl_lw(r_sp + 0xA4u); /* 800AEEC8 lw $s5, 0xA4($sp) */
+    r_s4 = bl_lw(r_sp + 0xA0u); /* 800AEECC lw $s4, 0xA0($sp) */
+    r_s3 = bl_lw(r_sp + 0x9Cu); /* 800AEED0 lw $s3, 0x9C($sp) */
+    r_s2 = bl_lw(r_sp + 0x98u); /* 800AEED4 lw $s2, 0x98($sp) */
+    r_s1 = bl_lw(r_sp + 0x94u); /* 800AEED8 lw $s1, 0x94($sp) */
+    r_s0 = bl_lw(r_sp + 0x90u); /* 800AEEDC lw $s0, 0x90($sp) */
+    r_sp = r_sp + 0xB8u; /* 800AEEE0 addiu $sp, $sp, 0xB8 */
+    /* 800AEEE4 jr $ra */
+    ; goto bl_exit;
+bl_exit:
+    bl_leave(bl_saved);
+    (void)hi; (void)lo; (void)r_at; (void)r_v1; (void)r_k0; (void)r_k1; (void)r_gp; (void)r_ra;
+    (void)r_v0;
+}
+#endif /* XENO_PC_PORT */
 #endif /* BATTLE_PART(3) */
 
 

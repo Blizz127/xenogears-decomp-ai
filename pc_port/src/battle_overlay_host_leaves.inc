@@ -276,3 +276,6 @@
 /* Opening-battle hot set: main72 motion-state update (lifted port body;
  * every call through the interpreter's jal path). */
     "func_800AAD54",
+/* 800AAA20's per-step event callee (lifted port body; every call through
+ * the interpreter's jal path). */
+    "func_800AE2A4",

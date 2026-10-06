@@ -235,8 +235,15 @@ mutants = {
           ("main73.c", "bl_sw(r_v1 + 0x60u, r_v0); /* 800B0044 sw", "bl_sw(r_v1 + 0x60u, r_v0 + 1u); /* 800B0044 sw"),
           ("main64.c", "bl_sw(r_s2 + 0x20u, r_v0); /* 8009F040 sw", "bl_sw(r_s2 + 0x20u, r_v0 ^ 1u); /* 8009F040 sw"),
           ("main64.c", "bl_sw(r_s3 + 0x20u, r_v0); /* 8009F2CC sw", "bl_sw(r_s3 + 0x20u, r_v0 ^ 1u); /* 8009F2CC sw")],
-    # 800AAD54 calls 8009EF3C/8009F1C4 (mutated in h): its own build.
-    "i": [("main72.c", "bl_sh(r_s4 + 0x70u, r_v0); /* 800AADD8 sh", "bl_sh(r_s4 + 0x70u, r_v0 + 1u); /* 800AADD8 sh")],
+    # 800AAD54 calls 8009EF3C/8009F1C4 (mutated in h): its own build, with
+    # 800AE2A4 (neither calls the other).
+    "i": [("main72.c", "bl_sh(r_s4 + 0x70u, r_v0); /* 800AADD8 sh", "bl_sh(r_s4 + 0x70u, r_v0 + 1u); /* 800AADD8 sh"),
+          # 800AE2A4: the consumed-event cursor advance off by two.
+          ("main72.c", "bl_sw(r_s3 + 0xA0u, r_v0); /* 800AEE58 sw", "bl_sw(r_s3 + 0xA0u, r_v0 + 2u); /* 800AEE58 sw")],
+    # Spy control: 800AE2A4 passing a wrong sound id to the spied
+    # func_80039E60 changes no RAM; only the spied call sequence shows it.
+    "j": [("main72.c", "    /* 800AE9F0 jal func_80039E60 */\n    r_a0 = r_a0 + r_s4;",
+           "    /* 800AE9F0 jal func_80039E60 */\n    r_a0 = r_a0 + r_s4 + 1u;")],
 }
 for group, edits in mutants.items():
     d = out / ("mutants-" + group)
@@ -257,6 +264,26 @@ mode_flags() {
         UBSan) echo "-O1 -fsanitize=undefined -fno-sanitize-recover=all -fno-sanitize=function" ;;
     esac
 }
+
+# Main-executable services the adopted lifted bodies (800AAD54, 800AE2A4)
+# reach that this harness does not link (archive, sound, VRAM image upload).
+# Instead of an inconclusive placeholder each gets a SPY: it does nothing,
+# returns the fixed value, and records its name and its first <argc> argument
+# words (prover_spy in the test).  Both sides reach the same spy through the
+# same bridge, and compare() requires the two call sequences -- names, order,
+# arguments -- to be identical.  name:argc:return.
+SPIES=(
+    ArchiveDataSync:0:0
+    ArchiveDecodeAlignedSize:1:0x800
+    ArchiveGetArchiveOffsetIndices:2:0
+    ArchiveReadFileToBuffer:4:0
+    ArchiveSetIndex:2:0
+    SoundAddSedsEntry:1:0
+    func_80039E60:1:0
+    func_8003A2E4:2:0
+    func_8002A498:1:0
+    func_8002DDE4:7:0
+)
 
 # build_link <mode> <host-object-dir> <main12 source> <output suffix>
 build_link() {
@@ -335,6 +362,8 @@ build_link() {
             echo ' * a leaf with no proven case is reported UNPROVEN and fails the run. */'
             echo '#include <stdio.h>'
             echo 'extern unsigned g_prover_placeholder_hits;'
+            echo 'extern unsigned long long prover_spy(const char *name, unsigned argc,'
+            echo '                                     const unsigned long long *args, unsigned ret);'
             echo 'static void unresolved(const char *name) {'
             echo '    static const char *seen[256];'
             echo '    static int count;'
@@ -345,6 +374,23 @@ build_link() {
             echo '    fprintf(stderr, "[prover] unavailable callee %s (case inconclusive)\n", name);'
             echo '}'
             for sym in $missing; do
+                spy=""
+                for s in "${SPIES[@]}"; do
+                    [ "${s%%:*}" = "$sym" ] && spy="$s"
+                done
+                if [ -n "$spy" ]; then
+                    # name:argc:return -- see SPIES above.
+                    rest="${spy#*:}"
+                    echo "unsigned long long $sym(unsigned long long a0, unsigned long long a1,"
+                    echo "    unsigned long long a2, unsigned long long a3, unsigned long long a4,"
+                    echo "    unsigned long long a5, unsigned long long a6, unsigned long long a7,"
+                    echo "    unsigned long long a8, unsigned long long a9, unsigned long long a10,"
+                    echo "    unsigned long long a11) {"
+                    echo "    unsigned long long a[12] = {a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11};"
+                    echo "    return prover_spy(\"$sym\", ${rest%%:*}u, a, ${rest#*:}u);"
+                    echo "}"
+                    continue
+                fi
                 case "$sym" in
                     D_*|g_*|jtbl_*|jpt_*|str_*|aD_*|aG_*|gteRegs|activeDispEnv|activeDrawEnv|currentDispEnv)
                         # 64 KiB, not 4 KiB: the runtime binds a shared
@@ -421,9 +467,10 @@ if ! grep -q '^BATTLE OVERLAY DIFFERENTIAL FAIL func_800A5A48 indirect ' "$OUT/m
 fi
 grep -m1 'indirect-native' "$OUT/mutant-abi.log" >&2
 # Negative controls 4-47: one mutant per further guest-ABI leaf.
-for group in a b c d e f g h i; do
+for group in a b c d e f g h i j; do
     case "$group" in
-        i) want="func_800AAD54" ;;
+        j) want="func_800AE2A4" ;;
+        i) want="func_800AAD54 func_800AE2A4" ;;
         h) want="func_800A0838 func_800AFF9C func_8009EF3C func_8009F1C4" ;;
         g) want="func_800BA8F4 func_800BB13C func_800BAC50 func_80076AC8 func_80076C34 func_800AAA20 func_800A3E98" ;;
         f) want="func_8007ECDC func_8007ED14 func_8007ED58 func_8007ED98 func_8007EDE0 func_8007EE28 func_8007B98C func_8007B9C8 func_8007A828 func_8007A7BC" ;;
@@ -445,6 +492,11 @@ for group in a b c d e f g h i; do
         grep -m1 "^BATTLE OVERLAY DIFFERENTIAL FAIL $leaf " "$OUT/mutant-$group.log" >&2
     done
 done
+if ! grep -q "^BATTLE OVERLAY DIFFERENTIAL FAIL func_800AE2A4 spy " "$OUT/mutant-j.log"; then
+    echo "BATTLE OVERLAY DIFFERENTIAL CONTROL FAILURE spied-call argument mutant not caught by the spy comparison" >&2
+    exit 1
+fi
+grep -m1 "^BATTLE OVERLAY DIFFERENTIAL FAIL func_800AE2A4 spy " "$OUT/mutant-j.log" >&2
 # Negative control 13 (typed bridge thunks): the pre-thunk bridge, which turns
 # every address-shaped word into a host pointer, must fail the 800A5914
 # tries<=0 pass-through case through the bridge.
@@ -460,4 +512,4 @@ fi
 grep -m1 'bridge-domain func_800A5914' "$OUT/legacy-bridge.log" >&2
 grep -m1 '^BATTLE OVERLAY DIFFERENTIAL FAIL func_800A5914 return ' "$OUT/legacy-bridge.log" >&2 || true
 grep -m1 '^BATTLE OVERLAY DIFFERENTIAL FAIL func_800A5914 bridge-domain ' "$OUT/legacy-bridge.log" >&2
-echo "BATTLE OVERLAY DIFFERENTIAL PASS (O0/O2/UBSan + wrong-result, store-path, 57 guest-ABI mutant, indirect-native and legacy-bridge controls rejected)"
+echo "BATTLE OVERLAY DIFFERENTIAL PASS (O0/O2/UBSan + wrong-result, store-path, 58 guest-ABI mutant, spy, indirect-native and legacy-bridge controls rejected)"

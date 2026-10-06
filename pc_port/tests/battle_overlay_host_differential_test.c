@@ -52,6 +52,15 @@ void MTC2(unsigned int v, int reg) { (void)v; (void)reg; abort(); }
 void CTC2(unsigned int v, int reg) { (void)v; (void)reg; abort(); }
 int doCOP2(int op) { (void)op; abort(); }
 #endif
+#ifdef PROVER_REAL_GTE
+/* PsyCross's GTE register file (gte/PsyX_GTE.cpp: GTERegisters, CP0 + CP2
+ * data + CP2 control, 3 x 32 words).  It is process state that neither side's
+ * RAM snapshot covers: compare() gives both sides the same starting registers
+ * and compares the registers each side leaves (a callee such as SetRotMatrix
+ * leaves its result there for the caller). */
+#define PROVER_GTE_BYTES 0x180u
+extern uint8_t gteRegs[PROVER_GTE_BYTES];
+#endif
 int g_GPUDisabledState;
 unsigned g_PcPortPresentedFrames;
 void ControllerPushState(void) {}
@@ -151,6 +160,60 @@ static unsigned inconclusive_per_leaf[LEAF_COUNT];
  * compare an undefined return register, so a case that touched one proves
  * nothing and is counted inconclusive. */
 unsigned g_prover_placeholder_hits;
+
+/* Spied main-executable services (SPIES in the run script): each call is
+ * logged with its first argc argument words, normalised so the two sides are
+ * comparable -- a host pointer into g_PsxRam becomes its guest address, a
+ * guest stack address (the interpreter's frame, STACK_SKIP) or a word inside
+ * this executable's image (a lifted body's static frame area) becomes a
+ * STACK token, since the two sides keep their frames in different places by
+ * design. */
+#define SPY_MAX 256u
+#define SPY_STACK_TOKEN 0x57AC0000u
+typedef struct {
+    const char *name;
+    unsigned argc;
+    uint32_t args[12];
+} SpyCall;
+static SpyCall spy_log[SPY_MAX], spy_expected[SPY_MAX];
+static unsigned spy_count, spy_expected_count, spy_overflow;
+extern char __executable_start[], _end[];
+
+static uint32_t spy_normalise(unsigned long long raw)
+{
+    uint32_t low = (uint32_t)raw;
+    uintptr_t base = (uintptr_t)g_PsxRam;
+    if ((uintptr_t)low >= base && (uintptr_t)low < base + PSX_RAM_SIZE)
+        low = 0x80000000u | (uint32_t)((uintptr_t)low - base);
+    if ((low & 0xFF800000u) == 0x80000000u || (low & 0xFF800000u) == 0xA0000000u) {
+        uint32_t off = low & 0x1FFFFFu;
+        if (off >= STACK_SKIP_LO && off < STACK_SKIP_HI)
+            return SPY_STACK_TOKEN;
+        return low;
+    }
+    if ((uintptr_t)low >= (uintptr_t)__executable_start && (uintptr_t)low < (uintptr_t)_end)
+        return SPY_STACK_TOKEN;
+    return low;
+}
+
+unsigned long long prover_spy(const char *name, unsigned argc,
+                              const unsigned long long *args, unsigned ret);
+unsigned long long prover_spy(const char *name, unsigned argc,
+                              const unsigned long long *args, unsigned ret)
+{
+    unsigned i;
+    if (spy_count >= SPY_MAX) {
+        spy_overflow = 1;
+        return ret;
+    }
+    memset(&spy_log[spy_count], 0, sizeof(SpyCall));
+    spy_log[spy_count].name = name;
+    spy_log[spy_count].argc = argc;
+    for (i = 0; i < 12 && i < argc; i++)
+        spy_log[spy_count].args[i] = spy_normalise(args[i]);
+    spy_count++;
+    return ret;
+}
 
 static uint32_t rng_state = 0x12345678u;
 static uint32_t rnd(void)
@@ -254,6 +317,10 @@ static void runtime_up(void)
  * return comparison below. */
 #define PROVER_T0_SEED 0x7E57A00Du
 static unsigned store_pass_through_checks;
+/* Cases dropped because the retail side used a non-guest address. */
+static unsigned host_ref_cases;
+/* Proven cases that made at least one spied service call. */
+static unsigned spied_cases;
 
 static int is_store_pass_through(const char *name, const uint32_t *args)
 {
@@ -285,10 +352,38 @@ static const CoverageLeaf kCoverage[] = {
     {"func_800AFF9C", 0x800AFF9Cu, 49},
     {"func_8009EF3C", 0x8009EF3Cu, 162},
     {"func_8009F1C4", 0x8009F1C4u, 251},
+    {"func_800AE2A4", 0x800AE2A4u, 786},
 };
 #define COVERAGE_COUNT (sizeof(kCoverage) / sizeof(kCoverage[0]))
 #define COVERAGE_MAX_INSNS 4096u
 static uint8_t cov_seen[COVERAGE_COUNT][COVERAGE_MAX_INSNS];
+#ifdef PROVER_REAL_GTE
+static uint8_t gte_before[PROVER_GTE_BYTES], gte_expected[PROVER_GTE_BYTES];
+/* The 64 COP2 registers as the R3000 reads them (MFC2/CFC2), from a saved
+ * register file: the storage of a 16-bit register keeps whatever upper half
+ * its last writer left (PsyCross's native helpers store full ints, the
+ * interpreter's MTC2 stores the moved word), which no guest code can see.
+ * Data: MFC2 (PsyCross's own read normalisation: sign/zero extension, SXYP,
+ * IRGB/ORGB from IR1..3).  Control: the s16 registers (RT33, L33, LB3, H,
+ * DQA, ZSF3, ZSF4) read sign-extended on hardware. */
+static void gte_visible(const uint8_t *file, uint32_t *out)
+{
+    uint8_t saved[PROVER_GTE_BYTES];
+    uint32_t c;
+    unsigned r;
+    memcpy(saved, gteRegs, PROVER_GTE_BYTES);
+    memcpy(gteRegs, file, PROVER_GTE_BYTES);
+    for (r = 0; r < 32; r++)
+        out[r] = MFC2((int)r);
+    for (r = 0; r < 32; r++) {
+        c = CFC2((int)r);
+        if (r == 4 || r == 12 || r == 20 || r == 26 || r == 27 || r == 29 || r == 30)
+            c = (uint32_t)(int32_t)(int16_t)c;
+        out[32 + r] = c;
+    }
+    memcpy(gteRegs, saved, PROVER_GTE_BYTES);
+}
+#endif
 static uint8_t cov_case[COVERAGE_MAX_INSNS];
 static int cov_index = -1;
 static int (*cov_inner_bridge)(void *, PcPortMipsCpu *, uint32_t);
@@ -330,6 +425,39 @@ static void coverage_report(void)
     }
 }
 
+/* Retail-side loads and stores of a word that is not a guest address.  The
+ * shared resolver (pc_port/src/battle_guest_resolver.h) hands such a word to
+ * the host as a raw -no-pie address, and the interpreter accepts it when it
+ * lies in any mapping of this process: a wild pointer built from seeded
+ * random bytes then reads or writes the harness's OWN state (the before/
+ * expected/actual snapshots, a lifted TU's frame area), which differs
+ * between the two sides and between the three mode binaries.  Such a case
+ * compares nothing the hardware does (a bus error there), so it is
+ * inconclusive, never a match or a divergence. */
+static unsigned retail_host_refs;
+static int (*retail_inner_read)(void *, uint32_t, unsigned, uint32_t *);
+static int (*retail_inner_write)(void *, uint32_t, unsigned, uint32_t);
+
+static int guest_shaped(uint32_t a)
+{
+    return (a & 0xFF800000u) == 0x80000000u || (a & 0xFF800000u) == 0xA0000000u ||
+           (a & 0xFFFFF000u) == 0x1F800000u;
+}
+
+static int retail_read(void *opaque, uint32_t address, unsigned width, uint32_t *value)
+{
+    if (!guest_shaped(address))
+        retail_host_refs++;
+    return retail_inner_read(opaque, address, width, value);
+}
+
+static int retail_write(void *opaque, uint32_t address, unsigned width, uint32_t value)
+{
+    if (!guest_shaped(address))
+        retail_host_refs++;
+    return retail_inner_write(opaque, address, width, value);
+}
+
 static int run_interpreted(uint32_t target, const uint32_t *args)
 {
     unsigned i;
@@ -337,6 +465,11 @@ static int run_interpreted(uint32_t target, const uint32_t *args)
     initialize_cpu(&cpu, &rt);
     cov_inner_bridge = cpu.bus.bridge;
     cpu.bus.bridge = cov_bridge;
+    retail_inner_read = cpu.bus.read;
+    retail_inner_write = cpu.bus.write;
+    cpu.bus.read = retail_read;
+    cpu.bus.write = retail_write;
+    retail_host_refs = 0;
     memset(cov_case, 0, sizeof(cov_case));
     for (i = 0; i < 4; i++)
         cpu.gpr[4 + i] = args[i];
@@ -420,6 +553,9 @@ static void compare(const Leaf *leaf, const uint32_t *args)
     last_case_proven = 0;
     cov_index = coverage_slot(name);
     memcpy(before, g_PsxRam, sizeof(before));
+#ifdef PROVER_REAL_GTE
+    memcpy(gte_before, gteRegs, PROVER_GTE_BYTES);
+#endif
     if (native_gs != NULL)
         memcpy(native_before, native_gs, NATIVE_GS_SIZE);
     /* Both sides call the same rand(); start each run from the same point or
@@ -428,6 +564,8 @@ static void compare(const Leaf *leaf, const uint32_t *args)
     if (pre_side != NULL)
         pre_side();
     g_prover_placeholder_hits = 0;
+    spy_count = 0;
+    spy_overflow = 0;
     /* The interpreted side calls main-executable code natively through the
      * bridge (HeapFree, rcos, ...). If that native callee faults, retail did
      * not complete on this input as far as the harness can tell: count the
@@ -451,6 +589,19 @@ static void compare(const Leaf *leaf, const uint32_t *args)
         placeholder_inconclusive(leaf, "retail");
         return;
     }
+    if (irc == PC_PORT_MIPS_HALTED && retail_host_refs != 0) {
+        unsigned index = (unsigned)(leaf - kLeaves);
+        rt.force_interpret = 0;
+        inconclusive++;
+        inconclusive_per_leaf[index]++;
+        host_ref_cases++;
+        if (inconclusive_logged[index] == 0) {
+            inconclusive_logged[index] = 1;
+            fprintf(stderr, "[prover] inconclusive %s: the retail side "
+                    "dereferenced a non-guest (host) address\n", name);
+        }
+        return;
+    }
     if (irc != PC_PORT_MIPS_HALTED) {
         unsigned index = (unsigned)(leaf - kLeaves);
         inconclusive++;
@@ -466,6 +617,9 @@ static void compare(const Leaf *leaf, const uint32_t *args)
         return;
     }
     memcpy(expected, g_PsxRam, sizeof(expected));
+    memcpy(spy_expected, spy_log, sizeof(SpyCall) * spy_count);
+    spy_expected_count = spy_count;
+    spy_count = 0;
     iv0 = cpu.gpr[2];
     rt.force_interpret = 0;
     if (native_gs != NULL) {
@@ -474,6 +628,10 @@ static void compare(const Leaf *leaf, const uint32_t *args)
     }
 
     memcpy(g_PsxRam, before, sizeof(g_PsxRam));
+#ifdef PROVER_REAL_GTE
+    memcpy(gte_expected, gteRegs, PROVER_GTE_BYTES);
+    memcpy(gteRegs, gte_before, PROVER_GTE_BYTES);
+#endif
     srand(1);
     if (pre_side != NULL) {
         unsigned hits = g_prover_placeholder_hits;
@@ -497,6 +655,36 @@ static void compare(const Leaf *leaf, const uint32_t *args)
         placeholder_inconclusive(leaf, "host");
         return;
     }
+    if (spy_overflow) {
+        unsigned index = (unsigned)(leaf - kLeaves);
+        inconclusive++;
+        inconclusive_per_leaf[index]++;
+        if (inconclusive_logged[index] == 0) {
+            inconclusive_logged[index] = 1;
+            fprintf(stderr, "[prover] inconclusive %s: more than %u spied calls\n",
+                    name, SPY_MAX);
+        }
+        return;
+    }
+    if (spy_count != spy_expected_count ||
+        memcmp(spy_log, spy_expected, sizeof(SpyCall) * spy_count) != 0) {
+        unsigned k = 0;
+        while (k < spy_count && k < spy_expected_count &&
+               memcmp(&spy_log[k], &spy_expected[k], sizeof(SpyCall)) == 0)
+            k++;
+        snprintf(detail, sizeof(detail),
+                 "spied calls differ at #%u (retail %u, host %u): retail %s(%08x,%08x) host %s(%08x,%08x)",
+                 k, spy_expected_count, spy_count,
+                 k < spy_expected_count ? spy_expected[k].name : "-",
+                 k < spy_expected_count ? spy_expected[k].args[0] : 0u,
+                 k < spy_expected_count ? spy_expected[k].args[1] : 0u,
+                 k < spy_count ? spy_log[k].name : "-",
+                 k < spy_count ? spy_log[k].args[0] : 0u,
+                 k < spy_count ? spy_log[k].args[1] : 0u);
+        fail(name, "spy", detail);
+        return;
+    }
+    spied_cases += spy_count != 0;
 
     /* Compare only the bits the body's return type defines. A void body leaves
      * whatever the callee happened to have in rax, and a u8/u16 return leaves
@@ -543,12 +731,31 @@ static void compare(const Leaf *leaf, const uint32_t *args)
     }
     if (diffs != 0) {
         snprintf(detail, sizeof(detail),
-                 "%zu bytes differ, first at guest %08x retail=%02x host=%02x",
+                 "%zu bytes differ, first at guest %08x retail=%02x host=%02x "
+                 "a0=%08x a1=%08x a2=%08x a3=%08x",
                  diffs, (unsigned)(0x80000000u | first), expected[first],
-                 actual[first]);
+                 actual[first], args[0], args[1], args[2], args[3]);
         fail(name, "ram", detail);
         return;
     }
+#ifdef PROVER_REAL_GTE
+    {
+        uint32_t want[64], got[64];
+        unsigned r;
+        gte_visible(gteRegs, got);
+        gte_visible(gte_expected, want);
+        for (r = 0; r < 64; r++) {
+            if (want[r] != got[r]) {
+                snprintf(detail, sizeof(detail),
+                         "GTE %s register %u retail=%08x host=%08x a0=%08x a1=%08x",
+                         r < 32 ? "data" : "control", r & 31u, want[r], got[r],
+                         args[0], args[1]);
+                fail(name, "gte", detail);
+                return;
+            }
+        }
+    }
+#endif
     if (native_gs != NULL) {
         for (a = 0; a < NATIVE_GS_SIZE; a++) {
             if (native_expected[a] != native_gs[a]) {
@@ -1475,8 +1682,9 @@ static void hand_cases_timer_callbacks(void)
 
 /* 800AAA20 (main72 port body): obj at REC (+4 = model word -> SRC), the
  * fifth argument in the guest stack slot.  Its callees (800AFF9C,
- * 8009F1C4/8009EF3C, 800A0838, 800AE2A4, 800AAD54) are interpreted on both
- * sides (native side through PcPort_BattleMipsCallGuest).  800AAD54 returns
+ * 8009F1C4/8009EF3C, 800A0838, 800AE2A4, 800AAD54) are interpreted on the
+ * retail side and reached through PcPort_BattleMipsCallGuest (their adopted
+ * native bodies) on the host side.  800AAD54 returns
  * at once for steps == 0 or obj +0x10 == 0.  Classes: 1 = *obj == 0,
  * 2 = +0x34 clear (800AAD54 only), 4 = +0x34 set (stepping loop). */
 static void hand_cases_aaa20(void)
@@ -1819,6 +2027,113 @@ static void hand_cases_aad54(void)
     require_outcomes("func_800AAD54", seen, 3u);
 }
 
+/* 800AE2A4 (main72, lifted port body; every callee through the
+ * interpreter's jal path or the bridge's direct contract): object at REC,
+ * +0x98 current frame (< 0: inactive), +0x9A loop length, +0x9C/+0x9E event
+ * cursor/count, +0xA0/+0xA4 event cursor/list start into a packed stream of
+ * variable-size records at AE2A4_EVT (s16 frame, kind byte +2: 1..9 through
+ * jtbl_8007075C, anything else skipped), +4 model at DST (0x7C-byte
+ * entries), +0x20 side index, +0x10C/+0x110 the kind-3 effect table (0x70
+ * stride), +0x10E/+0x118 the kind-9 image table (0x30 stride), +0x10A the
+ * kind-8 actor mask, +0xB0 the kind-4 sound bank chain.  World state: the
+ * D_800C3E30 actor flags (func_800AF400), the D_800D3368 actor table
+ * (records at AE2A4_ACT), D_800C360C/D_800C4000 the kind-8 selector table,
+ * D_800D2FC0 the kind-2/9 work block, and the main-exe camera pointer
+ * D_800658C8 (a native binding: written through the shared resolver, so
+ * both sides read the same camera block at AE2A4_CAM).  Record bytes are
+ * random with the index-like fields kept small.  Classes: 1 = inactive,
+ * 2 = an event consumed (+0xA0 moved), 4 = no event at this frame. */
+#define AE2A4_EVT 0x800C6000u
+#define AE2A4_ACT 0x800C6400u
+#define AE2A4_CAM 0x800C7000u
+#define AE2A4_TAB 0x800C6A00u
+static void hand_cases_ae2a4(void)
+{
+    uint32_t args[4];
+    unsigned v, seen = 0;
+
+    if (!abi_leaf_listed("func_800AE2A4"))
+        return;
+    for (v = 0; v < 2400; v++) {
+        uint8_t *o = (uint8_t *)PSX_ADDR(REC);
+        uint8_t *ev = (uint8_t *)PSX_ADDR(AE2A4_EVT);
+        uint8_t *cam = (uint8_t *)PSX_ADDR(AE2A4_CAM);
+        int16_t frame = (int16_t)(v % 5u);
+        int inactive = (v % 17u) == 3u;
+        int miss = (v % 11u) == 4u;
+        unsigned cls, k, r;
+
+        begin_case((v % 7u == 0u) ? 1u : 2u, 0);
+        *(int16_t *)(o + 0x98) = inactive ? (int16_t)-1 : frame;
+        *(int16_t *)(o + 0x9A) = (int16_t)(hrnd() % 8u) - 1;
+        *(int16_t *)(o + 0x9C) = 0;
+        *(int16_t *)(o + 0x9E) = (int16_t)(1u + hrnd() % 3u);
+        *(uint32_t *)(o + 0xA0) = AE2A4_EVT;
+        *(uint32_t *)(o + 0xA4) = AE2A4_EVT;
+        *(uint32_t *)(o + 0x4) = DST;
+        o[0x20] = (uint8_t)(hrnd() % 4u);
+        o[0x10C] = (uint8_t)(hrnd() % 4u);
+        *(uint32_t *)(o + 0x110) = AE2A4_TAB;
+        o[0x10E] = (uint8_t)(hrnd() % 4u);
+        *(uint32_t *)(o + 0x118) = AE2A4_TAB + 0x180u;
+        *(uint16_t *)(o + 0x10A) = (uint16_t)(hrnd() & 0x1FFFu);
+        *(uint32_t *)(o + 0xB0) = AE2A4_CAM + 0x600u;
+        *(uint32_t *)PSX_ADDR(AE2A4_CAM + 0x608u) = AE2A4_CAM + 0x640u;
+        *(uint16_t *)((uint8_t *)PSX_ADDR(DST) + 0xA) = (uint16_t)(1u + hrnd() % 3u);
+        /* World state. */
+        *(uint16_t *)PSX_ADDR(0x800C3E30u) = (hrnd() % 5u) == 0u ? 0u : (uint16_t)(hrnd() & 0x1FFFu);
+        *(uint32_t *)PSX_ADDR(0x800C360Cu) = 1u + hrnd() % 2u;
+        for (k = 0; k < 13; k++) {
+            uint32_t a = AE2A4_ACT + k * 0x50u;
+            *(uint32_t *)PSX_ADDR(0x800D3368u + 4u * k) = (hrnd() % 3u) == 0u ? 0u : a;
+            *(uint16_t *)PSX_ADDR(a + 0x4Au) = (uint16_t)(hrnd() & 3u);
+        }
+        for (k = 0; k < 0x90u; k++)
+            *(uint8_t *)PSX_ADDR(0x800C4000u + k) = (uint8_t)(hrnd() % 7u);
+        *(uint32_t *)PSX_ADDR(0x800D2FC0u) = AE2A4_CAM + 0x700u;
+        cam[0x35F] = (uint8_t)(hrnd() % 4u);
+        *(uint32_t *)battle_guest_resolve_native(0x800658C8u) =
+            (hrnd() % 6u) == 0u ? 0u : AE2A4_CAM;
+        /* The event records: random bodies, index fields small. */
+        for (r = 0; r < 3u; r++) {
+            uint8_t *e = ev + r * 0x1Cu;
+            for (k = 3; k < 0x1Cu; k++)
+                e[k] = (uint8_t)hrnd();
+            *(int16_t *)(e + 0x0) = (r == 0u && miss) ? (int16_t)(frame + 1) : frame;
+            e[2] = r == 0u ? (uint8_t)(v % 11u) : (uint8_t)(1u + hrnd() % 9u);
+            e[3] = (uint8_t)(hrnd() % 3u);
+            switch (hrnd() % 4u) {
+            case 0: e[4] = 0; break;
+            case 1: e[4] = (uint8_t)(hrnd() % 3u); break;
+            case 2: e[4] = (uint8_t)(0x80u | (hrnd() % 3u)); break;
+            default: break;
+            }
+            e[5] = (hrnd() % 5u) == 0u ? 0xFFu : (uint8_t)(hrnd() % 3u);
+            e[6] = (uint8_t)((hrnd() & 0x80u) | (hrnd() % 6u));
+            e[7] = (uint8_t)(hrnd() % 4u);
+            e[0xC] = (uint8_t)((hrnd() & 0x80u) | (hrnd() % 4u));
+            e[0xD] = (uint8_t)(hrnd() & 1u);
+            e[0x12] = (uint8_t)(((hrnd() % 3u) << 4) | (hrnd() & 1u));
+        }
+        args[0] = REC;
+        args[1] = v % 4u;
+        args[2] = hrnd() % 3u;
+        args[3] = 0;
+        compare_name("func_800AE2A4", args);
+        if (!last_case_proven)
+            continue;
+        if (inactive)
+            cls = 1u;
+        else if (*(uint32_t *)(o + 0xA0) != AE2A4_EVT)
+            cls = 2u;
+        else
+            cls = 4u;
+        seen |= cls;
+    }
+    *(uint32_t *)battle_guest_resolve_native(0x800658C8u) = 0u;
+    require_outcomes("func_800AE2A4", seen, 7u);
+}
+
 /* One case per adopted leaf, with the arguments the port's bridge test already
  * established as meaningful for it. */
 static void hand_cases(void)
@@ -1840,6 +2155,7 @@ static void hand_cases(void)
     hand_cases_a3e98();
     hand_cases_a0838();
     hand_cases_aad54();
+    hand_cases_ae2a4();
     hand_cases_aff9c();
     hand_cases_model_matrices("func_8009EF3C");
     hand_cases_model_matrices("func_8009F1C4");
@@ -2169,8 +2485,9 @@ int main(void)
         return 1;
     }
     printf("BATTLE OVERLAY DIFFERENTIAL PASS checks=%u inconclusive=%u "
-           "hand-only=%u leaves=%u store-pass-through=%u\n",
+           "hand-only=%u leaves=%u store-pass-through=%u host-address=%u "
+           "spied-cases=%u\n",
            checks, inconclusive, hand_only, (unsigned)LEAF_COUNT,
-           store_pass_through_checks);
+           store_pass_through_checks, host_ref_cases, spied_cases);
     return 0;
 }
