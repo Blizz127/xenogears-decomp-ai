@@ -36,7 +36,9 @@ extern unsigned int MFC2(int), CFC2(int);
 extern void MTC2(unsigned int, int), CTC2(unsigned int, int);
 extern int doCOP2(int);
 
+#ifndef LOW_BASE
 #define LOW_BASE 0x00E00000u
+#endif
 #define LOW_SIZE 0x10000u
 #define LOW_CMP  0x8000u   /* compared window */
 #define GP_VALUE 0x80059170u

@@ -1046,6 +1046,25 @@ s32 func_800747AC(s32 minCursor, u32 maxCursor, s32* pButton)
     return 0;
 }
 
+#ifdef XENO_PC_PORT
+s32 func_80074AF0(void)
+{
+    /* retail wraps (addu/mult): the generator overflows its state every few calls, so the
+     * arithmetic is unsigned here to stay defined (colour animation of the developer menu only) */
+    u32 a = (u32)D_80076EF4 * 5u + 1u;
+    u32 b = (u32)D_80076EF8 * 7u + 3u;
+    s32 v;
+
+    D_80076EF4 = (s32)a;
+    D_80076EF8 = (s32)b;
+    v = (s32)((a ^ b) + 1u);
+    D_80076EF4 = v;
+    if (v < 0) {
+        D_80076EF4 = (s32)(0u - (u32)v);
+    }
+    return D_80076EF4;
+}
+#else
 s32 func_80074AF0(void)
 {
     s32 a = D_80076EF4 * 5 + 1;
@@ -1061,6 +1080,7 @@ s32 func_80074AF0(void)
     }
     return D_80076EF4;
 }
+#endif
 
 void func_80074B58(void)
 {
@@ -1397,7 +1417,7 @@ s32 func_80075D4C(s32 entryIndex) {
 s32 func_80075D4C(s32 entryIndex)
 {
     u8* e = (u8*)(uintptr_t)g_ArchiveTable + entryIndex * ARCHIVE_HEADER_ENTRY_SIZE;
-    return ((e[6] << 24) + (e[5] << 16) + (e[4] << 8)) | e[3];
+    return (s32)((((u32)e[6] << 24) + ((u32)e[5] << 16) + ((u32)e[4] << 8)) | e[3]); /* unsigned: byte 6 >= 0x80 is a patch flag */
 }
 #endif
 
@@ -1500,6 +1520,7 @@ void func_8007625C(void)
 {
     RECT clear = D_800704E0;
     s32 play;
+    s32 mask = 1;
 
     D_80077028 = 0;
     D_800773AC = -1;
@@ -1512,11 +1533,15 @@ void func_8007625C(void)
     } else if (D_80077448 == 2) {
         play = 0;
     } else {
+        /* retail jumps past SetDispMask(0) for a type outside 0..2 */
         play = 1;
+        mask = 0;
     }
 
     if (play) {
-        SetDispMask(0);
+        if (mask) {
+            SetDispMask(0);
+        }
         D_80077124[0].draw.isbg = 0;
         D_80077124[1].draw.isbg = 0;
         if (D_80077454 != 0) {
