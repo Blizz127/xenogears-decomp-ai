@@ -1066,6 +1066,17 @@ static const SlotSweepLeaf kSlotSweep[] = {
     { "func_8007AFAC", 0, 1, 0xC9, 0x0B, 0xC9, 0, 0 },     /* u8 rem, 0 -> dividend */
     { "func_8007B208", 1, 1, 0xBEEF, 0x123, 0xBEEF, 0, 0 },  /* u16 div, 0 -> 0xFFFF */
     { "func_8007B264", 1, 1, 0xBEEF, 0x123, 0xBEEF, 0, 0 },  /* u16 rem, 0 -> dividend */
+    /* Codemod sweep batch 2: main30 compare leaves. */
+    { "func_8007EA08", 1, 1, 0x9000, 0x0, 0x2B2B, 0x0, 1 },
+    { "func_8007EA4C", 0, 1, 0x10, 0x0, 0x2B, 0x0, 1 },
+    { "func_8007EA84", 1, 1, 0x1000, 0x0, 0x2B2B, 0x0, 1 },
+    { "func_8007EB08", 1, 1, 0x1111, 0x1112, 0x5A5A, 0x5A5A, 0 },
+    { "func_8007EB50", 0, 1, 0x20, 0x10, 0x20, 0x20, 0 },
+    { "func_8007EB90", 1, 1, 0x2000, 0x1000, 0x2000, 0x2000, 0 },
+    { "func_8007EBD8", 0, 1, 0xD4, 0x0, 0x2B, 0x0, 1 },
+    { "func_8007EC10", 1, 1, 0xD4D4, 0x0, 0x2B2B, 0x0, 1 },
+    { "func_8007EC54", 0, 1, 0xF0, 0xF, 0xF0, 0x30, 0 },
+    { "func_8007EC94", 1, 1, 0xF0F0, 0xF0F, 0xF0F0, 0x3030, 0 },
 };
 
 /* Extra forced operand pairs that must each be proven (class outside lo/hi):

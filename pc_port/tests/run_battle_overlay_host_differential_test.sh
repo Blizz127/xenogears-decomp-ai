@@ -193,6 +193,18 @@ mutants = {
           ("main19.c", "GREMU(pRow[p[1]], pRow[p[2]])", "(pRow[p[2]] ? pRow[p[1]] % pRow[p[2]] : 0)"),  # 8007AFAC
           ("main19.c", "GDIVU(row[p[1]], row[p[2]])", "(row[p[2]] ? row[p[1]] / row[p[2]] : 0)"),      # 8007B208
           ("main19.c", "GREMU(row[p[1]], row[p[2]])", "(row[p[2]] ? row[p[1]] % row[p[2]] : 0)")],     # 8007B264
+    # Codemod sweep batch 2: main30 compare leaves: one mutant per leaf.
+    "e": [
+        ("main30.c", 'return (i2 | i3s) >= a;', 'return (i2 | i3s) > a;'),
+        ("main30.c", 'return pRow[p[1]] >= (u32)p[2];', 'return pRow[p[1]] > (u32)p[2];'),
+        ("main30.c", 'return a >= (i2 | i3s);', 'return a > (i2 | i3s);'),
+        ("main30.c", '    u32 b = *GPTR(u16, (i2 << 1) + row);\n\n    return (a ^ b) == 0;', '    u32 b = *GPTR(u16, (i2 << 1) + row);\n\n    return (a ^ b) != 0;'),
+        ("main30.c", '    u32 b = pRow[p[2]];\n\n    return b >= a;', '    u32 b = pRow[p[2]];\n\n    return b > a;'),
+        ("main30.c", '    u32 b = *GPTR(u16, (i2 << 1) + row);\n\n    return b >= a;\n}\n/* func_8007EBD8', '    u32 b = *GPTR(u16, (i2 << 1) + row);\n\n    return b > a;\n}\n/* func_8007EBD8'),
+        ("main30.c", '    u32 b = p[2];\n\n    return (a & b) != 0;', '    u32 b = p[2];\n\n    return (a | b) != 0;'),
+        ("main30.c", 'return (a & (i2 + i3s)) != 0;', 'return (a & (i2 + i3)) != 0;'),
+        ("main30.c", '    u32 b = pRow[p[2]];\n\n    return (a & b) != 0;', '    u32 b = pRow[p[2]];\n\n    return (a & b) == 0;'),
+        ("main30.c", '    u32 b = *GPTR(u16, (i2 << 1) + row);\n\n    return (a & b) != 0;', '    u32 b = *GPTR(u16, (i2 << 1) + row);\n\n    return (a & b) == 0;')],
 }
 for group, edits in mutants.items():
     d = out / ("mutants-" + group)
@@ -376,9 +388,10 @@ if ! grep -q '^BATTLE OVERLAY DIFFERENTIAL FAIL func_800A5A48 indirect ' "$OUT/m
     exit 1
 fi
 grep -m1 'indirect-native' "$OUT/mutant-abi.log" >&2
-# Negative controls 4-27: one mutant per further guest-ABI leaf.
-for group in a b c d; do
+# Negative controls 4-37: one mutant per further guest-ABI leaf.
+for group in a b c d e; do
     case "$group" in
+        e) want="func_8007EA08 func_8007EA4C func_8007EA84 func_8007EB08 func_8007EB50 func_8007EB90 func_8007EBD8 func_8007EC10 func_8007EC54 func_8007EC94" ;;
         d) want="func_8007B198 func_8007AF5C func_8007AFAC func_8007B208 func_8007B264" ;;
         c) want="func_8007AE98 func_8007AFFC func_8007B040 func_8007B084 func_8007B0C8 func_8007B134 func_8007E954 func_8007E98C func_8007E9D0 func_8007EAC8" ;;
         a) want="func_800A579C func_800A5D54 func_800A5BE8 func_8007AE38 func_8007E8E0 func_8007FEC4" ;;
@@ -411,4 +424,4 @@ fi
 grep -m1 'bridge-domain func_800A5914' "$OUT/legacy-bridge.log" >&2
 grep -m1 '^BATTLE OVERLAY DIFFERENTIAL FAIL func_800A5914 return ' "$OUT/legacy-bridge.log" >&2 || true
 grep -m1 '^BATTLE OVERLAY DIFFERENTIAL FAIL func_800A5914 bridge-domain ' "$OUT/legacy-bridge.log" >&2
-echo "BATTLE OVERLAY DIFFERENTIAL PASS (O0/O2/UBSan + wrong-result, store-path, 25 guest-ABI mutant, indirect-native and legacy-bridge controls rejected)"
+echo "BATTLE OVERLAY DIFFERENTIAL PASS (O0/O2/UBSan + wrong-result, store-path, 35 guest-ABI mutant, indirect-native and legacy-bridge controls rejected)"

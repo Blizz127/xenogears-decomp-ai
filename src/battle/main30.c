@@ -88,8 +88,8 @@ u32 func_8007E9D0(GSLOT(u8) ppBoard, u8 index) {
     return (u32)p[2] >= pRow[p[1]];
 }
 /* func_8007EA08.s */
-u32 func_8007EA08(u8** ppBoard, u8 index) {
-    u8* p = *ppBoard;
+u32 func_8007EA08(GSLOT(u8) ppBoard, u8 index) {
+    u8* p = GLOAD(u8, ppBoard);
     u32 i3 = p[3];
     u32 i1 = p[1];
     u32 i2 = p[2];
@@ -100,15 +100,15 @@ u32 func_8007EA08(u8** ppBoard, u8 index) {
     return (i2 | i3s) >= a;
 }
 /* func_8007EA4C.s */
-u32 func_8007EA4C(u8** ppBoard, u8 index) {
-    u8* p = *ppBoard;
+u32 func_8007EA4C(GSLOT(u8) ppBoard, u8 index) {
+    u8* p = GLOAD(u8, ppBoard);
     u8* pRow = D_800D3430 + ((u32)index << 6);
 
     return pRow[p[1]] >= (u32)p[2];
 }
 /* func_8007EA84.s */
-u32 func_8007EA84(u8** ppBoard, u8 index) {
-    u8* p = *ppBoard;
+u32 func_8007EA84(GSLOT(u8) ppBoard, u8 index) {
+    u8* p = GLOAD(u8, ppBoard);
     u32 i3 = p[3];
     u32 i1 = p[1];
     u32 i2 = p[2];
@@ -126,8 +126,8 @@ u32 func_8007EAC8(GSLOT(u8) ppBoard, u8 index) {
     return (pRow[p[1]] ^ pRow[p[2]]) == 0;
 }
 /* func_8007EB08.s */
-u32 func_8007EB08(u8** ppBoard, u8 index) {
-    u8* p = *ppBoard;
+u32 func_8007EB08(GSLOT(u8) ppBoard, u8 index) {
+    u8* p = GLOAD(u8, ppBoard);
     u32 i2 = p[2];
     u32 i1 = p[1];
     u32 row = GADDR(D_800D3420) + ((u32)index << 6);
@@ -137,17 +137,17 @@ u32 func_8007EB08(u8** ppBoard, u8 index) {
     return (a ^ b) == 0;
 }
 /* func_8007EB50.s */
-u32 func_8007EB50(u8** ppBoard, u8 index) {
+u32 func_8007EB50(GSLOT(u8) ppBoard, u8 index) {
     u8* pRow = D_800D3430 + ((u32)index << 6);
-    u8* p = *ppBoard;
+    u8* p = GLOAD(u8, ppBoard);
     u32 a = pRow[p[1]];
     u32 b = pRow[p[2]];
 
     return b >= a;
 }
 /* func_8007EB90.s */
-u32 func_8007EB90(u8** ppBoard, u8 index) {
-    u8* p = *ppBoard;
+u32 func_8007EB90(GSLOT(u8) ppBoard, u8 index) {
+    u8* p = GLOAD(u8, ppBoard);
     u32 i2 = p[2];
     u32 i1 = p[1];
     u32 row = GADDR(D_800D3420) + ((u32)index << 6);
@@ -157,17 +157,17 @@ u32 func_8007EB90(u8** ppBoard, u8 index) {
     return b >= a;
 }
 /* func_8007EBD8.s */
-u32 func_8007EBD8(u8** ppBoard, u8 index) {
+u32 func_8007EBD8(GSLOT(u8) ppBoard, u8 index) {
     u8* pRow = D_800D3430 + ((u32)index << 6);
-    u8* p = *ppBoard;
+    u8* p = GLOAD(u8, ppBoard);
     u32 a = pRow[p[1]];
     u32 b = p[2];
 
     return (a & b) != 0;
 }
 /* func_8007EC10.s */
-u32 func_8007EC10(u8** ppBoard, u8 index) {
-    u8* p = *ppBoard;
+u32 func_8007EC10(GSLOT(u8) ppBoard, u8 index) {
+    u8* p = GLOAD(u8, ppBoard);
     u32 i3 = p[3];
     u32 i1 = p[1];
     u32 i2 = p[2];
@@ -178,17 +178,17 @@ u32 func_8007EC10(u8** ppBoard, u8 index) {
     return (a & (i2 + i3s)) != 0;
 }
 /* func_8007EC54.s */
-u32 func_8007EC54(u8** ppBoard, u8 index) {
+u32 func_8007EC54(GSLOT(u8) ppBoard, u8 index) {
     u8* pRow = D_800D3430 + ((u32)index << 6);
-    u8* p = *ppBoard;
+    u8* p = GLOAD(u8, ppBoard);
     u32 a = pRow[p[1]];
     u32 b = pRow[p[2]];
 
     return (a & b) != 0;
 }
 /* func_8007EC94.s */
-u32 func_8007EC94(u8** ppBoard, u8 index) {
-    u8* p = *ppBoard;
+u32 func_8007EC94(GSLOT(u8) ppBoard, u8 index) {
+    u8* p = GLOAD(u8, ppBoard);
     u32 i2 = p[2];
     u32 i1 = p[1];
     u32 row = GADDR(D_800D3420) + ((u32)index << 6);
