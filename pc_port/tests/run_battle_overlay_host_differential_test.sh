@@ -46,6 +46,13 @@ python3 tools/scripts/battle_overlay_host_tus.py --check-abi-thunks || {
     echo "BATTLE OVERLAY DIFFERENTIAL FAIL typed bridge thunks disagree with the prototypes" >&2
     exit 1
 }
+# Every jal of a lifted body must be dispatchable by the port (a main-exe
+# callee needs a bound, exported, non-stub native: the main executable's text
+# is not in guest RAM, so the interpreter cannot run it).
+python3 tools/scripts/check_battle_lift_jal_targets.py || {
+    echo "BATTLE OVERLAY DIFFERENTIAL FAIL a lifted body calls a target the port cannot dispatch" >&2
+    exit 1
+}
 python3 tools/scripts/battle_overlay_host_tus.py --leaf-types \
     > "$OUT/overlay_leaf_types.inc"
 # Pointer-typed overlay globals: the sweep seeds the guest word with a live RAM
@@ -518,6 +525,19 @@ if ! grep -q "^BATTLE OVERLAY DIFFERENTIAL FAIL func_800AE2A4 spy " "$OUT/mutant
     exit 1
 fi
 grep -m1 "^BATTLE OVERLAY DIFFERENTIAL FAIL func_800AE2A4 spy " "$OUT/mutant-j.log" >&2
+# Control (r6.10 crash): the call service's old stack rule must abort the
+# 800AAD54 case that runs on a 4-aligned / scratchpad stack, at its
+# 0x80032498 (HeapChangeCurrentUser) jal, exactly as the game did.
+build_link O2 "$OUT/host-jal-sp" src/battle/main12.c "-jal-sp" \
+    src/battle/main14.c src/battle/main69.c "" "-DBATTLE_JAL_LEGACY_SP_CHECK"
+status=0
+"$OUT/O2-jal-sp" >"$OUT/jal-sp.log" 2>&1 || status=$?
+if [ "$status" -eq 0 ] || ! grep -q 'func_800AAD54: jal failed 0x80032498' "$OUT/jal-sp.log"; then
+    tail -5 "$OUT/jal-sp.log" >&2
+    echo "BATTLE OVERLAY DIFFERENTIAL CONTROL FAILURE the legacy jal stack rule did not reproduce the 0x80032498 abort" >&2
+    exit 1
+fi
+grep -m1 'jal failed 0x80032498' "$OUT/jal-sp.log" >&2
 # Negative control 13 (typed bridge thunks): the pre-thunk bridge, which turns
 # every address-shaped word into a host pointer, must fail the 800A5914
 # tries<=0 pass-through case through the bridge.
@@ -533,4 +553,4 @@ fi
 grep -m1 'bridge-domain func_800A5914' "$OUT/legacy-bridge.log" >&2
 grep -m1 '^BATTLE OVERLAY DIFFERENTIAL FAIL func_800A5914 return ' "$OUT/legacy-bridge.log" >&2 || true
 grep -m1 '^BATTLE OVERLAY DIFFERENTIAL FAIL func_800A5914 bridge-domain ' "$OUT/legacy-bridge.log" >&2
-echo "BATTLE OVERLAY DIFFERENTIAL PASS (O0/O2/UBSan + wrong-result, store-path, 58 guest-ABI mutant, spy, indirect-native and legacy-bridge controls rejected)"
+echo "BATTLE OVERLAY DIFFERENTIAL PASS (O0/O2/UBSan + wrong-result, store-path, 58 guest-ABI mutant, spy, jal-stack, indirect-native and legacy-bridge controls rejected)"

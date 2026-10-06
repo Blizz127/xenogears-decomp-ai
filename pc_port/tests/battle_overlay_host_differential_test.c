@@ -317,6 +317,11 @@ static void runtime_up(void)
  * return comparison below. */
 #define PROVER_T0_SEED 0x7E57A00Du
 static unsigned store_pass_through_checks;
+/* The guest $sp both sides start a case with (0: BATTLE_STACK_TOP).  Retail
+ * battle code runs some work on stacks of its own (800A4654: scratchpad
+ * 0x1F8003F8; 800B62C8 / 800BEE2C: a HeapAlloc'd block, 4-byte aligned), and
+ * a native body reached from there must make its calls from that $sp. */
+static uint32_t case_sp;
 /* Cases dropped because the retail side used a non-guest address. */
 static unsigned host_ref_cases;
 /* Proven cases that made at least one spied service call. */
@@ -476,6 +481,8 @@ static int run_interpreted(uint32_t target, const uint32_t *args)
     cpu.bus.read = retail_read;
     cpu.bus.write = retail_write;
     retail_host_refs = 0;
+    if (case_sp != 0)
+        cpu.gpr[29] = case_sp;
     memset(cov_case, 0, sizeof(cov_case));
     for (i = 0; i < 4; i++)
         cpu.gpr[4 + i] = args[i];
@@ -496,6 +503,8 @@ static int run_host(uint32_t target, const uint32_t *args)
     for (i = 0; i < 4; i++)
         cpu.gpr[4 + i] = args[i];
     cpu.gpr[8] = PROVER_T0_SEED;
+    if (case_sp != 0)
+        cpu.gpr[29] = case_sp;
     rt.force_interpret = 0;
     return runtime_bridge(&rt, &cpu, target);
 }
@@ -748,6 +757,10 @@ static void compare(const Leaf *leaf, const uint32_t *args)
         return;
     }
     for (a = 0; a < sizeof(pad_expected); a++) {
+        /* A scratchpad-stack case: the retail frames live below its $sp,
+         * the host body's frame does not (as STACK_SKIP for RAM). */
+        if ((case_sp & 0xFFFFF000u) == 0x1F800000u && a < (case_sp & 0xFFFu))
+            continue;
         if (pad_expected[a] != g_PsxScratchpad[a]) {
             snprintf(detail, sizeof(detail),
                      "scratchpad differs, first at %08x retail=%02x host=%02x a0=%08x a1=%08x",
@@ -1197,7 +1210,8 @@ static void hand_cases_indirect(void)
 static uint32_t stack_arg4;
 static void stack_arg4_side(void)
 {
-    *(uint32_t *)PSX_ADDR(BATTLE_STACK_TOP + 0x10u) = stack_arg4;
+    uint32_t sp = case_sp != 0 ? case_sp : BATTLE_STACK_TOP;
+    *(uint32_t *)battle_guest_resolve_native(sp + 0x10u) = stack_arg4;
 }
 
 static void hand_cases_mesh_height(void)
@@ -2008,7 +2022,7 @@ static void hand_cases_model_matrices(const char *name)
  * main-exe code this harness only partly links: cases that reach a
  * placeholder are inconclusive by construction.  Classes: 1 = no steps,
  * 2 = stepped and completed. */
-static void hand_cases_aad54(void)
+static void hand_cases_aad54_at(uint32_t sp, unsigned count, unsigned want)
 {
     static const uint32_t kFlags[] = {0u, 0x1u, 0x2u, 0x4u, 0x100u, 0x200u, 0x400u,
                                       0x101u, 0x202u, 0x404u, 0x707u};
@@ -2018,7 +2032,8 @@ static void hand_cases_aad54(void)
     if (!abi_leaf_listed("func_800AAD54"))
         return;
     pre_side = stack_arg4_side;
-    for (v = 0; v < 600; v++) {
+    case_sp = sp;
+    for (v = 0; v < count; v++) {
         uint8_t *o = (uint8_t *)PSX_ADDR(REC);
         unsigned steps = (v % 6u == 0u) ? 0u : 1u + hrnd() % 2u;
 
@@ -2043,7 +2058,22 @@ static void hand_cases_aad54(void)
             seen |= steps == 0u ? 1u : 2u;
     }
     pre_side = NULL;
-    require_outcomes("func_800AAD54", seen, 3u);
+    case_sp = 0;
+    require_outcomes("func_800AAD54", seen, want);
+}
+
+/* 800AAD54 from the stacks retail really calls it on.  Class 2 (stepped)
+ * makes the 800AADA8 jal HeapChangeCurrentUser (0x80032498) through
+ * PcPort_BattleMipsCallJal from that $sp: the r6.10 opening battle aborted
+ * there ("func_800AAD54: jal failed 0x80032498") because the call service
+ * only accepted an 8-aligned KSEG0 $sp at or below BATTLE_STACK_TOP.  The
+ * run script's control rebuilds that rule (BATTLE_JAL_LEGACY_SP_CHECK) and
+ * requires exactly that abort. */
+static void hand_cases_aad54(void)
+{
+    hand_cases_aad54_at(0u, 600u, 3u);
+    hand_cases_aad54_at(0x801FFC04u, 150u, 2u);  /* heap stack: 4-aligned */
+    hand_cases_aad54_at(0x1F8003F8u, 150u, 2u);  /* 800A4654's scratchpad stack */
 }
 
 /* 800AE2A4 (main72, lifted port body; every callee through the

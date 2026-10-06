@@ -1532,6 +1532,37 @@ __attribute__((unused)) static void *battle_guest_native_host(const BattleGuestT
     return g_GuestNativeState[index] == 1 ? g_GuestNativeHost[index] : NULL;
 }
 
+/* A guest $sp a native-to-guest call may build its callee frame below.
+ * Retail battle code runs some work on stacks of its own: 800A4654 switches
+ * $sp into the scratchpad (0x1F8003F8), 800B62C8 / 800BEE2C / 800BB65C into
+ * a HeapAlloc'd block (4-byte aligned only), so a native body reached from
+ * there sees that $sp.  An interpreted `jal` accepts any of them; so must the
+ * native call services: the frame window [sp - below, sp + above) has to lie
+ * in one guest region (main RAM through KSEG0/KSEG1, or the 1 KiB
+ * scratchpad) and $sp must be word aligned (o32 only promises that; retail's
+ * own stack switches keep 4).  BATTLE_JAL_LEGACY_SP_CHECK restores the old
+ * rule (8-aligned, KSEG0 RAM at or below BATTLE_STACK_TOP) for the
+ * differential's control only. */
+static int guest_call_stack_ok(uint32_t sp, uint32_t below, uint32_t above)
+{
+#ifdef BATTLE_JAL_LEGACY_SP_CHECK
+    (void)above;
+    return (sp & 7u) == 0 && sp >= 0x80000000u + below && sp <= BATTLE_STACK_TOP;
+#else
+    uint32_t offset;
+    if ((sp & 3u) != 0)
+        return 0;
+    if ((sp & 0xfffff000u) == 0x1f800000u) {
+        offset = sp & 0xfffu;
+        return offset >= below && offset + above <= 0x400u;
+    }
+    if ((sp & 0xff800000u) != 0x80000000u && (sp & 0xff800000u) != 0xa0000000u)
+        return 0;
+    offset = sp & 0x7fffffu;
+    return offset >= below && offset + above <= 0x200000u;
+#endif
+}
+
 int PcPort_BattleMipsCallGuest(uint32_t target, const uint32_t *args,
                               unsigned argc, uint32_t *result)
 {
@@ -1580,8 +1611,11 @@ int PcPort_BattleMipsCallGuest(uint32_t target, const uint32_t *args,
     /* Retail file-1 801E6CE8 starts with ADDIU SP,SP,-0x50. Its native
      * replacement will lack that guest frame, including the o32 arg slots.
      * Validate before subtracting or resolving any addresses. */
-    if ((sp & 7u) != 0 || sp < 0x80000050u || sp > BATTLE_STACK_TOP)
+    if (!guest_call_stack_ok(sp, 0x50u, 0u)) {
+        fprintf(stderr, "[xeno-port][battle-mips] guest call 0x%08x: caller sp "
+                "0x%08x has no room for a frame\n", target, sp);
         return -1;
+    }
     sp -= 0x50u;
     if (argc != 0)
         memcpy(words, args, argc * sizeof(words[0]));
@@ -1642,14 +1676,20 @@ int PcPort_BattleMipsCallJal(uint32_t target, const uint32_t *args, unsigned arg
 
     if (runtime == NULL || !runtime->initialized ||
         runtime->bridge_cpu == NULL || argc > 4u + BATTLE_JAL_STACK_WORDS ||
-        (argc != 0 && args == NULL) || (target & 3u) != 0)
+        (argc != 0 && args == NULL) || (target & 3u) != 0) {
+        fprintf(stderr, "[xeno-port][battle-mips] native jal 0x%08x: no active "
+                "battle CPU or bad call shape\n", target);
         return -1;
+    }
     caller = runtime->bridge_cpu;
     sp = caller->gpr[29];
     /* Room below the live guest frame for the callee's o32 home area and
      * up to BATTLE_JAL_STACK_WORDS stack argument words. */
-    if ((sp & 7u) != 0 || sp < 0x80000100u || sp > BATTLE_STACK_TOP)
+    if (!guest_call_stack_ok(sp, 0x100u, 0u)) {
+        fprintf(stderr, "[xeno-port][battle-mips] native jal 0x%08x: caller sp "
+                "0x%08x has no room for a frame\n", target, sp);
         return -1;
+    }
     sp -= 0x100u;
     initialize_cpu(&cpu, runtime);
     memcpy(cpu.gpr, caller->gpr, sizeof(cpu.gpr));
