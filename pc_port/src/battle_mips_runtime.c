@@ -1600,6 +1600,14 @@ static int run_main_exe_callback(BattleMipsRuntime *runtime, uint32_t callback,
 
 /* Called by the packed native work-list adapter when a retail task carries a
  * guest callback address. Returns 1 if dispatched, 0 if it is not ours. */
+/* Non-zero while a retail battle overlay is the active runtime (native
+ * main-executable callers of adopted battle leaves check it, as the dispatch
+ * below does). */
+int PcPort_BattleMipsActive(void)
+{
+    return g_ActiveBattleRuntime != NULL;
+}
+
 int PcPort_BattleMipsDispatchCallback(uint32_t callback, void *argument)
 {
     if (g_ActiveBattleRuntime == NULL)

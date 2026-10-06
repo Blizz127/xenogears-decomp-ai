@@ -217,6 +217,16 @@ mutants = {
         ("main22.c", "BattleCopyRow32(idx);\n\n    t[p[2]] = t[p[1]];", "BattleCopyRow32(idx);\n\n    t[p[2]] = t[p[1]] + 1;"),
         ("main14.c", "v = a2 + 1;", "v = a2 + 2;"),
         ("main14.c", "a1[a3 * 8 + 3] = (GLOAD(u8, a0))[2];", "a1[a3 * 8 + 3] = (GLOAD(u8, a0))[1];")],
+    # Opening-battle hot set: one mutant per leaf, each must FAIL.
+    "g": [
+        ("mainl110.c", "*(u32*)(s + 0x78) = (u32)r;", "*(u32*)(s + 0x78) = (u32)(r + 1);"),
+        ("mainc112.c", "BG_U32(actor + 8) = BG_U32(BG_U32(model + 4) + 0x64) << 16;",
+         "BG_U32(actor + 8) = BG_U32(BG_U32(model + 4) + 0x64) << 15;"),
+        ("main111.c", "u32 sprite = *(u32*)(task + 4);\n\n    if (BG_U8(0x800C3664u) != 0) {",
+         "u32 sprite = *(u32*)(task + 4);\n\n    if (BG_U8(0x800C3664u) > 1) {"),
+        ("main4.c", "SetShadeTex(p, 0);", "SetShadeTex(p, 1);"),
+        ("main5.c", "    p[6] = 0x40;\n    *(u16*)(p + 0x16) |= 0x40;",
+         "    p[6] = 0x40;\n    *(u16*)(p + 0x16) |= 0x41;")],
 }
 for group, edits in mutants.items():
     d = out / ("mutants-" + group)
@@ -401,8 +411,9 @@ if ! grep -q '^BATTLE OVERLAY DIFFERENTIAL FAIL func_800A5A48 indirect ' "$OUT/m
 fi
 grep -m1 'indirect-native' "$OUT/mutant-abi.log" >&2
 # Negative controls 4-47: one mutant per further guest-ABI leaf.
-for group in a b c d e f; do
+for group in a b c d e f g; do
     case "$group" in
+        g) want="func_800BA8F4 func_800BB13C func_800BAC50 func_80076AC8 func_80076C34" ;;
         f) want="func_8007ECDC func_8007ED14 func_8007ED58 func_8007ED98 func_8007EDE0 func_8007EE28 func_8007B98C func_8007B9C8 func_8007A828 func_8007A7BC" ;;
         e) want="func_8007EA08 func_8007EA4C func_8007EA84 func_8007EB08 func_8007EB50 func_8007EB90 func_8007EBD8 func_8007EC10 func_8007EC54 func_8007EC94" ;;
         d) want="func_8007B198 func_8007AF5C func_8007AFAC func_8007B208 func_8007B264" ;;
@@ -437,4 +448,4 @@ fi
 grep -m1 'bridge-domain func_800A5914' "$OUT/legacy-bridge.log" >&2
 grep -m1 '^BATTLE OVERLAY DIFFERENTIAL FAIL func_800A5914 return ' "$OUT/legacy-bridge.log" >&2 || true
 grep -m1 '^BATTLE OVERLAY DIFFERENTIAL FAIL func_800A5914 bridge-domain ' "$OUT/legacy-bridge.log" >&2
-echo "BATTLE OVERLAY DIFFERENTIAL PASS (O0/O2/UBSan + wrong-result, store-path, 45 guest-ABI mutant, indirect-native and legacy-bridge controls rejected)"
+echo "BATTLE OVERLAY DIFFERENTIAL PASS (O0/O2/UBSan + wrong-result, store-path, 50 guest-ABI mutant, indirect-native and legacy-bridge controls rejected)"

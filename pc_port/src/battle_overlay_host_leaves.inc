@@ -251,3 +251,11 @@
     "func_8007B9C8",
     "func_8007A828",
     "func_8007A7BC",
+/* Opening-battle hot set (guest ABI): mainl110 sprite floor query. */
+    "func_800BA8F4",
+/* Opening-battle hot set: slot-actor and sprite timer callbacks (mainc112,
+ * main111 port bodies), primitive semi-transparency setters (main4, main5). */
+    "func_800BB13C",
+    "func_800BAC50",
+    "func_80076AC8",
+    "func_80076C34",

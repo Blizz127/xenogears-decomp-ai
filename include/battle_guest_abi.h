@@ -22,6 +22,13 @@
  *   GDIVU(a, b)      retail DIVU quotient/remainder for divisions retail
  *   GREMU(a, b)      emits with no `break 7` zero check: a zero divisor gives
  *                    0xFFFFFFFF / the dividend, not a host SIGFPE. (P9)
+ *   GFRAME           storage class of a local whose address retail hands to
+ *                    a callee taking a guest-address word (GADDR(&local)):
+ *                    an ordinary auto local in the matching build; `static`
+ *                    under the port, because a host stack address does not
+ *                    fit a 32-bit guest word while static storage does (the
+ *                    port links -no-pie).  Only for bodies that cannot
+ *                    re-enter themselves through that callee.
  *
  * In the matching build every macro expands to the original expression (plus
  * redundant parentheses), so gcc 2.7.2 sees the same tree; `make rom-check`
@@ -43,6 +50,7 @@
 #define GMUL32(a, b) ((a) * (b))
 #define GDIVU(a, b) ((a) / (b))
 #define GREMU(a, b) ((a) % (b))
+#define GFRAME
 
 #else
 
@@ -64,6 +72,7 @@
 #define GMUL32(a, b) ((s32)((u32)(a) * (u32)(b)))
 #define GDIVU(a, b) bg_divu((u32)(a), (u32)(b))
 #define GREMU(a, b) bg_remu((u32)(a), (u32)(b))
+#define GFRAME static
 
 #endif
 

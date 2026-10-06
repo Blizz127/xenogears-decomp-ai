@@ -1,4 +1,5 @@
 #include "common.h"
+#include "battle_guest_abi.h"
 #ifndef XENO_PC_PORT
 #include "system/memory.h"
 #endif
@@ -67,15 +68,18 @@ INCLUDE_ASM("asm/battle/nonmatchings/mainl110", func_800BA768);
 
 typedef struct { long vx, vy; long vz, pad; } VECTOR;
 typedef struct { short vx, vy; short vz, pad; } SVECTOR;
-extern s32 func_800A5914(SVECTOR* v, u32 arg1, s32 arg2);
-extern s32 func_800A579C(SVECTOR* v);
-extern void func_800A5870(SVECTOR* v, s32 r, VECTOR* out);
+/* main69's mesh queries take guest-address words (battle guest ABI). */
+extern s32 func_800A5914(s32 v, u32 arg1, s32 arg2);
+extern s32 func_800A579C(s32 v);
+extern void func_800A5870(s32 v, s32 r, s32 out);
 
 
-/* func_800BA8F4.s */
+/* func_800BA8F4.s: floor query of sprite s: find the walk-mesh triangle under
+ * its (+2, +6, +0xA) position (cached triangle +0x78 first, then a full
+ * search), take the floor height there into +0x84 and cache the triangle. */
 void func_800BA8F4(u8* s) {
-    SVECTOR v;
-    VECTOR out;
+    GFRAME SVECTOR v;
+    GFRAME VECTOR out;
     s32 r;
     s32 t;
 
@@ -85,11 +89,11 @@ void func_800BA8F4(u8* s) {
     *(s16*)((u8*)&v + 2) = (s16)t;
     t = *(s16*)(s + 0xA);
     *(s16*)((u8*)&v + 4) = (s16)t;
-    r = func_800A5914(&v, *(u32*)(s + 0x78), 4);
+    r = func_800A5914(GADDR(&v), *(u32*)(s + 0x78), 4);
     if (r < 0) {
-        r = func_800A579C(&v);
+        r = func_800A579C(GADDR(&v));
     }
-    func_800A5870(&v, r, &out);
+    func_800A5870(GADDR(&v), r, GADDR(&out));
     *(u16*)(s + 0x84) = *(u16*)((u8*)&v + 2);
     *(u32*)(s + 0x78) = (u32)r;
 }
@@ -428,8 +432,8 @@ void func_800BA59C(u8* rec, u32 angle) {
  * and height difference, then set heading and x/z velocity
  * (func_800BA59C). */
 void func_800BA614(u8* rec) {
-    SVECTOR v;
-    VECTOR out;
+    GFRAME SVECTOR v;
+    GFRAME VECTOR out;
     s32 d[4];
     s32 r;
     s32 dy;
@@ -440,11 +444,11 @@ void func_800BA614(u8* rec) {
     s32 t;
 
     func_80021B04(&v, *(s16*)(rec + 0xA0), *(s16*)(rec + 0xA2), *(s16*)(rec + 0xA4));
-    r = func_800A5914(&v, *(u32*)(rec + 0x78), 4);
+    r = func_800A5914(GADDR(&v), *(u32*)(rec + 0x78), 4);
     if (r < 0) {
-        r = func_800A579C(&v);
+        r = func_800A579C(GADDR(&v));
     }
-    func_800A5870(&v, r, &out);
+    func_800A5870(GADDR(&v), r, GADDR(&out));
     if (*(s16*)(rec + 0xA2) < v.vy) {
         v.vy = (s16)*(u16*)(rec + 0xA2);
     }
@@ -471,8 +475,8 @@ void func_800BA614(u8* rec) {
  * the clamped ground height there, set heading/velocity (func_800BA59C) and
  * refresh the sprite (func_80022B2C). */
 void func_800BA768(u8* rec) {
-    SVECTOR v;
-    VECTOR out;
+    GFRAME SVECTOR v;
+    GFRAME VECTOR out;
     s32 d[4];
     s32 r;
     s32 frames;
@@ -501,11 +505,11 @@ void func_800BA768(u8* rec) {
         *(s32*)(rec + 0x18) = 0;
     }
     func_80021B04(&v, *(s16*)(rec + 0xA0), *(s16*)(rec + 0xA2), *(s16*)(rec + 0xA4));
-    r = func_800A5914(&v, *(u32*)(rec + 0x78), 4);
+    r = func_800A5914(GADDR(&v), *(u32*)(rec + 0x78), 4);
     if (r < 0) {
-        r = func_800A579C(&v);
+        r = func_800A579C(GADDR(&v));
     }
-    func_800A5870(&v, r, &out);
+    func_800A5870(GADDR(&v), r, GADDR(&out));
     if (*(s16*)(rec + 0xA2) < v.vy) {
         v.vy = (s16)*(u16*)(rec + 0xA2);
     }

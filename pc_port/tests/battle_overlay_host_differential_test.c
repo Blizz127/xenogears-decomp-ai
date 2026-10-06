@@ -262,11 +262,75 @@ static int is_store_pass_through(const char *name, const uint32_t *args)
             strcmp(name, "func_8007A280") == 0);
 }
 
+/* Instruction coverage of the retail side for the larger adopted leaves:
+ * the distinct instruction addresses of the leaf's own body (the retail
+ * extent, asm/battle/.../func_X.s) that the interpreter executed in cases
+ * that were then PROVEN.  The interpreter consults the bus bridge before
+ * every instruction, so wrapping it sees each executed pc. */
+typedef struct {
+    const char *name;
+    uint32_t start;
+    unsigned insns;
+} CoverageLeaf;
+static const CoverageLeaf kCoverage[] = {
+    {"func_800BA8F4", 0x800BA8F4u, 36},
+    {"func_800BB13C", 0x800BB13Cu, 67},
+    {"func_800BAC50", 0x800BAC50u, 27},
+    {"func_80076AC8", 0x80076AC8u, 14},
+    {"func_80076C34", 0x80076C34u, 17},
+};
+#define COVERAGE_COUNT (sizeof(kCoverage) / sizeof(kCoverage[0]))
+#define COVERAGE_MAX_INSNS 4096u
+static uint8_t cov_seen[COVERAGE_COUNT][COVERAGE_MAX_INSNS];
+static uint8_t cov_case[COVERAGE_MAX_INSNS];
+static int cov_index = -1;
+static int (*cov_inner_bridge)(void *, PcPortMipsCpu *, uint32_t);
+
+static int cov_bridge(void *opaque, PcPortMipsCpu *c, uint32_t target)
+{
+    if (cov_index >= 0) {
+        const CoverageLeaf *l = &kCoverage[cov_index];
+        if (target >= l->start && target < l->start + 4u * l->insns)
+            cov_case[(target - l->start) >> 2] = 1;
+    }
+    return cov_inner_bridge(opaque, c, target);
+}
+
+static int coverage_slot(const char *name)
+{
+    unsigned i;
+    for (i = 0; i < COVERAGE_COUNT; i++)
+        if (strcmp(kCoverage[i].name, name) == 0)
+            return (int)i;
+    return -1;
+}
+
+static void coverage_report(void)
+{
+    unsigned i, k, n;
+    for (i = 0; i < COVERAGE_COUNT; i++) {
+        for (k = 0, n = 0; k < kCoverage[i].insns; k++)
+            n += cov_seen[i][k];
+        printf("BATTLE OVERLAY DIFFERENTIAL coverage %s insns=%u/%u (%.1f%%)\n",
+               kCoverage[i].name, n, kCoverage[i].insns,
+               100.0 * n / kCoverage[i].insns);
+        if (getenv("BATTLE_OVERLAY_DIFFERENTIAL_COVERAGE_MISSES") != NULL) {
+            for (k = 0; k < kCoverage[i].insns; k++)
+                if (!cov_seen[i][k])
+                    fprintf(stderr, "[prover] uncovered %s %08x\n",
+                            kCoverage[i].name, kCoverage[i].start + 4u * k);
+        }
+    }
+}
+
 static int run_interpreted(uint32_t target, const uint32_t *args)
 {
     unsigned i;
     memset(&cpu, 0, sizeof(cpu));
     initialize_cpu(&cpu, &rt);
+    cov_inner_bridge = cpu.bus.bridge;
+    cpu.bus.bridge = cov_bridge;
+    memset(cov_case, 0, sizeof(cov_case));
     for (i = 0; i < 4; i++)
         cpu.gpr[4 + i] = args[i];
     cpu.gpr[8] = PROVER_T0_SEED;
@@ -347,6 +411,7 @@ static void compare(const Leaf *leaf, const uint32_t *args)
     char detail[200];
 
     last_case_proven = 0;
+    cov_index = coverage_slot(name);
     memcpy(before, g_PsxRam, sizeof(before));
     if (native_gs != NULL)
         memcpy(native_before, native_gs, NATIVE_GS_SIZE);
@@ -497,6 +562,13 @@ static void compare(const Leaf *leaf, const uint32_t *args)
     checks++;
     proven[(unsigned)(leaf - kLeaves)]++;
     last_case_proven = 1;
+    {
+        int slot = coverage_slot(name);
+        unsigned k;
+        if (slot >= 0)
+            for (k = 0; k < kCoverage[slot].insns; k++)
+                cov_seen[slot][k] |= cov_case[k];
+    }
     last_retail_v0 = iv0;
 }
 
@@ -1252,6 +1324,148 @@ static void hand_cases_a7bc(void)
     }
 }
 
+/* 800BA8F4 (mainl110, guest ABI): sprite floor query.  The sprite record is
+ * at REC: s16 x/y/z at +2/+6/+0xA, cached triangle +0x78, floor height out
+ * at +0x84.  Cached triangles hit, miss (fallback full search 800A579C) and
+ * out of range, points inside and outside the mesh, both windings, the
+ * pass-counter wrap, and tables not loaded.  Classes: 1 = a triangle cached
+ * afterwards, 2 = -1 cached afterwards.  The locals the body hands to the
+ * main69 queries are GFRAME (static under the port), so this also proves
+ * the guest-word round trip of a native frame address. */
+static void hand_cases_ba8f4(void)
+{
+    static const int32_t kCached[] = {-1, 0, 5, 11, 17, 18, 40};
+    uint32_t args[4];
+    unsigned seen = 0, c;
+    int winding, x, z;
+
+    if (!abi_leaf_listed("func_800BA8F4"))
+        return;
+    for (winding = 0; winding < 2; winding++) {
+        for (c = 0; c < sizeof(kCached) / sizeof(kCached[0]); c++) {
+            for (x = -500; x <= 500; x += 250) {
+                for (z = -500; z <= 500; z += 250) {
+                    uint8_t *s;
+                    begin_case(c % 3u == 2u ? 2u : 0u, 0);
+                    mesh_fixture(winding, (int)c + 2 * winding);
+                    if (c == 3u && x == 0) {
+                        unsigned t;
+                        *(uint8_t *)PSX_ADDR(0x800D2F64u) = 0xFF;
+                        for (t = 0; t < mesh_tri_count; t++)
+                            *(uint8_t *)PSX_ADDR(MESH_TRI + 14u * t + 0xDu) = (uint8_t)(t * 37u);
+                    }
+                    s = (uint8_t *)PSX_ADDR(REC);
+                    *(int16_t *)(s + 2) = (int16_t)(x + 13);
+                    *(int16_t *)(s + 6) = (int16_t)(z / 10);
+                    *(int16_t *)(s + 0xA) = (int16_t)(z - 7);
+                    *(int32_t *)(s + 0x78) = kCached[c];
+                    *(uint16_t *)(s + 0x84) = 0xBEEF;
+                    args[0] = REC; args[1] = args[2] = args[3] = 0;
+                    compare_name("func_800BA8F4", args);
+                    if (last_case_proven)
+                        seen |= *(int32_t *)(s + 0x78) >= 0 ? 1u : 2u;
+                }
+            }
+        }
+    }
+    /* Tables not loaded: every query returns -1. */
+    begin_case(0, 0);
+    *(int32_t *)PSX_ADDR(REC + 0x78) = 3;
+    args[0] = REC; args[1] = args[2] = args[3] = 0;
+    compare_name("func_800BA8F4", args);
+    require_outcomes("func_800BA8F4", seen, 3u);
+}
+
+/* Sprite record for the timer callbacks at REC (guest), the task at DST
+ * (+4 = REC).  AnimScriptTick/func_80022CDC/func_80022B2C are the shipped
+ * main-executable bodies (temp1.c) on both sides: the wait timer +0x9E is
+ * kept above the tick count so the animation script interpreter
+ * (func_800248D4) is never entered; +0x3C bit 26 selects the simple
+ * vertical step or the floor query (func_800BA8F4, tables not loaded). */
+static void timer_sprite(unsigned variant)
+{
+    uint8_t *o = (uint8_t *)PSX_ADDR(REC);
+    *(uint32_t *)PSX_ADDR(DST + 4) = REC;
+    *(uint32_t *)(o + 0x0) = 0x00120000u + variant * 0x1111u;
+    *(uint32_t *)(o + 0x4) = 0xFFF80000u + variant * 0x2345u;
+    *(uint32_t *)(o + 0x8) = 0x00340000u - variant * 0x0F0Fu;
+    *(int32_t *)(o + 0xC) = (int32_t)(variant * 0x321u) - 0x400;
+    *(int32_t *)(o + 0x10) = (int32_t)(variant * 0x123u) - 0x200;
+    *(int32_t *)(o + 0x14) = 0x280 - (int32_t)(variant * 0x77u);
+    *(int32_t *)(o + 0x1C) = (variant & 1u) ? 0x40 : -0x30;
+    *(uint16_t *)(o + 0x3A) = (uint16_t)((variant % 3u) * 0x300u);
+    *(uint32_t *)(o + 0x3C) = (variant & 2u) ? (1u << 26) : 0u;
+    *(int32_t *)(o + 0x78) = -1;
+    *(int16_t *)(o + 0x84) = (int16_t)(variant * 3u);
+    *(int16_t *)(o + 0x9E) = (int16_t)(4 + variant);
+    *(uint32_t *)(o + 0xAC) = (variant & 4u) ? 0x40u : 0u;
+}
+
+static void hand_cases_timer_callbacks(void)
+{
+    uint32_t args[4];
+    unsigned v;
+
+    if (abi_leaf_listed("func_800BAC50")) {
+        unsigned seen = 0;
+        for (v = 0; v < 16; v++) {
+            begin_case(v % 3u, 0);
+            timer_sprite(v);
+            *(uint8_t *)PSX_ADDR(0x800C3664u) = (uint8_t)((v % 4u) == 3u ? 1u + (v & 8u) * 16u : 0u);
+            args[0] = DST; args[1] = args[2] = args[3] = 0;
+            compare_name("func_800BAC50", args);
+            if (last_case_proven)
+                seen |= *(uint8_t *)PSX_ADDR(0x800C3664u) != 0 ? 1u : 2u;
+        }
+        require_outcomes("func_800BAC50", seen, 3u);
+    }
+    /* 800BB13C: slot = ((+0xAC & 3) << 2) | (+0xA8 >> 30) selects the
+     * D_800D3368 model record (at SRC, +4 -> SRC + 0x80 holding the
+     * +0x5C/+0x60/+0x64 position).  Classes: 1 = no model (early out),
+     * 2 = +0x9E idle clears +0x64, 4 = ticked. */
+    if (abi_leaf_listed("func_800BB13C")) {
+        unsigned seen = 0;
+        for (v = 0; v < 24; v++) {
+            uint8_t *o = (uint8_t *)PSX_ADDR(REC);
+            unsigned slot;
+            begin_case(v % 3u, 0);
+            timer_sprite(v);
+            *(uint32_t *)(o + 0xAC) |= v & 3u;
+            *(uint32_t *)(o + 0xA8) = (v * 0x40000000u) | 0x1234u;
+            slot = ((v & 3u) << 2) | (v & 3u);
+            *(uint32_t *)(o + 0x64) = (v % 5u) == 1u ? 0u : 0x10u + v;
+            if ((v % 6u) == 2u)
+                *(int16_t *)(o + 0x9E) = 0;
+            *(uint32_t *)PSX_ADDR(0x800D3368u + 4u * slot) = (v % 7u) == 3u ? 0u : SRC;
+            *(uint32_t *)PSX_ADDR(SRC + 4) = SRC + 0x80u;
+            *(uint32_t *)PSX_ADDR(SRC + 0x80u + 0x5C) = 0x0123u + v * 0x101u;
+            *(uint32_t *)PSX_ADDR(SRC + 0x80u + 0x60) = 0xFF80u - v;
+            *(uint32_t *)PSX_ADDR(SRC + 0x80u + 0x64) = 0x8001u + v * 7u;
+            args[0] = DST; args[1] = args[2] = args[3] = 0;
+            compare_name("func_800BB13C", args);
+            if (last_case_proven)
+                seen |= (v % 7u) == 3u ? 1u : ((v % 6u) == 2u ? 2u : 4u);
+        }
+        require_outcomes("func_800BB13C", seen, 7u);
+    }
+    /* 80076AC8 / 80076C34: SetSemiTrans(p, 1); SetShadeTex(p, 0) on a
+     * primitive at DST (the PsyCross libgpu helpers the port binds the retail
+     * 0x80043BFC entries to), then for C34 the 0x40 colour and +0x16 bit 6.
+     * Every code byte value is tried. */
+    for (v = 0; v < 256; v += 5) {
+        uint8_t *p = (uint8_t *)PSX_ADDR(DST);
+        begin_case(v % 3u, 0);
+        p[3] = (uint8_t)(v * 3u);
+        p[7] = (uint8_t)v;
+        *(uint16_t *)(p + 0x16) = (uint16_t)(v * 0x0101u);
+        args[0] = DST; args[1] = args[2] = args[3] = 0;
+        if (abi_leaf_listed("func_80076AC8"))
+            compare_name("func_80076AC8", args);
+        if (abi_leaf_listed("func_80076C34"))
+            compare_name("func_80076C34", args);
+    }
+}
+
 /* One case per adopted leaf, with the arguments the port's bridge test already
  * established as meaningful for it. */
 static void hand_cases(void)
@@ -1267,6 +1481,8 @@ static void hand_cases(void)
     hand_cases_a828();
     hand_cases_a7bc();
     hand_cases_mesh_height();
+    hand_cases_ba8f4();
+    hand_cases_timer_callbacks();
 
     /* AA80AE4's result is undefined when no rotation slot qualifies. Seed a
      * valid 11-entry cycle so both sides return a defined selected value. */
@@ -1480,6 +1696,7 @@ int main(void)
     hand_cases();
     sweep();
 
+    coverage_report();
     if (getenv("BATTLE_OVERLAY_DIFFERENTIAL_PER_LEAF") != NULL) {
         unsigned i;
         for (i = 0; i < LEAF_COUNT; i++)

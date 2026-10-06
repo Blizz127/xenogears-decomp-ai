@@ -3371,8 +3371,25 @@ u32 D_8006F9AC[4];
  * nested callback stack, as with the battle animation interpreter. */
 extern int PcPort_BattleMipsDispatchCallback(u32 callback, void* argument);
 
+/* func_800BA8F4 is an adopted native battle leaf (src/battle/mainl110.c on
+ * the battle guest ABI, pc_port/src/battle_overlay_host_leaves.inc); the
+ * port links its battle copy as battle_func_800BA8F4 (build_port.sh renames
+ * the colliding name).  When it is linked, call it directly: no interpreter
+ * re-entry for the floor query.  The dispatch below remains only for links
+ * without the battle host bodies (unit tests). */
+extern void battle_func_800BA8F4(u8* s) __attribute__((weak));
+extern int PcPort_BattleMipsActive(void) __attribute__((weak));
+
 void func_800BA8F4(void* pSpriteData)
 {
+    if (battle_func_800BA8F4 != NULL && PcPort_BattleMipsActive != NULL) {
+        if (!PcPort_BattleMipsActive()) {
+            fputs("[xeno-port][battle-mips] sprite floor query called without an active retail battle overlay\n", stderr);
+            abort();
+        }
+        battle_func_800BA8F4((u8*)pSpriteData);
+        return;
+    }
     if (!PcPort_BattleMipsDispatchCallback(0x800ba8f4u, pSpriteData)) {
         fputs("[xeno-port][battle-mips] sprite floor query called without an active retail battle overlay\n", stderr);
         abort();
