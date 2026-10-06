@@ -9,7 +9,11 @@
  * guest instruction fetch; it only reads guest memory.  Lines:
  *   B <battle> start
  *   F <battle> <frame> <crc32> hp=<slot hp list> gear=<mask> active=<mask>
- *                                                         at each battle DrawOTag
+ *     ticks=<n> d494=<v> acc=<hex>                        at each battle DrawOTag
+ *       ticks: TimerWorkListUpdate calls this battle (one per battle tick:
+ *       func_800BE790 runs D_80059494-1 catch-up ticks per frame), d494:
+ *       D_80059494 (elapsed-vblank tick count, cap 4), acc: D_800C3E88
+ *       (motion step accumulator, func_800A9A50)
  *   P <battle> <frame> <mask>                             XENO_BATTLE_TEST_PAD press
  *   D <battle> <frame> <start-of-0x235C-byte g_GameState + transition tuple, hex>  when it changed
  *   A <battle> <frame> row=<r> amounts=<11 x u16>             damage routine entry
@@ -38,6 +42,10 @@
 #define BSH_GAMESTATE_SIZE 0x235Cu
 #define BSH_RESULTS_FN   0x801E252Cu  /* called from battle.bin 0x80071690 */
 #define BSH_GAMESTATE    0x8006D634u
+#define BSH_TIMER_WORKLIST_UPDATE 0x8001C964u  /* TimerWorkListUpdate, bridged */
+#define BSH_MOTION_ACC   0x800C3E88u
+
+extern short D_80059494;
 
 extern unsigned char g_GameState[];
 
@@ -99,6 +107,7 @@ void PcPort_BattleStateHashBeforeGuest(PcPortMipsCpu* cpu, uint32_t target)
     static FILE* f;
     static unsigned battle, frame;
     static uint32_t last_gs;
+    static unsigned ticks;
     unsigned slot;
 
     if (!inited) {
@@ -112,6 +121,7 @@ void PcPort_BattleStateHashBeforeGuest(PcPortMipsCpu* cpu, uint32_t target)
         battle++;
         frame = 0;
         last_gs = 0;
+        ticks = 0;
         fprintf(f, "B %u start\n", battle);
         fflush(f);
         return;
@@ -153,6 +163,10 @@ void PcPort_BattleStateHashBeforeGuest(PcPortMipsCpu* cpu, uint32_t target)
             }
         }
     }
+    if (target == BSH_TIMER_WORKLIST_UPDATE) {
+        ticks++;
+        return;
+    }
     if (target == BSH_DAMAGE_FN) {
         uint32_t row = (cpu->gpr[4] & 255u) * 72u, v;
         fprintf(f, "A %u %u row=%u amounts=", battle, frame, cpu->gpr[4] & 255u);
@@ -185,7 +199,9 @@ void PcPort_BattleStateHashBeforeGuest(PcPortMipsCpu* cpu, uint32_t target)
                                   gear ? 4 : 2, &v)) v = 0;
                 fprintf(f, "%s%u", slot ? "," : "", v);
             }
-            fprintf(f, " gear=%03x active=%03x\n", gears, actives);
+            if (cpu->bus.read(cpu->bus.opaque, BSH_MOTION_ACC, 4, &v)) v = 0xFFFFFFFFu;
+            fprintf(f, " gear=%03x active=%03x ticks=%u d494=%d acc=%08x\n", gears, actives,
+                    ticks, (int)D_80059494, v);
         }
         if (gs != last_gs) {
             unsigned i;

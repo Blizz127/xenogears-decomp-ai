@@ -1910,6 +1910,9 @@ static void battle_exit_hash_print(BattleMipsRuntime *runtime, const char *how)
     fflush(stderr);
 }
 
+void PcPort_DetVblankBattleEnter(void) __attribute__((weak));
+void PcPort_DetVblankBattleReturn(void) __attribute__((weak));
+
 void func_80070F40(void)
 {
     BattleMipsRuntime *runtime = &g_BattleRuntime;
@@ -1934,6 +1937,10 @@ void func_80070F40(void)
     fprintf(stderr,
             "[xeno-port][battle-mips] enter retail battle.bin at 0x%08x\n",
             BATTLE_ENTRY);
+    /* TEST TOOLING: XENO_DETERMINISTIC_VBLANK_BATTLE (psyq_compat.c); inert
+     * unset.  Weak: tests that link this TU without psyq_compat.c. */
+    if (PcPort_DetVblankBattleEnter)
+        PcPort_DetVblankBattleEnter();
     cpu_meter_begin_battle();
     cpu_meter_mark_entry(&cpu, BATTLE_ENTRY);
     if (battle_exit_hash_enabled()) {
@@ -1942,6 +1949,8 @@ void func_80070F40(void)
     }
     rc = PcPortMipsRun(&cpu, BATTLE_ENTRY, BATTLE_HALT_PC,
                        battle_step_limit());
+    if (PcPort_DetVblankBattleReturn)
+        PcPort_DetVblankBattleReturn();
     cpu_meter_end_battle(rc == PC_PORT_MIPS_HALTED ? "returned" : "stopped");
     if (g_BattleExitHash > 0)
         battle_exit_hash_print(runtime, rc == PC_PORT_MIPS_HALTED ? "returned" : "stopped");

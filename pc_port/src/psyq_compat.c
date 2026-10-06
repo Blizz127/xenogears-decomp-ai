@@ -2057,6 +2057,99 @@ static int PcPort_DetVblankActive(void)
     return s_detVblankLive;
 }
 
+/* TEST TOOLING: XENO_DETERMINISTIC_VBLANK_BATTLE=1 (needs the armed test
+ * clock above; not a retail-timing claim).  Without it the battle runs
+ * host-paced: battle.bin is entered from a field teardown (a load) and has
+ * no field-step drain, so the clock only goes live at the next field.  The
+ * retail battle frame (func_800BE790) turns elapsed Vsync(-1) vblanks into
+ * D_80059494 catch-up ticks (cap 4), so a faster host then gets more battle
+ * frames for the same game time.  With the switch, battle entry
+ * (func_80070F40) puts the service on the field's rule -- +K per blocking
+ * Vsync (Vsync(n>=2): n), the Vsync(-1) spin rule -- seeded from the
+ * service cursor, so elapsed vblanks per battle frame follow the game's own
+ * calls.  Battle-internal loads (HeapAlloc, CD reads) are synchronous host
+ * calls here, so they need no host-paced span.  A guest wait that makes
+ * no Vsync call (a loop on a vblank-callback counter) would never see the
+ * clock move, so a stall guard: after DET_BATTLE_STALL_VBLANKS host vblanks
+ * (10 s) without any test-clock advance (blocking Vsync or Vsync(-1) spin)
+ * the service follows the host, one vblank per host vblank, until the next
+ * Vsync advance.  It never fires in a battle whose frames keep calling
+ * Vsync; when it does fire it is logged and counted at return (that battle
+ * is not frame-comparable).  Service queries are not counted: the battle
+ * bridge pumps the service before every interpreted instruction, so query
+ * counts differ between native and interpreted runs.  Battle return restores the saved live/load state and
+ * keeps the service continuous: until the next field goes live it runs
+ * host-paced from the battle's final cursor (host + offset), instead of
+ * stalling until the host count catches up with a cursor that ran ahead.
+ * The switch is read once, at the first battle entry. */
+#define DET_BATTLE_STALL_VBLANKS 600u
+static int s_detBattleEnv = -1;   /* XENO_DETERMINISTIC_VBLANK_BATTLE, read once */
+static int s_detBattle;           /* inside a battle on the deterministic rule */
+static int s_detBattleSavedLive;
+static unsigned s_detBattleSavedLoadStep;
+static uint32_t s_detBattleMark;      /* host vblank count at the last test-clock advance */
+static int s_detBattleStalled;        /* stall guard: following the host until a Vsync */
+static unsigned s_detBattleStalls;    /* stall-guard episodes this battle */
+static uint32_t s_detBattleStallVblanks;  /* vblanks the guard added this battle */
+static unsigned s_detBattleCount;
+static int s_detHostOffsetOn;         /* after a deterministic battle: host + offset */
+static uint32_t s_detHostOffset;
+
+void PcPort_DetVblankBattleEnter(void)
+{
+    if (s_detBattleEnv < 0) {
+        const char* e = getenv("XENO_DETERMINISTIC_VBLANK_BATTLE");
+        s_detBattleEnv = (e != NULL && e[0] != '\0' && atoi(e) != 0) ? 1 : 0;
+    }
+    if (!s_detBattleEnv)
+        return;
+    s_detBattleCount++;
+    if (PcPort_DetVblankK() == 0 || !s_detVblankOn) {
+        fprintf(stderr, "[det-vblank] battle %u enter: XENO_DETERMINISTIC_VBLANK_BATTLE set but "
+                "the test clock is not armed (K=%d armed=%d): battle stays host-paced\n",
+                s_detBattleCount, PcPort_DetVblankK(), s_detVblankOn);
+        return;
+    }
+    s_detBattle = 1;
+    s_detBattleSavedLive = s_detVblankLive;
+    s_detBattleSavedLoadStep = s_detLoadStep;
+    s_detBattleStalled = 0;
+    s_detBattleStalls = 0;
+    s_detBattleStallVblanks = 0;
+    s_detPollPending = 0;
+    /* Not live (entered from a field teardown): the next service query seeds
+     * s_detVblankNow from the service cursor, exactly as the field does. */
+    fprintf(stderr, "[det-vblank] battle %u enter: deterministic battle clock K=%d "
+            "(saved live=%d, drain %u; not a retail-timing claim)\n",
+            s_detBattleCount, s_detVblankK, s_detBattleSavedLive, s_detDrains);
+}
+
+void PcPort_DetVblankBattleReturn(void)
+{
+    extern int PsyX_Sys_GetVBlankCount(void);
+    if (!s_detBattle)
+        return;
+    s_detBattle = 0;
+    s_detPollPending = 0;
+    s_detVblankLive = s_detBattleSavedLive;
+    s_detLoadStep = s_detBattleSavedLoadStep;
+    if (!s_detVblankLive) {
+        s_detHostOffset = s_detVblankNow - (uint32_t)PsyX_Sys_GetVBlankCount();
+        s_detHostOffsetOn = 1;
+    }
+    fprintf(stderr, "[det-vblank] battle %u return: restored live=%d, cursor %u, "
+            "stall-guard episodes %u (+%u vblanks)\n", s_detBattleCount, s_detVblankLive,
+            s_detVblankNow, s_detBattleStalls, s_detBattleStallVblanks);
+}
+
+/* A test-clock advance by the game's own Vsync call: ends a stall span. */
+static void PcPort_DetBattleNoteAdvance(void)
+{
+    extern int PsyX_Sys_GetVBlankCount(void);
+    s_detBattleMark = (uint32_t)PsyX_Sys_GetVBlankCount();
+    s_detBattleStalled = 0;
+}
+
 /* Two clocks.  The SERVICE clock (pad pushes, sound ticks, the callbacks a
  * field load waits on) stays host-paced while loading, so a load cannot
  * stall; it becomes deterministic (+K per blocking Vsync, seeded from the
@@ -2093,16 +2186,56 @@ int PcPort_DeterministicVblank(uint32_t* now)
         fprintf(stderr, "[det-vblank] jitter-free test clock armed: K=%d at step %u drain %u "
                 "(not a retail-timing claim)\n", s_detVblankK, step, s_detDrains);
     }
-    if (s_detPrevLatch && !latch) {          /* field teardown: a load begins */
+    if (s_detPrevLatch && !latch && !s_detBattle) {  /* field teardown: a load begins */
         s_detVblankLive = 0;
         s_detLoadStep = s_detDrains;
         fprintf(stderr, "[det-vblank] load: host-paced service from step %u drain %u\n", step,
                 s_detDrains);
     }
     s_detPrevLatch = latch;
+    if (s_detBattle) {                        /* XENO_DETERMINISTIC_VBLANK_BATTLE */
+        extern int PsyX_Sys_GetVBlankCount(void);
+        uint32_t h = (uint32_t)PsyX_Sys_GetVBlankCount();
+        if (!s_detVblankLive) {
+            s_detVblankLive = 1;
+            s_detVblankNow = *now;
+            s_detBattleMark = h;
+            s_detBattleStalled = 0;
+            fprintf(stderr, "[det-vblank] battle %u live: deterministic service, cursor %u\n",
+                    s_detBattleCount, *now);
+        }
+        if (!s_detBattleStalled && h - s_detBattleMark >= DET_BATTLE_STALL_VBLANKS &&
+            (int32_t)(h - s_detBattleMark) > 0) {
+            s_detBattleStalled = 1;
+            s_detBattleMark = h;
+            if (s_detBattleStalls++ == 0)
+                fprintf(stderr, "[det-vblank] battle %u stall guard: %u host vblanks without a "
+                        "Vsync advance; following the host until the next Vsync (this battle "
+                        "is not frame-comparable)\n", s_detBattleCount, DET_BATTLE_STALL_VBLANKS);
+        }
+        if (s_detBattleStalled && (int32_t)(h - s_detBattleMark) > 0) {
+            uint32_t d = h - s_detBattleMark;
+            s_detBattleMark = h;
+            s_detVblankNow += d;
+            s_detQuery += d;
+            s_detBattleStallVblanks += d;
+        }
+        *now = s_detVblankNow;
+        return 1;
+    }
     if (!s_detVblankLive) {
-        if (s_detDrains <= s_detLoadStep)
-            return 0;                         /* still loading: host-paced service */
+        if (s_detDrains <= s_detLoadStep) {
+            /* still loading: host-paced service */
+            if (s_detHostOffsetOn) {
+                /* after a deterministic battle: continue from its cursor */
+                extern int PsyX_Sys_GetVBlankCount(void);
+                uint32_t h = (uint32_t)PsyX_Sys_GetVBlankCount() + s_detHostOffset;
+                if ((int32_t)(h - *now) > 0)
+                    *now = h;
+                return 1;
+            }
+            return 0;
+        }
         s_detVblankLive = 1;
         s_detVblankNow = *now;
         fprintf(stderr, "[det-vblank] live: deterministic service from step %u, cursor %u\n",
@@ -2135,6 +2268,8 @@ int Vsync(int mode)
             if (s_detPollPending && s_detPollLast == s_detVblankNow) {
                 s_detVblankNow++;
                 s_detQuery++;
+                if (s_detBattle)
+                    PcPort_DetBattleNoteAdvance();
                 if (s_detSpinVblanks++ == 0)
                     fprintf(stderr, "[det-vblank] busy-wait Vsync(-1) poll advances the test "
                             "clock by one vblank per spin (not a retail-timing claim)\n");
@@ -2219,6 +2354,8 @@ int Vsync(int mode)
         uint32_t step_vblanks = (uint32_t)(mode >= 2 ? mode : s_detVblankK);
         s_detVblankNow += step_vblanks;
         s_detQuery += step_vblanks;
+        if (s_detBattle)
+            PcPort_DetBattleNoteAdvance();
     }
     count = VSync(mode);
     XENO_SERVICE_VBLANK();
