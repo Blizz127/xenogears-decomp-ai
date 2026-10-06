@@ -279,6 +279,7 @@ static const CoverageLeaf kCoverage[] = {
     {"func_80076AC8", 0x80076AC8u, 14},
     {"func_80076C34", 0x80076C34u, 17},
     {"func_800AAA20", 0x800AAA20u, 69},
+    {"func_800A3E98", 0x800A3E98u, 257},
 };
 #define COVERAGE_COUNT (sizeof(kCoverage) / sizeof(kCoverage[0]))
 #define COVERAGE_MAX_INSNS 4096u
@@ -1505,6 +1506,87 @@ static void hand_cases_aaa20(void)
     require_outcomes("func_800AAA20", seen, 7u);
 }
 
+/* 800A3E98 (main68 port body): effect-image record at REC, linked record at
+ * REC + 0x100.  The +0x24 progression callback is one of the four retail
+ * entries (800A3490/3514/3578/35C8; native in the port body, interpreted on
+ * the retail side).  Types 4/5 rebuild through 800A4348/800A43F8 into the
+ * +0x1C buffer; types 0/1 reach main-exe func_80026F44 (and LoadImage when
+ * unlinked), which this harness does not link, so those cases are
+ * inconclusive by construction.  Classes: 1 = inactive (+0x1A == 0, -1),
+ * 2 = finished (frame < 0, 800A429C), 4 = same frame, 8 = new frame. */
+static void hand_cases_a3e98(void)
+{
+    static const uint32_t kCallbacks[] = {
+        0x800A3490u, 0x800A3514u, 0x800A3578u, 0x800A35C8u
+    };
+    static const uint8_t kTypes[] = {4, 5, 4, 5, 0, 1, 2, 5};
+    uint32_t args[4];
+    unsigned v, seen = 0;
+
+    if (!abi_leaf_listed("func_800A3E98"))
+        return;
+    for (v = 0; v < 160; v++) {
+        uint8_t *e = (uint8_t *)PSX_ADDR(REC);
+        uint8_t *l = (uint8_t *)PSX_ADDR(REC + 0x100u);
+        unsigned cb = (v % 8u == 6u) ? 1u : v % 4u;
+        unsigned ticks = v % 3u;
+        int16_t div = (int16_t)(1 + v % 5u);
+        int16_t base = (int16_t)((v % 7u == 3u) ? 0x40 : (int)(v % 4u));
+        int inactive = (v % 13u) == 5u;
+        int same = (v % 8u) == 6u;
+        /* Same-frame cases keep the phase small so 800A3514 stays < 0x21. */
+        uint16_t phase = (uint16_t)(same ? v % 8u : v * 37u);
+        uint16_t step = (uint16_t)(v % 3u);
+        unsigned cls;
+
+        begin_case(v % 3u, 0);
+        *(uint32_t *)(e + 0x00) = (v & 1u) ? REC + 0x100u : 0u;
+        *(uint32_t *)(e + 0x04) = SRC;
+        *(uint32_t *)(e + 0x08) = SRC + 0x40u;
+        *(uint32_t *)(e + 0x0C) = DST;
+        *(uint32_t *)(e + 0x1C) = DST + 0x100u;
+        e[0x10] = kTypes[(v / 2u) % 8u];
+        e[0x11] = 0;
+        *(int16_t *)(e + 0x12) = 4;
+        *(uint16_t *)(e + 0x14) = phase;
+        *(uint16_t *)(e + 0x16) = step;
+        *(uint16_t *)(e + 0x18) = 0x7FFF;
+        *(uint16_t *)(e + 0x1A) = inactive ? 0 : 1;
+        *(int16_t *)(e + 0x20) = div;
+        *(int16_t *)(e + 0x22) = base;
+        *(uint32_t *)(e + 0x24) = kCallbacks[cb];
+        *(int16_t *)(e + 0x28) = (int16_t)(v % 2u);
+        *(int16_t *)(e + 0x2A) = (int16_t)((v >> 1) % 2u);
+        *(int16_t *)(e + 0x2C) = (int16_t)(2 + v % 2u);
+        *(int16_t *)(e + 0x2E) = 2;
+        if (same) {
+            /* 800A3514: base + phase' / divisor, -1 at >= 0x21. */
+            int16_t p2 = (int16_t)(uint16_t)(phase + step * (ticks + 1u));
+            int16_t f = (int16_t)(base + p2 / div);
+            *(uint16_t *)(e + 0x18) = (uint16_t)(f < 0x21 ? f : -1);
+        }
+        *(uint32_t *)(l + 0x04) = DST + 0x180u;
+        l[0x10] = (v & 2u) ? 4u : 0u;
+        *(uint16_t *)(l + 0x1A) = (v % 11u) == 7u ? 0 : 1;
+        *(int16_t *)(l + 0x28) = (int16_t)(v % 3u);
+        *(int16_t *)(l + 0x2A) = (int16_t)((v >> 2) % 2u);
+        *(int16_t *)(l + 0x2C) = 3;
+        *(int16_t *)(l + 0x2E) = 2;
+        args[0] = REC; args[1] = ticks; args[2] = args[3] = 0;
+        compare_name("func_800A3E98", args);
+        if (!last_case_proven)
+            continue;
+        if (inactive)
+            cls = 1u;
+        else if ((int32_t)last_retail_v0 < 0)
+            cls = 2u;
+        else
+            cls = same ? 4u : 8u;
+        seen |= cls;
+    }
+    require_outcomes("func_800A3E98", seen, 15u);
+}
+
 /* One case per adopted leaf, with the arguments the port's bridge test already
  * established as meaningful for it. */
 static void hand_cases(void)
@@ -1523,6 +1605,7 @@ static void hand_cases(void)
     hand_cases_ba8f4();
     hand_cases_timer_callbacks();
     hand_cases_aaa20();
+    hand_cases_a3e98();
 
     /* AA80AE4's result is undefined when no rotation slot qualifies. Seed a
      * valid 11-entry cycle so both sides return a defined selected value. */

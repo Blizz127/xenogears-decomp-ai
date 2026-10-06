@@ -263,3 +263,5 @@
 /* Opening-battle hot set: main72 motion stepper (port body; its callees stay
  * interpreted through PcPort_BattleMipsCallGuest). */
     "func_800AAA20",
+/* Opening-battle hot set: main68 effect-image stepper (port body). */
+    "func_800A3E98",
