@@ -59,7 +59,7 @@ static uint8_t* gp(uint32_t a) { return ram + (a & 0x1FFFFFu); }
 static uint32_t r32(uint32_t a) { uint32_t v; memcpy(&v, gp(a), 4); return v; }
 static void w32(uint32_t a, uint32_t v) { memcpy(gp(a), &v, 4); }
 static void w16(uint32_t a, uint16_t v) { memcpy(gp(a), &v, 2); }
-static void w8(uint32_t a, uint8_t v) { *gp(a) = v; }
+static __attribute__((unused)) void w8(uint32_t a, uint8_t v) { *gp(a) = v; }
 
 static uint64_t rng_s = 0x9E3779B97F4A7C15ull;
 static uint32_t rnd(void) {
@@ -72,7 +72,7 @@ static int32_t rnd_val(void) {
                                     0x10000, 0x7FFFFFFF, (int32_t)0x80000000, 0x12345, -0x8000 };
     return (rnd() & 1) ? spec[rnd_range(sizeof(spec) / sizeof(spec[0]))] : (int32_t)rnd();
 }
-static int32_t small(int32_t lo, int32_t hi) { return lo + (int32_t)rnd_range((uint32_t)(hi - lo + 1)); }
+static __attribute__((unused)) int32_t small(int32_t lo, int32_t hi) { return lo + (int32_t)rnd_range((uint32_t)(hi - lo + 1)); }
 
 /* ---- boundary spies ----------------------------------------------------- */
 typedef struct { uint32_t id, a[6]; } Event;
