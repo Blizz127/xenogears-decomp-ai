@@ -11,7 +11,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <sys/mman.h>
+#include <signal.h>
 #include "battle_mips_adapter.h"
 
 #ifndef FEED_MAP
@@ -313,7 +315,14 @@ static void run_case(Fn* f) {
     cases++;
 }
 
+static void crash_report(int sig) {
+    fprintf(stderr, TESTNAME " CRASH signal=%d fn=%s case=%u (%s side)\n", sig, cur_name ? cur_name : "?", cases,
+            active_cpu ? "retail" : "native");
+    _exit(2);
+}
 int main(int argc, char** argv) {
+    signal(SIGSEGV, crash_report); signal(SIGBUS, crash_report); signal(SIGFPE, crash_report);
+    setvbuf(stdout, NULL, _IOLBF, 0);
     int probe; nat_stack_hi = (uintptr_t)&probe + 0x1000;
     require(argc >= 2, "field image argument");
     FILE* fp = fopen(argv[1], "rb"); require(fp != NULL, "open field image");
