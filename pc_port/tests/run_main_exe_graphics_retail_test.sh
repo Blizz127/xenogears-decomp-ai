@@ -31,8 +31,8 @@ fi
 
 # negative controls: one wrong body each; the test restricted to that function must fail
 MUTS=(
- "GfxLoadClutsAccelerated|rect.x = x + (i * 0x40);|rect.x = x + (i * 0x41);"
- "GfxLoadImageAccelerated|LoadImage(D_800592F0, D_800592F4);|LoadImage(D_800592F0, D_800592F4 + 1);"
+ "GfxLoadClutsAccelerated|((u32)i << 6)|((u32)i * 0x41)"
+ "GfxLoadImageAccelerated|HeapAlloc(0x2000, 1);|HeapAlloc(0x2000, 0);"
 )
 n=0
 for m in "${MUTS[@]}"; do

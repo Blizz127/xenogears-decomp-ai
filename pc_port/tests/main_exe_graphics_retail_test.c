@@ -3,12 +3,16 @@
  * The production graphics.c TU is linked unmodified.  Retail = pinned
  * disc/SLUS_006.64 on PcPortMipsRun (test oracle only).  The boundary is
  * LoadImage: a recording spy on both sides compares the RECT contents
- * (x,y,w,h read at call time) and the data pointer.  Retail's scratch stack
- * switch (HeapAlloc(0x2000,1) / HeapFree pair around LoadImage) has no native
- * counterpart by design; those two calls are bridged, counted and checked to
- * be balanced, but are not part of the compared trace.  D_800592F0 holds a
- * stack address (guest stack vs host stack) and is excluded from the global
- * compare; D_800592F4 (data pointer) is compared.
+ * (x,y,w,h read at call time) and the data pointer.  HeapAlloc(0x2000,1) and
+ * HeapFree(block) are recording spies on both sides and part of the compared
+ * callee trace (order + args), and are checked to be balanced.  Port-only
+ * (DIVERGES): retail switches $sp into the scratch block for LoadImage and
+ * stores the caller's guest $sp word at block+0x1F00; the native LoadImage
+ * runs on the host stack.  The spy block sits at LOW_BASE+0xE000, outside the
+ * LOW_CMP window, so that one guest-stack word is not compared (it is the only
+ * retail write there: LoadImage itself is bridged).  For the cluts loop
+ * D_800592F0 holds a stack address (guest stack vs host stack) and is excluded
+ * from the global compare; D_800592F4 (data pointer) is compared.
  * usage: main_exe_graphics_retail_test [fn-name] */
 #include "slus_oracle.h"
 
@@ -27,14 +31,13 @@ int LoadImage(void *rect, void *data)
 int g_GPUDisabledState;
 unsigned g_PcPortPresentedFrames;
 uint8_t g_PsxScratchpad[4096];
-/* link-only (retail path only; the native arm never calls them) */
-void *HeapAlloc(unsigned s, unsigned f) { (void)s; (void)f; abort(); }
-unsigned HeapFree(void *p) { (void)p; abort(); }
+void *HeapAlloc(unsigned s, unsigned f) { heap_allocs++; spy(2, s, f, 0, 0, 0, 0); return (void *)(uintptr_t)(LOW_BASE + 0xE000u); }
+unsigned HeapFree(void *p) { heap_frees++; spy(3, (uint32_t)(uintptr_t)p, 0, 0, 0, 0, 0); return 0; }
 
 static int bridge(PcPortMipsCpu *c, uint32_t t)
 {
-    if (t == 0x80031BDCu) { heap_allocs++; c->gpr[2] = LOW_BASE + 0xE000u; return 1; } /* HeapAlloc */
-    if (t == 0x800320E8u) { heap_frees++; c->gpr[2] = 0; return 1; }                    /* HeapFree */
+    if (t == 0x80031BDCu) { heap_allocs++; spy(2, c->gpr[4], c->gpr[5], 0, 0, 0, 0); c->gpr[2] = LOW_BASE + 0xE000u; return 1; } /* HeapAlloc */
+    if (t == 0x800320E8u) { heap_frees++; spy(3, c->gpr[4], 0, 0, 0, 0, 0); c->gpr[2] = 0; return 1; }                          /* HeapFree */
     if (t == 0x80044894u) { /* LoadImage */
         const s16 *r = hp(c->gpr[4]);
         c->gpr[2] = (uint32_t)spy(1, (uint32_t)(uint16_t)r[0] | ((uint32_t)(uint16_t)r[1] << 16),
@@ -92,17 +95,18 @@ int main(int argc, char **argv)
     map_low();
     load_slus(cur_what);
     user_bridge = bridge;
-    (void)g_gfx2;
-    globs = g_gfx; nglobs = 1;
     for (unsigned k = 0; k < sizeof(fns) / sizeof(fns[0]); k++) {
         const Fn *f = &fns[k];
         unsigned fails = 0;
         if (only && strcmp(only, f->name)) continue;
+        /* image: both pointers are low-region fixtures and compared; cluts: D_800592F0 is a stack address
+         * (guest vs host stack), so only the data pointer D_800592F4 is compared */
+        if (!strcmp(f->name, "GfxLoadImageAccelerated")) { globs = g_gfx2; nglobs = 2; } else { globs = g_gfx; nglobs = 1; }
         prints_left = 1;
         heap_allocs = heap_frees = 0;
         for (unsigned id = 0; id < cases; id++) fails += (unsigned)run_case(f, id + 1, 0);
         if (heap_allocs != heap_frees || heap_allocs == 0) { printf("MAIN EXE GRAPHICS %s heap pair unbalanced allocs=%u frees=%u\n", f->name, heap_allocs, heap_frees); fails++; }
-        printf("MAIN EXE GRAPHICS %s %s cases=%u diverged=%u (retail scratch-stack heap pairs=%u)\n", f->name, fails ? "DIVERGES" : "PASS", cases, fails, heap_allocs);
+        printf("MAIN EXE GRAPHICS %s %s cases=%u diverged=%u (heap pairs both sides=%u)\n", f->name, fails ? "DIVERGES" : "PASS", cases, fails, heap_allocs);
         ran++; bad += fails ? 1 : 0;
     }
     if (!ran) { fprintf(stderr, "no such function\n"); return 2; }
