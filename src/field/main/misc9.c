@@ -34,10 +34,11 @@ void func_800AA9DC(void* pModelData) {
         max = dz;
     }
 
-    *(s16*)(pModel + 0x18) = minX + ((dx + ((u32)dx >> 31)) >> 1);
-    *(s16*)(pModel + 0x1A) = minY + ((dy + ((u32)dy >> 31)) >> 1);
-    *(s16*)(pModel + 0x1C) = minZ + ((dz + ((u32)dz >> 31)) >> 1);
-    *(s16*)(pModel + 0x20) = (max << 1) + 1;
+    /* srl 31 + addu + sra 1 (signed halving), then sll 1 + addiu 1 as u32. */
+    *(s16*)(pModel + 0x18) = minX + ((dx + (s32)((u32)dx >> 31)) >> 1);
+    *(s16*)(pModel + 0x1A) = minY + ((dy + (s32)((u32)dy >> 31)) >> 1);
+    *(s16*)(pModel + 0x1C) = minZ + ((dz + (s32)((u32)dz >> 31)) >> 1);
+    *(s16*)(pModel + 0x20) = (s16)(((u32)max << 1) + 1);
 }
 #endif /* XENO_PC_PORT */
 
@@ -89,16 +90,17 @@ s32 func_800AAA74(void* pModelData) {
     maxX = (s16)(screenXY >> 16);
     maxY = (s16)screenXY;
 
-    if (minX >= D_800C3A60 + 0xE0) {
+    /* addiu / negu wrap: u32 arithmetic, no host signed-overflow UB. */
+    if (minX >= (s32)((u32)D_800C3A60 + 0xE0)) {
         return -1;
     }
-    if (-D_800C3A60 >= maxX) {
+    if ((s32)(0u - (u32)D_800C3A60) >= maxX) {
         return -1;
     }
-    if (minY >= D_800C3A5C + 0x140) {
+    if (minY >= (s32)((u32)D_800C3A5C + 0x140)) {
         return -1;
     }
-    if (-D_800C3A5C >= maxY) {
+    if ((s32)(0u - (u32)D_800C3A5C) >= maxY) {
         return -1;
     }
     return 0;

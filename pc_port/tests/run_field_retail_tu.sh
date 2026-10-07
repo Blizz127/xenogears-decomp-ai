@@ -37,7 +37,8 @@ build_source() { # src obj flags...
   # CSEs two calls of a "pure" callee that the retail code makes twice.
   # -fPIC + semantic interposition makes every global definition interposable.
   local IP=(); [ -n "$WEAKEN" ] && IP=(-fPIC -fsemantic-interposition)
-  "$PROD_CC" "${COMMON[@]}" "$@" "${IP[@]}" -fno-inline "${W[@]}" -c "$src" -o "$obj"
+  # mutant copies live in $OUT: keep the original directory for "relative" includes
+  "$PROD_CC" "${COMMON[@]}" -iquote "$(dirname "$SOURCE")" "$@" "${IP[@]}" -fno-inline "${W[@]}" -c "$src" -o "$obj"
   # same-TU callees: spied by the test (strong spy overrides the weak definition);
   # the real body stays callable as real_<name> through a global alias symbol.
   for w in $WEAKEN; do objcopy --weaken-symbol="$w" --add-symbol "real_$w=.text.$w:0,global,function" "$obj"; done
