@@ -1060,7 +1060,11 @@ void func_801C6AA0(void) {
         } else {
             g_Menu->pManager->currentCharacterIDs[i] = member;
             g_Menu->unk32B++;
-            if (g_GameState.characters[member].gearId != 0xFF) {
+            /* Retail indexes g_GameState+0x26C+id*0xA4 for any available
+             * id; ids 11..15 land in gears[] (byte-addressed, no UB). */
+            if (((u8*)&g_GameState)[offsetof(GameState, characters) +
+                                    member * sizeof(GameCharacter) +
+                                    offsetof(GameCharacter, gearId)] != 0xFF) {
                 g_Menu->pManager->unk5C[4 + i] = 1;
                 g_Menu->unk33B++;
             }
