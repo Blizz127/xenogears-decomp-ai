@@ -1554,6 +1554,10 @@ void func_800A0EE8(void) {
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/field/nonmatchings/main/misc6", func_800A0FD8);
 #else
+/* D_800B2394 is the 0x18-byte archive request block (u16 idx, u32 buf, u16
+ * idx, u32 buf, u16 0, u32 0); an array view of the same symbol keeps the
+ * multi-field stores within the object (UBSan object-size). */
+extern u8 D_800B2394_buf[] __asm__("D_800B2394");
 void func_800A0FD8(void) {
     ActorData* actor = g_FieldScriptVMCurActor;
     s32 slot;
@@ -1576,7 +1580,7 @@ void func_800A0FD8(void) {
          * port; retain the proven IP/VM effects without turning that known
          * boundary into a host crash. */
         if (D_801E8670[slot] != 0) {
-            *(u8*)((u8*)(uintptr_t)D_801E8670[slot] + 0x34) = 0;
+            *(u8*)((u8*)(uintptr_t)(u32)D_801E8670[slot] + 0x34) = 0;
         }
         actor->scriptInstructionPointer += 2;
         D_800B00C0 = 1;
@@ -1588,27 +1592,27 @@ void func_800A0FD8(void) {
         /* 800A1114: sll v0,v0,1 (u32 shift: no host UB on negative args). */
         D_800B21DC[slot] = (u16)((u32)FieldScriptVMGetArgument(5) << 1);
 
-        *(u16*)(void*)&D_800B2394 =
+        *(u16*)(void*)D_800B2394_buf =
             (u16)D_800B21DC[slot] + 0x6BA;
         /* 800A112C/800A1170: lh -- the archive index is the SIGN-extended
          * halfword + 0x6BA/0x6BB, as retail. */
-        *(u32*)((u8*)&D_800B2394 + 4) =
+        *(u32*)(D_800B2394_buf + 4) =
             (u32)(uintptr_t)HeapAlloc(
                 (u32)ArchiveDecodeAlignedSize((u32)((s16)D_800B21DC[slot] + 0x6BA)),
                 0);
-        *(u16*)((u8*)&D_800B2394 + 8) =
+        *(u16*)(D_800B2394_buf + 8) =
             (u16)D_800B21DC[slot] + 0x6BB;
-        *(u32*)((u8*)&D_800B2394 + 12) =
+        *(u32*)(D_800B2394_buf + 12) =
             (u32)(uintptr_t)HeapAlloc(
                 (u32)ArchiveDecodeAlignedSize((u32)((s16)D_800B21DC[slot] + 0x6BB)),
                 1);
-        *(u16*)((u8*)&D_800B2394 + 16) = 0;
-        *(u32*)((u8*)&D_800B2394 + 20) = 0;
+        *(u16*)(D_800B2394_buf + 16) = 0;
+        *(u32*)(D_800B2394_buf + 20) = 0;
         D_8005A420[slot] = (void*)(uintptr_t)
-            *(u32*)((u8*)&D_800B2394 + 4);
+            *(u32*)(D_800B2394_buf + 4);
         D_8005A450[slot] = (void*)(uintptr_t)
-            *(u32*)((u8*)&D_800B2394 + 12);
-        func_80029AFC((void*)&D_800B2394, 0, 0);
+            *(u32*)(D_800B2394_buf + 12);
+        func_80029AFC((void*)D_800B2394_buf, 0, 0);
         actor->scriptInstructionPointer += 2;
         D_800B00C0 = 1;
         return;
@@ -1634,7 +1638,8 @@ void func_800A0FD8(void) {
 
             func_801E742C(slot, 0, D_8005A420[slot], D_8005A450[slot],
                           x, 0x100, 0, w, vec);
-            object = (s32*)(uintptr_t)D_801E8670[slot];
+            /* u32 slot: (uintptr_t) of the s32 would sign-extend guest 0x80xxxxxx. */
+            object = (s32*)(uintptr_t)(u32)D_801E8670[slot];
             if (object != NULL) {
                 D_800B220C[slot] = *(s16*)((u8*)object + 0x1C);
             }
@@ -1646,9 +1651,9 @@ void func_800A0FD8(void) {
                 s16 scale = *(s16*)((u8*)actor + 0xF4);
                 *(s16*)((u8*)object + 0x1C) = (scale * 5) >> 6;
                 *(s16*)((u8*)object + 0x60) = *(s16*)((u8*)actor + 0x26);
-                *(s32*)((u8*)(uintptr_t)object[1] + 0x5C) =
+                *(s32*)((u8*)(uintptr_t)(u32)object[1] + 0x5C) =
                     *(s16*)((u8*)actor + 0x22);
-                *(s32*)((u8*)(uintptr_t)object[1] + 0x64) =
+                *(s32*)((u8*)(uintptr_t)(u32)object[1] + 0x64) =
                     *(s16*)((u8*)actor + 0x2A);
             }
         }
