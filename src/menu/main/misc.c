@@ -4598,41 +4598,14 @@ extern s32 D_801EA4DC[];
 extern u8 D_801EA578[];
 extern u8 D_801EA5C4[];
 
-static void MenuBuildPanelDigits(MenuCharacter* panel, POLY_FT4* polys,
-                                 u8* count, u32 value, s32 firstDigit,
-                                 s32 digitCount, s32 x, s32 y,
-                                 s32 compact) {
-    s32 i = 0;
-    s32 built = 0;
-
-    func_801C80B8(value);
-    *count = 0;
-    while (i < digitCount) {
-        s32 digitIndex = i;
-        u8 digit = g_Menu->digits[firstDigit + digitIndex];
-
-        if (compact) {
-            i++;
-        }
-
-        if (digit != 0xFF) {
-            s32 column = compact ? built : digitIndex;
-            *count += (u8)func_8002675C(
-                g_Menu->unk2DC, digit, &polys[(*count) * 2],
-                g_Menu->renderContext, x + column * 8, y, 0x1000);
-            built++;
-        }
-        if (!compact) {
-            i++;
-        }
-    }
-    (void)panel;
-}
-
+/* Retail 0x801CD81C, re-translated instruction-faithfully: coordinates are
+ * u32-wrapping addu sums, the E920C x/y pair is loaded as halfwords (lhu) and
+ * y is truncated to 16 bits, the UV word is shifted as u32. */
 void func_801CD81C(MenuCharacter* panel, u8 charId, u8 slot,
                    s32* xTable, s32* yTable, u8 mode) {
     s32 i = 0;
-    s32 rowOffset = slot * 0x38;
+    u32 rowOffset = (u32)slot * 0x38;
+    u32 uvIndex;
     POLY_FT4* face;
 
     panel->descriptionStringsLength = 0;
@@ -4647,14 +4620,14 @@ void func_801CD81C(MenuCharacter* panel, u8 charId, u8 slot,
                 g_Menu->unk2DC, glyph,
                 &panel->polysDescriptionStrings[panel->descriptionStringsLength * 2],
                 g_Menu->renderContext, xTable[glyphIndex],
-                yTable[glyphIndex] + rowOffset,
+                (s32)(rowOffset + (u32)yTable[glyphIndex]),
                 0x1000);
         }
     }
 
     func_8002675C(g_Menu->unk2DC, 0x14B + slot,
                   panel->polysPortraitSmall, g_Menu->renderContext,
-                  xTable[9], yTable[9] + rowOffset, 0x1000);
+                  xTable[9], (s32)(rowOffset + (u32)yTable[9]), 0x1000);
     face = &panel->polys4B0[g_Menu->renderContext];
     func_801E927C(face);
     face->tpage = GetTPage(0, 0, 0x180, 0);
@@ -4664,48 +4637,83 @@ void func_801CD81C(MenuCharacter* panel, u8 charId, u8 slot,
     } else {
         face->clut = g_SystemPalette2;
     }
-    func_801E920C(face, xTable[16], yTable[16] + rowOffset,
-                  (*(s32*)(D_801EA578 + (mode * 3 + slot) * 4) << 2) & 0xFC,
-                  D_801EA5C4[mode * 12 + slot * 4], mode * 0x18 + 0x48,
-                  0xD);
+    uvIndex = ((u32)mode * 3 + slot) * 4;
+    func_801E920C(face, *(u16*)&xTable[16],
+                  (u16)(*(u16*)&yTable[16] + rowOffset),
+                  (s32)(((u32)*(s32*)(D_801EA578 + uvIndex) << 2) & 0xFC),
+                  D_801EA5C4[uvIndex], mode * 0x18 + 0x48, 0xD);
+}
+
+/* Retail 0x801CDC6C, re-translated instruction-faithfully: each value is
+ * fetched from g_GameState just before its func_801C80B8 split (retail
+ * re-reads gearId per row), the x/y table cells are re-read per glyph,
+ * coordinates are u32-wrapping addu sums and counts are u8 lbu/addu/sb.
+ * The first row of each pair uses the digit index as column, the second the
+ * number of glyphs built so far. */
+static void MenuBuildPanelDigits(POLY_FT4* polys, u8* count, s32 firstDigit,
+                                 s32 digitCount, s32* xCell, s32* yCell,
+                                 u32 rowOffset, s32 compact) {
+    s32 i = 0;
+    s32 built = 0;
+    u32 column;
+    u8 digit;
+
+    while (i < digitCount) {
+        digit = g_Menu->digits[firstDigit + i];
+        column = (u32)(compact ? built : i) * 8;
+        i++;
+        if (digit != 0xFF) {
+            *count += (u8)func_8002675C(
+                g_Menu->unk2DC, digit, &polys[*count * 2],
+                g_Menu->renderContext, (s32)(column + (u32)*xCell),
+                (s32)(rowOffset + (u32)*yCell), 0x1000);
+            built++;
+        }
+    }
 }
 
 void func_801CDC6C(MenuCharacter* panel, u8 charId, u8 slot,
                    s32* xTable, s32* yTable, u8 mode) {
-    u32 hp;
-    u32 maxHp;
+    u32 rowOffset = (u32)slot * 0x38;
     s32 firstDigit;
     s32 digitCount;
 
     if (mode == 0) {
-        hp = g_GameState.characters[charId].hp;
-        maxHp = g_GameState.characters[charId].maxHp;
-        firstDigit = 6;
+        func_801C80B8(g_GameState.characters[charId].hp);
         digitCount = 3;
+        firstDigit = 6;
     } else {
-        u8 gearId = g_GameState.characters[charId].gearId;
-        hp = g_GameState.gears[gearId].hp;
-        maxHp = g_GameState.gears[gearId].maxHp;
-        firstDigit = 4;
+        func_801C80B8(
+            g_GameState.gears[g_GameState.characters[charId].gearId].hp);
         digitCount = 5;
+        firstDigit = 4;
     }
-
-    MenuBuildPanelDigits(panel, panel->polysHpString, &panel->hpStringLength,
-                         hp, firstDigit, digitCount, xTable[12],
-                         yTable[12] + slot * 0x38, 0);
-    MenuBuildPanelDigits(panel, panel->polysMaxHpString,
-                         &panel->maxHpStringLength, maxHp, firstDigit,
-                         digitCount, xTable[13], yTable[13] + slot * 0x38, 1);
+    panel->hpStringLength = 0;
+    MenuBuildPanelDigits(panel->polysHpString, &panel->hpStringLength,
+                         firstDigit, digitCount, &xTable[12], &yTable[12],
+                         rowOffset, 0);
 
     if (mode == 0) {
-        MenuBuildPanelDigits(panel, panel->polysMpString,
-                             &panel->mpStringLength,
-                             g_GameState.characters[charId].mp, 7, 2,
-                             xTable[14], yTable[14] + slot * 0x38, 0);
-        MenuBuildPanelDigits(panel, panel->polysMaxMpString,
-                             &panel->maxMpStringLength,
-                             g_GameState.characters[charId].maxMp, 7, 2,
-                             xTable[15], yTable[15] + slot * 0x38, 1);
+        func_801C80B8(g_GameState.characters[charId].maxHp);
+    } else {
+        func_801C80B8(
+            g_GameState.gears[g_GameState.characters[charId].gearId].maxHp);
+    }
+    panel->maxHpStringLength = 0;
+    MenuBuildPanelDigits(panel->polysMaxHpString, &panel->maxHpStringLength,
+                         firstDigit, digitCount, &xTable[13], &yTable[13],
+                         rowOffset, 1);
+
+    if (mode == 0) {
+        func_801C80B8(g_GameState.characters[charId].mp);
+        panel->mpStringLength = 0;
+        MenuBuildPanelDigits(panel->polysMpString, &panel->mpStringLength, 7,
+                             2, &xTable[14], &yTable[14], rowOffset, 0);
+        func_801C80B8(g_GameState.characters[charId].maxMp);
+        panel->maxMpStringLength = 0;
+        MenuBuildPanelDigits(panel->polysMaxMpString,
+                             &panel->maxMpStringLength, 7, 2, &xTable[15],
+                             &yTable[15], rowOffset, 1);
     }
 }
 
