@@ -6770,7 +6770,7 @@ void func_801D36E0(MenuString* pStr, s32 slot, s32 variant, s32 style) {
         parity = (u8)((g_GameState.characters[charId].gearId + 0xB) & 1);
         pPoly = &pStr->polys[g_Menu->renderContext];
         pPoly->clut = parity ? g_SystemPalette2 : g_SystemPalette1;
-        u = (*(s32*)(D_801EA584 + sl * 4) << 2) & 0xFC;
+        u = (s32)(((u32)*(s32*)(D_801EA584 + sl * 4) << 2) & 0xFC);
         v = ((u8*)D_801EA5D0)[sl * 4];  /* retail lbu, stride 4 */
         x = (u16)(*(s32*)(D_801EA17C + st * 4) - 0x30);
     } else {
@@ -6778,7 +6778,7 @@ void func_801D36E0(MenuString* pStr, s32 slot, s32 variant, s32 style) {
         parity = (u8)(g_Menu->pManager->currentCharacterIDs[sl] & 1);
         pPoly = &pStr->polys[g_Menu->renderContext];
         pPoly->clut = parity ? g_SystemPalette2 : g_SystemPalette1;
-        u = (*(s32*)(D_801EA578 + sl * 4) << 2) & 0xFC;
+        u = (s32)(((u32)*(s32*)(D_801EA578 + sl * 4) << 2) & 0xFC);
         v = D_801EA5C4[sl * 4];
         x = (u16)(*(s32*)(D_801EA17C + st * 4) - 0x24);
     }
