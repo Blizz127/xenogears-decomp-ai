@@ -419,7 +419,9 @@ void func_800A2030(void) {
             }
         }
 
-        actor->flags &= 0xFEFFFFFF;
+        /* asm 800A2124-800A2138: lw/and/sw 0x0(pActorData) - bit 24 of the
+         * +0x0 scriptFlags word (not the +0x4 flags word). */
+        actor->scriptFlags.flags &= 0xFEFFFFFF;
         D_800B06B8 = fieldActor;
         D_800AFD1C = actorIndex;
         g_FieldScriptVMCurActor = actor;
@@ -963,6 +965,11 @@ int FieldScriptVMGetVariableValue(int index) {
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/field/nonmatchings/scripts/virtual_machine", FieldScriptMemoryWriteU16);
 #else
+/* g_FieldScriptMemory is declared `void*` (an 8-byte object) in field/actor.h
+ * but is the 0x800-byte script variable buffer (g_FieldBss_800C38F8+0x170).
+ * Address it through a correctly typed alias of the same symbol: indexing an
+ * 8-byte object past its end is host UB (UBSan object-size). */
+extern u16 g_FieldScriptMemoryU16[] __asm__("g_FieldScriptMemory");
 void FieldScriptMemoryWriteU16(s32 address, u16 value) {
     s32 index = address >> 1;
 
@@ -973,11 +980,11 @@ void FieldScriptMemoryWriteU16(s32 address, u16 value) {
         extern void PcPort_FieldVarWatch(s32 address, u16 old_value, u16 new_value,
                                          s32 actor, s32 ip) __attribute__((weak));
         if (PcPort_FieldVarWatch)
-            PcPort_FieldVarWatch(address, ((u16*)&g_FieldScriptMemory)[index], value, D_800AFD1C,
+            PcPort_FieldVarWatch(address, g_FieldScriptMemoryU16[index], value, D_800AFD1C,
                                  g_FieldScriptVMCurActor
                                      ? (s32)g_FieldScriptVMCurActor->scriptInstructionPointer : -1);
     }
-    ((u16*)&g_FieldScriptMemory)[index] = value;
+    g_FieldScriptMemoryU16[index] = value;
 }
 #endif /* XENO_PC_PORT */
 
@@ -1032,7 +1039,7 @@ void func_800A30FC(void) {
     FieldScriptMemoryWriteU16(0x3C, g_GameSceneMapNum);
     FieldScriptWritePartyMemberIDs();
 
-    src = (u16*)&g_FieldScriptMemory;
+    src = g_FieldScriptMemoryU16; /* typed alias, see FieldScriptMemoryWriteU16 */
     dst = (u16*)((u8*)g_pGameState + 0x1930);
     for (i = 0; i < 0x200; i++) {
         *dst++ = *src++;
@@ -1059,7 +1066,7 @@ void func_800A31E8(void) {
     func_800A30FC();
 
     D_8004F2F4 = 0;
-    D_8004F318 += 1;
+    D_8004F318 = (s32)((u32)D_8004F318 + 1); /* addiu: wraps, no signed-overflow UB */
 
     for (i = 0; i < 3; i++) {
         if (((u8*)g_pGameState)[0x22B1 + i] == 1) {
