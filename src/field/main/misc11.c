@@ -270,13 +270,22 @@ extern s16 D_800AFFAC[];
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80092148);
 #else
+/* Retail reaches the line-scroll table through D_800AFFAC (== D_800AFEA8+0x104,
+ * the s16 size[] table) and D_800AFFAC-0x80 (== D_800AFEA8+0x84, the u32
+ * buffer[] slots).  On PC D_800AFFAC is a separate stub, so address both
+ * through D_800AFEA8 + offset with retail 4-byte pointer slots.  The byte
+ * view is an incomplete array so the host compiler does not take D_800AFEA8's
+ * declared s16 size as the object size. */
+extern u8 D_800AFEA8_tbl[] asm("D_800AFEA8");
+
 void func_80092148(void) {
     s32 arg1 = FieldScriptVMGetArgument(1);
     s32 arg3 = FieldScriptVMGetArgument(3);
-    u16 val = FieldScriptVMGetInstructionArgument(5);
-    if (arg3 < D_800AFFAC[arg1]) {
-        u8* base = *(u8**)((u8*)D_800AFFAC + arg1 * 4 - 0x80);
-        base[arg3] = (u8)val;
+    u8 val = (u8)FieldScriptVMGetInstructionArgument(5);
+    u8* tbl = D_800AFEA8_tbl;
+
+    if (arg3 < ((s16*)(tbl + 0x104))[arg1]) {
+        *(u8*)(uintptr_t)(((u32*)(tbl + 0x84))[arg1] + (u32)arg3) = val;
     }
     g_FieldScriptVMCurActor->scriptInstructionPointer += 7;
 }
@@ -288,50 +297,42 @@ extern s16 D_800AFEA8;
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_800921E8);
 #else
+/* Retail table at D_800AFEA8: s16 count @+0, u32 lineScroll[32] @+4,
+ * u32 buffer[32] @+0x84, s16 size[32] @+0x104 (== D_800AFFAC).  The pointer
+ * tables are 4-byte guest slots (consumers func_800920D8/func_80092148 read
+ * u32[idx]); a host void* store would be 8 bytes wide and overrun the next
+ * table, so store the pointers as u32 slots like retail's sw. */
 void func_800921E8(void) {
-    s16 count;
-    u16 initVal;
+    u8* tbl = D_800AFEA8_tbl;
+    u32 count;
+    u8 initVal;
+    s32 i;
     s16 x, y, modulus, width, destX, destY;
-    s16* pSizes;
-    void** pPtrs;
-    void** pLineScrollPtrs;
 
-    if (D_800ADB8C != 0 || D_800AFEA8 >= 0x20) {
-        g_FieldScriptVMCurActor->scriptInstructionPointer += 0x11;
-        return;
-    }
-
-    count = FieldScriptVMGetInstructionArgument(9);
-    pSizes = (s16*)((u8*)&D_800AFEA8 + 0x104);
-    pSizes[D_800AFEA8] = count;
-
-    pPtrs = (void**)((u8*)&D_800AFEA8 + 0x84);
-    pPtrs[D_800AFEA8] = HeapAlloc(count + 1, 0);
-
-    pLineScrollPtrs = (void**)((u8*)&D_800AFEA8 + 0x4);
-    pLineScrollPtrs[D_800AFEA8] = HeapAlloc(0x18, 0);
-
-    initVal = FieldScriptVMGetInstructionArgument(0xF);
-    if (count != 0) {
-        s32 i;
-        for (i = 0; i < count; i++) {
-            ((u8*)pPtrs[D_800AFEA8])[i] = (u8)initVal;
+    if (D_800ADB8C == 0 && *(s16*)tbl < 0x20) {
+        count = FieldScriptVMGetInstructionArgument(9) & 0xFFFF;
+        ((s16*)(tbl + 0x104))[*(s16*)tbl] = (s16)count;
+        ((u32*)(tbl + 0x84))[*(s16*)tbl] = (u32)(uintptr_t)HeapAlloc(count + 1, 0);
+        ((u32*)(tbl + 0x4))[*(s16*)tbl] = (u32)(uintptr_t)HeapAlloc(0x18, 0);
+        initVal = (u8)FieldScriptVMGetInstructionArgument(0xF);
+        for (i = 0; i < (s32)count; i++) {
+            *(u8*)(uintptr_t)(((u32*)(tbl + 0x84))[*(s16*)tbl] + (u32)i) = initVal;
         }
+
+        x = FieldScriptVMGetInstructionArgument(1);
+        y = FieldScriptVMGetInstructionArgument(3);
+        modulus = FieldScriptVMGetInstructionArgument(5);
+        width = FieldScriptVMGetInstructionArgument(7);
+        destX = FieldScriptVMGetInstructionArgument(0xB);
+        destY = FieldScriptVMGetInstructionArgument(0xD);
+
+        GfxLineScrollInitialize(
+            (void*)(uintptr_t)((u32*)(tbl + 0x4))[*(s16*)tbl],
+            x, y, modulus, width, (s16)count, destX, destY,
+            (s8*)(uintptr_t)((u32*)(tbl + 0x84))[*(s16*)tbl]);
+
+        *(u16*)tbl = *(u16*)tbl + 1;
     }
-
-    x = FieldScriptVMGetInstructionArgument(1);
-    y = FieldScriptVMGetInstructionArgument(3);
-    modulus = FieldScriptVMGetInstructionArgument(5);
-    width = FieldScriptVMGetInstructionArgument(7);
-    destX = FieldScriptVMGetInstructionArgument(0xB);
-    destY = FieldScriptVMGetInstructionArgument(0xD);
-
-    GfxLineScrollInitialize(
-        pLineScrollPtrs[D_800AFEA8],
-        x, y, modulus, width, count, destX, destY,
-        (s8*)pPtrs[D_800AFEA8]);
-
-    D_800AFEA8++;
     g_FieldScriptVMCurActor->scriptInstructionPointer += 0x11;
 }
 #endif /* XENO_PC_PORT */
@@ -484,15 +485,17 @@ extern s32 D_800ADBEC;
 INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80092894);
 #else
 s32 func_80092894(s32 arg1, s32 arg2, s32 arg3, s32 arg4) {
-    s32 dx, dy, dz;
+    s32 vec[3];
     s32 targetX, targetZ;
-    s32 heading;
+    s32 angle;
     s32 dist;
     s32 threshold;
     s16 savedX, savedZ;
     u8* pActorData;
     u8* pSpriteData;
-    s32 angle;
+    u8* cur;
+    u8* slot;
+    u32 v;
 
     g_FieldControl.isRandomEncountersEnabled = -1;
 
@@ -502,10 +505,13 @@ s32 func_80092894(s32 arg1, s32 arg2, s32 arg3, s32 arg4) {
     *(u32*)(pActorData + 0x4) |= 0x38;
     *(u32*)(pSpriteData + 0x18) = 0x80000;
 
-    threshold = FieldGetVec1Magnitude(8) * 2;
+    threshold = (s32)((u32)FieldGetVec1Magnitude(8) << 1);
     savedX = *(s16*)(pActorData + 0x22);
     savedZ = *(s16*)(pActorData + 0x2A);
 
+    /* arg2 != 0: walk straight to (arg3, arg4); no exit-point or angle math. */
+    targetX = arg3;
+    targetZ = arg4;
     if (arg2 == 0) {
         if (D_800ADBDC == 0 || D_800ADBE4 == 0) {
             D_800B00C0 = 1;
@@ -518,53 +524,46 @@ s32 func_80092894(s32 arg1, s32 arg2, s32 arg3, s32 arg4) {
             FieldScriptMemoryWriteU16(2, entrance);
             g_GameSceneMapNum = mapNum;
         }
+
+        /* Target is 40 units ahead of the script's current actor (not the
+         * player), along D_800B06B8's facing + arg1 - 0x400. */
+        angle = (s32)((u32)*(s16*)((u8*)D_800B06B8 + 0x52) + (u32)arg1 - 0x400u);
+        v = (u32)rsin(angle);
+        cur = (u8*)g_FieldScriptVMCurActor;
+        targetX = (s32)((u32)(*(s16*)(cur + 0x60) + *(s16*)(cur + 0x22)) + (u32)((s32)(v * 40u) >> 12));
+        v = (u32)rcos(angle);
+        cur = (u8*)g_FieldScriptVMCurActor;
+        targetZ = (s32)((u32)(*(s16*)(cur + 0x64) + *(s16*)(cur + 0x2A)) + (u32)((s32)(0u - v * 40u) >> 12));
     }
 
-    angle = (s16)(*(s16*)((u8*)D_800B06B8 + 0x52) + arg1) - 0x400;
-    {
-        s32 sinVal = rsin(angle);
-        s32 actorX = *(s16*)(pActorData + 0x60) + *(s16*)(pActorData + 0x22);
-        targetX = actorX + (sinVal * 40 >> 12);
-    }
-    {
-        s32 cosVal = rcos(angle);
-        s32 actorZ = *(s16*)(pActorData + 0x64) + *(s16*)(pActorData + 0x2A);
-        targetZ = actorZ + (-cosVal * 40 >> 12);
-    }
+    /* func_8007B694 reads the retail 3-word stack vector {dx, 0, dz}. */
+    vec[0] = (s32)((u32)targetX - (u32)savedX);
+    vec[1] = 0;
+    vec[2] = (s32)((u32)targetZ - (u32)savedZ);
+    dist = (s32)FieldGetVec2Magnitude(vec[0], vec[2]);
 
-    if (arg2 != 0) {
-        targetZ = arg4;
-    }
-
-    dx = targetX - savedX;
-    dy = 0;
-    dz = targetZ - savedZ;
-    dist = FieldGetVec2Magnitude(dx, dz);
-
-    if (dist > threshold) {
+    if (threshold < dist) {
         /* Player hasn't reached target yet */
         if (*(s16*)(pActorData + 0x68) == *(s16*)(pActorData + 0x22) &&
             *(s16*)(pActorData + 0x6A) == *(s16*)(pActorData + 0x26) &&
             *(s16*)(pActorData + 0x6C) == *(s16*)(pActorData + 0x2A)) {
-            (*(u16*)(pActorData + 0x6E))++;
+            *(u16*)(pActorData + 0x6E) = *(u16*)(pActorData + 0x6E) + 1;
         } else {
             *(u16*)(pActorData + 0x6E) = 0;
         }
-        if (*(s16*)(pActorData + 0x6E) >= 0x41) {
-            goto finalize;
+        if (*(s16*)(pActorData + 0x6E) < 0x41) {
+            s32 heading = func_8007B694(vec);
+            *(u16*)(pActorData + 0x104) = (u16)heading;
+            *(u16*)(pActorData + 0x106) = (u16)heading;
+            D_800B00C0 = 1;
+            if (arg2 != 0) {
+                g_FieldScriptVMCurActor->scriptInstructionPointer--;
+            }
+            return -1;
         }
-        heading = func_8007B694((s32*)&dx);
-        *(u16*)(pActorData + 0x104) = (u16)heading;
-        *(u16*)(pActorData + 0x106) = (u16)heading;
-        D_800B00C0 = 1;
-        if (arg2 != 0) {
-            g_FieldScriptVMCurActor->scriptInstructionPointer--;
-        }
-        return -1;
     }
 
-finalize:
-    /* Player reached target — finalize transition */
+    /* Player reached target (or got stuck) — finalize transition */
     {
         u16 flags = *(u16*)(pActorData + 0x106) | 0x8000;
         *(u16*)(pActorData + 0x104) = flags;
@@ -574,11 +573,13 @@ finalize:
     *(s16*)(pActorData + 0xE8) = 0;
     func_800821F4(pSpriteData, 0, &g_FieldActors[g_PlayerActorIndex]);
     D_800B00C0 = 1;
-    {
-        u32 tblIdx = *(u8*)(pActorData + 0xCE);
-        *(s16*)(pActorData + 0x90 + tblIdx * 8) = -1;
-        *(u32*)(pActorData + 0x90 + tblIdx * 8) &= 0xFE7FFFFF;
-    }
+    *(u16*)(pActorData + 0x90 + *(u8*)(pActorData + 0xCE) * 8) = 0xFFFF;
+    /* retail: lw/and/sw of the same slot after the sh; byte copies keep the
+     * host compiler from reordering the u16 store and the u32 load. */
+    slot = pActorData + 0x90 + *(u8*)(pActorData + 0xCE) * 8;
+    __builtin_memcpy(&v, slot, 4);
+    v &= 0xFE7FFFFF;
+    __builtin_memcpy(slot, &v, 4);
     *(u32*)(pActorData + 0x0) &= 0xFFDFFFFF;
     if (arg2 == 1) {
         *(u32*)(pActorData + 0x4) &= ~0x38u;
