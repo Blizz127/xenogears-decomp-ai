@@ -197,7 +197,9 @@ void func_800A5924(void) {
                 func_8007554C();
                 func_80078B5C();
                 func_800A5600(color >> 16);
-                color += 0x800000 / D_800ADB3C;
+                /* D_800ADB3C is re-read after the callees; retail div never
+                 * traps (a callee may zero it): MIPS_DIV, u32 accumulate. */
+                color = (s32)((u32)color + (u32)MIPS_DIV(0x800000, D_800ADB3C));
             }
 
             while (D_800ADB38 == 3) {
@@ -221,7 +223,7 @@ void func_800A5924(void) {
                 func_800A6C40();
                 func_8007554C();
                 func_80078B5C();
-                D_800C3A40 += 6;
+                D_800C3A40 = (s32)((u32)D_800C3A40 + 6);   /* addiu wraps */
             }
 
             DrawSync(0);
@@ -238,7 +240,7 @@ void func_800A5924(void) {
                 func_8007554C();
                 func_80078B5C();
                 func_800A5600(color >> 16);
-                color -= 0x800000 / D_800ADB3C;
+                color = (s32)((u32)color - (u32)MIPS_DIV(0x800000, D_800ADB3C));
                 if (color < 0) {
                     color = 0;
                 }
@@ -421,7 +423,8 @@ void func_800A5C40(void) {
                     func_8007554C();
                     func_80078B5C();
                     func_800A5600(color >> 16);
-                    color -= 0x800000 / D_800AFD14;
+                    /* retail 800A617C div never traps (lo = -1 for a zero divisor) */
+                    color = (s32)((u32)color - (u32)MIPS_DIV(0x800000, D_800AFD14));
                     if (color < 0) {
                         color = 0;
                     }

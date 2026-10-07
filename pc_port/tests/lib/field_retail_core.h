@@ -291,6 +291,15 @@ static void run_case(Fn* f) {
     static Trace nt; memcpy(&nt, &trace, sizeof(nt));
 
     require(nt.n == rt.n, "spy call count");
+    if (memcmp(nt.ev, rt.ev, sizeof(Event) * nt.n) != 0)
+        for (unsigned k = 0; k < nt.n; k++)
+            if (memcmp(&nt.ev[k], &rt.ev[k], sizeof(Event)) != 0) {
+                fprintf(stderr, "event %u: native id=%u a=%08x %08x %08x %08x %08x %08x\n", k, nt.ev[k].id,
+                        nt.ev[k].a[0], nt.ev[k].a[1], nt.ev[k].a[2], nt.ev[k].a[3], nt.ev[k].a[4], nt.ev[k].a[5]);
+                fprintf(stderr, "event %u: retail id=%u a=%08x %08x %08x %08x %08x %08x\n", k, rt.ev[k].id,
+                        rt.ev[k].a[0], rt.ev[k].a[1], rt.ev[k].a[2], rt.ev[k].a[3], rt.ev[k].a[4], rt.ev[k].a[5]);
+                break;
+            }
     require(memcmp(nt.ev, rt.ev, sizeof(Event) * nt.n) == 0, "spy call trace (order/arguments)");
     if (f->hasret) {
         if (nat_v0 != retail_v0) fprintf(stderr, "ret native=%08x retail=%08x\n", nat_v0, retail_v0);
