@@ -2571,10 +2571,13 @@ INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_800303C8);
  * modelData+0xC from the block's +0x8 array. Finally it initializes desc[0]
  * per-item 0x20-byte slots (starting at block+0x14) with the func_8003014C
  * callback and three zeroed words. Returns the control block. */
+/* Guest structures hold 32-bit address words: every pointer field is read/written as ONE u32
+ * (retail lw/sw), never as an 8-byte host pointer (which reads/clobbers the adjacent field). */
+#define T2_P(a) ((u8*)(uintptr_t)(u32)(a))
 void* func_800303C8(u8* a0, s32 a1) {
     u8* s0 = a0;
     s32 s4 = a1;
-    u8* s2 = (u8*)*(s32*)(s0 + 0x1C);
+    u8* s2 = T2_P(*(u32*)(s0 + 0x1C));
     u8* s1;
     u8* s3;
     s32 a5;
@@ -2585,21 +2588,21 @@ void* func_800303C8(u8* a0, s32 a1) {
 
     HeapSetCurrentContentType(0x2B);
     s1 = HeapAlloc((*(s32*)(s2 + 0x0) << 5) | 0x14, s4);
-    *(s32*)(s1 + 0x0) = (s32)s0;
-    *(s32*)(s1 + 0x4) = *(s32*)(s0 + 0x8);
+    *(u32*)(s1 + 0x0) = (u32)(uintptr_t)s0;
+    *(u32*)(s1 + 0x4) = *(u32*)(s0 + 0x8);
     s3 = s1 + 0x14;
-    *(s32*)(s1 + 0x10) = (s32)s3;
-    *(s32*)(s1 + 0x8) = *(s32*)(s0 + 0xC);
+    *(u32*)(s1 + 0x10) = (u32)(uintptr_t)s3;
+    *(u32*)(s1 + 0x8) = *(u32*)(s0 + 0xC);
     *(s32*)(s1 + 0xC) = *(s32*)(s2 + 0x0);
 
     HeapSetCurrentContentType(0x2C);
-    *(s32*)(s0 + 0x8) = (s32)HeapAlloc(*(u16*)(s0 + 0x2) << 3, s4);
+    *(u32*)(s0 + 0x8) = (u32)(uintptr_t)HeapAlloc(*(u16*)(s0 + 0x2) << 3, s4);
     {
         s32 i = (s32)*(u16*)(s0 + 0x2) - 1;
         for (; i != -1; i--) {
-            s32 off = i << 3;
-            u8* src = (u8*)*(s32*)(s1 + 0x4) + off;
-            u8* dst = (u8*)*(s32*)(s0 + 0x8) + off;
+            u32 off = (u32)i << 3;
+            u8* src = T2_P(*(u32*)(s1 + 0x4) + off);
+            u8* dst = T2_P(*(u32*)(s0 + 0x8) + off);
             *(u16*)(dst + 0x0) = *(u16*)(src + 0x0);
             *(u16*)(dst + 0x2) = *(u16*)(src + 0x2);
             *(u16*)(dst + 0x4) = *(u16*)(src + 0x4);
@@ -2608,13 +2611,13 @@ void* func_800303C8(u8* a0, s32 a1) {
 
     if (*(u16*)(s0 + 0x0) & 0x10) {
         HeapSetCurrentContentType(0x2D);
-        *(s32*)(s0 + 0xC) = (s32)HeapAlloc(*(u16*)(s0 + 0x2) << 3, s4);
+        *(u32*)(s0 + 0xC) = (u32)(uintptr_t)HeapAlloc(*(u16*)(s0 + 0x2) << 3, s4);
         {
             s32 i = (s32)*(u16*)(s0 + 0x2) - 1;
             for (; i != -1; i--) {
-                s32 off = i << 3;
-                u8* src = (u8*)*(s32*)(s1 + 0x8) + off;
-                u8* dst = (u8*)*(s32*)(s0 + 0xC) + off;
+                u32 off = (u32)i << 3;
+                u8* src = T2_P(*(u32*)(s1 + 0x8) + off);
+                u8* dst = T2_P(*(u32*)(s0 + 0xC) + off);
                 *(u16*)(dst + 0x0) = *(u16*)(src + 0x0);
                 *(u16*)(dst + 0x2) = *(u16*)(src + 0x2);
                 *(u16*)(dst + 0x4) = *(u16*)(src + 0x4);
@@ -2624,7 +2627,7 @@ void* func_800303C8(u8* a0, s32 a1) {
 
     if (*(s32*)(s1 + 0xC) > 0) {
         for (a5 = 0; a5 < *(s32*)(s1 + 0xC); a5++) {
-            *(void**)(s3 + 0x0) = (void*)func_8003014C;
+            *(u32*)(s3 + 0x0) = (u32)(uintptr_t)func_8003014C; /* host code address, low 32 bits */
             *(s32*)(s3 + 0x4) = 0;
             *(s32*)(s3 + 0x8) = 0;
             *(s32*)(s3 + 0xC) = 0;
@@ -2639,44 +2642,47 @@ void* func_800303C8(u8* a0, s32 a1) {
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_800305D8);
 #else
+/* Retail 0x800305D8, re-translated from the asm (the earlier port arm passed the wrong
+ * func_800301C8 operands: it used pJoint/count/joint[count].+0 instead of *(anim+4),
+ * joint[count].+0 (count), joint[count].+4 (index table)) and walked a u32 counter. */
 void func_800305D8(u8* pAnimData) {
     u8* pModel;
-    u8* pDeltas;
-    u32 count;
+    s32 count;
     u8* pChannels;
     u8* pJoint;
-    u32 i;
+    s32 i;
     s32 scale;
-    u32 hasNormals;
+    u8* pTail;
 
     if (pAnimData == NULL) return;
-    pModel = *(u8**)(pAnimData + 0x00);
-    pDeltas = *(u8**)(pAnimData + 0x04);
-    count = *(u32*)(pAnimData + 0x0C);
-    pChannels = *(u8**)(pAnimData + 0x10);
-    pJoint = *(u8**)(pModel + 0x1C) + 4;
-    hasNormals = *(u16*)(pModel) & 0x10;
+    pModel = T2_P(*(u32*)(pAnimData + 0x00));
+    count = *(s32*)(pAnimData + 0x0C);
+    pChannels = T2_P(*(u32*)(pAnimData + 0x10));
+    pJoint = T2_P(*(u32*)(pModel + 0x1C) + 4u);
+    pTail = T2_P((u32)(uintptr_t)pJoint + (u32)count * 12u);
 
     func_800301C8(
-        *(u8**)(pModel + 0x08),
-        pJoint,
-        count,
-        *(s16**)((u32)(pJoint + count * 12))
+        T2_P(*(u32*)(pModel + 0x08)),
+        T2_P(*(u32*)(pAnimData + 0x04)),
+        *(s32*)(pTail + 0),
+        (s16*)T2_P(*(u32*)(pTail + 4))
     );
 
     for (i = 0; i < count; i++) {
-        s32 (*cb)(u8*) = *(s32 (**)(u8*))(pChannels);
-        scale = cb(pChannels);
+        {
+            s32 (*cb)(u8*) = (s32 (*)(u8*))T2_P(*(u32*)pChannels);
+            scale = cb(pChannels);
+        }
         func_80030228(
-            *(u8**)(pModel + 0x08),
-            *(s16**)(pJoint + 4),
+            T2_P(*(u32*)(pModel + 0x08)),
+            (s16*)T2_P(*(u32*)(pJoint + 4)),
             *(s32*)(pJoint),
             scale
         );
-        if (hasNormals) {
+        if (*(u16*)(pModel) & 0x10) {
             func_800302D4(
-                *(u8**)(pModel + 0x0C),
-                *(s16**)(pJoint + 8),
+                T2_P(*(u32*)(pModel + 0x0C)),
+                (s16*)T2_P(*(u32*)(pJoint + 8)),
                 *(s32*)(pJoint),
                 scale
             );

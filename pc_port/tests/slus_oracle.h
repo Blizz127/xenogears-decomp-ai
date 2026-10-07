@@ -182,6 +182,9 @@ static int h_c2c(void *u, uint32_t v) { (void)u; doCOP2((int)v); return 0; }
 /* ---- retail execution ---- */
 /* Bridge: return 1 when t was serviced (result in v0), 0 for guest code. */
 static int (*user_bridge)(PcPortMipsCpu *c, uint32_t t);
+/* optional: rewrite retail-only representations (guest code addresses stored as callbacks) into the
+ * native representation (host function address low 32 bits) before the memory comparison. */
+static void (*retail_norm)(uint8_t *low_retail);
 static int h_bridge(void *u, PcPortMipsCpu *c, uint32_t t) { (void)u; return user_bridge ? user_bridge(c, t) : 0; }
 static uint32_t retail_v0;
 static uint32_t retail_stack_args[8]; static unsigned retail_nstack;
@@ -237,6 +240,7 @@ static int run_case(const Fn *f, uint32_t id, int check_gte)
     ntrace = 0;
     retail_call(f->entry, A[0], A[1], A[2], A[3], f->name);
     memcpy(low_retail, low, LOW_SIZE);
+    if (retail_norm) retail_norm(low_retail);
     glob_snapshot(); gte_save(gte_snap_retail);
     unsigned nt_retail = ntrace; Ev tr_retail[32]; memcpy(tr_retail, trace, sizeof(trace));
     uint32_t v0_retail = retail_v0;
