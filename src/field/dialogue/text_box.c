@@ -89,7 +89,9 @@ void func_8009BC98(void) {
     pTextBox = (u8*)&g_FieldTextBoxes[textBoxIndex];
     isReady = func_80033CD0(pTextBox + 0x18);
     if (isReady != 1) {
-        if (*(s16*)(pTextBox + 0x84) == 0 || *(u8*)(pTextBox + 0x6C) == 0) {
+        /* Retail 8009BD30/40: lh 0x84 / lbu 0x6C off (box + 0x18), i.e.
+         * box+0x9C and box+0x84 (the port read 0x18 bytes too low). */
+        if (*(s16*)(pTextBox + 0x9C) == 0 || *(u8*)(pTextBox + 0x84) == 0) {
             D_800B00C0 = 1;
             return;
         }

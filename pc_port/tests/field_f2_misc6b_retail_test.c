@@ -1,5 +1,3 @@
-/* STATUS 2026-10-07: written but NOT YET RUN (lane wound down before its docker run);
- * conf/mut exist -- run with .runall.sh before relying on it. */
 /* Retail differential, src/field/main/misc6.c port arms (batch b):
  * func_800A0228 (party/gear sprite bind) and func_800A08B8 (party sprite bind).
  * The production TU is linked unmodified; see lib/field_retail_core.h.
