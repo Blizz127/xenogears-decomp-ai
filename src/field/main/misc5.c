@@ -802,6 +802,13 @@ void func_800A6E70(void) {
             s32 tpageX;
             s32 i;
 
+            /* Retail 800A6F00..800A6F10: the four s16 corner-fade tables
+             * (read by func_800A6C40/func_800A6998) start at 0x80 per cell. */
+            *(s16*)(pBuf + (row * 0x14 + col) * 2 + 0x71C0) = 0x80;
+            *(s16*)(pBuf + (row * 0x14 + col) * 2 + 0x73F0) = 0x80;
+            *(s16*)(pBuf + (row * 0x14 + col) * 2 + 0x7620) = 0x80;
+            *(s16*)(pBuf + (row * 0x14 + col) * 2 + 0x7850) = 0x80;
+
             /* Set vertex positions */
             *(s16*)(pPrim + 0x08) = uOfs;
             *(s16*)(pPrim + 0x0A) = vOfs;

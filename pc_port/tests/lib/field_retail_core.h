@@ -20,6 +20,9 @@
 #define FEED_MAP(id, raw) (raw)
 #endif
 #define STACK 0x801FF000u
+#ifndef ORACLE_STEPS
+#define ORACLE_STEPS 20000
+#endif
 #define HALT 0xFFFFFFFCu
 #ifndef FIELD_BASE
 #define FIELD_BASE 0x8006faf0u
@@ -78,7 +81,9 @@ static __attribute__((unused)) int32_t small(int32_t lo, int32_t hi) { return lo
 
 /* ---- boundary spies ----------------------------------------------------- */
 typedef struct { uint32_t id, a[6]; } Event;
+#ifndef MAXEV
 #define MAXEV 64
+#endif
 static struct { Event ev[MAXEV]; unsigned n; } trace;
 static int32_t feed[MAXEV];
 static int32_t outfeed[MAXEV][8];
@@ -263,7 +268,7 @@ static void run_case(Fn* f) {
     cpu.gpr[4] = a.a0; cpu.gpr[5] = a.a1; cpu.gpr[6] = a.a2; cpu.gpr[7] = a.a3;
     cov_lo = f->entry; cov_hi = f->entry + f->insns * 4;
     active_cpu = &cpu;
-    int rc = PcPortMipsRun(&cpu, f->entry, HALT, 20000);
+    int rc = PcPortMipsRun(&cpu, f->entry, HALT, ORACLE_STEPS);
     active_cpu = NULL;
     if (rc != PC_PORT_MIPS_HALTED) fprintf(stderr, "oracle rc=%d %s\n", rc, cpu.error);
     require(rc == PC_PORT_MIPS_HALTED, "retail run halted");
