@@ -34,8 +34,9 @@ weaken() { # $1 owner object, $2 test object
 }
 for mode in O0 O2 UBSan; do
   flags=(-"$mode"); if [[ "$mode" == UBSan ]]; then flags=(-O1 -fsanitize=undefined -fsanitize=shift-base -fno-sanitize-recover=all); fi
-  # -fPIC: intra-TU calls/data go through the symbol, so the test spies win.
-  gcc "${BASE[@]}" "${flags[@]}" -fPIC -c src/menu/main/misc.c -o "$OUT/$mode.owner.o"
+  # -fPIC: intra-TU calls/data go through the symbol, so the test spies win;
+  # -fno-builtin: library calls (bzero, ...) stay calls, as in retail.
+  gcc "${BASE[@]}" "${flags[@]}" -fPIC -fno-builtin -c src/menu/main/misc.c -o "$OUT/$mode.owner.o"
   gcc "${BASE[@]}" "${flags[@]}" -c "$TEST" -o "$OUT/$mode.test.o"
   weaken "$OUT/$mode.owner.o" "$OUT/$mode.test.o"
   gcc "${BASE[@]}" -O0 -c pc_port/src/battle_mips_adapter.c -o "$OUT/$mode.mips.o"
@@ -67,7 +68,7 @@ for line in Path(spec).read_text().splitlines():
 PYGEN
 n=0
 while read -r mutant; do
-  gcc "${BASE[@]}" -O2 -fPIC -c "$OUT/$mutant.c" -o "$OUT/$mutant.o"
+  gcc "${BASE[@]}" -O2 -fPIC -fno-builtin -c "$OUT/$mutant.c" -o "$OUT/$mutant.o"
   weaken "$OUT/$mutant.o" "$OUT/O2.test.o"
   "$LINK_CC" -no-pie -O2 -Wl,--gc-sections "$OUT/O2.test.o" "$OUT/$mutant.o" "$OUT/O2.mips.o" -o "$OUT/$mutant"
   if "$OUT/$mutant" >"$OUT/$mutant.log" 2>&1; then echo "FAIL survived $mutant"; exit 1; fi

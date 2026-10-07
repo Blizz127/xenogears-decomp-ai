@@ -42,7 +42,9 @@ typedef struct {
 } M2Region;
 
 /* M2F_ADDR: address-only (host interior pointer -> guest offset), no access. */
-enum { M2F_BYTES, M2F_PTR, M2F_ADDR };
+/* M2F_PTR32: a u32 slot holding a (low-memory) host pointer, the port's
+ * MenuPsxPointerSlot representation; read/written as its guest address. */
+enum { M2F_BYTES, M2F_PTR, M2F_ADDR, M2F_PTR32 };
 typedef struct {
     uint32_t off, size;
     void *host;
@@ -60,6 +62,7 @@ typedef struct {
     unsigned nargs;
     M2RetFn ret;
     int deref;          /* arg index recorded by pointee content, -1 none */
+    unsigned ignore;    /* bitmask of args not recorded (stack out-temps) */
     unsigned derefLen;  /* bytes (<= 64) hashed instead of the address */
 } M2Callee;
 
@@ -68,7 +71,7 @@ static uint32_t m2_code_size;
 static uint8_t m2_stack[M2_STACK_SIZE];
 static M2Region m2_regions[48];
 static unsigned m2_nregions;
-static M2Field m2_fields[64];
+static M2Field m2_fields[512];
 static unsigned m2_nfields;
 static void *m2_menu_host;
 static size_t m2_menu_host_size;
@@ -102,6 +105,21 @@ static void m2_region(void *host, uint32_t guest, uint32_t size, int compare,
     m2_regions[m2_nregions].name = name;
     m2_nregions++;
 }
+/* Host structs reached only through a view (no linear guest image): snapshot
+ * and compare their host bytes. */
+static struct {
+    void *host;
+    size_t size;
+    const char *name;
+} m2_blocks[16];
+static unsigned m2_nblocks;
+static void m2_hostblock(void *host, size_t size, const char *name) {
+    m2_require(m2_nblocks < 16, "block table full");
+    m2_blocks[m2_nblocks].host = host;
+    m2_blocks[m2_nblocks].size = size;
+    m2_blocks[m2_nblocks].name = name;
+    m2_nblocks++;
+}
 static void m2_menu(void *host, size_t size) {
     m2_menu_host = host;
     m2_menu_host_size = size;
@@ -109,10 +127,10 @@ static void m2_menu(void *host, size_t size) {
 /* Strict guest views: inside a view only registered fields exist. The host
  * SystemMenu is the view at M2_MENU_GUEST; m2_view adds others (e.g. a
  * pointer-inflated struct embedded in a region). Field `off` is absolute. */
-static uint32_t m2_views[8][2] = { { M2_MENU_GUEST, 0x4000u } };
+static uint32_t m2_views[16][2] = { { M2_MENU_GUEST, 0x4000u } };
 static unsigned m2_nviews = 1;
 static void m2_view(uint32_t base, uint32_t span) {
-    m2_require(m2_nviews < 8, "view table full");
+    m2_require(m2_nviews < 16, "view table full");
     m2_views[m2_nviews][0] = base;
     m2_views[m2_nviews][1] = span;
     m2_nviews++;
@@ -125,7 +143,7 @@ static int m2_in_view(uint32_t a) {
     return 0;
 }
 static void m2_vfield(uint32_t gaddr, void *host, uint32_t size, int kind) {
-    m2_require(m2_nfields < 64, "field table full");
+    m2_require(m2_nfields < 512, "field table full");
     m2_fields[m2_nfields].off = gaddr;
     m2_fields[m2_nfields].size = size;
     m2_fields[m2_nfields].host = host;
@@ -138,13 +156,24 @@ static void m2_field(uint32_t off, void *host, uint32_t size, int kind) {
 #define M2_FIELD(off, lval) m2_field((off), &(lval), sizeof(lval), M2F_BYTES)
 #define M2_PTRFIELD(off, lval) m2_field((off), &(lval), 4, M2F_PTR)
 #define M2_ADDRFIELD(off, lval) m2_field((off), &(lval), sizeof(lval), M2F_ADDR)
+#define M2_PTR32FIELD(off, lval) m2_field((off), &(lval), 4, M2F_PTR32)
+/* A retail MenuString (0x80) at guest `g` backed by a host MenuString: the
+ * host struct is wider (pointer pVramBuffer), so map it field-wise. Caller
+ * registers the enclosing m2_view. Needs system/menu.h. */
+#define M2_MENUSTRING(g, hs)                                                    \
+    do {                                                                        \
+        m2_vfield((g), (hs), 0x78u, M2F_BYTES);                                 \
+        m2_vfield((g) + 0x78u, &(hs)->pVramBuffer, 4, M2F_PTR);                 \
+        m2_vfield((g) + 0x7Cu, &(hs)->unk7C, 4, M2F_BYTES);                     \
+    } while (0)
 
 /* Host pointer -> guest address (identity for anything unmapped). */
 static uint32_t m2_norm(uintptr_t v) {
     unsigned i;
     for (i = 0; i < m2_nfields; i++) {
         uintptr_t h = (uintptr_t)m2_fields[i].host;
-        if (m2_fields[i].kind != M2F_PTR && v >= h && v < h + m2_fields[i].size)
+        if (m2_fields[i].kind != M2F_PTR && m2_fields[i].kind != M2F_PTR32 && v >= h &&
+            v < h + m2_fields[i].size)
             return m2_fields[i].off + (uint32_t)(v - h);
     }
     for (i = 0; i < m2_nregions; i++) {
@@ -202,10 +231,11 @@ static int m2_rd(void *o, uint32_t a, unsigned w, uint32_t *v) {
         for (i = 0; i < m2_nfields; i++) {
             M2Field *f = &m2_fields[i];
             if (f->kind != M2F_ADDR && off >= f->off && off + w <= f->off + f->size) {
-                if (f->kind == M2F_PTR) {
+                if (f->kind == M2F_PTR || f->kind == M2F_PTR32) {
                     if (off != f->off || w != 4)
                         return -1;
-                    *v = m2_norm(*(uintptr_t *)f->host);
+                    *v = f->kind == M2F_PTR ? m2_norm(*(uintptr_t *)f->host)
+                                            : m2_norm((uintptr_t)*(uint32_t *)f->host);
                     return 0;
                 }
                 p = (uint8_t *)f->host + (off - f->off);
@@ -237,6 +267,14 @@ static int m2_wr(void *o, uint32_t a, unsigned w, uint32_t v) {
             M2Field *f = &m2_fields[i];
             if (f->kind == M2F_BYTES && off >= f->off && off + w <= f->off + f->size)
                 p = (uint8_t *)f->host + (off - f->off);
+            if (f->kind == M2F_PTR32 && off == f->off && w == 4) {
+                *(uint32_t *)f->host = (uint32_t)(uintptr_t)m2_denorm(v);
+                return 0;
+            }
+            if (f->kind == M2F_PTR && off == f->off && w == 4) {
+                *(uintptr_t *)f->host = (uintptr_t)m2_denorm(v);
+                return 0;
+            }
         }
         if (!p)
             fprintf(stderr, "%s unmapped view write 0x%08X w%u\n", m2_tag, off, w);
@@ -282,6 +320,7 @@ static void m2_callee(uint32_t addr, const char *name, unsigned nargs, M2RetFn r
     m2_callees[m2_ncallees].ret = ret;
     m2_callees[m2_ncallees].deref = -1;
     m2_callees[m2_ncallees].derefLen = 0;
+    m2_callees[m2_ncallees].ignore = 0;
     m2_ncallees++;
 }
 /* Arg `k` of the last registered callee points at a stack temporary (no
@@ -289,6 +328,11 @@ static void m2_callee(uint32_t addr, const char *name, unsigned nargs, M2RetFn r
 static void m2_callee_deref(unsigned k, unsigned len) {
     m2_callees[m2_ncallees - 1].deref = (int)k;
     m2_callees[m2_ncallees - 1].derefLen = len;
+}
+/* Args in `mask` of the last registered callee are out-pointers to stack
+ * temporaries of the caller: recorded as 0 (their writes are not compared). */
+static void m2_callee_ignore(unsigned mask) {
+    m2_callees[m2_ncallees - 1].ignore = mask;
 }
 static uint32_t m2_hash(const uint8_t *b, unsigned n) {
     uint32_t h = 2166136261u;
@@ -335,7 +379,7 @@ static uint32_t m2_call(unsigned idx, const uint32_t *args) {
     e->id = idx;
     e->n = c->nargs;
     for (i = 0; i < c->nargs; i++)
-        e->w[i] = args[i];
+        e->w[i] = (c->ignore >> i) & 1u ? 0u : args[i];
     return c->ret ? c->ret(idx, args) : 0;
 }
 static unsigned m2_idx(uint32_t addr) {
@@ -441,6 +485,8 @@ static size_t m2_snap_len(void) {
     unsigned i;
     for (i = 0; i < m2_nregions; i++)
         n += m2_regions[i].size;
+    for (i = 0; i < m2_nblocks; i++)
+        n += m2_blocks[i].size;
     return n;
 }
 static void m2_save(M2Snap *s) {
@@ -457,6 +503,11 @@ static void m2_save(M2Snap *s) {
     }
     if (m2_menu_host)
         memcpy(s->buf + n, m2_menu_host, m2_menu_host_size);
+    n += m2_menu_host_size;
+    for (i = 0; i < m2_nblocks; i++) {
+        memcpy(s->buf + n, m2_blocks[i].host, m2_blocks[i].size);
+        n += m2_blocks[i].size;
+    }
 }
 static void m2_restore(const M2Snap *s) {
     size_t n = 0;
@@ -467,6 +518,11 @@ static void m2_restore(const M2Snap *s) {
     }
     if (m2_menu_host)
         memcpy(m2_menu_host, s->buf + n, m2_menu_host_size);
+    n += m2_menu_host_size;
+    for (i = 0; i < m2_nblocks; i++) {
+        memcpy(m2_blocks[i].host, s->buf + n, m2_blocks[i].size);
+        n += m2_blocks[i].size;
+    }
 }
 static void m2_compare(const M2Snap *a, const M2Snap *b) {
     size_t n = 0, j;
@@ -490,6 +546,17 @@ static void m2_compare(const M2Snap *a, const M2Snap *b) {
                     j, a->buf[n + j], b->buf[n + j]);
             m2_fail("menu mismatch");
         }
+    }
+    n += m2_menu_host_size;
+    for (i = 0; i < m2_nblocks; i++) {
+        for (j = 0; j < m2_blocks[i].size; j++) {
+            if (a->buf[n + j] != b->buf[n + j]) {
+                fprintf(stderr, "%s diff %s host+0x%zX native=%02X retail=%02X\n", m2_tag,
+                        m2_blocks[i].name, j, a->buf[n + j], b->buf[n + j]);
+                m2_fail("host block mismatch");
+            }
+        }
+        n += m2_blocks[i].size;
     }
     m2_checks++;
 }
