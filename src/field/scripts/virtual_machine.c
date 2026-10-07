@@ -722,18 +722,20 @@ void func_800A24C4(void) {
     playerData = (u8*)(uintptr_t)
         *(u32*)((u8*)g_FieldActors + g_PlayerActorIndex * 0x5C + 0x4C);
     if (*(u8*)(playerData + 0x74) != 0xFF) {
-        *(s32*)(playerData + 0x24) -= 8;
+        /* asm 800A257C: addiu/sw wraps (u32, no signed-overflow UB). */
+        *(u32*)(playerData + 0x24) -= 8;
     }
 
     /* Apply the global scroll-drift accumulators (D_800B21BC/C0/C4, the
-     * func_800748E8 counters) to eligible actors: real actors need
-     * (+0x12C & 3) == 0; slots past D_800ADBFC skip that gate.  Mode byte
-     * D_800B21D2 & 0x7F: 0 or 1 applies, else not (retail tests ==0 then
-     * ==1 as two sequential blocks; a 0 never double-applies because the
-     * second test re-reads the unchanged byte). */
+     * func_800748E8 counters), asm 800A25AC-800A26F4.  Mode byte
+     * D_800B21D2 & 0x7F:
+     *  - i < D_800ADBFC (real actor): skipped when (+0x12C & 3) != 0, else
+     *    ONLY the mode==1 block runs (800A25E8 branches straight to 800A266C);
+     *  - i >= D_800ADBFC: the mode==0 block runs, then the mode==1 block
+     *    (which re-reads the byte; a 0 never double-applies).
+     * Adds are addu (u32 wrap). */
     for (i = 0; i < g_FieldNumActors; i++) {
         u8* actor = (u8*)g_FieldActors + i * 0x5C;
-        u32 mode;
 
         if (i < D_800ADBFC) {
             u8* actorData = (u8*)(uintptr_t)*(u32*)(actor + 0x4C);
@@ -741,13 +743,16 @@ void func_800A24C4(void) {
             if (*(u32*)(actorData + 0x12C) & 0x3) {
                 continue;
             }
+        } else if ((D_800B21D2 & 0x7F) == 0) {
+            *(u32*)(actor + 0x20) += (u32)D_800B21BC;
+            *(u32*)(actor + 0x24) += (u32)D_800B21C0;
+            *(u32*)(actor + 0x28) += (u32)D_800B21C4;
         }
 
-        mode = D_800B21D2 & 0x7F;
-        if (mode == 0 || mode == 1) {
-            *(s32*)(actor + 0x20) += D_800B21BC;
-            *(s32*)(actor + 0x24) += D_800B21C0;
-            *(s32*)(actor + 0x28) += D_800B21C4;
+        if ((D_800B21D2 & 0x7F) == 1) {
+            *(u32*)(actor + 0x20) += (u32)D_800B21BC;
+            *(u32*)(actor + 0x24) += (u32)D_800B21C0;
+            *(u32*)(actor + 0x28) += (u32)D_800B21C4;
         }
     }
 }
@@ -807,13 +812,20 @@ void func_800A28D4(void) {
     if (g_GamePartySkinsInitialized) {
         func_800A3474();
 
+        /* asm 800A2914-800A2BC0.  The skin&0x80 arm re-reads
+         * g_FieldActors[i].pActorData / .pSpriteData and the +0x12C/+0x130
+         * words after func_80076AC0 and after func_8002303C (retail lw at
+         * 800A2A44, 800A2A94-800A2AD0, 800A2B00-800A2B94), so callee writes
+         * to those fields are honoured exactly as on retail. */
+#define A28D4_ADATA(i) ((u8*)(uintptr_t)g_FieldActors[i].pActorData)
+#define A28D4_STATE(i) ((u8*)(uintptr_t)*(u32*)((u8*)(uintptr_t) \
+        *(u32*)((u8*)(uintptr_t)g_FieldActors[i].pSpriteData + 0x7C) + 0x18))
         for (i = 0; i < D_800ADBFC; i++) {
-            FieldActor* pFieldActor = &g_FieldActors[i];
-            ActorData* pActor = (ActorData*)(uintptr_t)pFieldActor->pActorData;
-            u8 skinId = *(u8*)((u8*)pActor + 0x126);
-            u8 spriteId = *(u8*)((u8*)pActor + 0x127);
-            u32 flags130 = *(u32*)((u8*)pActor + 0x130);
-            u32 flags134 = *(u32*)((u8*)pActor + 0x134);
+            u8* pActor = A28D4_ADATA(i);
+            u8 skinId = *(u8*)(pActor + 0x126);
+            u8 spriteId = *(u8*)(pActor + 0x127);
+            u32 flags130 = *(u32*)(pActor + 0x130);
+            u32 flags134 = *(u32*)(pActor + 0x134);
 
             if (!(skinId & 0x80)) {
                 func_80076AC0(i, spriteId, g_PartyDataBuffers[skinId],
@@ -821,47 +833,28 @@ void func_800A28D4(void) {
                               skinId, (flags134 >> 4) & 0x1);
             } else {
                 u8* pSpriteData = (u8*)g_FieldSpriteData;
-                u32* pOffsets = (u32*)pSpriteData;
-                u8* pAnimData = pSpriteData + pOffsets[(skinId & 0x7F) + 1];
+                u8* pAnimData = pSpriteData + *(u32*)(pSpriteData + 4 + (skinId & 0x7F) * 4);
                 u32 mode;
 
                 func_80076AC0(i, spriteId, pAnimData, (flags130 >> 28) & 0x3,
                               flags134 & 0xF, skinId, (flags134 >> 4) & 0x1);
 
-                mode = *(u16*)((u8*)pActor + 0x12E) & 0x3;
-                /* Retail 800A2A74/800A2AE4 keeps a SEPARATE copy of the
-                 * func_8002303C call + state stores per mode - a1 is 2 on the
-                 * mode==1 arm (800A2A74, `ori $a1,$zero,0x2`) and 3 on the
-                 * mode==2 arm (800A2AE4, `ori $a1,$zero,0x3` loaded in the
-                 * branch delay slot at 800A2A68). Splitting the previously
-                 * merged `mode == 1 || mode == 2` block is behaviour-preserving:
-                 * each arm below is that mode's exact projection of the old
-                 * shared body. */
-                if (mode == 1) {
-                    u8* pSprite = (u8*)(uintptr_t)pFieldActor->pSpriteData;
-                    u8* pBase;
-                    u8* pState;
-
-                    func_8002303C(pSprite, 2, 0);
-                    pBase = (u8*)(uintptr_t)*(u32*)(pSprite + 0x7C);
-                    pState = (u8*)(uintptr_t)*(u32*)(pBase + 0x18);
-                    *(u16*)(pState + 0x4) = (*(u32*)((u8*)pActor + 0x12C) >> 18) & 0x3FF;
-                    *(u16*)(pState + 0x6) = flags130 & 0x1FF;
-                } else if (mode == 2) {
-                    u8* pSprite = (u8*)(uintptr_t)pFieldActor->pSpriteData;
-                    u8* pBase;
-                    u8* pState;
-
-                    func_8002303C(pSprite, 3, 0);
-                    pBase = (u8*)(uintptr_t)*(u32*)(pSprite + 0x7C);
-                    pState = (u8*)(uintptr_t)*(u32*)(pBase + 0x18);
-                    *(u16*)(pState + 0x4) = (*(u32*)((u8*)pActor + 0x12C) >> 18) & 0x3FF;
-                    *(u16*)(pState + 0x6) = flags130 & 0x1FF;
-                    *(u16*)(pState + 0x8) = (flags130 >> 9) & 0x3FF;
-                    *(u16*)(pState + 0xA) = (flags130 >> 19) & 0x1FF;
+                mode = *(u16*)(A28D4_ADATA(i) + 0x12E) & 0x3;
+                /* 800A2A74 (mode 1, a1=2) / 800A2AE4 (mode 2, a1=3). */
+                if (mode == 1 || mode == 2) {
+                    func_8002303C((void*)(uintptr_t)g_FieldActors[i].pSpriteData,
+                                  mode == 1 ? 2 : 3, 0);
+                    *(u16*)(A28D4_STATE(i) + 0x4) = (*(u32*)(A28D4_ADATA(i) + 0x12C) >> 18) & 0x3FF;
+                    *(u16*)(A28D4_STATE(i) + 0x6) = *(u32*)(A28D4_ADATA(i) + 0x130) & 0x1FF;
+                    if (mode == 2) {
+                        *(u16*)(A28D4_STATE(i) + 0x8) = (*(u32*)(A28D4_ADATA(i) + 0x130) >> 9) & 0x3FF;
+                        *(u16*)(A28D4_STATE(i) + 0xA) = (*(u32*)(A28D4_ADATA(i) + 0x130) >> 19) & 0x1FF;
+                    }
                 }
             }
         }
+#undef A28D4_STATE
+#undef A28D4_ADATA
 
         if (D_800B2268) {
             for (i = 0; i < 3; i++) {
@@ -878,13 +871,15 @@ void func_800A28D4(void) {
                         g_FieldActors[swapActorIndex].pSpriteData = savedSpriteData;
 
                         pSwapActor = (ActorData*)(uintptr_t)g_FieldActors[swapActorIndex].pActorData;
-                        pSwapActor->flags |= 0x200;
-                        pSwapActor->flags &= ~0x500;
+                        /* asm 800A2CB0-800A2D04: lw/sw 0x0 (scriptFlags word). */
+                        pSwapActor->scriptFlags.flags |= 0x200;
+                        pSwapActor->scriptFlags.flags &= ~0x500;
                         g_FieldActors[swapActorIndex].status |= 0x20;
                     } else {
                         pSwapActor = (ActorData*)(uintptr_t)g_FieldActors[swapActorIndex].pActorData;
-                        pSwapActor->flags |= 0x400;
-                        pSwapActor->flags &= ~0x300;
+                        /* asm 800A2D6C-800A2DC0: lw/sw 0x0 (scriptFlags word). */
+                        pSwapActor->scriptFlags.flags |= 0x400;
+                        pSwapActor->scriptFlags.flags &= ~0x300;
                     }
                 }
             }
