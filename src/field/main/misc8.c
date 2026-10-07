@@ -2596,96 +2596,99 @@ static inline void func_80084A40_RestoreActorState(u8* actorData, u8* spriteData
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80084A40);
 #else
+/* Instruction-faithful translation of retail 80084A40..800854CC.
+ * Stack arrays mirror the retail frame (low sp+0x18, high sp+0x28, stateIds
+ * sp+0x38, triIds sp+0x48, normals sp+0x50); like retail, triIds/normals are
+ * only defined for layers func_8007D3D4 wrote.  All adds/shifts are u32 so
+ * they wrap like addu/sll without host signed-overflow UB. */
+/* Guest fields are reached through casts of differently-typed views of the
+ * same bytes (e.g. the s32 Y at +0x24 and its s16 half at +0x26); may_alias
+ * views keep host type-based alias analysis from reordering those accesses. */
+typedef s16 __attribute__((may_alias)) s16_alias;
+typedef u16 __attribute__((may_alias)) u16_alias;
+typedef s32 __attribute__((may_alias)) s32_alias;
+typedef u32 __attribute__((may_alias)) u32_alias;
 s32 func_80084A40(s32 actorIndex, s32 y, void* pFieldActor, u8* actorData,
                   s32 targetState) {
-    u8* actor = (u8*)g_FieldActors + actorIndex * 0x5C;
-    u8* spriteData = (u8*)(uintptr_t)*(u32*)(actor + 0x04);
-    s32 origX;
-    s32 origY;
-    s32 origZ;
-    s16 origState;
-    s16 savedStates[4];
+    u8* spriteData;
     s32 low[4];
     s32 high[4];
     s32 stateIds[4];
     s16 triIds[4];
     VECTOR normals[4];
+    s32 origX;
+    s32 origY;
+    s32 origZ;
+    s16 savedStates[4];
+    u16 origState;
     s32 layer;
     s32 i;
     s32 currentLow;
-    s32 stateFlags;
+    s32 flags;
+    s16 cur;
+    s16 actorY;
+    s16 spriteY;
 
     (void)pFieldActor;
+    spriteData = (u8*)(uintptr_t)*(u32_alias*)((u8*)g_FieldActors + actorIndex * 0x5C + 0x04);
 
     if (actorIndex == g_PlayerActorIndex) {
         D_800ADB00 = -1;
     }
-
-    if (*(u32*)(actorData + 0x00) & 0x01000000) {
+    if (*(u32_alias*)(actorData + 0x00) & 0x01000000) {
         return -1;
     }
-    if (*(u32*)(actorData + 0x04) & 0x00200000) {
+    if (*(u32_alias*)(actorData + 0x04) & 0x00200000) {
         return -1;
     }
-
-    if ((*(u32*)(actorData + 0x00) & 0x00010000) == 0) {
-        if (actorIndex == g_PlayerActorIndex && D_800B21CF == 1) {
-            goto run_collision;
-        }
-        if (*(s32*)(spriteData + 0x10) != 0) {
-            goto run_collision;
-        }
-        if (func_8008492C(actorData) != 0) {
-            goto run_collision;
-        }
-        if (*(s16*)(spriteData + 0x84) != *(s16*)(actorData + 0x26)) {
-            goto run_collision;
-        }
+    /* 80084ADC: flag 0x10000 set -> return -1 (no collision pass). */
+    if (*(u32_alias*)(actorData + 0x00) & 0x00010000) {
+        return -1;
+    }
+    if (!(actorIndex == g_PlayerActorIndex && D_800B21CF == 1) &&
+        *(s32_alias*)(spriteData + 0x10) == 0 && func_8008492C(actorData) == 0 &&
+        *(s16_alias*)(spriteData + 0x84) == *(s16_alias*)(actorData + 0x26)) {
         return -1;
     }
 
-run_collision:
-    origX = *(s32*)(actorData + 0x20);
-    origY = *(s32*)(actorData + 0x24);
-    origZ = *(s32*)(actorData + 0x28);
-    origState = *(s16*)(actorData + 0x10);
-
+    origX = *(s32_alias*)(actorData + 0x20);
+    origY = *(s32_alias*)(actorData + 0x24);
+    origZ = *(s32_alias*)(actorData + 0x28);
+    origState = *(u16_alias*)(actorData + 0x10);
     for (i = 0; i < 4; i++) {
-        savedStates[i] = *(s16*)(actorData + 0x08 + i * 2);
+        savedStates[i] = *(s16_alias*)(actorData + 0x08 + i * 2);
+    }
+    for (i = 0; i < 4; i++) {
+        stateIds[i] = i;
         low[i] = 0x7FFFFFFF;
         high[i] = 0x7FFFFFFF;
-        stateIds[i] = i;
-        triIds[i] = 0;
-        normals[i].vx = 0;
-        normals[i].vy = 0;
-        normals[i].vz = 0;
-        normals[i].pad = 0;
     }
 
     layer = 0;
     if (D_800AFB54 - 1 > 0) {
-        for (layer = 0; layer < D_800AFB54 - 1; layer++) {
+        do {
             if (func_8007D3D4(actorData, layer, &low[layer], &normals[layer],
                               &triIds[layer], &high[layer]) != 0) {
                 break;
             }
-        }
+            layer++;
+        } while (layer < D_800AFB54 - 1);
     }
 
-    if (*(u32*)(actorData + 0x04) & 0x1) {
+    if (*(u32_alias*)(actorData + 0x04) & 0x1) {
         low[0] = 0x7FFFFFFF;
         high[0] = 0x7FFFFFFF;
     }
-    if (*(u32*)(actorData + 0x04) & 0x2) {
+    if (*(u32_alias*)(actorData + 0x04) & 0x2) {
         low[1] = 0x7FFFFFFF;
         high[1] = 0x7FFFFFFF;
     }
-    if (*(u32*)(actorData + 0x04) & 0x4) {
+    if (*(u32_alias*)(actorData + 0x04) & 0x4) {
         low[2] = 0x7FFFFFFF;
         high[2] = 0x7FFFFFFF;
     }
 
-    currentLow = low[*(s16*)(actorData + 0x10)];
+    currentLow = low[*(s16_alias*)(actorData + 0x10)];
 
     for (i = 0; i < 2; i++) {
         s32 j;
@@ -2702,174 +2705,204 @@ run_collision:
 
     if (layer == D_800AFB54 - 1) {
         if (layer > 0) {
-            for (i = 0; i < D_800AFB54 - 1; i++) {
-                *(s16*)(actorData + 0x08 + i * 2) = triIds[i];
-            }
+            i = 0;
+            do {
+                *(s16_alias*)(actorData + 0x08 + i * 2) = triIds[i];
+                i++;
+            } while (i < D_800AFB54 - 1);
         }
 
-        if (*(s16*)(actorData + 0x26) < currentLow ||
-            (*(u32*)(actorData + 0x00) & 0x1800) != 0) {
-            s16 actorY = *(s16*)(actorData + 0x26);
+        actorY = *(s16_alias*)(actorData + 0x26);
+        i = 0;
+        if (actorY < currentLow || (*(u32_alias*)(actorData + 0x00) & 0x1800) != 0) {
             s32 limit = D_800AFB54 - 1;
-
             for (i = 0; i < limit; i++) {
-                if (low[i] >= actorY) {
-                    *(s16*)(actorData + 0x10) = stateIds[i];
+                if (!(low[i] < actorY)) {
+                    *(s16_alias*)(actorData + 0x10) = (s16)stateIds[i];
                     break;
                 }
             }
         } else {
             s32 limit = D_800AFB54 - 1;
-            s16 cur = *(s16*)(actorData + 0x10);
-
-            for (i = 0; i < limit; i++) {
-                if (stateIds[i] == cur) {
-                    break;
-                }
-            }
-        }
-
-        stateFlags = func_80080968(actorData);
-        if ((stateFlags & 4) != 0 && i != 0 &&
-            (D_800AFB54 - 1) <= *(s16*)(actorData + 0x10)) {
-            *(s16*)(actorData + 0x10) = stateIds[i - 1];
-        }
-
-        stateFlags = func_80080968(actorData);
-        if ((((*(u32*)(actorData + 0x00) >> 8) & 7) & (stateFlags >> 5)) != 0) {
-            if (g_FieldSystemMode == 0) {
-                func_800379C8(D_8006FC60, actorIndex);
-            }
-            if (actorIndex == g_PlayerActorIndex) {
-                D_800ADB00 = 0x0FFF;
-            }
-            *(s32*)(actorData + 0x24) += *(s32*)(spriteData + 0x10);
-            func_80084A40_RestoreActorState(actorData, spriteData, actorIndex,
-                                            origX, origZ, origState, savedStates);
-            goto finish;
-        }
-
-        if (stateFlags & 0x800000) {
-            if (g_FieldSystemMode == 0) {
-                func_800379C8(D_8006FC74, actorIndex);
-            }
-            if (actorIndex == g_PlayerActorIndex) {
-                D_800ADB00 = 0x0FFF;
-            }
-            *(s32*)(actorData + 0x24) += *(s32*)(spriteData + 0x10);
-            goto blocked_restore;
-        }
-
-        *(s32*)(actorData + 0x20) += *(s32*)(actorData + 0x30);
-        *(s32*)(actorData + 0x28) += *(s32*)(actorData + 0x38);
-
-        if (D_800AFB54 - 1 > 0) {
-            s16 cur = *(s16*)(actorData + 0x10);
-            for (i = 0; i < D_800AFB54 - 1; i++) {
-                if (stateIds[i] == cur) {
-                    *(s16*)(spriteData + 0x84) = low[i];
-                    break;
-                }
-            }
-        }
-
-        VectorNormal(&normals[*(s16*)(actorData + 0x10)], (VECTOR*)(actorData + 0x50));
-
-        /* Retail 80084FD8-8008502C conditions on the FIFTH argument
-         * (targetState, incoming slot 0x110(sp)) -- not on y; the writes
-         * use y (asm $s7 = $a1). */
-        if (D_800ADB98 != 0) {
-            if ((u32)targetState < 2) {
-                *(s16*)(spriteData + 0x84) = y;
-            }
-        } else if (targetState != 0) {
-            if (*(s16*)(spriteData + 0x84) < y + 10) {
-                *(u8*)(actorData + 0x74) = 0xFF;
-            }
-            *(s16*)(spriteData + 0x84) = y;
-            *(s32*)(actorData + 0x24) = y << 16;
-        }
-
-        if (*(u32*)(actorData + 0x00) & 0x00040000) {
-            *(s32*)(actorData + 0x24) = *(s16*)(actorData + 0xEC) << 16;
-            *(s32*)(spriteData + 0x10) = 0;
-        }
-
-        *(s32*)(actorData + 0x24) += *(s32*)(spriteData + 0x10);
-        stateFlags = func_80080968(actorData);
-
-        if (*(s16*)(actorData + 0x10) != origState) {
-            *(u32*)(actorData + 0x00) &= 0xFBFFFFFF;
-        }
-
-        if ((*(u32*)(actorData + 0x00) & 0x04000000) == 0) {
-            if (*(s16*)(actorData + 0x26) < *(s16*)(spriteData + 0x84)) {
-                if (*(s16*)(spriteData + 0x84) != *(s16*)(actorData + 0x26)) {
-                    *(s32*)(spriteData + 0x10) += *(s32*)(spriteData + 0x1C);
-                }
-                *(u32*)(actorData + 0x00) |= 0x1000;
-                *(s32*)(actorData + 0xF0) = *(s32*)(spriteData + 0x10);
-            } else {
-                goto settle_on_ground;
-            }
-        } else {
-settle_on_ground:
-            /* Retail 80085104-80085144 gates only the accumulator reset
-             * on the material; both paths settle position and velocity. */
-            if ((stateFlags & 0x420000) == 0) {
-                *(s32*)(actorData + 0xF0) = 0;
-            }
-            if (*(s32*)(spriteData + 0x10) > 0) {
-                *(s32*)(spriteData + 0x10) = 0;
-            }
-            *(u32*)(actorData + 0x00) &= 0xFFBFEFFF;
-            *(s32*)(actorData + 0x24) = *(s16*)(spriteData + 0x84) << 16;
-        }
-
-        *(u32*)(actorData + 0x00) &= 0xFBFFFFFF;
-
-        if (D_800AFB54 - 1 > 0) {
-            s16 actorY = *(s16*)(actorData + 0x26);
-            s32 limit = D_800AFB54 - 1;
-            for (i = 0; i < limit; i++) {
-                if (low[i] >= actorY) {
-                    if (actorY - *(u16*)(actorData + 0x1A) < high[i] &&
-                        low[i] != high[i]) {
+            if (limit > 0) {
+                cur = *(s16_alias*)(actorData + 0x10);
+                for (i = 0; i < limit; i++) {
+                    if (cur == stateIds[i]) {
                         break;
                     }
                 }
             }
         }
 
-        if (i == D_800AFB54 - 1) {
-            s16 cur = *(s16*)(actorData + 0x10);
-            s16 tri = *(s16*)(actorData + 0x08 + cur * 2);
-            u8* triTable = (u8*)(uintptr_t)(u32)D_800AFB24[cur];
-            s32 extra = ((s8)*(triTable + tri * 14 + 0x0D)) << 2;
+        /* 80084E44: only when the state does NOT exceed count-1. */
+        if ((func_80080968(actorData) & 4) != 0 && i != 0 &&
+            !((D_800AFB54 - 1) < *(s16_alias*)(actorData + 0x10))) {
+            *(s16_alias*)(actorData + 0x10) = (s16)stateIds[i - 1];
+        }
 
-            if (extra < 0) {
-                if (*(s16*)(actorData + 0x26) - *(u16*)(actorData + 0x1A) <
-                    *(s16*)(spriteData + 0x84) + extra) {
-                    goto blocked_restore;
+        flags = func_80080968(actorData);
+        if ((((*(u32_alias*)(actorData + 0x00) >> 8) & 7) & ((u32)flags >> 5)) != 0) {
+            if (g_FieldSystemMode == 0) {
+                func_800379C8(D_8006FC60, actorIndex);
+            }
+            goto blocked;
+        }
+        if (flags & 0x800000) {
+            if (g_FieldSystemMode == 0) {
+                func_800379C8(D_8006FC74, actorIndex);
+            }
+            goto blocked;
+        }
+
+        *(s32_alias*)(actorData + 0x20) = (s32)((u32)*(s32_alias*)(actorData + 0x20) + (u32)*(s32_alias*)(actorData + 0x30));
+        *(s32_alias*)(actorData + 0x28) = (s32)((u32)*(s32_alias*)(actorData + 0x28) + (u32)*(s32_alias*)(actorData + 0x38));
+        if (D_800AFB54 - 1 > 0) {
+            s32 limit = D_800AFB54 - 1;
+            cur = *(s16_alias*)(actorData + 0x10);
+            for (i = 0; i < limit; i++) {
+                if (cur == stateIds[i]) {
+                    *(s16_alias*)(spriteData + 0x84) = (s16)low[i];
+                    break;
                 }
             }
-
-            *(s32*)(spriteData + 0x00) = *(s32*)(actorData + 0x20);
-            *(s32*)(spriteData + 0x04) = *(s32*)(actorData + 0x24);
-            *(s32*)(spriteData + 0x08) = *(s32*)(actorData + 0x28);
-            *(s32*)(actor + 0x20) = *(s16*)(actorData + 0x22);
-            *(s32*)(actor + 0x24) = *(s16*)(actorData + 0x26);
-            *(s32*)(actor + 0x28) = *(s16*)(actorData + 0x2A);
-            *(s32*)(actorData + 0x14) = func_80080968(actorData);
-            goto finish;
         }
+        VectorNormal(&normals[*(s16_alias*)(actorData + 0x10)], (VECTOR*)(actorData + 0x50));
     } else {
-        *(s32*)(actorData + 0xF0) = 0;
+        *(s32_alias*)(actorData + 0xF0) = 0;
     }
 
-blocked_restore:
-    func_80084A40_RestoreActorState(actorData, spriteData, actorIndex,
-                                    origX, origZ, origState, savedStates);
+    /* 80084FD0: shared tail.  Retail conditions on the FIFTH argument
+     * (targetState, incoming slot 0x110(sp)); the writes use y ($s7). */
+    if (D_800ADB98 != 0) {
+        if ((u32)targetState < 2) {
+            *(s16_alias*)(spriteData + 0x84) = (s16)y;
+        }
+    } else if (targetState != 0) {
+        if (*(s16_alias*)(spriteData + 0x84) < (s32)((u32)y + 10u)) {
+            *(u8*)(actorData + 0x74) = 0xFF;
+        }
+        *(s16_alias*)(spriteData + 0x84) = (s16)y;
+        *(s32_alias*)(actorData + 0x24) = (s32)((u32)y << 16);
+    }
+
+    if (*(u32_alias*)(actorData + 0x00) & 0x00040000) {
+        *(s32_alias*)(actorData + 0x24) = (s32)((u32)(s32)*(s16_alias*)(actorData + 0xEC) << 16);
+        *(s32_alias*)(spriteData + 0x10) = 0;
+    }
+
+    *(s32_alias*)(actorData + 0x24) = (s32)((u32)*(s32_alias*)(actorData + 0x24) + (u32)*(s32_alias*)(spriteData + 0x10));
+    flags = func_80080968(actorData);
+
+    if (*(s16_alias*)(actorData + 0x10) != (s16)origState) {
+        *(u32_alias*)(actorData + 0x00) &= 0xFBFFFFFF;
+    }
+
+    spriteY = *(s16_alias*)(spriteData + 0x84);
+    actorY = *(s16_alias*)(actorData + 0x26);
+    if ((*(u32_alias*)(actorData + 0x00) & 0x04000000) == 0 && actorY < spriteY) {
+        if (spriteY != actorY) {
+            *(s32_alias*)(spriteData + 0x10) = (s32)((u32)*(s32_alias*)(spriteData + 0x10) + (u32)*(s32_alias*)(spriteData + 0x1C));
+        }
+        *(u32_alias*)(actorData + 0x00) |= 0x1000;
+        *(s32_alias*)(actorData + 0xF0) = *(s32_alias*)(spriteData + 0x10);
+    } else {
+        if ((flags & 0x420000) == 0) {
+            *(s32_alias*)(actorData + 0xF0) = 0;
+        }
+        if (*(s32_alias*)(spriteData + 0x10) > 0) {
+            *(s32_alias*)(spriteData + 0x10) = 0;
+        }
+        *(u32_alias*)(actorData + 0x00) &= 0xFFBFEFFF;
+        *(s32_alias*)(actorData + 0x24) = (s32)((u32)(s32)*(s16_alias*)(spriteData + 0x84) << 16);
+    }
+
+    *(u32_alias*)(actorData + 0x00) &= 0xFBFFFFFF;
+
+    i = 0;
+    if (D_800AFB54 - 1 > 0) {
+        s32 limit = D_800AFB54 - 1;
+        actorY = *(s16_alias*)(actorData + 0x26);
+        for (i = 0; i < limit; i++) {
+            if (low[i] < actorY &&
+                actorY - (s32)*(u16_alias*)(actorData + 0x1A) < high[i] &&
+                low[i] != high[i]) {
+                break;
+            }
+        }
+    }
+
+    if (i == D_800AFB54 - 1) {
+        s16 tri;
+        u8* triTable;
+        s32 extra;
+
+        cur = *(s16_alias*)(actorData + 0x10);
+        tri = *(s16_alias*)(actorData + 0x08 + cur * 2);
+        triTable = (u8*)(uintptr_t)(u32)D_800AFB24[cur];
+        extra = (s32)((u32)(s32)*(s8*)(triTable + tri * 14 + 0x0D) << 2);
+        if (extra < 0 &&
+            *(s16_alias*)(actorData + 0x26) - (s32)*(u16_alias*)(actorData + 0x1A) <
+                extra + *(s16_alias*)(spriteData + 0x84)) {
+            goto restore_settle;
+        }
+        *(s32_alias*)(spriteData + 0x00) = *(s32_alias*)(actorData + 0x20);
+        *(s32_alias*)(spriteData + 0x04) = *(s32_alias*)(actorData + 0x24);
+        *(s32_alias*)(spriteData + 0x08) = *(s32_alias*)(actorData + 0x28);
+        *(s32_alias*)((u8*)g_FieldActors + actorIndex * 0x5C + 0x20) = *(s16_alias*)(actorData + 0x22);
+        *(s32_alias*)((u8*)g_FieldActors + actorIndex * 0x5C + 0x24) = *(s16_alias*)(actorData + 0x26);
+        *(s32_alias*)((u8*)g_FieldActors + actorIndex * 0x5C + 0x28) = *(s16_alias*)(actorData + 0x2A);
+        *(s32_alias*)(actorData + 0x14) = func_80080968(actorData);
+        goto finish;
+    }
+
+restore_settle: /* 800852C0 */
+    *(s32_alias*)(actorData + 0x20) = origX;
+    *(s16_alias*)(actorData + 0x10) = (s16)origState;
+    *(s32_alias*)(actorData + 0xF0) = 0;
+    *(s32_alias*)(actorData + 0x28) = origZ;
+    for (i = 0; i < 4; i++) {
+        *(s16_alias*)(actorData + 0x08 + i * 2) = savedStates[i];
+    }
+    if (*(s16_alias*)(spriteData + 0x84) != *(s16_alias*)(actorData + 0x26)) {
+        *(s32_alias*)(spriteData + 0x10) = (s32)((u32)*(s32_alias*)(spriteData + 0x10) + (u32)*(s32_alias*)(spriteData + 0x1C));
+    }
+    if (*(s32_alias*)(spriteData + 0x10) < 0) {
+        *(s32_alias*)(spriteData + 0x10) = 0;
+        *(s32_alias*)(actorData + 0x24) = origY;
+    }
+    goto store_back;
+
+blocked: /* 80084F0C, then 80085398 */
+    if (actorIndex == g_PlayerActorIndex) {
+        D_800ADB00 = 0x0FFF;
+    }
+    *(s32_alias*)(actorData + 0x24) = (s32)((u32)*(s32_alias*)(actorData + 0x24) + (u32)*(s32_alias*)(spriteData + 0x10));
+    *(s32_alias*)(actorData + 0x20) = origX;
+    *(s16_alias*)(actorData + 0x10) = (s16)origState;
+    *(s32_alias*)(actorData + 0xF0) = 0;
+    *(s32_alias*)(actorData + 0x28) = origZ;
+    for (i = 0; i < 4; i++) {
+        *(s16_alias*)(actorData + 0x08 + i * 2) = savedStates[i];
+    }
+    spriteY = *(s16_alias*)(spriteData + 0x84);
+    actorY = *(s16_alias*)(actorData + 0x26);
+    if (actorY < spriteY) {
+        if (spriteY != actorY) {
+            *(s32_alias*)(spriteData + 0x10) = (s32)((u32)*(s32_alias*)(spriteData + 0x10) + (u32)*(s32_alias*)(spriteData + 0x1C));
+        }
+    } else {
+        if (*(s32_alias*)(spriteData + 0x10) > 0) {
+            *(s32_alias*)(spriteData + 0x10) = 0;
+        }
+        *(u32_alias*)(actorData + 0x00) &= 0xFFBFEFFF;
+        *(s32_alias*)(actorData + 0x24) = (s32)((u32)(s32)*(s16_alias*)(spriteData + 0x84) << 16);
+    }
+
+store_back:
+    *(s32_alias*)(spriteData + 0x00) = *(s32_alias*)(actorData + 0x20);
+    *(s32_alias*)(spriteData + 0x04) = *(s32_alias*)(actorData + 0x24);
+    *(s32_alias*)(spriteData + 0x08) = *(s32_alias*)(actorData + 0x28);
+    *(s32_alias*)((u8*)g_FieldActors + actorIndex * 0x5C + 0x24) = *(s16_alias*)(actorData + 0x26);
 
 finish:
     func_80081C54(actorIndex);
@@ -3379,7 +3412,7 @@ INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80086078);
 #else
 void func_80086078(s32 distance, s32* outVolume, s32 mode) {
     s32 maxDist = D_800B21AC;
-    s32 scaled;
+    u32 scaled;
     u32 inv;
     u32 t;
 
@@ -3387,15 +3420,22 @@ void func_80086078(s32 distance, s32* outVolume, s32 mode) {
         distance = maxDist;
     }
 
-    scaled = (0x7F0000 / maxDist) * distance;
-    inv = 0x80 - (scaled >> 16);
+    /* div+mult pair: quotient (mflo), then the wrapping low 32 of
+     * quotient*distance (mult+mflo). The u32 multiply wraps exactly like
+     * mflo, so no host signed-overflow UB. Retail div never traps: a zero
+     * divisor yields lo=-1 for this non-negative dividend (emulator models
+     * the same), and 0x7F0000/-1 cannot overflow. */
+    scaled = (maxDist == 0 ? 0xFFFFFFFFu : (u32)(0x7F0000 / maxDist)) * (u32)distance;
+    inv = 0x80u - (u32)((s32)scaled >> 16);
     inv <<= 16;
     /* Unsigned reciprocal multiply by 0x02040811 ≈ 1/127, then >> 6. */
     t = (u32)(((u64)inv * 0x02040811u) >> 32);
     inv = inv - t;
     inv = (inv >> 1) + t;
     inv >>= 6;
-    *outVolume = (s32)(((u64)inv * (u32)mode) >> 16);
+    /* Final mult is SIGNED, but only mflo (low 32) survives the srl >> 16,
+     * so a wrapping u32 multiply followed by a logical shift is exact. */
+    *outVolume = (s32)((inv * (u32)mode) >> 16);
 }
 #endif /* XENO_PC_PORT */
 
@@ -3426,8 +3466,10 @@ void func_800860F0(s32 soundId, s32 mode, s16 deltaX, s32 distance, s32 actorInd
     (void)soundId;
     (void)deltaX;
 
+    /* Retail: lhu slot vs the full 32-bit actorIndex word (no truncation),
+     * and the loop never breaks -- every matching slot is updated. */
     for (i = 0; i < 3; i++) {
-        if (D_800AFE88[i * 3] == (u16)actorIndex) {
+        if ((u32)D_800AFE88[i * 3] == (u32)actorIndex) {
             slot2 = i * 2;
             func_80086078(distance, &volume, mode);
             FieldActorWorldToScreenPosition(actorIndex, &screenX, &screenY);
@@ -3440,7 +3482,6 @@ void func_800860F0(s32 soundId, s32 mode, s16 deltaX, s32 distance, s32 actorInd
             pan = FieldPositionalSfxScreenPan(screenX);
             func_8003A344(slot2, volume);
             func_8003A55C(slot2, pan);
-            break;
         }
     }
 }
@@ -3550,7 +3591,8 @@ void func_800863E8(s32 actorIdx) {
     s32 i;
 
     for (i = 0; i < 3; i++) {
-        if (D_800AFE88[i * 3] == (u16)actorIdx) {
+        /* Retail: lhu slot vs the full 32-bit argument (no truncation). */
+        if ((u32)D_800AFE88[i * 3] == (u32)actorIdx) {
             func_8003A20C(i * 2);
             D_800AFE8A[i * 3] = 0xFFFF;
             D_800AFE88[i * 3] = 0xFFFF;
@@ -3870,19 +3912,24 @@ void func_80086C34(void) {
             g_FieldScriptVMCurActor->scriptInstructionPointer += 2;
             break;
         case 1: {
-            s32 arg2 = FieldScriptVMGetArgument(2);
-            s32 arg4 = FieldScriptVMGetArgument(4);
-            s32 arg6 = FieldScriptVMGetArgument(6);
+            /* Retail (field.bin 80086C88..80086D08): only argument 4 is kept;
+             * the halfword at bank +0x00 (not +0x52) is set to 1; +0x74 is
+             * first written with arg4 and then 0x20 when arg4 == 0x27, else 0x22. */
+            s32 arg4;
             u16 v;
+            (void)FieldScriptVMGetArgument(2);
+            arg4 = FieldScriptVMGetArgument(4);
+            (void)FieldScriptVMGetArgument(6);
             FieldInitializeDefaultParticleBanks(D_800AFD1C);
             *(u16*)(g_FieldDefaultParticleBanks + 0x2A) = 0x14;
-            *(u16*)(g_FieldDefaultParticleBanks + 0x52) = 1;
+            *(u16*)(g_FieldDefaultParticleBanks + 0x00) = 1;
             *(u16*)(g_FieldDefaultParticleBanks + 0x06) = 0x10;
             *(s16*)(g_FieldDefaultParticleBanks + 0x72) = 0;
-            if (arg6 == 0x27) {
-                v = 0x22;
-            } else {
+            *(u16*)(g_FieldDefaultParticleBanks + 0x74) = (u16)arg4;
+            if (arg4 == 0x27) {
                 v = 0x20;
+            } else {
+                v = 0x22;
             }
             *(u16*)(g_FieldDefaultParticleBanks + 0x74) = v;
             *(u16*)(g_FieldDefaultParticleBanks + 0x04) = 0x1000;
