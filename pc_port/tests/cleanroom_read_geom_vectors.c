@@ -18,6 +18,18 @@
 #define OUTPUT_BASE 0x80100000u
 #define HALT_PC 0xFFFFFFFCu
 #define MAX_EVENTS 64u
+#define JR_RA 0x03E00008u /* public MIPS I encoding of `jr $ra`; not a retail byte sequence */
+#define READ_GEOM_OFFSET_ENTRY 0x8004A0BCu
+#define READ_GEOM_SCREEN_ENTRY 0x8004A0DCu
+/* Reachable words of each leaf function (entry through the delay slot of its
+ * first `jr $ra`), re-derived from the executable at runtime and cross-checked
+ * against these sealed expectations. Kit v3 (job ...-v3-331775) expected 4
+ * words for ReadGeomScreen, but the fourth word is alignment padding after the
+ * delay slot and can never be fetched: every one of its 526 cases reached
+ * exactly the first 3 words (coverage mask 0x7), while ReadGeomOffset reached
+ * all 8 (0xFF). */
+#define READ_GEOM_OFFSET_WORDS 8u
+#define READ_GEOM_SCREEN_WORDS 3u
 
 typedef struct {
     const char *operation;
@@ -40,6 +52,28 @@ static void fail(const char *why)
 {
     fprintf(stderr, "cleanroom read-geom vectors: %s\n", why);
     exit(1);
+}
+
+static uint32_t exe_word(uint32_t address)
+{
+    const unsigned char *p = executable + (address - EXE_BASE);
+    return (uint32_t)p[0] | (uint32_t)p[1] << 8 | (uint32_t)p[2] << 16 | (uint32_t)p[3] << 24;
+}
+
+/* Words from entry through the delay slot of the first `jr $ra`. Anything after
+ * that word belongs to padding or the next function and is unreachable from a
+ * call to this leaf, so the coverage gate must not expect it. */
+static unsigned reachable_words(uint32_t entry, unsigned expected)
+{
+    for (unsigned i = 0; i < 16u; ++i) {
+        if (exe_word(entry + 4u * i) == JR_RA) {
+            if (i + 2u != expected)
+                fail("retail function extent differs from the sealed expectation");
+            return i + 2u;
+        }
+    }
+    fail("no jr $ra within 16 words of the retail entry");
+    return 0;
 }
 
 static uint32_t random_word(void)
@@ -184,7 +218,7 @@ static unsigned run_case(const char *name, unsigned id, uint32_t entry, uint32_t
     print_bytes(test.initial_output, sizeof(test.initial_output));
     printf(",\"output\":");
     print_bytes(test.output, sizeof(test.output));
-    if (entry == 0x8004A0DCu)
+    if (entry == READ_GEOM_SCREEN_ENTRY)
         printf(",\"return_u32\":%u", cpu.gpr[2]);
     printf(",\"final_control\":");
     print_words(test.control, 32);
@@ -203,8 +237,19 @@ int main(int argc, char **argv)
     static const uint32_t edge[] = {0, 1, 0x7FFF, 0x8000, 0xFFFF, 0x10000, 0x18000,
         0x7FFFFFFF, 0x80000000, 0xFFFF0000, 0xFFFF7FFF, 0xFFFF8000, 0xFFFFFFFF, 0xFFFE8000};
     unsigned offset_coverage = 0, screen_coverage = 0, id = 0;
-    if (argc != 2)
-        fail("usage: generator SHA-VERIFIED-SLUS_006.64");
+    /* Negative controls (runner-side, asserted by run_cleanroom_read_geom_vectors.sh):
+     *   drop-reachable : ReadGeomScreen range excludes its executed delay slot ->
+     *                    the fetch faults and the generator must exit 1;
+     *   extend-padding : the kit v3 expectation (padding word counted) must still
+     *                    exit 1 with "coverage incomplete".
+     * They prove that narrowing or widening the range cannot silence the gate. */
+    enum { CONTROL_NONE, CONTROL_DROP_REACHABLE, CONTROL_EXTEND_PADDING } control = CONTROL_NONE;
+    if (argc == 3 && !strcmp(argv[2], "drop-reachable"))
+        control = CONTROL_DROP_REACHABLE;
+    else if (argc == 3 && !strcmp(argv[2], "extend-padding"))
+        control = CONTROL_EXTEND_PADDING;
+    else if (argc != 2)
+        fail("usage: generator SHA-VERIFIED-SLUS_006.64 [drop-reachable|extend-padding]");
     FILE *file = fopen(argv[1], "rb");
     if (!file)
         fail("cannot open executable");
@@ -212,25 +257,48 @@ int main(int argc, char **argv)
     if (size != EXE_SIZE || fgetc(file) != EOF || ferror(file))
         fail("unexpected executable size (runner must verify SHA first)");
     fclose(file);
+    unsigned offset_words = reachable_words(READ_GEOM_OFFSET_ENTRY, READ_GEOM_OFFSET_WORDS);
+    unsigned screen_words = reachable_words(READ_GEOM_SCREEN_ENTRY, READ_GEOM_SCREEN_WORDS);
+    uint32_t offset_end = READ_GEOM_OFFSET_ENTRY + 4u * offset_words;
+    uint32_t screen_end = READ_GEOM_SCREEN_ENTRY + 4u * screen_words;
+    unsigned offset_expect = (1u << offset_words) - 1u;
+    unsigned screen_expect = (1u << screen_words) - 1u;
+    if (control == CONTROL_DROP_REACHABLE) {
+        screen_end -= 4u;                 /* excludes the executed delay slot */
+        screen_expect = (1u << (screen_words - 1u)) - 1u;
+    } else if (control == CONTROL_EXTEND_PADDING) {
+        screen_end += 4u;                 /* kit v3 defect: unreachable padding word counted */
+        screen_expect = (1u << (screen_words + 1u)) - 1u;
+    }
+    if (control != CONTROL_NONE) {        /* controls exercise a short ReadGeomScreen series only */
+        for (unsigned i = 0; i < 8; ++i)
+            screen_coverage |= run_case("ReadGeomScreen", id++, READ_GEOM_SCREEN_ENTRY, screen_end,
+                                        random_word(), random_word(), random_word(), 0);
+        if (screen_coverage != screen_expect)
+            fail("retail instruction coverage incomplete");
+        fprintf(stderr, "control %s unexpectedly passed\n", argv[2]);
+        return 0;
+    }
     for (unsigned x = 0; x < sizeof(edge) / sizeof(edge[0]); ++x) {
         for (unsigned y = 0; y < sizeof(edge) / sizeof(edge[0]); ++y) {
             for (int alias = 0; alias < 2; ++alias)
-                offset_coverage |= run_case("ReadGeomOffset", id++, 0x8004A0BCu, 0x8004A0DCu,
+                offset_coverage |= run_case("ReadGeomOffset", id++, READ_GEOM_OFFSET_ENTRY, offset_end,
                                             edge[x], edge[y], random_word(), alias);
         }
         uint32_t screen_ofx = random_word(), screen_ofy = random_word();
-        screen_coverage |= run_case("ReadGeomScreen", id++, 0x8004A0DCu, 0x8004A0ECu,
+        screen_coverage |= run_case("ReadGeomScreen", id++, READ_GEOM_SCREEN_ENTRY, screen_end,
                                     screen_ofx, screen_ofy, edge[x], 0);
     }
     for (unsigned i = 0; i < 512; ++i) {
         uint32_t ofx = random_word(), ofy = random_word(), h = random_word();
-        offset_coverage |= run_case("ReadGeomOffset", id++, 0x8004A0BCu, 0x8004A0DCu,
+        offset_coverage |= run_case("ReadGeomOffset", id++, READ_GEOM_OFFSET_ENTRY, offset_end,
                                     ofx, ofy, h, (int)(i & 1));
-        screen_coverage |= run_case("ReadGeomScreen", id++, 0x8004A0DCu, 0x8004A0ECu,
+        screen_coverage |= run_case("ReadGeomScreen", id++, READ_GEOM_SCREEN_ENTRY, screen_end,
                                     ofx, ofy, h, 0);
     }
-    if (offset_coverage != 0xFFu || screen_coverage != 0xFu)
+    if (offset_coverage != offset_expect || screen_coverage != screen_expect)
         fail("retail instruction coverage incomplete");
-    fprintf(stderr, "read-geom vectors: %u cases; all 8 + 4 retail instructions reached\n", id);
+    fprintf(stderr, "read-geom vectors: %u cases; all %u + %u reachable retail instructions reached\n",
+            id, offset_words, screen_words);
     return 0;
 }
