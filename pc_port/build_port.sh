@@ -112,7 +112,11 @@ INC="-Ipc_port/include_shim -Iinclude -I$OUT -I$PSX/include -I$PSX/include/psx $
 # body. The native owner for the field-local 0x6B9 overlay is compiled from
 # pc_port/src/field_object_overlay.c; 0x801E742C/738C/7D14/8030/8330 are real
 # entry points in that retail archive, not member-change-menu mid-functions.
-GFLAGS="-std=gnu17 -fpermissive -DXENO_PC_PORT -DXENO_FIELD_OBJECT_OVERLAY -DSKIP_ASM -D_LANGUAGE_C -DUSE_EXTENDED_PRIM_POINTERS=0 -include assert.h -w -O0 -g -m64 -fno-builtin"
+# Strip the build machine's absolute paths from __FILE__/assert strings and
+# debug info, so no personal infrastructure path ships in the binary
+# (tools/analysis/psyq_port_guard.py --binary "path" check).
+PREFIX_MAP="-ffile-prefix-map=$ROOT=."
+GFLAGS="-std=gnu17 -fpermissive -DXENO_PC_PORT -DXENO_FIELD_OBJECT_OVERLAY -DSKIP_ASM -D_LANGUAGE_C -DUSE_EXTENDED_PRIM_POINTERS=0 -include assert.h -w -O0 -g -m64 -fno-builtin $PREFIX_MAP"
 # Optional compile-time diagnostics, for example:
 # XENO_DIAG_DEFINES=-DXENO_DIAG_OPCODE_SWEEP ./scratchpad/run_build_port.sh
 # Leave GFLAGS byte-for-byte unchanged when unset.
@@ -749,9 +753,10 @@ if [ -f "$PSYX_BUILD/CMakeCache.txt" ] && \
 fi
 if [ -n "$TSAN_FLAGS" ]; then
     cmake -S pc_port -B "$PSYX_BUILD" -DCMAKE_BUILD_TYPE=Debug \
-        -DCMAKE_C_FLAGS="$TSAN_FLAGS" -DCMAKE_CXX_FLAGS="$TSAN_FLAGS" >/dev/null
+        -DCMAKE_C_FLAGS="$TSAN_FLAGS $PREFIX_MAP" -DCMAKE_CXX_FLAGS="$TSAN_FLAGS $PREFIX_MAP" >/dev/null
 else
-    cmake -S pc_port -B "$PSYX_BUILD" -DCMAKE_BUILD_TYPE=Debug >/dev/null
+    cmake -S pc_port -B "$PSYX_BUILD" -DCMAKE_BUILD_TYPE=Debug \
+        -DCMAKE_C_FLAGS="$PREFIX_MAP" -DCMAKE_CXX_FLAGS="$PREFIX_MAP" >/dev/null
 fi
 if ! cmake --build "$PSYX_BUILD" --target psycross -j"$(nproc)" >/dev/null; then
     echo "ERROR: PsyCross build failed; refusing to link a stale library." >&2
@@ -1508,7 +1513,7 @@ XG_PLAT_WRAP_SYMS+=" PsyX_Sys_DispatchCounter2"                              # s
 XG_PLAT_WRAPS=""
 for _sym in $XG_PLAT_WRAP_SYMS; do XG_PLAT_WRAPS+=" -Wl,--wrap=$_sym"; done
 if [ -n "$COV_OBJ" ]; then
-    gcc -c pc_port/tools/coverage_recorder.c -O2 -g -o "$COV_OBJ"
+    gcc -c pc_port/tools/coverage_recorder.c -O2 -g $PREFIX_MAP -o "$COV_OBJ"
 fi
 LINK=(gcc -m64 $NOPIE $TSAN_FLAGS "$PORT_MAIN_OBJECT" "${GAME_OBJS[@]}" ${COV_OBJ:+"$COV_OBJ"} "$PSYLIB" $LIBS $XG_PLAT_WRAPS -o "$OUT/xeno-port")
 
@@ -1626,7 +1631,7 @@ if removed:
     print(f"    pruned stale function stubs: {', '.join(removed[:8])}"
           f"{'...' if len(removed) > 8 else ''}")
 PY
-    gcc -c "$OUT/stubs.c" -O0 -g $TSAN_FLAGS -o "$OBJ/stubs.o"
+    gcc -c "$OUT/stubs.c" -O0 -g $TSAN_FLAGS $PREFIX_MAP -o "$OBJ/stubs.o"
 fi
 
 echo "==> [5/5] Final link"
@@ -1719,10 +1724,10 @@ if [ -f "$OUT/xeno-port" ] && [ ! -s "$OUT/link2.err" ]; then
     # No Sony Psy-Q code in the port (pc_port/THIRD_PARTY.md): refuse a binary
     # that links a matching-build Psy-Q TU (src/**/psyq/**, via DWARF compile
     # units) or defines func_XXXXXXXX at a Psy-Q address outside the compat
-    # layer. Known offenders pending replacement: pc_port/psyq_guard_allowlist.txt.
+    # layer. Release packaging additionally requires the retail table scan.
     if ! python3 tools/analysis/psyq_port_guard.py -q --no-sources --no-disc \
-        --binary "$OUT/xeno-port"; then
-        echo "ERROR: Psy-Q SDK code linked into the port (tools/analysis/psyq_port_guard.py)."
+        --strict --require-empty-allowlist --require-dwarf --binary "$OUT/xeno-port"; then
+        echo "ERROR: Psy-Q build guard failed (tools/analysis/psyq_port_guard.py)."
         exit 1
     fi
     echo "    Psy-Q exclusion verified against the linked binary"

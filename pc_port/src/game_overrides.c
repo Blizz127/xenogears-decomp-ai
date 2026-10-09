@@ -1144,13 +1144,14 @@ void PcPort_CullCamLogOnVsync(void) {
             time_t now = time(NULL);
             struct tm* t = localtime(&now);
             snprintf(autoPath, sizeof(autoPath),
-                     "/home/blizz/Projects/xenogears-decomp/captures/render_diag/"
+                     "captures/render_diag/"
                      "cullcam_%04d%02d%02d_%02d%02d%02d.log",
                      t->tm_year + 1900, t->tm_mon + 1, t->tm_mday,
                      t->tm_hour, t->tm_min, t->tm_sec);
             path = autoPath;
-            mkdir("/home/blizz/Projects/xenogears-decomp/captures", 0755);
-            mkdir("/home/blizz/Projects/xenogears-decomp/captures/render_diag", 0755);
+            /* Relative to the working directory: no build-machine path in the binary. */
+            mkdir("captures", 0755);
+            mkdir("captures/render_diag", 0755);
         }
         s_ccFile = fopen(path, "w");
         if (s_ccFile == NULL) {

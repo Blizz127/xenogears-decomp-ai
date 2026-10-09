@@ -166,6 +166,20 @@ LD_LIBRARY_PATH="$PKG/lib" ldd "$PKG/bin/xeno-port" > "$OUTDIR/$NAME.ldd.txt"
     exit 1
 }
 
+# Psy-Q SDK gate (coordinator 2026-10-09; same rule as Parasite Eve): strict,
+# empty allowlist, no PsyCross exemption, table scan against the retail
+# executable REQUIRED. The unstripped build binary carries the DWARF for the TU
+# check; the packaged (stripped) binary is what ships, so tables and absolute
+# build paths are checked on it too.
+(cd "$ROOT" && python3 tools/analysis/psyq_port_guard.py --strict --require-empty-allowlist --require-exe --no-sources \
+    --require-dwarf --binary "$BIN" && \
+    python3 tools/analysis/psyq_port_guard.py --strict --require-empty-allowlist --require-exe --no-sources \
+    --binary "$PKG/bin/xeno-port") > "$OUTDIR/$NAME.psyqscan.txt" 2>&1 || {
+    echo "Psy-Q SDK guard flagged the build or packaged executable:" >&2
+    cat "$OUTDIR/$NAME.psyqscan.txt" >&2
+    exit 1
+}
+
 # The executable itself: tables written as structured C initialisers escape
 # the source scan above but compile to the retail bytes.
 (cd "$ROOT" && python3 tools/analysis/retail_binary_guard.py "$PKG/bin/xeno-port") \
