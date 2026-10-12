@@ -108,7 +108,41 @@ void func_800AA320(s16 arg0, s16 arg1, s32 arg2) {
     }
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/main70", func_800AA384);
+extern s32 func_800AF400();
+extern void func_800BF85C(u32 index, s32 bit);
+extern u8 D_800C3D68;
+extern s32 D_80059464;
+extern u8 D_800591AC;
+extern s32 D_800C360C;
+extern u8 D_800C4000[];
+
+/* Start actor `arg0`'s turn: publish it (D_800C3D40) and its target mask
+ * (D_800C3E30), raise D_800C3D68 / D_800591AC and the record's +0x35 flag,
+ * clear D_80059464, hand the lowest set target bit (func_800AF400) to
+ * func_800BF85C, set D_800C360C, clear that target's D_800C4000 byte, then
+ * forward to func_800AA934(rec, rec, &D_800C3D0C, arg2) when the record is
+ * live.  Same reload-and-pin idiom as func_800AA320 above. */
+void func_800AA384(u16 arg0, u16 arg1, s32 arg2) {
+    u32 idx;
+    u8 *rec1;
+    register u8 *rec2 asm("$4");
+
+    D_800C3D40 = arg0;
+    idx = arg0;
+    rec1 = (u8 *)D_800D3368[idx];
+    D_800C3E30 = arg1;
+    D_800C3D68 = 1;
+    rec1[0x35] = 1;
+    D_80059464 = 0;
+    D_800591AC = 1;
+    func_800BF85C(idx, func_800AF400());
+    D_800C360C = 1;
+    D_800C4000[func_800AF400()] = 0;
+    rec2 = (u8 *)D_800D3368[idx];
+    if (rec2 != NULL) {
+        func_800AA934(rec2, rec2, (s32)&D_800C3D0C, arg2);
+    }
+}
 s32 func_800AF400();                                /* extern */
 
 void func_800AA454(u16 arg0, u16 arg1, s32 arg2) {
