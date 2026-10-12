@@ -2,7 +2,26 @@
 
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/mainc95", func_800B6E84);
+#include "psyq/libgte.h"
+
+extern void func_80021B04(void* v, s16 x, s16 y, s16 z);
+
+/* func_800B6E84.s: rotate the actor's position vector (+0xC, a VECTOR)
+ * about z by the signed byte args[0] * 16 (4096 = one turn).
+ * func_80021B04 sets the SVECTOR to (0, 0, angle), RotMatrix builds the
+ * matrix, and ApplyMatrixLV's result is copied back field by field. */
+void func_800B6E84(u8* actor, u8* args) {
+    SVECTOR rot;
+    MATRIX m;
+    VECTOR out;
+
+    func_80021B04(&rot, 0, 0, (s8)args[0] * 16);
+    RotMatrix(&rot, &m);
+    ApplyMatrixLV(&m, (VECTOR*)(actor + 0xC), &out);
+    *(s32*)(actor + 0xC) = out.vx;
+    *(s32*)(actor + 0x10) = out.vy;
+    *(s32*)(actor + 0x14) = out.vz;
+}
 #include "battle/shard.h"
 
 extern u8 D_800C3EB0[];
