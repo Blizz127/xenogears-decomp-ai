@@ -84,9 +84,9 @@ u32 func_800BEF24(u8 *arg0, u8 *arg1) {
         (s32)((u32)(u16)a.lo | ((u32)(u16)a.hi << 16)));
 }
 #endif /* XENO_PC_PORT */
-/* Not yet byte-matching: the matching build assembles retail bytes for
- * this function from its own asm segment (see config/battle.yaml).  The
- * body below is kept for the port and the differential harnesses. */
+/* The retail build compiles this function's byte-exact C in
+ * mainasm_4F3C4.c.  The body below is kept for the port and the
+ * differential harnesses. */
 #ifdef XENO_PC_PORT
 u32 func_800BEF8C(u8 *arg0) {
     BattlePairXZ a, b;

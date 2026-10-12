@@ -278,7 +278,7 @@ segments:
       - [0x4F128, c, mainc123]
       - [0x4F25C, c, mainc124]
       - [0x4F33C, c, main125_q1]
-      # retail bytes: 800BEF8C (C body not yet matching); matched C: 800BEEB4, 800BEF24, 800BEFF4
+      # matched C: 800BEEB4, 800BEF24, 800BEF8C, 800BEFF4
       - [0x4F3C4, c, mainasm_4F3C4]
       - [0x4F5C4, c, main125_q2]
       - [0x4F5D4, c, mainc126]
