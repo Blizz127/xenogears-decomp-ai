@@ -6,12 +6,33 @@ extern u8* D_800C34B0;
 s32 func_8009A1AC(s32 arg0);
 #endif
 
+/* Byte-exact under gcc 2.6.3 (BattleGcc263); the port compiles the same
+ * body. */
+/* func_8009A0DC.s: status code for actor idx (0x170 stride off D_800C34B0),
+ * first match wins over the +0x7C / +0x80 flag words, else an HP test. */
+u32 func_8009A0DC(u8 idx) {
+    u8* p = D_800C34B0 + idx * 0x170;
+    u32 f = *(u16*)(p + 0x7C);
+    u32 g;
+
+    if (f & 0x4000) return 8;
+    if (f & 0x8000) return 1;
+    if (f & 0x2000) return 2;
+    g = *(u16*)(p + 0x80);
+    if (g & 0x1000) return 3;
+    if (g & 0x2000) return 4;
+    if (f & 0x800) return 5;
+    if (f & 0x1000) return 6;
+    if (f & 0x2) return 3;
+    if ((*(u16*)(p + 0x84) | *(u16*)(p + 0x86)) & 0x8000) return 7;
+    return (*(u16*)(p + 0x4C) < (u32)(*(u16*)(p + 0x4E) >> 3)) ? 5 : 0;
+}
+
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/main54", func_8009A0DC);
 
 #ifndef XENO_PC_PORT
 s32 func_8009A1AC(s32 arg0) {
-    s32 temp_v1_2;
+    u16 temp_v1_2;
     s32 var_a0;
     u16 temp_a2;
     u16 temp_v1;
@@ -79,26 +100,6 @@ extern u8 D_800CCD1A[];
 #endif
 #ifdef XENO_PC_PORT
 extern int rand(void);
-
-/* func_8009A0DC.s: status code for actor idx (0x170 stride off D_800C34B0),
- * first match wins over the +0x7C / +0x80 flag words, else an HP test. */
-u32 func_8009A0DC(u8 idx) {
-    u8* p = D_800C34B0 + idx * 0x170;
-    u32 f = *(u16*)(p + 0x7C);
-    u32 g;
-
-    if (f & 0x4000) return 8;
-    if (f & 0x8000) return 1;
-    if (f & 0x2000) return 2;
-    g = *(u16*)(p + 0x80);
-    if (g & 0x1000) return 3;
-    if (g & 0x2000) return 4;
-    if (f & 0x800) return 5;
-    if (f & 0x1000) return 6;
-    if (f & 0x2) return 3;
-    if ((*(u16*)(p + 0x84) | *(u16*)(p + 0x86)) & 0x8000) return 7;
-    return (*(u16*)(p + 0x4C) < (u32)(*(u16*)(p + 0x4E) >> 3)) ? 5 : 0;
-}
 
 /* func_8009A258.s: byte +0x14 of entry b (0x28 stride) in actor a's 0x5F0
  * table at +0x1058, plus actor a's +0x5B, clamped to 100 on the low byte. */
