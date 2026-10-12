@@ -33,7 +33,37 @@ void func_800B6518(u8* obj) {
 }
 
 INCLUDE_ASM("asm/battle/nonmatchings/main90", func_800B65B0);
-INCLUDE_ASM("asm/battle/nonmatchings/main90", func_800B6808);
+#include "psyq/libgte.h"
+extern void func_80021B04(SVECTOR* v, s16 len, s16 a2, s16 a3);
+
+/* Point the object's velocity (+0xC/+0x10/+0x14, << 7) at its +0xA0 target:
+ * yaw/pitch from ratan2 over the integer-position delta (the yaw is also
+ * stored at +0x32), magnitude (+0x18 << 9) >> 16 rotated by RotMatrix. */
+void func_800B6808(u8* obj) {
+    SVECTOR rot;
+    VECTOR d;
+    VECTOR sq;
+    SVECTOR len;
+    MATRIX m;
+    VECTOR out;
+    s32 flat;
+
+    d.vx = *(s16*)(obj + 0xA0) - *(s16*)(obj + 0x2);
+    d.vy = *(s16*)(obj + 0xA2) - *(s16*)(obj + 0x6);
+    d.vz = *(s16*)(obj + 0xA4) - *(s16*)(obj + 0xA);
+    Square0(&d, &sq);
+    flat = SquareRoot0(sq.vx + sq.vz);
+    rot.vy = -ratan2(d.vz, d.vx);
+    rot.vz = ratan2(d.vy, flat);
+    rot.vx = 0;
+    *(s16*)(obj + 0x32) = rot.vy;
+    func_80021B04(&len, (*(s32*)(obj + 0x18) << 9) >> 16, 0, 0);
+    RotMatrix(&rot, &m);
+    ApplyMatrix(&m, &len, &out);
+    *(s32*)(obj + 0xC) = out.vx << 7;
+    *(s32*)(obj + 0x10) = out.vy << 7;
+    *(s32*)(obj + 0x14) = out.vz << 7;
+}
 #endif
 
 

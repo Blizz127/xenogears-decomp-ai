@@ -3,7 +3,94 @@
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/battle/nonmatchings/mainc95", func_800B6E84);
-INCLUDE_ASM("asm/battle/nonmatchings/mainc95", func_800B6F0C);
+#include "psyq/libgte.h"
+
+/* The shard burst behind func_800B6F0C (update) and main96's func_800B7160
+ * (render): a [2][14][20] grid of 0x7C-byte shards at +0x3C of the task's
+ * +4 block.  Each shard has a rotation (+0) and its per-tick delta (+8), a
+ * position (+0x10), a double-buffered flat-textured triangle (+0x24, the
+ * buffer index is D_800C3EB0 + 0x8C84), a start delay (+0x64), a 16.16
+ * velocity (+0x68) and a gravity term (+0x78). */
+typedef struct {
+    u32 tag;
+    u8 r0, g0, b0, code;
+    s16 x0, y0;
+    u8 u0, v0;
+    u16 clut;
+    s16 x1, y1;
+    u8 u1, v1;
+    u16 tpage;
+    s16 x2, y2;
+    u8 u2, v2;
+    u16 pad1;
+} BattleShardPoly;
+
+typedef struct {
+    SVECTOR rot;
+    SVECTOR drot;
+    VECTOR pos;
+    s32 unk20;
+    BattleShardPoly prims[2];
+    s32 delay;
+    VECTOR vel;
+    s32 gravity;
+} BattleShard;
+
+typedef struct {
+    u8 pad[0x38];
+    s32 frame;
+    BattleShard grid[2][14][20];
+} BattleShardSet;
+
+extern u8 D_800C3EB0[];
+extern s32 func_80021AD8(s32 c, s32 delta);
+
+/* Timer callback: count the frame, then for every shard past its start
+ * delay fade the colour (func_80021AD8, -6 per channel), integrate the
+ * position by the integer part of the velocity and the rotation by its
+ * delta, damp the velocity by 1/16 and add gravity to its y. */
+void func_800B6F0C(u8* task) {
+    SVECTOR v;
+    BattleShardSet* set;
+    BattleShard* e;
+    BattleShardPoly* prim;
+    u8* base;
+    s32 k;
+    s32 j;
+    s32 i;
+
+    set = *(BattleShardSet**)(task + 4);
+    set->frame++;
+    for (k = 0; k != 2; k++) {
+        for (j = 0; j != 14; j++) {
+            for (i = 0; i != 20; i++) {
+                e = &set->grid[k][j][i];
+                if (e->delay != 0) {
+                    e->delay--;
+                } else {
+                    base = (u8*)(u32)D_800C3EB0;
+                    prim = &e->prims[*(s32*)(base + 0x8000 + 0xC84)];
+                    prim->r0 = func_80021AD8(prim->r0, -6);
+                    prim->g0 = func_80021AD8(prim->g0, -6);
+                    prim->b0 = func_80021AD8(prim->b0, -6);
+                    v.vx = e->vel.vx >> 16;
+                    v.vy = e->vel.vy >> 16;
+                    v.vz = e->vel.vz >> 16;
+                    e->pos.vx += v.vx;
+                    e->pos.vy += v.vy;
+                    e->pos.vz += v.vz;
+                    e->rot.vx += e->drot.vx;
+                    e->rot.vy += e->drot.vy;
+                    e->rot.vz += e->drot.vz;
+                    e->vel.vy -= e->vel.vy / 16;
+                    e->vel.vx -= e->vel.vx / 16;
+                    e->vel.vz -= e->vel.vz / 16;
+                    e->vel.vy += e->gravity;
+                }
+            }
+        }
+    }
+}
 #endif
 
 
@@ -26,7 +113,7 @@ extern u8 D_800C3EB0[];
 extern u32 WorkListsAddTasks(u32 a0, u32 a1, void* a2, void* a3, void* a4);
 extern void func_800B7424(u32 p);
 extern void func_800B7364(void);
-extern void func_800B6F0C(void);
+extern void func_800B6F0C(u8* task);
 extern void func_800B7134(void);
 extern void WorkListSetTaskCallback(void* pTask, void* callback);
 extern void D_80025A88(void);
