@@ -76,11 +76,7 @@ s16 func_800A35C8(s16 arg0, s16 arg1, s16 arg2) {
 }
 #ifndef XENO_PC_PORT
 
-typedef struct {
-    s16 x, y, w, h;
-} M68Rect;
-extern void StoreImage(M68Rect* rect, u32* p);
-extern void DrawSync(s32 mode);
+#include "psyq/libgpu.h"
 
 /* func_800A3640.s: construct an effect-image record (19 arguments; the port
  * arm below documents the fields).  Written as a K&R definition, so the
@@ -102,7 +98,7 @@ s16 width, height;
 u16 period, param0, param1;
 void* callback;
 {
-    M68Rect rect;
+    RECT rect;
     s32 half;
     s32 row;
     s32 col;
@@ -161,7 +157,7 @@ void* callback;
             rect.y = ay;
             rect.w = width;
             rect.h = height;
-            StoreImage(&rect, *(u32**)(e + 0x4));
+            StoreImage(&rect, *(u_long**)(e + 0x4));
             DrawSync(0);
             break;
         case 2:
@@ -177,7 +173,7 @@ void* callback;
             rect.y = by;
             rect.w = width;
             rect.h = height;
-            StoreImage(&rect, *(u32**)(e + 0x8));
+            StoreImage(&rect, *(u_long**)(e + 0x8));
             DrawSync(0);
             break;
         case 2:
