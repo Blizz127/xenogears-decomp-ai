@@ -327,6 +327,9 @@ paths = [
     "src/battle/mainasm_14C60.",
     "src/battle/main58.",
     "src/battle/mainasm_16244.",
+    # main6 (2026-10-12): func_80076D58's clut store goes through a pointer
+    # copy only under 2.6.x.
+    "src/battle/main6.",
 ]
 
 [[build_preset]]

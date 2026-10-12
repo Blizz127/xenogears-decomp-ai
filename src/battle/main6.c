@@ -5,7 +5,7 @@
 
 
 #ifndef XENO_PC_PORT
-void func_80076D58(void *, s32, s32);
+void func_80076D58(POLY_FT4* prims, u8 sel, u8 mode);
 extern u32 D_800C3EA4;
 void func_80077074(void);
 #endif
@@ -52,7 +52,41 @@ void func_80076CE8(POLY_FT4* p, s16 x, s16 y, u8 u, u8 v, s32 w, s32 h) {
 }
 #endif
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/main6", func_80076D58);
+/* func_80076D58.s: initialise the two POLY_FT4s at `prims`: SetPolyFT4,
+ * mid-grey colour, SetSemiTrans(0), SetShadeTex(1), the tpage for `mode`
+ * (0..3: x 0x380/0x3C0, y 0/0x100; other values leave it) and the clut
+ * g_SystemPalette2 when `sel` is set, else g_SystemPalette1.  The int
+ * counter gives retail's signed loop test (gcc rewrites it onto the prim
+ * pointer); the clut ternary gives the pointer copy both stores go through,
+ * which only gcc 2.6.x emits (2.7.2: 4 instructions off). */
+extern u16 g_SystemPalette1;
+extern u16 g_SystemPalette2;
+
+void func_80076D58(POLY_FT4* prims, u8 sel, u8 mode) {
+    s32 i;
+
+    for (i = 0; i < 2; i++) {
+        SetPolyFT4(&prims[i]);
+        setRGB0(&prims[i], 0x80, 0x80, 0x80);
+        SetSemiTrans(&prims[i], 0);
+        SetShadeTex(&prims[i], 1);
+        switch (mode) {
+        case 0:
+            prims[i].tpage = GetTPage(0, 0, 0x380, 0);
+            break;
+        case 1:
+            prims[i].tpage = GetTPage(0, 0, 0x380, 0x100);
+            break;
+        case 2:
+            prims[i].tpage = GetTPage(0, 0, 0x3C0, 0x100);
+            break;
+        case 3:
+            prims[i].tpage = GetTPage(0, 0, 0x3C0, 0);
+            break;
+        }
+        prims[i].clut = sel ? g_SystemPalette2 : g_SystemPalette1;
+    }
+}
 /* 4-byte records at D_800D2F68; only `width` (SystemRenderStringEntry's
  * result) is backed by another reader, the other names are by offset. */
 typedef struct {
