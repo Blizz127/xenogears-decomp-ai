@@ -251,7 +251,10 @@ paths = [
     "battle/mainc13",
     "battle/mainc15.",
     "battle/mainc18_",
-    "battle/mainc2",
+    # "battle/mainc2" minus mainc25_q1 (BattleGcc263 below, 2026-10-12).
+    "battle/mainc25.",
+    "battle/mainc25_q2.",
+    "battle/mainc29",
     "battle/mainc7",
     "battle/mainc8",
     "battle/mainc9",
@@ -339,6 +342,12 @@ paths = [
     # main6 (2026-10-12): func_80076D58's clut store goes through a pointer
     # copy only under 2.6.x.
     "src/battle/main6.",
+    # mainc25_q1 (2026-10-12): func_8007CC50 and func_8007CD10 keep their
+    # 28-byte record offset as its own induction variable and index the
+    # table as `D_800C3EB4($at)` only under 2.6.x (2.6.0 and 2.6.3 both
+    # match; 2.7.2: +1 insn; the CDK cc1 loads the table address into a
+    # register).  The TU had no other C.
+    "src/battle/mainc25_q1.",
 ]
 
 [[build_preset]]
