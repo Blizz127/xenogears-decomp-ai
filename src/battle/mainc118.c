@@ -119,7 +119,34 @@ INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BD098);
 INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BD1FC);
 INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BD2E4);
 INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BD3AC);
-INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BD7A0);
+/* The chain head is read through an array view so its load and store
+ * split into lui + %lo (retail keeps the %hi in a2); the task pointer is
+ * compared through a local copy, which keeps the incoming a0 for the
+ * final call. */
+extern u8* D_800C3750__a[] asm("D_800C3750");
+extern void WorkListsDeleteTasks(void* pTasks);
+
+/* On-free callback: unlink the popup task from the D_800C3750 chain (+0x38
+ * links), then delete its task pair. */
+void func_800BD7A0(u8* task) {
+    u8* t = task;
+    u8* p = D_800C3750__a[0];
+    u8* prev = NULL;
+
+    while (p != NULL) {
+        if (p == t) {
+            if (prev != NULL) {
+                *(u8**)(prev + 0x38) = *(u8**)(p + 0x38);
+            } else {
+                D_800C3750__a[0] = *(u8**)(p + 0x38);
+            }
+            break;
+        }
+        prev = p;
+        p = *(u8**)(p + 0x38);
+    }
+    WorkListsDeleteTasks(task);
+}
 INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BD810);
 #include "psyq/libgte.h"
 
