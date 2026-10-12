@@ -26,7 +26,52 @@ void func_800B3C74(Obj** task) {
 }
 
 INCLUDE_ASM("asm/battle/nonmatchings/mainc83", func_800B3CD4);
-INCLUDE_ASM("asm/battle/nonmatchings/mainc83", func_800B3E04);
+#include "psyq/libgpu.h"
+extern void* HeapAlloc(u32 size, u32 flags);
+extern u32 HeapFree(void* p);
+extern RECT D_800C3C9C__a[] asm("D_800C3C9C");
+extern s16 D_800C3668[];
+
+/* func_800B3E04.s: on a 0x1000-byte HeapAlloc stack (the caller's $sp saved
+ * at buf+0xF00, $sp set to buf+0xEFC with GCC inline asm, as func_800B626C),
+ * copy three 0x40 x 0x100
+ * VRAM columns (x 0x280, 0x240, 0x200; y 0x100) through the D_800C3C9C RECT
+ * to the positions in D_800C3668 with MoveImage, then HeapFree.  The RECT
+ * goes through an array view so its address stays in a register. */
+void func_800B3E04(void) {
+    u8* stack = HeapAlloc(0x1000, 0);
+
+    __asm__ volatile(
+        "\taddu  $t0, %0, $zero\n"
+        "\tsw    $sp, 0($t0)\n"
+        "\taddiu $t0, $t0, -4\n"
+        "\taddu  $sp, $t0, $zero\n"
+        :
+        : "r"(stack + 0xF00)
+        : "t0", "memory");
+    D_800C3C9C__a[0].x = 0x280;
+    D_800C3C9C__a[0].y = 0x100;
+    D_800C3C9C__a[0].w = 0x40;
+    D_800C3C9C__a[0].h = 0x100;
+    MoveImage(D_800C3C9C__a, D_800C3668[0], D_800C3668[1]);
+    D_800C3C9C__a[0].x = 0x240;
+    D_800C3C9C__a[0].y = 0x100;
+    D_800C3C9C__a[0].w = 0x40;
+    D_800C3C9C__a[0].h = 0x100;
+    MoveImage(D_800C3C9C__a, D_800C3668[2], D_800C3668[3]);
+    D_800C3C9C__a[0].x = 0x200;
+    D_800C3C9C__a[0].y = 0x100;
+    D_800C3C9C__a[0].w = 0x40;
+    D_800C3C9C__a[0].h = 0x100;
+    MoveImage(D_800C3C9C__a, D_800C3668[4], D_800C3668[5]);
+    __asm__ volatile(
+        "\taddiu $sp, $sp, 4\n"
+        "\tlw    $sp, 0($sp)\n"
+        :
+        :
+        : "memory");
+    HeapFree(stack);
+}
 #include "psyq/libgte.h"
 
 /* 4-bit battle slot of an actor record: +0xAC bits 0-1 above +0xA8 bits 30-31.
