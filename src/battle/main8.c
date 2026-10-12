@@ -109,7 +109,8 @@ void func_80078508(void* pBuffer) {
         u16 v;
 
         if (D_800D2DCC[i] != 0) {
-            /* func_80098AF8 (main53) has no C body yet: run the retail bytes. */
+            /* func_80098AF8 (main53) is matched C but not adopted on the host
+             * yet: run the retail bytes. */
             v = (u16)BATTLE_GUEST_CALL(0x80098AF8u, (u32)i, 0u);
         } else {
             v = 0xFF;

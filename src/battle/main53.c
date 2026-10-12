@@ -7,8 +7,111 @@ void func_80099CF0(void *arg0, void *arg1, void *arg2);
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/battle/nonmatchings/main53", func_80097D5C);
-INCLUDE_ASM("asm/battle/nonmatchings/main53", func_8009892C);
-INCLUDE_ASM("asm/battle/nonmatchings/main53", func_80098AF8);
+extern u8* D_800C34B0;
+extern u8* D_800D2D6C;
+extern u8* D_800C3E00;
+extern u8 D_800D2D24[];
+extern u8 D_800D2D10[];
+extern u16 D_800C3AA4[];
+extern u8 g_GameState__b[] asm("g_GameState");
+
+/* For each of the first three D_800D2D24 slots not set to 0x7F: select its
+ * 0x170-byte record (D_800C3E00, D_800D2D6C = record + 0xA4), keep its +0x7A
+ * halfword in D_800C3AA4, and for every nonzero D_800D2D10[j] subtract it
+ * from the battle part's +0x98 byte and add the part's +0x50 + j byte
+ * instead, capping +0x98 at 0x10.  Then raw g_GameState patches: 7 at
+ * +0x7E6, bit 0x800 of +0x17C2 when +0x17DA has bit 0x2000, and a fixed set
+ * of byte values while the +0x1930 halfword is below 0xBB. */
+void func_8009892C(void) {
+    u8 i;
+    u8 j;
+    u8* rec;
+
+    for (i = 0; i < 3; i++) {
+        if (D_800D2D24[i] != 0x7F) {
+            rec = D_800C34B0 + i * 0x170;
+            D_800C3E00 = rec;
+            D_800D2D6C = rec + 0xA4;
+            D_800C3AA4[i] = ((u16*)rec)[0x7A / 2];
+            for (j = 0; j < 4; j++) {
+                if (D_800D2D10[j] != 0) {
+                    D_800D2D6C[0x98] -= D_800D2D10[j];
+                    D_800D2D6C[0x98] += (D_800D2D6C + j)[0x50];
+                }
+            }
+            if (D_800D2D6C[0x98] > 0x10) {
+                D_800D2D6C[0x98] = 0x10;
+            }
+        }
+    }
+    g_GameState__b[0x7E6] = 7;
+    if (*(u16*)(g_GameState__b + 0x17DA) & 0x2000) {
+        *(u16*)(g_GameState__b + 0x17C2) |= 0x800;
+    }
+    if (*(u16*)(g_GameState__b + 0x1930) < 0xBB) {
+        g_GameState__b[0x9EC] = 0xA;
+        g_GameState__b[0xA90] = 0xA;
+        g_GameState__b[0x10F8] = 9;
+        g_GameState__b[0x119C] = 9;
+        g_GameState__b[0x1240] = 8;
+        g_GameState__b[0x12E4] = 0xC;
+        g_GameState__b[0x1388] = 0xC;
+        g_GameState__b[0x11CE] = 0x58;
+        g_GameState__b[0xDF7] = 0;
+        g_GameState__b[0x131C] = 0x28;
+    }
+}
+extern u8* D_800C34B0;
+extern u8* D_800D2D6C;
+extern u8* D_800C3E00;
+extern u8* D_800C3DFC;
+extern s32 rand(void);
+extern void func_80094D24(void);
+
+/* Base value for actor `idx` (0x170-byte records at D_800C34B0: a
+ * GameCharacter copy, then the battle part at +0xA4).  Selects the actor
+ * (D_800C3E00, D_800D2D6C).  For idx < 3, the 0x28-byte entry picked by the
+ * D_800C34B0 +0x5FC2 byte in the idx block at +0x1058 (0x5F0 apart), or at
+ * +0x2228 (0x690 apart) while record +0x15A bit 7 is set, goes to D_800C3DFC
+ * and the value is 9 * (stat - entry +0x27), at least 9, where stat is
+ * agility (+0x5A) or the battle part's +0x98 byte respectively; for idx >= 3
+ * it is 9 * agility.  The value, capped at 0xA0 above 0xA5, becomes
+ * 0xA5 - value with a random -3..+4 spread; func_80094D24 runs before the
+ * return. */
+u8 func_80098AF8(u8 idx) {
+    u8* rec;
+    u16 v;
+
+    rec = D_800C34B0 + idx * 0x170;
+    D_800D2D6C = rec + 0xA4;
+    D_800C3E00 = rec;
+    if (idx < 3) {
+        if (!(rec[0x15A] & 0x80)) {
+            D_800C3DFC = (idx * 0x5F0 + 0x1058) + D_800C34B0 + D_800C34B0[0x5FC2] * 0x28;
+            if (rec[0x5A] > (s8)D_800C3DFC[0x27]) {
+                v = (rec[0x5A] - (s8)D_800C3DFC[0x27]) * 9;
+            } else {
+                v = 9;
+            }
+        } else {
+            D_800C3DFC = (idx * 0x690 + 0x2228) + D_800C34B0 + D_800C34B0[0x5FC2] * 0x28;
+            if (rec[0x13C] > (s8)D_800C3DFC[0x27]) {
+                v = (rec[0x13C] - (s8)D_800C3DFC[0x27]) * 9;
+            } else {
+                v = 9;
+            }
+        }
+    } else {
+        v = rec[0x5A] * 9;
+    }
+    if (v > 0xA5) {
+        v = 0xA0;
+    }
+    v = 0xA5 - v;
+    v -= rand() % 8 - 4;
+    func_80094D24();
+    return v;
+}
 void func_80097D08();                            /* extern */
 extern u8* D_800C34B0;
 extern u16 D_800D220E[];
