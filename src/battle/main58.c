@@ -30,8 +30,8 @@ INCLUDE_ASM("asm/battle/nonmatchings/main58", func_8009BE0C);
 extern u8 D_800CCCE8[];
 #endif
 #ifdef XENO_PC_PORT
-/* Coexistence: decompiled and logic-faithful, but not byte-exact yet, so the
- * matching build assembles retail bytes below and the port uses this body. */
+/* Port body; the retail build compiles the byte-exact C in the #else branch.
+ */
 /* func_8009C050.s: status flags for actor idx (368-byte stride over
  * D_800CCCE8): bit0 = +0x120 & 0x400, bit1 = +0x104 < (+0x108 >> 3) with
  * +0x36 bit0 clear, bit2 = +0x148 == 4. */
@@ -53,7 +53,30 @@ u8 func_8009C050(u8 idx) {
     return r;
 }
 #else
-INCLUDE_ASM("asm/battle/nonmatchings/main58", func_8009C050);
+/* func_8009C050.s, byte-exact: the plain-base pointer b comes first so CSE
+ * derives the +0xA4 and +0x148 addresses from the base register; the 0x400
+ * test goes through a masked temp (andi + sltu), and r is u8 so the two
+ * flags keep separate registers (t's type makes no difference). */
+u8 func_8009C050(u8 idx) {
+    u32 off = idx * 368;
+    u8* b = off + D_800CCCE8;
+    u8* a = off + (D_800CCCE8 + 0xA4);
+    u8* c = off + (D_800CCCE8 + 0x148);
+    u32 m;
+    u8 t;
+    u8 r;
+
+    m = *(u16*)(a + 0x7C) & 0x400;
+    t = m != 0;
+    r = t;
+    if (*(u32*)(a + 0x60) < (*(u32*)(a + 0x64) >> 3) && !(*(u16*)(b + 0x36) & 1)) {
+        r = t | 2;
+    }
+    if (c[0] == 4) {
+        r |= 4;
+    }
+    return r;
+}
 #endif
 #ifndef XENO_PC_PORT
 extern u8 D_800CCE30[];
