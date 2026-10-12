@@ -11,7 +11,42 @@ void func_800BAC50(void *arg0);
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/main111", func_800BA984);
+extern u8* WorkListsAddTasks(s32 size, s32 a1, void* cb0, void* cb1, void* cb2);
+extern void func_800242F4(u8* sprite, u8* package, s16 a, s16 b, s16 c, s16 d, s16 e, s32 flags);
+extern void SpriteSetScale(u8* sprite, s16 scale);
+extern void func_800245D8(u8* sprite, s16 anim);
+extern void func_800BAB0C(u8* task);
+extern void func_800BABDC(u8* task);
+
+/* Create a 0x19C-byte work/timer task pair (callbacks func_800BAC50 /
+ * func_800BAB0C / func_800BABDC) whose sprite at +0x38 is built by
+ * func_800242F4 from `package`, positioned at (x, y, z) 16.16, given
+ * animation `anim` (+0xB0), +0x32 = `arg10` and scale 0x2000; returns the
+ * task.  Stack arguments 11 and 12 are not read. */
+u8* func_800BA984(u8* package, s32 a1, s32 a2, s32 a3, s32 arg4, s32 arg5, s32 x, s16 y, s16 z,
+                  u16 anim, s16 arg10, s32 arg11, s32 arg12, s32 flags) {
+    u8* task;
+    u8* sprite;
+
+    task = WorkListsAddTasks(0x19C, 0, func_800BAC50, func_800BAB0C, func_800BABDC);
+    sprite = task + 0x38;
+    *(u8**)(task + 4) = sprite;
+    *(u8**)(task + 0x20) = sprite;
+    *(s32*)(task + 0x1C) = 0;
+    func_800242F4(sprite, package, a1, a2, a3, arg4, arg5, flags);
+    *(u8**)(sprite + 0x6C) = task;
+    *(s32*)(task + 0x38) = x << 16;
+    *(s32*)(sprite + 4) = y << 16;
+    *(s32*)(sprite + 8) = z << 16;
+    sprite[0xB0] = anim;
+    *(u32*)(sprite + 0x3C) |= 4;
+    *(s16*)(sprite + 0x32) = arg10;
+    SpriteSetScale(sprite, 0x2000);
+    *(s16*)(sprite + 0x82) = 0x2000;
+    *(s32*)(sprite + 0x78) = 0;
+    func_800245D8(sprite, anim);
+    return task;
+}
 extern MATRIX D_800D30BC;
 extern s32 D_80050100;
 extern u_long* g_GfxCurOT;
