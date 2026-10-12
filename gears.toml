@@ -225,6 +225,9 @@ name = "BattleCdk"
 # mainasm_B190 (2026-10-12): func_8007AC80, the mainc18 family's multiply
 # between mainc18_q1 and mainc18_q2, matches only here (the same body is
 # 11 instructions off under 2.7.2, 2.6.3 and 2.6.0).
+# main125_q1 (2026-10-12): its only function, func_800BEE2C, encodes its
+# constants as `addiu $r,$zero,K` (the literal flavour) and sits right
+# before mainasm_4F3C4 (also CDK); under Default it is 2 instructions off.
 build_variables = {
     gcc = "gcc-2.7.2-cdk-psx",
     maspsx_flags = "--dont-expand-li --use-comm-section --run-assembler"
@@ -261,6 +264,7 @@ paths = [
     "src/battle/main135.",
     "src/battle/main77.",
     "src/battle/mainasm_B190.",
+    "src/battle/main125_q1.",
     "src/battle_command_file1/after_controller_cdk.",
 ]
 

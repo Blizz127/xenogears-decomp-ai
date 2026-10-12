@@ -14,9 +14,9 @@ extern void func_800AA320(u32 arg0, u32 arg1, u32 arg2);
 /* func_800BEE2C: HeapAlloc(0x1000, 1), then run func_800AA320(arg0 & 0xFFFF,
  * arg1 & 0xFFFF, arg2) on a stack switched onto that heap block -- retail
  * stores the caller's $sp at buf+0xF9C, sets $sp to buf+0xF98, calls, then
- * reloads $sp from the slot -- and finally HeapFree(buf).  Reassigning $sp is
- * not expressible in portable C, so this stays retail assembly; the port does
- * not link this reference-only TU. */
+ * reloads $sp from the slot -- and finally HeapFree(buf).  The byte-exact C
+ * body is in main125_q1.c (retail build only); it switches $sp with GCC
+ * inline asm.  The port does not link this reference-only TU. */
 #ifndef XENO_PC_PORT
 extern u8 D_800C3EB0[];
 #endif
