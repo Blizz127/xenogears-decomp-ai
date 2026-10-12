@@ -223,7 +223,24 @@ build_variables = {
     maspsx_flags = "--dont-expand-li --use-comm-section --run-assembler"
 }
 paths = [
-    "battle/mainc",
+    # Every battle/mainc* TU except mainc122 (BattleCdkG0 below); gears
+    # takes whichever matching key its HashMap yields first, so no TU may
+    # match keys of two presets.
+    "battle/mainc10",
+    "battle/mainc11",
+    "battle/mainc120.",
+    "battle/mainc123.",
+    "battle/mainc124.",
+    "battle/mainc126.",
+    "battle/mainc127.",
+    "battle/mainc129.",
+    "battle/mainc13",
+    "battle/mainc15.",
+    "battle/mainc18_",
+    "battle/mainc2",
+    "battle/mainc7",
+    "battle/mainc8",
+    "battle/mainc9",
     "src/battle/main87.",
     "src/battle/main90.",
     "src/battle/mainasm_4F3C4.",
@@ -237,6 +254,24 @@ paths = [
     "src/battle/main135.",
     "src/battle_command_file1/after_controller_cdk.",
 ]
+
+[[build_preset]]
+name = "BattleCdkG0"
+# BattleCdk with cc1 at -G0 (2026-10-12).  The battle overlay never addresses
+# anything through $gp and the CDK TUs have no `$at` stores, so its CDK code
+# looks -G0-built; func_800BE790's clamp needs it: retail emits
+# %hi(D_80059494) before the Vsync call on the right-hand side (into a
+# callee-saved register), which only a VAR_DECL left-hand side with a split
+# (non-small) address gives, since MODIFY_EXPR pre-expands calls for any
+# other LHS.  Scoped to this TU because -G0 across BattleCdk breaks at
+# least mainc29_q2 (the first differing TU; others untested); mainc122's
+# other bodies match either way.
+build_variables = {
+    gcc = "gcc-2.7.2-cdk-psx",
+    maspsx_flags = "--dont-expand-li --use-comm-section --run-assembler",
+    gp_flag = "-G0"
+}
+paths = [ "src/battle/mainc122." ]
 
 [[build_preset]]
 name = "XenoGraphicsLibrary"

@@ -58,7 +58,152 @@ void func_800BE6E8(s32 value, u8* out, s32 digits, u8 lead, s32 bias) {
     out[0] = count + 1;
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/mainc122", func_800BE790);
+#include "battle/spad_stack.h"
+extern s32 D_800C37D0[];
+extern u8 D_800C3EB0[];
+extern u8 D_800D309C[];
+extern s32 D_80010000[];
+extern s16 D_80059494__s[] asm("D_80059494");
+/* Scalar view for the clamp: under BattleCdkG0 (-G0) its address is split,
+ * and as a VAR_DECL left-hand side its %hi is set up before the Vsync call. */
+extern s16 D_80059494__v asm("D_80059494");
+extern s32 D_80059198[];
+extern u8 D_800CCB94[];
+extern u32* g_GfxCurOT[];
+extern u8* D_800C3610[];
+extern u16 D_800591B4[];
+extern u8 D_800C37CC[];
+extern s32 Vsync__r(s32 mode) asm("Vsync");
+extern void DrawSync(u32 v);
+extern void GameCheckAndHandleSoftReset(void);
+extern u32* ClearOTagR(u32* ot, s32 n);
+extern void func_800BEBC4(void);
+extern void func_80280A9C(void);
+extern void func_800250E0(s32 buf);
+extern void func_800BBAB8(void);
+extern void func_800BB9D4(void);
+extern void func_80024FF4(u8* p);
+extern void GfxSetCurrentOT(u32* ot);
+extern void FontDrawLetters(void* ot);
+extern void func_800A9A50(u8* a0, u8* a1, u32* ot, s32 buf);
+extern void func_8001D468(void);
+extern void WorkListUpdate(void);
+extern void TimerWorkListUpdate(void);
+extern void func_80076544(void);
+extern void func_8008A9C0(s32 mode);
+extern void* PutDispEnv(void* env);
+extern void* PutDrawEnv(void* env);
+extern void func_80025044(void);
+extern void DrawOTag(u32* p);
+extern void func_800BEB04(void);
+extern void func_800B8068(u16 v);
+extern s32 ArchiveDataSync(void);
+extern void func_800B136C(void);
+
+/* Battle frame driver: swaps the double buffer and clears its OT, runs the
+ * frame's work lists on the scratchpad stack plus one catch-up tick per
+ * extra elapsed vblank (D_80059494), records Vsync timings in D_800D309C's
+ * stats block, clamps the next catch-up count to 0..4, presents the frame,
+ * and on the outermost call services the pending callback, the queued
+ * D_800591B4 request and the D_800C37CC archive sync. */
+void func_800BE790(void) {
+    u8* base;
+    u8* gfx;
+    u8* frame;
+    u8* stats;
+    u8* tail;
+    u8* env;
+    s32 t;
+    u8* buf;
+    s32 n;
+
+    D_800C37D0[0]++;
+    GameCheckAndHandleSoftReset();
+    t = Vsync__r(-1);
+    frame = (u8*)(u32)D_800D309C;
+    *(s32*)(frame + 0x48) = t;
+    base = (u8*)(u32)D_800C3EB0;
+    gfx = base + 0x8000;
+    buf = base + 0xB70;
+    if (*(u8**)(gfx + 0xC50) == buf) {
+        buf = base + 0x4BE0;
+    }
+    *(u8**)(gfx + 0xC50) = buf;
+    *(u32**)(gfx + 0xC54) = (u32*)(buf + 0x70);
+    ClearOTagR((u32*)(buf + 0x70), 0x1000);
+    *(s32*)(gfx + 0xC84) = 1 - *(s32*)(gfx + 0xC84);
+    if (D_80010000[0] != -1) {
+        func_800BEBC4();
+        __asm__ volatile(".word 0x0001000D");
+        func_80280A9C();
+    }
+    func_800250E0(*(s32*)(gfx + 0xC84));
+    func_800BBAB8();
+    func_800BB9D4();
+    func_80024FF4(frame + 0x20);
+    GfxSetCurrentOT(*(u32**)(gfx + 0xC54));
+    if (D_80010000[0] != -1) {
+        FontDrawLetters(*(u32**)(gfx + 0xC54));
+    }
+    func_800A9A50(frame + 0x20, D_800CCB94, g_GfxCurOT[0], *(s32*)(gfx + 0xC84));
+    BATTLE_SPAD_STACK_SET(0x1F8003FC);
+    func_8001D468();
+    WorkListUpdate();
+    TimerWorkListUpdate();
+    n = D_80059494__s[0];
+    while (--n != -1) {
+        func_800BBAB8();
+        TimerWorkListUpdate();
+    }
+    BATTLE_SPAD_STACK_RESET();
+    func_80076544();
+    func_8008A9C0(0);
+    while (--D_80059494__s[0] != -1) {
+        func_8008A9C0(1);
+    }
+    t = Vsync__r(1);
+    stats = (u8*)(u32)D_800D309C;
+    *(s32*)(stats + 0x40) = t;
+    DrawSync(0);
+    *(s32*)(stats + 0x44) = Vsync__r(1);
+    D_80059494__v = Vsync__r(-1) - *(s32*)(stats + 0x48) - D_80059198[0];
+    if (D_80059494__v < 0) {
+        D_80059494__v = 0;
+    }
+    if (D_80059494__v >= 5) {
+        D_80059494__v = 4;
+    }
+    tail = (u8*)(u32)D_800C3EB0;
+    *(s32*)(tail + 0x8000 + 0xDAC) = D_80059494__v + D_80059198[0];
+    if (D_80059198[0] != 0) {
+        Vsync__r(D_80059198[0] + 1);
+    } else {
+        Vsync__r(0);
+    }
+    env = (u8*)(u32)D_800C3EB0;
+    env += 0x8000;
+    PutDispEnv(*(u8**)(env + 0xC50) + 0x5C);
+    PutDrawEnv(*(u8**)(env + 0xC50));
+    func_80025044();
+    DrawOTag((u32*)(*(u8**)(env + 0xC50) + 0x406C));
+    func_800BEB04();
+    if (D_800C37D0[0] == 1) {
+        if (D_800C3610[0] != NULL) {
+            (*(void (**)(u8*))(D_800C3610[0] + 8))(D_800C3610[0]);
+        }
+        if (D_800591B4[0] != 0) {
+            s32 v = D_800591B4[0]; /* s32: retail tests v0, then copies it to a0 */
+
+            D_800591B4[0] = 0;
+            func_800B8068(v);
+        }
+        if (D_800C37CC[0] != 0 && ArchiveDataSync() == 0) {
+            D_800C37CC[0] = 0;
+            func_800B136C();
+        }
+    }
+    D_800C37D0[0]--;
+}
 #endif
 
 
