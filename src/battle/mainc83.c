@@ -25,7 +25,63 @@ void func_800B3C74(Obj** task) {
     }
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/mainc83", func_800B3CD4);
+extern u32 WorkListsAddTasks(u32 a0, u32 a1, void* a2, void* a3, void* a4);
+extern void* HeapAlloc(u32 size, u32 flags);
+extern u32 HeapFree(void* p);
+extern u8* D_800C3560__a[] asm("D_800C3560");
+extern void func_800B3B94(u8* t);
+extern void func_800B3C2C(void);
+extern void func_800A5EB4(void);
+
+/* func_800B3CD4.s: show the singleton task D_800C3560 (0x50 bytes; timer
+ * func_800B3B94, work func_800B3C74, free func_800B3C2C): the first call
+ * creates it, runs func_800A5EB4 on a 0x1000-byte HeapAlloc stack ($sp switch
+ * as func_800B626C, saved at buf+0xC00) and zeroes +0x40/+0x44/+0x46; later
+ * calls copy +0x46 into +0x40.  Then it stores the parameters (+0x42 a0,
+ * +0x38/+0x3C a1 * 2, +0x48 a2, +0x4A..+0x4E a3..a5) and runs
+ * func_800B3B94 once.  a3 is u16 like the stack parameters: as a 32-bit
+ * parameter it lands in a different saved register (9 off).  main87
+ * declares it (u32, u32, u32, s32, s32, s32). */
+void func_800B3CD4(u32 a0, u32 a1, u32 a2, u16 a3, u16 a4, u16 a5) {
+    u8* t;
+    u8* stack;
+
+    if (D_800C3560__a[0] == NULL) {
+        t = (u8*)WorkListsAddTasks(0x50, 0, func_800B3B94, func_800B3C74, func_800B3C2C);
+        D_800C3560__a[0] = t;
+        stack = HeapAlloc(0x1000, 1);
+        __asm__ volatile(
+            "\taddu  $t0, %0, $zero\n"
+            "\tsw    $sp, 0($t0)\n"
+            "\taddiu $t0, $t0, -4\n"
+            "\taddu  $sp, $t0, $zero\n"
+            :
+            : "r"(stack + 0xC00)
+            : "t0", "memory");
+        func_800A5EB4();
+        __asm__ volatile(
+            "\taddiu $sp, $sp, 4\n"
+            "\tlw    $sp, 0($sp)\n"
+            :
+            :
+            : "memory");
+        HeapFree(stack);
+        *(u16*)(t + 0x40) = 0;
+        *(u16*)(t + 0x44) = 0;
+        *(u16*)(t + 0x46) = 0;
+    } else {
+        t = D_800C3560__a[0];
+        *(u16*)(t + 0x40) = *(u16*)(t + 0x46);
+    }
+    *(u16*)(t + 0x42) = a0;
+    *(s32*)(t + 0x38) = a1 * 2;
+    *(s32*)(t + 0x3C) = a1 * 2;
+    *(u16*)(t + 0x4A) = a3;
+    *(u16*)(t + 0x4C) = a4;
+    *(u16*)(t + 0x4E) = a5;
+    *(u16*)(t + 0x48) = a2;
+    func_800B3B94(t);
+}
 #include "psyq/libgpu.h"
 extern void* HeapAlloc(u32 size, u32 flags);
 extern u32 HeapFree(void* p);
