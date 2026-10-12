@@ -3,7 +3,102 @@
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/battle/nonmatchings/mainc102", func_800B838C);
-INCLUDE_ASM("asm/battle/nonmatchings/mainc102", func_800B853C);
+extern u8 D_800C3EB0[];
+extern u32 D_800D39C8[];
+extern s32 D_800595AC[];
+extern void func_800BC404(u32 v);
+extern void func_800BFC80(u32 a0, u32 a1, u32 a2);
+extern void func_800245D8(u32 a0, u32 a1);
+extern void func_800B39C0(s32 a0, s32 a1, s32 r, s32 g, s32 b);
+extern void func_800BE790(void);
+extern void func_800A9FF0(s32 idx);
+extern void func_800BADD4(u32 i);
+extern void func_800C0F70(void);
+extern void func_800B8354(void);
+extern void ArchiveSetIndex(s32 idx, s32 sub);
+extern s32 ArchiveDecodeAlignedSize(s32 file);
+extern void* HeapAlloc(s32 size, s32 mode);
+extern void ArchiveReadFileToBuffer(s32 file, void* buf, s32 a2, s32 a3);
+extern s32 SoundLoadWdsFile(void* buf, s32 a1);
+extern s16 func_8003BDFC(s32 a0);
+extern void HeapFree(u32 p);
+
+/* Entry i of the pointer table at D_800C3EB0 + 0x8C8C.  An inline helper on
+ * purpose: its copies make retail's loops big enough that loop optimisation
+ * hoists only the 0x8C8C (and, in the smaller loop, 0x15) constants. */
+static inline u8* B853C_Actor(s32 i) {
+    u8* base = D_800C3EB0;
+
+    return *(u8**)((u8*)(i * 4 + base) + 0x8C8C);
+}
+
+/* func_800B853C.s: mode 0 calls func_800BC404(-1), then func_800BFC80(e, 0, 2)
+ * and func_800245D8(e, 0x18) for each of the three table entries e that is
+ * set and whose +0xAF byte is not 0x15.  Mode 2 calls func_800BC404(0) and
+ * func_800B39C0(0x28, 2, 0xFF, 0xFF, 0xFF), func_800245D8(e, 5) for the same
+ * entries, then func_800BE790 40 times.  Every mode then runs func_800A9FF0
+ * and func_800BADD4 for slots 3..10, loads archive 0x2C file 5 through
+ * SoundLoadWdsFile into D_800595AC, calls func_800BE790 until
+ * func_8003BDFC(0) is 0, frees both buffers and clears D_800C3EB0[0x8DA8]. */
+void func_800B853C(s32 mode) {
+    u8* base;
+    s32 i;
+    s32 n;
+    void* buf;
+
+    switch (mode) {
+    case 0: {
+        s32 j;
+        u8* actor;
+
+        func_800BC404(-1);
+        for (j = 0; j != 3; j++) {
+            actor = B853C_Actor(j);
+            if (actor != NULL && (s8)actor[0xAF] != 0x15) {
+                func_800BFC80((u32)actor, 0, 2);
+                func_800245D8((u32)actor, 0x18);
+            }
+        }
+        break;
+    }
+    case 1:
+        break;
+    case 2:
+        func_800BC404(0);
+        func_800B39C0(0x28, 2, 0xFF, 0xFF, 0xFF);
+        for (i = 0; i != 3; i++) {
+            u8* actor = B853C_Actor(i);
+
+            if (actor != NULL && (s8)actor[0xAF] != 0x15) {
+                func_800245D8((u32)actor, 5);
+            }
+        }
+        for (i = 0x28; i > 0; i--) {
+            func_800BE790();
+        }
+        break;
+    }
+    i = 3;
+    n = 0xB;
+    for (; i != n; i++) {
+        func_800A9FF0(i);
+        func_800BADD4(i);
+    }
+    func_800C0F70();
+    func_800B8354();
+    ArchiveSetIndex(0x2C, 0);
+    buf = HeapAlloc(ArchiveDecodeAlignedSize(5), 1);
+    ArchiveReadFileToBuffer(5, buf, 0, 0x80);
+    func_800B8354();
+    D_800595AC[0] = SoundLoadWdsFile(buf, 0);
+    while (func_8003BDFC(0) != 0) {
+        func_800BE790();
+    }
+    HeapFree((u32)buf);
+    HeapFree(D_800D39C8[0]);
+    base = (u8*)(u32)D_800C3EB0;
+    *(base + 0x8000 + 0xDA8) = 0;
+}
 #endif
 
 
