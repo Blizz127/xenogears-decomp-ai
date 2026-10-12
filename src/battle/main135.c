@@ -2,7 +2,24 @@
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/battle/nonmatchings/main135", func_800C0FAC);
-INCLUDE_ASM("asm/battle/nonmatchings/main135", func_800C1140);
+extern void func_8003852C(void* p);
+
+/* func_800C1140.s: walk the offset table of `file` (count *file - 3, offsets
+ * from +0x10, each relative to the file) and call func_8003852C on every
+ * entry whose first word is the 0x73646573 tag.  The parameter is reused as
+ * the table cursor while `base` keeps the file start, as retail does with two
+ * copies of it; the entry address is integer arithmetic (offset first). */
+void func_800C1140(u8* file) {
+    u8* base = file;
+    s32 n;
+
+    n = *(s32*)file - 3;
+    for (file += 0x10; n > 0; n--, file += 4) {
+        if (*(u32*)(*(u32*)file + (u32)base) == 0x73646573) {
+            func_8003852C((u8*)(*(u32*)file + (u32)base));
+        }
+    }
+}
 #include "psyq/libgte.h"
 
 /* XZ position passed by value to func_80023124 (angle between two sprites). */
