@@ -120,7 +120,38 @@ void func_800BAC50(void *arg0) {
 #endif
 
 INCLUDE_ASM("asm/battle/nonmatchings/main111", func_800BACBC);
-INCLUDE_ASM("asm/battle/nonmatchings/main111", func_800BADD4);
+extern u8 D_800C3EB0[];
+extern void func_800BFC80(u8* task, s32 a1, s32 a2);
+extern void func_8001CE74(u8* task);
+
+/* Release party slot `slot`'s task (D_800C3EB0 + 0x8CB8): func_800BFC80
+ * (task, 0, 2), free a slot < 3's 12-byte record buffer at D_800C3EB0 +
+ * 0x8D24, run the task's +0xC callback, release its children and clear both
+ * slot tables. */
+void func_800BADD4(s32 slot) {
+    u8* base;
+    u8* task;
+    u8* rec;
+    u8* tbl;
+
+    base = (u8*)(u32)D_800C3EB0;
+    task = *(u8**)(slot * 4 + base + 0x8CB8);
+    if (task != NULL) {
+        func_800BFC80(task, 0, 2);
+        if (slot < 3) {
+            rec = slot * 12 + base + 0x8000;
+            if (*(void**)(rec + 0xD24) != NULL) {
+                HeapFree(*(void**)(rec + 0xD24));
+            }
+            *(void**)(rec + 0xD24) = NULL;
+        }
+        (*(void (**)(u8*))(task + 0xC))(task);
+        func_8001CE74(task);
+        tbl = (u8*)(u32)D_800C3EB0;
+        *(u8**)(slot * 4 + tbl + 0x8C8C) = NULL;
+        *(u8**)(slot * 4 + tbl + 0x8CB8) = NULL;
+    }
+}
 #endif
 #ifndef XENO_PC_PORT
 extern u8 D_800C3EB0[];
