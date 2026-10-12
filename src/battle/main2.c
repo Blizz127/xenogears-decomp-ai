@@ -49,7 +49,90 @@ INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80072A9C);
 INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80072DA8);
 INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80072F38);
 INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80073380);
-INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80073538);
+extern void* D_800C3EA4;
+typedef struct {
+    u8 state;
+    u8 unk1[0x1B];
+} BattleSlotState;
+extern BattleSlotState D_800C3EB6__s[] asm("D_800C3EB6");
+extern u8 D_800D32A1[];
+extern u16 D_800C3254[];
+extern u8 D_800D3280;
+extern void* D_800D2F5C;
+extern s32 D_800CCB34__a[] asm("D_800CCB34");
+extern u8 D_800D2D24[];
+extern s32 func_80076A10(u8 glyph, u8* prims, s16 x, s16 y);
+extern s32 func_80076A6C(u8 glyph, u8* prims, s16 x, s16 y);
+extern void func_80076C34(u8* prim);
+extern s32 func_80025FA8(void* font, s32 glyph, u8* prims, s32 buf, s32 x, s32 y, s32 sx, s32 sy, s32 a8);
+extern void func_800765C4(s32 slot);
+extern void func_80076710(s32 slot);
+
+/* Party HUD per-slot state switch.  Shapes retail's codegen depends on:
+ * `base` holds D_800D2D28 before `+ i` (retail adds base first);
+ * D_800D32A1[i << 3] becomes its own loop.c pointer giv (la init, += 8);
+ * the D_800CCB34 call arguments are read through the split-array alias,
+ * which gives retail's a3-first argument loads. */
+void func_80073538(void) {
+    s32 i;
+    s32 k;
+    s32 scale = 0;
+    u8* p;
+    u8* base;
+
+    *(u8*)(D_800D2D28 + 0x77) = 0;
+    for (i = 0; i < 3; i++) {
+        if (D_800C3EB6__s[i].state == 0x7F) {
+            continue;
+        }
+        switch ((p = (base = (u8*)D_800D2D28) + i)[0x90]) {
+        case 0:
+            p[0x74] = 0;
+            *(u8*)(D_800D2D28 + i + 0x74) +=
+                func_80076A10(0x8F, D_800C3EA4 + 0x2E08 + i * 0x320 + *(u8*)(D_800D2D28 + i + 0x74) * 0x50,
+                              i * 0x60 + (D_800C3254[D_800D3280 * 3 + i] + 0x44), 0x1F);
+            *(u8*)(D_800D2D28 + i + 0x74) +=
+                func_80076A6C(0x52, D_800C3EA4 + 0x2E08 + i * 0x320 + *(u8*)(D_800D2D28 + i + 0x74) * 0x50,
+                              i * 0x60 + (D_800C3254[D_800D3280 * 3 + i] + 0x48), 0x1C);
+            k = *(u8*)(D_800D2D28 + i + 0x74) * 2;
+            *(u8*)(D_800D2D28 + i + 0x74) +=
+                func_80076A6C(0x53, D_800C3EA4 + 0x2E08 + i * 0x320 + *(u8*)(D_800D2D28 + i + 0x74) * 0x50,
+                              i * 0x60 + (D_800C3254[D_800D3280 * 3 + i] + 0x48), 0x1C);
+            for (; k < *(u8*)(D_800D2D28 + i + 0x74) * 2; k += 2) {
+                func_80076C34(D_800C3EA4 + 0x2E08 + i * 0x320 + (k + D_800CCB34) * 0x28);
+            }
+            *(u8*)(D_800D2D28 + i + 0x84) = D_800CCB34;
+            *(u8*)(D_800D2D28 + i + 0xCC) = 1;
+            break;
+        case 1:
+            scale = 0xC00;
+            *(u8*)(D_800D2D28 + 0x77) =
+                func_80025FA8(D_800D2F5C, 0x52, D_800C3EA4 + 0x3768, D_800CCB34__a[0], 0x10, 0x98, 0x1000, 0x1000, scale);
+            k = *(u8*)(D_800D2D28 + 0x77) * 2;
+            *(u8*)(D_800D2D28 + 0x77) += func_80025FA8(D_800D2F5C, 0x53,
+                                                      D_800C3EA4 + 0x3768 + *(u8*)(D_800D2D28 + 0x77) * 0x50,
+                                                      D_800CCB34__a[0], 0x10, 0x98, 0x1000, 0x1000, scale);
+            for (; k < *(u8*)(D_800D2D28 + 0x77) * 2; k += 2) {
+                func_80076C34(D_800C3EA4 + 0x3768 + (k + D_800CCB34) * 0x28);
+            }
+            *(u8*)(D_800D2D28 + 0x87) = D_800CCB34;
+            break;
+        case 3:
+            if (D_800D32A1[i << 3] != 0 && D_800D2D24[i] != 7) {
+                p[0xCC] = 0;
+            } else {
+                p[0x74] = 0;
+            }
+            func_800765C4(i);
+        case 2:
+            func_80076710(i);
+            if (D_800D32A1[i << 3] == 0 || D_800D2D24[i] == 7) {
+                *(u8*)(D_800D2D28 + i + 0x7F) = 0;
+            }
+            break;
+        }
+    }
+}
 extern void *D_800C3EA4;
 extern s32 D_800CCB04__a_s32[] asm("D_800CCB04");
 
