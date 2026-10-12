@@ -45,7 +45,54 @@ void func_800A8A88(void *arg0) {
 }
 #endif
 
-INCLUDE_ASM("asm/battle/nonmatchings/main70", func_800A8B0C);
+extern s32 D_800C3E88;
+extern s16 D_800C3CF0;
+extern u8 D_800C3D6C;
+extern u8 D_800C3D68;
+extern s16 D_800C3B7C;
+extern u8 D_800C3B74;
+typedef struct {
+    u8 unk0[0x348];
+    s16 count348; /* D_800C3D0C list size */
+    s16 count34A; /* D_800C3D04 (gfx entry) list size */
+} BattleSetupCounts;
+extern BattleSetupCounts* D_800658C8;
+extern u32 D_800D3368[];
+extern u32 D_800C3ACC[][2];
+extern s16 D_800D330A[];
+extern u8* func_800A2234(u8* list, s32 count);
+extern u8* func_800A2CA4(u8* list, s32 count);
+extern void func_800B00D0(void);
+
+/* Reset the battle effect state: clear the effect globals, raise
+ * D_800C3B74, allocate the D_800C3D0C / D_800C3D04 lists at the setup's
+ * sizes, run func_800B00D0, and clear the 32 actor slots D_800D3368, the
+ * first word of the 20 D_800C3ACC pairs and both anchors' active flags
+ * (D_800D3304 records, 0x14 apart; retail walks them by byte offset). */
+void func_800A8B0C(void) {
+    s32 i;
+    s32 j;
+    s32 off;
+
+    D_800C3E88 = 0;
+    D_800C3CF0 = 0;
+    D_800C3D6C = 0;
+    D_800C3D68 = 0;
+    D_800C3B7C = 0;
+    D_800C3B74 = 1;
+    func_800A2234((u8*)&D_800C3D0C, D_800658C8->count348);
+    func_800A2CA4((u8*)&D_800C3D04, D_800658C8->count34A);
+    func_800B00D0();
+    for (i = 31; i >= 0; i--) {
+        D_800D3368[i] = 0;
+    }
+    for (j = 19; j >= 0; j--) {
+        D_800C3ACC[j][0] = 0;
+    }
+    for (off = 0x14; off >= 0; off -= 0x14) {
+        *(s16*)((u8*)D_800D330A + off) = 0;
+    }
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main70", func_800A8BF0);
 typedef struct {
     u16 index;
