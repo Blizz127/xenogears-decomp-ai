@@ -160,9 +160,9 @@ extern u32 func_80083FF4(u32, u32);
 #if BATTLE_PART(2)
 /* func_800841E0.s: stable group partition followed by slot-zero swaps,
  * not a full sort. Rank is an unsigned halfword at stride0x170. */
-/* Not yet byte-matching: the matching build assembles retail bytes for
- * this function from its own asm segment (see config/battle.yaml).  The
- * body below is kept for the port and the differential harnesses. */
+/* The byte-matching C is in src/battle/mainasm_146F0.c (its own asm
+ * segment, see config/battle.yaml).  The body below is the port arm, kept
+ * for the port and the differential harnesses. */
 #ifdef XENO_PC_PORT
 #include "target_list_impl.inc"
 #endif /* XENO_PC_PORT */
