@@ -2,7 +2,38 @@
 
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/main65", func_8009F5B8);
+#include "psyq/libgte.h"
+
+extern void func_8002C700(u32 model, u32 a1, u32* ot, s32 a3);
+
+/* func_8009F5B8.s: draw nodes 1..count-1 of `nodes` (0x7C bytes each; count
+ * at +0xA) into `ot` for buffer `buf`, as func_8009F844 does without its
+ * shadow, anchors and scale overrides: m0 = light x root +0x2C, m1 = view x
+ * root +0xC (scratchpad matrices), then per node with a model index (+8 not
+ * 0xFFFF) light and rotation matrices and func_8002C700. */
+
+void func_8009F5B8(u32** list, u8* nodes, MATRIX* view, MATRIX* light, s32 a3, u32* ot, s32 buf) {
+    MATRIX* m0 = (MATRIX*)0x1F800020;
+    MATRIX* m1 = (MATRIX*)0x1F800040;
+    MATRIX* spad = (MATRIX*)0x1F800000;
+    u32 count;
+    u32 k;
+
+    MulMatrix0(light, (MATRIX*)(nodes + 0x2C), m0);
+    CompMatrix(view, (MATRIX*)(nodes + 0xC), m1);
+    count = *(u16*)(nodes + 0xA);
+    nodes += 0x7C;
+    for (k = 1; k < count; k++, nodes += 0x7C) {
+        if (*(u16*)(nodes + 8) != 0xFFFF) {
+            MulMatrix0(m0, (MATRIX*)(nodes + 0x2C), spad);
+            SetLightMatrix(spad);
+            CompMatrix(m1, (MATRIX*)(nodes + 0x2C), spad);
+            SetRotMatrix(spad);
+            SetTransMatrix(spad);
+            func_8002C700((*list)[*(u16*)(nodes + 8)], *(u32*)(nodes + buf * 4 + 0x68), ot, a3);
+        }
+    }
+}
 typedef struct {
     u8 pad0[0x5C];
     void* buf; /* +0x5C */
