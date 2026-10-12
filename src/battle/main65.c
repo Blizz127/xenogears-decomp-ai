@@ -418,7 +418,6 @@ void func_8009F844(u8* actor, MATRIX* view, MATRIX* light, s32 a3, s32 rate, u32
     }
 }
 INCLUDE_ASM("asm/battle/nonmatchings/main65", func_800A0838);
-INCLUDE_ASM("asm/battle/nonmatchings/main65", func_800A1B50);
 typedef struct {
     u8 unk0[0x54];
     s16 rot[3];
@@ -429,6 +428,68 @@ typedef struct {
     u8* h74;
     u8* h78;
 } M65Node; /* 0x7C, the node layout of func_8009EC4C (main64) */
+
+/* func_800A1B50.s: the handle-free sibling of func_800A1CF4 below.  One
+ * pass over the nodes after node 0, driven by the same `anim` record
+ * (+4 flags, +6, +0xC and +0xE counts, triples from +0x18).  A triple that
+ * differs from the node's `rot` / `pos` triple is stored unless the node's
+ * +0x70 / +0x74 handle has byte 3 == 0xFF, and marks node bytes 4 (and 5
+ * for rot).  Returns the node count minus one; no caller reads it. */
+u16 func_800A1B50(M65Node* nodes, s16* anim) {
+    M65Node* node;
+    u16 crot;
+    u16 cpos;
+    u16 nrot;
+    u16 npos;
+    u16 flags;
+    u16 count;
+    s32 i;
+    s32 x, y, z;
+
+    crot = 0;
+    cpos = 0;
+    i = anim[3];
+    nrot = anim[6];
+    npos = anim[7];
+    flags = anim[2];
+    anim += 0xC;
+    if (i == 0) {
+        anim += (nrot + 1) * 3;
+    }
+    count = *(u16*)((u8*)nodes + 0xA) - 1;
+    node = nodes;
+    for (i = 0; i < count; i++) {
+        node++;
+        if (!(flags & 1) && crot < nrot) {
+            x = *anim++;
+            y = *anim++;
+            z = *anim++;
+            crot++;
+            if ((node->rot[0] != x || node->rot[1] != y || node->rot[2] != z) &&
+                (node->h70 == NULL || node->h70[3] != 0xFF)) {
+                node->rot[0] = x;
+                node->rot[1] = y;
+                node->rot[2] = z;
+                node->unk0[4] = 1;
+                node->unk0[5] = 1;
+            }
+        }
+        if (!(flags & 2) && cpos < npos) {
+            x = *anim++;
+            y = *anim++;
+            z = *anim++;
+            cpos++;
+            if ((node->pos[0] != x || node->pos[1] != y || node->pos[2] != z) &&
+                (node->h74 == NULL || node->h74[3] != 0xFF)) {
+                node->pos[0] = x;
+                node->pos[1] = y;
+                node->pos[2] = z;
+                node->unk0[4] = 1;
+            }
+        }
+    }
+    return count;
+}
 extern u8* func_800A2330(u8* ctx);
 extern void func_800A23E8(u8* a0, u32 p);
 
