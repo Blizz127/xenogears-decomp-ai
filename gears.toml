@@ -218,6 +218,10 @@ name = "BattleCdk"
 # main135 (2026-10-12): func_800C11CC's switch tables load as lui/addiu +
 # sll/addu/lw and its constants as `addiu $r,$zero,K`, the CDK forms; it
 # matches only here (gcc-2.7.2-psx emits the `lui $at` table load).
+# main77 (2026-10-12): func_800B1F0C keeps the work-buffer %hi in a register
+# for its split %lo load/store and copies its prim template through the
+# template's address; it matches only here (2.7.2 / 2.6.3: +2 insns), and
+# main77's three matched functions stay byte-exact.
 build_variables = {
     gcc = "gcc-2.7.2-cdk-psx",
     maspsx_flags = "--dont-expand-li --use-comm-section --run-assembler"
@@ -252,6 +256,7 @@ paths = [
     "src/battle/mainl133.",
     "src/battle/mainl81.",
     "src/battle/main135.",
+    "src/battle/main77.",
     "src/battle_command_file1/after_controller_cdk.",
 ]
 

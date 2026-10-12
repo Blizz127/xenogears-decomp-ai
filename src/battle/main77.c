@@ -32,7 +32,30 @@ void func_800B1EA0(Header* header, s32 shift) {
     }
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/main77", func_800B1F0C);
+/* 8-byte prim (tag + one code word) copied from the D_800C3BF8 template. */
+typedef struct {
+    u32 tag;
+    u32 code;
+} M77Prim8;
+
+/* Array views: the CDK build keeps each %hi in a register for the paired
+ * %lo load/store (retail), and copies the template through its address. */
+extern void* g_GfxCurWorkBuffer__a[] asm("g_GfxCurWorkBuffer");
+extern void* g_GfxCurWorkBufferEnd__a[] asm("g_GfxCurWorkBufferEnd");
+extern M77Prim8 D_800C3BF8[];
+extern void AddPrim(void* ot, void* p);
+
+/* Queue a copy of the D_800C3BF8 draw-mode prim at ot when the work buffer
+ * has room. */
+void func_800B1F0C(void* ot) {
+    M77Prim8* p = g_GfxCurWorkBuffer__a[0];
+
+    if ((u8*)p + 8 < (u8*)g_GfxCurWorkBufferEnd__a[0]) {
+        g_GfxCurWorkBuffer__a[0] = (u8*)p + 8;
+        *p = D_800C3BF8[0];
+        AddPrim(ot, p);
+    }
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main77", func_800B1F6C);
 INCLUDE_ASM("asm/battle/nonmatchings/main77", func_800B2AEC);
 #endif
