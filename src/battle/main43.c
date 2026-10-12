@@ -2,7 +2,114 @@
 
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/main43", func_8008A3EC);
+extern int ControllerGetType(int controllerIndex);
+extern int ControllerPopState(void);
+extern void ControllerResetState(void);
+extern int func_80036410(void);
+extern void GraphicsDrawPauseLetters(int x, int y);
+extern void SoundMuteAllSpuChannels(void);
+extern void SoundEnableAllSpuChannels(void);
+extern void func_8008A144(void);
+extern u16 g_C1ButtonStatePressedOnce;
+extern u16 g_C1ButtonStateReleased;
+extern s32* D_8005917C;
+extern s32 D_80059488;
+extern u8* D_800D2D28;
+extern u8* D_800D3278;
+extern u8 D_800C3444;
+extern u8 D_800C48EA;
+extern u8 D_800CCC58;
+extern u8 D_800D3014;
+
+typedef struct {
+    u8 unk0[0x26];
+    s16 timer;
+    u8 active;
+    u8 unk29[0xF];
+} BattleTimer38;
+
+/* Battle input handler for the D_800C3E4C == 2 mode.  First wait for a
+ * controller (drawing the pause letters and muting once while none is
+ * connected), run the texture-strip animation (func_8008A144) and tick the
+ * 16 active D_800D3278 timers down to zero when D_800D2D28 +0xCA is set.
+ * Then drain the pad queue: released 0x20 outside a pause asks
+ * D_800D3014 = 4; released 0x800 toggles the pause when D_800CCC58 allows
+ * it; pressed 0x4 + 0x8 together during a pause (with *D_8005917C live) sets
+ * D_800C48EA and resumes.  The loop repeats while paused. */
+void func_8008A3EC(u8 unused) {
+    u8 shown;
+    u8 waiting;
+    s32 saved;
+    s32 i;
+
+    waiting = 1;
+    shown = 0;
+    do {
+        if (ControllerGetType(0) == 0) {
+            if (shown == 0) {
+                GraphicsDrawPauseLetters(0x88, 0x64);
+                GraphicsDrawPauseLetters(0x88, 0x144);
+                SoundMuteAllSpuChannels();
+                shown++;
+                saved = D_80059488;
+            }
+        } else {
+            waiting = 0;
+            if (shown != 0) {
+                SoundEnableAllSpuChannels();
+                D_80059488 = saved;
+            }
+        }
+    } while (waiting);
+    func_8008A144();
+    if (D_800D2D28[0xCA] != 0) {
+        for (i = 0; i < 16; i++) {
+            if (((BattleTimer38*)D_800D3278)[i].active != 0) {
+                if (--((BattleTimer38*)D_800D3278)[i].timer < 0) {
+                    ((BattleTimer38*)D_800D3278)[i].timer = 0;
+                }
+            }
+        }
+    }
+    do {
+        if (D_800D2D28[0xCF] == 0) {
+            D_800D3014 = 0xFF;
+        }
+        if (func_80036410() != 0) {
+            ControllerResetState();
+            continue;
+        }
+        while (ControllerPopState() != 0) {
+            if (D_800C3444 != 0) {
+                if (*D_8005917C != -1 && (g_C1ButtonStatePressedOnce & 4) && (g_C1ButtonStatePressedOnce & 8)) {
+                    D_800C48EA = 1;
+                    goto resume;
+                }
+            } else if (g_C1ButtonStateReleased & 0x20) {
+                D_800D3014 = 4;
+                break;
+            }
+            if (g_C1ButtonStateReleased & 0x800) {
+                if (D_800CCC58 == 0) {
+                    break;
+                }
+                if (D_800C3444 == 0) {
+                    SoundMuteAllSpuChannels();
+                    GraphicsDrawPauseLetters(0x88, 0x64);
+                    GraphicsDrawPauseLetters(0x88, 0x144);
+                    saved = D_80059488;
+                    D_800C3444 = 1;
+                    break;
+                }
+            resume:
+                SoundEnableAllSpuChannels();
+                D_80059488 = saved;
+                D_800C3444 = 0;
+                break;
+            }
+        }
+    } while (D_800C3444 != 0);
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main43", func_8008A684);
 #endif
 
