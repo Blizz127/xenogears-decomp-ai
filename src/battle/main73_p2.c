@@ -92,7 +92,52 @@ void func_800AFB4C(s32 arg0, s32 arg1, s32 arg2, s16 arg3, s32 arg4, void *arg5,
     }
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/main73_p2", func_800AFC68);
+#include "psyq/libgte.h"
+#include "battle/gte_inline.h"
+
+/* The 0x18-byte block func_800AFB4C appends to the sprite task (at
+ * task + (s16)task[0xBE]). */
+typedef struct {
+    u32 unk0;
+    void (*next)(u8* task); /* the task's previous callback */
+    u8* owner;              /* model whose body carries the parts */
+    s16 part;               /* 0 = the body matrix itself */
+    s16 pinY;               /* nonzero: y comes from owner +0x60 */
+    SVECTOR offset;
+} BattleSpriteAnchor;
+
+/* Task callback installed by func_800AFB4C: place the sprite at the anchor
+ * offset transformed by the owner's body matrix (composed with part `part`'s
+ * matrix in the scratchpad when part is nonzero), optionally pinning y to
+ * the owner's +0x60, store it as 16.16 at task +0x38/+0x3C/+0x40, then run
+ * the chained callback. */
+void func_800AFC68(u8* task) {
+    BattleSpriteAnchor* a;
+    MATRIX* m;
+    u8* body;
+    VECTOR out;
+
+    a = (BattleSpriteAnchor*)(task + *(s16*)(task + 0xBE));
+    m = (MATRIX*)0x1F800000;
+    if (a->part != 0) {
+        body = *(u8**)(a->owner + 4);
+        CompMatrix((MATRIX*)(body + 0xC), (MATRIX*)(a->part * 0x7C + (s32)body + 0x2C), (MATRIX*)0x1F800000);
+    } else {
+        m = (MATRIX*)(*(u8**)(a->owner + 4) + 0xC);
+    }
+    SetRotMatrix(m);
+    SetTransMatrix(m);
+    BATTLE_GTE_LDV0(&a->offset);
+    BATTLE_GTE_RTV0TR();
+    BATTLE_GTE_STLVNL(&out);
+    if (a->pinY != 0) {
+        out.vy = *(s16*)(a->owner + 0x60);
+    }
+    *(s32*)(task + 0x38) = out.vx << 16;
+    *(s32*)(task + 0x3C) = out.vy << 16;
+    *(s32*)(task + 0x40) = out.vz << 16;
+    a->next(task);
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main73_p2", func_800AFD98);
 INCLUDE_ASM("asm/battle/nonmatchings/main73_p2", func_800AFF9C);
 #endif
