@@ -50,7 +50,32 @@ void func_800B5854(u8* task) {
     }
 }
 #else
-INCLUDE_ASM("asm/battle/nonmatchings/mainc84", func_800B5854);
+/* Matched retail body; the sprite pointer is pinned to s2 as retail allocates
+ * it (the task takes s1). */
+
+void func_800B5854(u8* task) {
+    register u8* s asm("$18") = *(u8**)(task + 0x1C);
+    s32 prev = *(s32*)(task + 0x28);
+    u8 done = 0;
+    s32 cur;
+
+    cur = func_800B57E4(s);
+    *(s32*)(task + 0x28) = cur;
+    if (prev < cur || cur < *(s32*)(task + 0x2C)) {
+        done = 1;
+        *(s32*)(s + 0x64) = *(s32*)(task + 0x30);
+        *(s16*)(s + 0x9E) = 1;
+    }
+    if (*(s16*)(s + 0x9E) == 0) {
+        done = 1;
+    }
+    if (*(s8*)(s + 0xAF) != *(s32*)(task + 0x24)) {
+        done = 1;
+    }
+    if (done) {
+        (*(void (**)(u8*))(task + 0xC))(task);
+    }
+}
 #endif
 extern u8* TimerWorkListAllocateTask(u32 owner, u32 size);
 extern void TimerWorkListSetTaskCallback(void* pTask, void* callback);
