@@ -11,7 +11,41 @@ INCLUDE_ASM("asm/battle/nonmatchings/main49", func_8008DE04);
 INCLUDE_ASM("asm/battle/nonmatchings/main49", func_8008E430);
 INCLUDE_ASM("asm/battle/nonmatchings/main49", func_8008EA70);
 INCLUDE_ASM("asm/battle/nonmatchings/main49", func_8008F0A8);
-INCLUDE_ASM("asm/battle/nonmatchings/main49", func_8008F6E4);
+extern u8* D_800D2D28;
+extern u32 D_800D2E38[];
+extern s32 D_800CCB34__a[] asm("D_800CCB34");
+void func_8008DC34(u32 kind, u16 x, u16 y, u16 w, u16 h);
+void func_8008DE04(u32 kind, u16 x, u16 y, u16 w);
+void func_8008E430(u32 kind, u16 x, u16 y, u16 w, u16 h);
+void func_8008EA70(u32 kind, u16 x, u16 y, u16 h);
+void func_8008F0A8(u32 kind, u16 x, u16 y, u16 w, u16 h);
+
+/* Draw battle window `kind` at (x, y), w x h: with its D_800D2D28 +0xB0
+ * flag dropped, set the corners of the current buffer's background quad
+ * (POLY_G4 at block +0x3C0, 0x24 per buffer), rebuild the frame parts
+ * (func_8008DC34 .. func_8008F0A8), record the buffer at +0x5A4 and raise
+ * the flag again.  The buffer index is re-read for every corner. */
+void func_8008F6E4(u8 kind, u16 x, u16 y, u16 w, s32 h) {
+    u32 i = kind;
+    u8* blk = (u8*)D_800D2E38[i];
+
+    *(D_800D2D28 + i + 0xB0) = 0;
+    *(s16*)(blk + D_800CCB34__a[0] * 0x24 + 0x3C8) = x;
+    *(s16*)(blk + D_800CCB34__a[0] * 0x24 + 0x3CA) = y;
+    *(s16*)(blk + D_800CCB34__a[0] * 0x24 + 0x3D0) = x + w;
+    *(s16*)(blk + D_800CCB34__a[0] * 0x24 + 0x3D2) = y;
+    *(s16*)(blk + D_800CCB34__a[0] * 0x24 + 0x3D8) = x;
+    *(s16*)(blk + D_800CCB34__a[0] * 0x24 + 0x3DA) = y + h;
+    *(s16*)(blk + D_800CCB34__a[0] * 0x24 + 0x3E0) = x + w;
+    *(s16*)(blk + D_800CCB34__a[0] * 0x24 + 0x3E2) = y + h;
+    func_8008DC34(i, x, y, w, h);
+    func_8008DE04(i, x, y, w);
+    func_8008E430(i, x, y, w, h);
+    func_8008EA70(i, x, y, h);
+    func_8008F0A8(i, x, y, w, h);
+    blk[0x5A4] = *(u8*)D_800CCB34__a;
+    *(D_800D2D28 + i + 0xB0) = 1;
+}
 extern u8* D_800D2D28;
 extern u32 D_800D2E38[];
 /* Battle window rectangle (D_800D2D90), as main50's open animation reads
