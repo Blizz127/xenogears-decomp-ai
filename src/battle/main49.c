@@ -6,7 +6,46 @@ INCLUDE_ASM("asm/battle/nonmatchings/main49", func_8008CDE4);
 INCLUDE_ASM("asm/battle/nonmatchings/main49", func_8008CFB8);
 INCLUDE_ASM("asm/battle/nonmatchings/main49", func_8008D328);
 INCLUDE_ASM("asm/battle/nonmatchings/main49", func_8008D598);
-INCLUDE_ASM("asm/battle/nonmatchings/main49", func_8008DC34);
+extern u32 D_800D2E38[];
+extern u8 D_800C3E4C;
+extern s32 D_800CCB34;
+extern s32 func_80076A10(u8 glyph, u8* prims, s16 x, s16 y);
+extern void func_80076B00(u8* prim);
+
+/* Window frame corners: restart the window block's glyph count (+0x5A0)
+ * and lay the four 8x8 corner glyphs (one set per D_800C3E4C mode) at the
+ * corners of (x, y, w, h) through func_80076A10, each taking the next
+ * 0x50-byte prim pair; then func_80076B00 on the current buffer's prim of
+ * the four corner pairs. */
+void func_8008DC34(u32 kind, u16 x, u16 y, u16 w, u16 h) {
+    u8* blk;
+    u8 glyph[4];
+    s32 i;
+
+    blk = (u8*)D_800D2E38[kind & 0xFF];
+    if (D_800C3E4C != 0) {
+        glyph[0] = 0x4A;
+        glyph[1] = 0x4C;
+        glyph[2] = 0x4F;
+        glyph[3] = 0x51;
+    } else {
+        glyph[0] = 0xF0;
+        glyph[1] = 0xF2;
+        glyph[2] = 0xF5;
+        glyph[3] = 0xF7;
+    }
+    *(s32*)(blk + 0x5A0) = 0;
+    *(s32*)(blk + 0x5A0) = func_80076A10(glyph[0], blk + *(s32*)(blk + 0x5A0) * 0x50, x, y) + *(s32*)(blk + 0x5A0);
+    *(s32*)(blk + 0x5A0) =
+        func_80076A10(glyph[1], blk + *(s32*)(blk + 0x5A0) * 0x50, x + w - 8, y) + *(s32*)(blk + 0x5A0);
+    *(s32*)(blk + 0x5A0) =
+        func_80076A10(glyph[2], blk + *(s32*)(blk + 0x5A0) * 0x50, x, y + h - 8) + *(s32*)(blk + 0x5A0);
+    *(s32*)(blk + 0x5A0) =
+        func_80076A10(glyph[3], blk + *(s32*)(blk + 0x5A0) * 0x50, x + w - 8, y + h - 8) + *(s32*)(blk + 0x5A0);
+    for (i = 0; i < 4; i++) {
+        func_80076B00(blk + (i * 2 + D_800CCB34) * 0x28);
+    }
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main49", func_8008DE04);
 INCLUDE_ASM("asm/battle/nonmatchings/main49", func_8008E430);
 INCLUDE_ASM("asm/battle/nonmatchings/main49", func_8008EA70);
