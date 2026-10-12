@@ -45,7 +45,32 @@ void func_8007B424(u8** ppBoard, u8 index) {
 }
 #endif
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/main21", func_8007B4B8);
+extern u8 D_800D2E5C;
+
+/* func_8007B4B8.s: v = func_80079E7C(u16 slot (*pp)[3] of row index of
+ * D_800D3420).  For v < 3 set D_800D2E5C to 0x20 and return n + 1;
+ * otherwise call func_80079ED8(v, (*pp)[2], byte (*pp)[1] of the row's
+ * +0x10 half, 0) and return n.  As in func_8007B424, base keeps a single
+ * set and the +0x10 row is its own pointer (else CSE reuses off + base and
+ * folds the 0x10 into the load).  Declaring r first gives retail's $s2 (r)
+ * and $s3 (off); declaring off first swaps them. */
+u8 func_8007B4B8(u8** pp, u8 index, u8 n) {
+    u8 r = n;
+    u32 off = (u32)index << 6;
+    u8* base = D_800D3420;
+    u8* row;
+    u8 v;
+
+    v = func_80079E7C(*(u16*)(base + off + (*pp)[3] * 2));
+    if (v < 3) {
+        D_800D2E5C = 0x20;
+        r = n + 1;
+    } else {
+        row = base + 0x10;
+        func_80079ED8(v, (*pp)[2], (row + off)[(*pp)[1]], 0);
+    }
+    return r;
+}
 #endif
 void func_8007B578(u8** pp, u8 index) {
     u16* row = (u16*)(D_800D3420 + ((u32)index << 6));
