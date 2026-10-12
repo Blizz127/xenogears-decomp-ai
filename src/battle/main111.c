@@ -186,8 +186,8 @@ extern u8 D_800C3EB0[];
 extern void func_800223B0(u8* p, s32 v);
 extern void func_80021FE0(u8* p, s32 v);
 #ifdef XENO_PC_PORT
-/* Coexistence: decompiled and logic-faithful, but not byte-exact yet, so the
- * matching build assembles retail bytes below and the port uses this body. */
+/* Port body; the retail build compiles the byte-exact C in the #else branch.
+ */
 /* func_800BAEB8.s: for party slot a0 (pointer table at D_800C3EB0 + 0x8C8C),
  * unless its +0xAF state byte is 0x15, apply flag 0x800 (set when the slot's
  * 28-byte record byte +0xA is nonzero) through func_800223B0/func_80021FE0. */

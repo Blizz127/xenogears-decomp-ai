@@ -18,8 +18,8 @@ u32 func_800B57E4(u8* s) {
 
 #endif
 #ifdef XENO_PC_PORT
-/* Coexistence: decompiled and logic-faithful, but not byte-exact yet, so the
- * matching build assembles retail bytes below and the port uses this body. */
+/* Port body; the retail build compiles the byte-exact C in the #else branch.
+ */
 /* func_800B5854.s: refresh the task's +0x28 tick from func_800B57E4(+0x1C).
  * A rise past the old value, a drop below the +0x2C floor, a cleared +0x9E
  * marker on the target, or a +0xAF state that no longer matches +0x24 all

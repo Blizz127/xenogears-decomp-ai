@@ -18,9 +18,9 @@ extern u16 D_800C3E30;
 #if BATTLE_PART(1)
 /* func_800AF400.s: index of the lowest set bit in D_800C3E30
  * (13 when bits 0-12 are all clear). */
-/* Not yet byte-matching: the matching build assembles retail bytes for
- * this function from its own asm segment (see config/battle.yaml).  The
- * body below is kept for the port and the differential harnesses. */
+/* The retail build compiles this function's byte-exact C in
+ * mainasm_3F910.c.  The body below is kept for the port and the
+ * differential harnesses. */
 #ifdef XENO_PC_PORT
 s32 func_800AF400(void) {
     s32 bit = 0;

@@ -88,9 +88,9 @@ u32 func_800AA898(u8* p, u32 a1, u32 a2, u32 a3) {
  * return -1; else clear +0x98 (delay slot), select +0x9A from a2,
  * mirror the +0x12 halfword to +0x9E, and store a1 + *(u32*)(a1 + 0x14)
  * to +0xA0/+0xA4, returning it. */
-/* Not yet byte-matching: the matching build assembles retail bytes for
- * this function from its own asm segment (see config/battle.yaml).  The
- * body below is kept for the port and the differential harnesses. */
+/* The retail build compiles this function's byte-exact C in
+ * mainasm_3E6CC.c.  The body below is kept for the port and the
+ * differential harnesses. */
 #ifdef XENO_PC_PORT
 u32 func_800AE1BC(u8* a0, u8* a1, u32 a2) {
     u32 ret;
@@ -129,9 +129,9 @@ extern u8* D_800C4924;
  * performs the same 4-byte load (a native 8-byte load at +0xB4 would be
  * misaligned on a 64-bit host).  The a1 == 3 arm returns on its own, so the
  * halfword load and shift appear twice, as they do in retail. */
-/* Not yet byte-matching: the matching build assembles retail bytes for
- * this function from its own asm segment (see config/battle.yaml).  The
- * body below is kept for the port and the differential harnesses. */
+/* The retail build compiles this function's byte-exact C in
+ * mainasm_3E6CC.c.  The body below is kept for the port and the
+ * differential harnesses. */
 #ifdef XENO_PC_PORT
 u32 func_800AE220(u8* a0, u32 a1) {
     u8* p;
