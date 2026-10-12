@@ -266,6 +266,7 @@ func_800BB760	port arm in src/battle/mainc113.c	func_800BB760
 func_800BC2F0	generated logging stub (matched C not linked)	func_800BC2F0
 func_800BC460	generated logging stub (matched C not linked)	func_800BC460
 func_800BCD98	port arm in src/battle/mainc118.c	func_800BCD98
+func_800BCEAC	port arm in src/battle/mainc118.c	func_800BCEAC
 func_800BCFAC	port arm in src/battle/mainc118.c	func_800BCFAC
 func_800BD024	port arm in src/battle/mainc118.c	func_800BD024
 func_800BD2E4	port arm in src/battle/mainc118.c	func_800BD2E4

@@ -60,8 +60,43 @@ void func_800BCD98(u16 mask) {
         }
     }
 }
-INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BCEAC);
 #include "psyq/libgte.h"
+
+extern MATRIX D_8004FBB8;
+extern void func_80021B14(void* arg0, s32 arg1, s32 arg2, s32 arg3);
+extern void func_800B1F6C(void* model, void* buffer, void* ot, s32 a3, s32 a4, s32 a5);
+extern u32* g_GfxCurOT__a[] asm("g_GfxCurOT");
+
+/* func_800BCEAC.s: work callback -- build the sprite's local matrix
+ * (translate +0x3C, rotate +0x4C, compose with D_8004FBB8), scale it by
+ * half of 0x1000000 / (screen * 4096 / z), then draw the frame selected by
+ * the battle view index (D_800C3EB0 + 0x8C84) through func_800B1F6C.  d is
+ * reused for the scale, so it lives in the argument register $a1 as in
+ * retail (a separate variable puts d in $v1); base keeps the 0x8000 split
+ * of the view-index load. */
+void func_800BCEAC(u8* task) {
+    u8* s = *(u8**)(task + 4);
+    MATRIX m;
+    VECTOR scale;
+    s32 d;
+    u8* base;
+
+    TransMatrix(&m, (VECTOR*)(s + 0x3C));
+    RotMatrix((SVECTOR*)(s + 0x4C), &m);
+    CompMatrix(&D_8004FBB8, &m, &m);
+    d = ReadGeomScreen() << 12;
+    if (m.t[2] != 0) {
+        d /= m.t[2];
+    }
+    d = 0x1000000 / d / 2;
+    func_80021B14(&scale, d, d, d);
+    ScaleMatrixL(&m, &scale);
+    SetRotMatrix(&m);
+    SetTransMatrix(&m);
+    base = (u8*)(u32)D_800C3EB0;
+    func_800B1F6C(*(void**)(s + 0x64), ((void**)(s + 0x5C))[*(s32*)(base + 0x8000 + 0xC84)],
+                  g_GfxCurOT__a[0], 0, 0, 0);
+}
 
 typedef struct {
     u8 pad0[0x38];
