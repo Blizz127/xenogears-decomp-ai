@@ -229,6 +229,7 @@ paths = [
     "src/battle/main101.",
     "src/battle/mainl110.",
     "src/battle/main111.",
+    "src/battle/main96.",
     "src/battle/main103.",
     "src/battle_command_file1/after_controller_cdk.",
 ]

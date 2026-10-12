@@ -3,44 +3,7 @@
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/battle/nonmatchings/mainc95", func_800B6E84);
-#include "psyq/libgte.h"
-
-/* The shard burst behind func_800B6F0C (update) and main96's func_800B7160
- * (render): a [2][14][20] grid of 0x7C-byte shards at +0x3C of the task's
- * +4 block.  Each shard has a rotation (+0) and its per-tick delta (+8), a
- * position (+0x10), a double-buffered flat-textured triangle (+0x24, the
- * buffer index is D_800C3EB0 + 0x8C84), a start delay (+0x64), a 16.16
- * velocity (+0x68) and a gravity term (+0x78). */
-typedef struct {
-    u32 tag;
-    u8 r0, g0, b0, code;
-    s16 x0, y0;
-    u8 u0, v0;
-    u16 clut;
-    s16 x1, y1;
-    u8 u1, v1;
-    u16 tpage;
-    s16 x2, y2;
-    u8 u2, v2;
-    u16 pad1;
-} BattleShardPoly;
-
-typedef struct {
-    SVECTOR rot;
-    SVECTOR drot;
-    VECTOR pos;
-    s32 unk20;
-    BattleShardPoly prims[2];
-    s32 delay;
-    VECTOR vel;
-    s32 gravity;
-} BattleShard;
-
-typedef struct {
-    u8 pad[0x38];
-    s32 frame;
-    BattleShard grid[2][14][20];
-} BattleShardSet;
+#include "battle/shard.h"
 
 extern u8 D_800C3EB0[];
 extern s32 func_80021AD8(s32 c, s32 delta);
