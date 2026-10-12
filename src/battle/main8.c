@@ -1,11 +1,80 @@
 #include "common.h"
+#ifndef XENO_PC_PORT
+#include "psyq/libgpu.h"
+#endif
 
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/battle/nonmatchings/main8", func_80077990);
-INCLUDE_ASM("asm/battle/nonmatchings/main8", func_800780A8);
+extern u16 g_SystemPalette1;
+extern u16 g_SystemPalette2;
+
+/* func_800780A8.s: set up the two POLY_FT4 at the start of p -- grey
+ * (0x80) colour, opaque, unshaded, the system palette picked by n & 1 (also
+ * kept at p[0x5C]) and the 0x3C0 texture page at y = n / 2 * 13 -- and clear
+ * p[0x5D].  Retail hoists nothing out of the loop and compares the pointers
+ * signed, which the goto loop reproduces. */
+void func_800780A8(u8* p, s32 n) {
+    u8 grey = 0x80;
+    s32 half = n / 2;
+    POLY_FT4* prim;
+
+    prim = (POLY_FT4*)p;
+loop:
+    SetPolyFT4(prim);
+    prim->r0 = grey;
+    prim->g0 = grey;
+    prim->b0 = grey;
+    SetSemiTrans(prim, 0);
+    SetShadeTex(prim, 1);
+    p[0x5C] = n & 1;
+    prim->clut = p[0x5C] ? g_SystemPalette2 : g_SystemPalette1;
+    prim->tpage = GetTPage(0, 0, 0x3C0, half * 13);
+    prim++;
+    if ((s32)prim < (s32)(p + 0x50)) {
+        goto loop;
+    }
+    p[0x5D] = 0;
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main8", func_8007819C);
-INCLUDE_ASM("asm/battle/nonmatchings/main8", func_80078310);
+extern u8 D_800D2D24[];
+extern u8 D_800D3294;
+extern u8* D_800D2F5C;
+extern void func_80026338(u8*, s32, s32*, s32*, s32*, s32*, s32*, s32*);
+
+/* func_80078310.s: for each i in 0..2 whose D_800D2D24[i] is not 0x7F, open
+ * the TIM at base + kind * 0x460 (kind 0xB for i 1 and 2 while D_800D3294 is
+ * set), fetch the six words of D_800D2F5C entry arg1 + i, place the CLUT at
+ * words 2/3 and the pixels at words 4/5 (x shifted by i * 6), and upload both.
+ * The words sit in one flat array, as retail's per-word offset registers
+ * show. */
+void func_80078310(u8* base, u8 arg1) {
+    TIM_IMAGE tim;
+    s32 slot[18];
+    s32 i;
+    u8 kind;
+
+    for (i = 0; i < 3; i++) {
+        if (D_800D2D24[i] != 0x7F) {
+            kind = D_800D2D24[i];
+            if (D_800D3294 != 0 && (i == 1 || i == 2)) {
+                kind = 0xB;
+            }
+            OpenTIM((u_long*)(base + kind * 0x460));
+            ReadTIM(&tim);
+            func_80026338(D_800D2F5C, arg1 + i, &slot[i * 6 + 0], &slot[i * 6 + 1],
+                          &slot[i * 6 + 2], &slot[i * 6 + 3], &slot[i * 6 + 4],
+                          &slot[i * 6 + 5]);
+            tim.crect->x = slot[i * 6 + 2];
+            tim.crect->y = slot[i * 6 + 3];
+            tim.prect->x = slot[i * 6 + 4] + i * 6;
+            tim.prect->y = slot[i * 6 + 5];
+            LoadImage(tim.crect, tim.caddr);
+            LoadImage(tim.prect, tim.paddr);
+            DrawSync(0);
+        }
+    }
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main8", func_80078508);
 INCLUDE_ASM("asm/battle/nonmatchings/main8", func_800785D4);
 INCLUDE_ASM("asm/battle/nonmatchings/main8", func_80078658);
