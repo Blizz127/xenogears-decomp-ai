@@ -109,7 +109,59 @@ void func_800BA614(u8* rec) {
     *(s32*)(rec + 0x10) = a2;
     func_800BA59C(rec, heading);
 }
-INCLUDE_ASM("asm/battle/nonmatchings/mainl110", func_800BA768);
+/* func_800BA768.s: start a jump towards the target (+0xA0..+0xA4) taking
+ * n = -(2 * vy / g) frames (+0x10, +0x1C): truncate x/y/z to whole units,
+ * planar speed +0x18 = (distance << 16) / n, correct the vertical speed for
+ * the clamped ground height there, set heading/velocity (func_800BA59C) and
+ * refresh the sprite (func_80022B2C).  As in func_800BA614, v goes on the
+ * left of the clamp test.  d[1] = 0 is written after d[2] (in field order it
+ * is one instruction longer) and the height difference has its own variable
+ * (reusing t is 14 instructions off). */
+extern void func_80022B2C(u8* rec);
+
+void func_800BA768(u8* rec) {
+    s32 d[4];
+    s16 v[4];
+    s32 out[4];
+    s32 r;
+    s32 frames;
+    s32 heading;
+    s32 len;
+    s32 t;
+    s32 dy;
+
+    t = (*(s32*)(rec + 0x10) << 1) / *(s32*)(rec + 0x1C);
+    *(u32*)(rec + 0) &= 0xFFFF0000;
+    *(u32*)(rec + 4) &= 0xFFFF0000;
+    *(u32*)(rec + 8) &= 0xFFFF0000;
+    d[0] = *(s16*)(rec + 0xA0) - *(s16*)(rec + 2);
+    d[2] = *(s16*)(rec + 0xA4) - *(s16*)(rec + 0xA);
+    d[1] = 0;
+    frames = -t;
+    heading = -ratan2(d[2], d[0]);
+    Square0(d, d);
+    len = SquareRoot0(d[0] + d[2]);
+    if (frames != 0) {
+        *(s32*)(rec + 0x18) = (len << 16) / frames;
+    } else {
+        *(s32*)(rec + 0x18) = 0;
+    }
+    func_80021B04(v, *(s16*)(rec + 0xA0), *(s16*)(rec + 0xA2), *(s16*)(rec + 0xA4));
+    r = func_800A5914((s32)v, *(u32*)(rec + 0x78), 4);
+    if (r < 0) {
+        r = func_800A579C((s32)v);
+    }
+    func_800A5870((s32)v, r, (s32)out);
+    if (v[1] > *(s16*)(rec + 0xA2)) {
+        v[1] = *(u16*)(rec + 0xA2);
+    }
+    dy = (v[1] << 16) - *(s32*)(rec + 4);
+    if (frames != 0) {
+        *(s32*)(rec + 0x10) += dy / frames;
+    }
+    func_800BA59C(rec, heading);
+    func_80022B2C(rec);
+}
 #endif
 
 
