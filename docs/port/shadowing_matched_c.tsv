@@ -273,6 +273,7 @@ func_800BEDE8	port arm spanning the body in src/battle/mainc124.c	func_800BEDE8
 func_800BEEB4	port arm in src/battle/main125.c	func_800BEEB4
 func_800BEF24	port arm in src/battle/main125.c	func_800BEF24
 func_800BEFF4	port arm in src/battle/main125.c	func_800BEFF4
+func_800BF2B8	port arm in src/battle/mainc126.c	func_800BF2B8
 func_800BF720	port arm spanning the body in src/battle/main128.c	func_800BF720
 func_800BF8CC	port arm in src/battle/mainc131.c	func_800BF8CC
 func_800BFBA0	generated logging stub (matched C not linked)	func_800BFBA0
