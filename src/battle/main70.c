@@ -18,9 +18,6 @@ s32 func_800AA514(s16 arg0, s16 arg1, s32 arg2);
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/battle/nonmatchings/main70", func_800A5EB4);
-INCLUDE_ASM("asm/battle/nonmatchings/main70", func_800A6444);
-INCLUDE_ASM("asm/battle/nonmatchings/main70", func_800A64E4);
-INCLUDE_ASM("asm/battle/nonmatchings/main70", func_800A6884);
 typedef struct {
     u8 active;
     u8 kind;
@@ -29,6 +26,30 @@ typedef struct {
     s8 g;
     s8 b;
 } BattleClutFade;
+extern u8 D_800D3611[];
+extern BattleClutFade D_800C3AAC[];
+
+/* func_800A6444.s: set CLUT fade slot i (< 4): with kind >= 0, raise the
+ * D_800D3611 request flag and store active = 1, kind, factor and the r/g/b
+ * steps; a negative kind clears the slot's active flag. */
+void func_800A6444(s32 i, s32 kind, s32 factor, s32 r, s32 g, s32 b) {
+    if (i < 4) {
+        if (kind >= 0) {
+            D_800D3611[0] = 1;
+            D_800C3AAC[i].active = 1;
+            D_800C3AAC[i].kind = kind;
+            D_800C3AAC[i].factor = factor;
+            D_800C3AAC[i].r = r;
+            D_800C3AAC[i].g = g;
+            D_800C3AAC[i].b = b;
+        } else {
+            D_800C3AAC[i].active = 0;
+        }
+    }
+}
+
+INCLUDE_ASM("asm/battle/nonmatchings/main70", func_800A64E4);
+INCLUDE_ASM("asm/battle/nonmatchings/main70", func_800A6884);
 
 typedef struct {
     u8 data[0x88];
