@@ -2,13 +2,37 @@
 
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/mainc131", func_800BF85C);
-#endif
-#ifndef XENO_PC_PORT
 extern s16 D_800D3678;
 #endif
 #ifndef XENO_PC_PORT
 extern u32 D_800D363C[];
+#endif
+#ifndef XENO_PC_PORT
+extern u8 D_800C3EB0[];
+extern u32 D_800C3E1C[];
+extern u16 D_800D3634[];
+
+/* Make slot `from`'s record current (D_800C3E1C), point its +0x74 link at
+ * slot `to`'s record and restart the D_800D363C chain there.  The slot table
+ * sits at D_800C3EB0 + 0x8C8C; the base is a local so the 0x8C8C stays out
+ * of the symbol (ori + addu, as retail).  The globals are arrays so their
+ * stores split into lui + %lo.  The link is read before the D_800D3634
+ * store and the table entry is read again for the chain head (found by a
+ * permuter run). */
+void func_800BF85C(u32 from, u32 to) {
+    u8* base = D_800C3EB0;
+    u8* rec = *(u8**)(base + from * 4 + 0x8C8C);
+    u32 link;
+
+    if (rec != NULL) {
+        D_800C3E1C[0] = (u32)rec;
+        link = *(u32*)(base + to * 4 + 0x8C8C);
+        D_800D3634[0] = 1 << to;
+        *(u32*)(rec + 0x74) = link;
+        D_800D363C[0] = *(u32*)(base + to * 4 + 0x8C8C);
+        D_800D363C[1] = 0;
+    }
+}
 #endif
 #ifndef XENO_PC_PORT
 /* The count is read through an array view so gcc splits each load into
