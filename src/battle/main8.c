@@ -5,7 +5,113 @@
 
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/main8", func_80077990);
+extern u8* D_800D2F5C;
+extern void func_80026338(u8*, s32, s32*, s32*, s32*, s32*, s32*, s32*);
+extern u8* D_800C3EA4;
+extern u8* D_800D2D28;
+
+#define M8_STRIP(ui, k) (((RECT*)((ui) + 0x8950))[k])
+#define M8_WORD(base, off) ((s32*)((base) + (off)))
+/* D_800D2F5C entry `id` into the six words at D_800C3EA4 + off. */
+#define M8_FETCH(id, off)                                                     \
+    func_80026338(D_800D2F5C, id, M8_WORD(D_800C3EA4, (off)),                \
+                  M8_WORD(D_800C3EA4, (off) + 4), M8_WORD(D_800C3EA4, (off) + 8), \
+                  M8_WORD(D_800C3EA4, (off) + 0xC), M8_WORD(D_800C3EA4, (off) + 0x10), \
+                  M8_WORD(D_800C3EA4, (off) + 0x14))
+#define M8_TPAGE(ui)                                                          \
+    GetTPage(*(s32*)((ui) + 0xA238), 0, *(s32*)((ui) + 0xA244), *(s32*)((ui) + 0xA248))
+
+/* func_80077990.s: set up four 0xC6 x 1 VRAM strips in the D_800C3EA4 block
+ * (RECTs at +0x8950, y from the +0xA240 halfword) and StoreImage each one
+ * four times into its 0x630-byte buffer (+0x8970 + k * 0x630, 0x18C-byte
+ * steps).  Fill the six-word records at +0xA24C from D_800D2F5C entries
+ * 0x4B, 0x50, 0x4D and 0x4E, set six RECTs at D_800D2D28 from them, and give
+ * the four DR_MODEs at +0x8908 the +0xA238 texture page with texture window
+ * D_800D2D28[1] (first two) or D_800D2D28[0] (last two). */
+void func_80077990(void) {
+    u8* ui = D_800C3EA4;
+    u8* buf0 = ui + 0x8970;
+    u8* buf1 = ui + 0x8FA0;
+    u8* buf2 = ui + 0x95D0;
+    u8* buf3 = ui + 0x9C00;
+    RECT* r;
+    u8* p;
+
+    M8_STRIP(ui, 0).x = 1;
+    M8_STRIP(ui, 0).y = *(u16*)(ui + 0xA240) - 1;
+    M8_STRIP(ui, 0).w = 0xC6;
+    M8_STRIP(ui, 0).h = 1;
+    M8_STRIP(ui, 1).x = 1;
+    M8_STRIP(ui, 1).y = *(u16*)(ui + 0xA240);
+    M8_STRIP(ui, 1).w = 0xC6;
+    M8_STRIP(ui, 1).h = 1;
+    M8_STRIP(ui, 2).x = 1;
+    M8_STRIP(ui, 2).y = *(u16*)(ui + 0xA240) - 2;
+    M8_STRIP(ui, 2).w = 0xC6;
+    M8_STRIP(ui, 2).h = 1;
+    M8_STRIP(ui, 3).x = 1;
+    M8_STRIP(ui, 3).y = *(u16*)(ui + 0xA240) - 3;
+    M8_STRIP(ui, 3).w = 0xC6;
+    M8_STRIP(ui, 3).h = 1;
+    StoreImage(&M8_STRIP(D_800C3EA4, 0), (u_long*)buf0);
+    StoreImage(&M8_STRIP(D_800C3EA4, 1), (u_long*)buf1);
+    StoreImage(&M8_STRIP(D_800C3EA4, 2), (u_long*)buf2);
+    StoreImage(&M8_STRIP(D_800C3EA4, 3), (u_long*)buf3);
+    StoreImage(&M8_STRIP(D_800C3EA4, 0), (u_long*)(buf0 + 0x18C));
+    StoreImage(&M8_STRIP(D_800C3EA4, 1), (u_long*)(buf1 + 0x18C));
+    StoreImage(&M8_STRIP(D_800C3EA4, 2), (u_long*)(buf2 + 0x18C));
+    StoreImage(&M8_STRIP(D_800C3EA4, 3), (u_long*)(buf3 + 0x18C));
+    StoreImage(&M8_STRIP(D_800C3EA4, 0), (u_long*)(buf0 + 0x318));
+    StoreImage(&M8_STRIP(D_800C3EA4, 1), (u_long*)(buf1 + 0x318));
+    StoreImage(&M8_STRIP(D_800C3EA4, 2), (u_long*)(buf2 + 0x318));
+    StoreImage(&M8_STRIP(D_800C3EA4, 3), (u_long*)(buf3 + 0x318));
+    StoreImage(&M8_STRIP(D_800C3EA4, 0), (u_long*)(buf0 + 0x4A4));
+    StoreImage(&M8_STRIP(D_800C3EA4, 1), (u_long*)(buf1 + 0x4A4));
+    StoreImage(&M8_STRIP(D_800C3EA4, 2), (u_long*)(buf2 + 0x4A4));
+    StoreImage(&M8_STRIP(D_800C3EA4, 3), (u_long*)(buf3 + 0x4A4));
+    M8_FETCH(0x4B, 0xA24C);
+    M8_FETCH(0x50, 0xA264);
+    M8_FETCH(0x4D, 0xA27C);
+    M8_FETCH(0x4E, 0xA294);
+    r = (RECT*)D_800D2D28;
+    p = D_800C3EA4;
+    r[0].x = r[0].y = 0;
+    r[0].w = r[0].h = 0x100;
+    *(s32*)(p + 0xA25C) = 0x3C0;
+    *(s32*)(p + 0xA274) = 0x3C8;
+    *(s32*)(p + 0xA260) = 0x34;
+    *(s32*)(p + 0xA278) = 0x34;
+    r[1].x = (*(u16*)(p + 0xA244) & 0x3F) * 2;
+    r[1].y = *(u16*)(p + 0xA248);
+    r[1].w = 0x100;
+    r[1].h = 0x100;
+    r[2].x = (*(u16*)(p + 0xA25C) & 0x3F) * 2;
+    r[2].y = *(u16*)(p + 0xA260);
+    r[2].w = 8;
+    r[2].h = 0x10;
+    r[3].x = (*(u16*)(p + 0xA274) & 0x3F) * 2;
+    r[3].y = *(u16*)(p + 0xA278);
+    r[3].w = 8;
+    r[3].h = 0x10;
+    r[4].x = (*(u16*)(p + 0xA28C) & 0x3F) * 2 + 0xE;
+    r[4].y = *(u16*)(p + 0xA290);
+    r[4].w = 0x10;
+    r[4].h = 8;
+    r[5].x = (*(u16*)(p + 0xA2A4) & 0x3F) * 2 + 0xE;
+    r[5].y = *(u16*)(p + 0xA2A8);
+    r[5].w = 0x10;
+    r[5].h = 8;
+    SetDrawMode((DR_MODE*)(D_800C3EA4 + 0x8908), 0, 0, M8_TPAGE(D_800C3EA4),
+                (RECT*)(D_800D2D28 + 8));
+    SetDrawMode((DR_MODE*)(D_800C3EA4 + 0x8914), 0, 0, M8_TPAGE(D_800C3EA4),
+                (RECT*)(D_800D2D28 + 8));
+    SetDrawMode((DR_MODE*)(D_800C3EA4 + 0x8920), 0, 0, M8_TPAGE(D_800C3EA4), (RECT*)D_800D2D28);
+    SetDrawMode((DR_MODE*)(D_800C3EA4 + 0x892C), 0, 0, M8_TPAGE(D_800C3EA4), (RECT*)D_800D2D28);
+}
+#undef M8_STRIP
+#undef M8_WORD
+#undef M8_FETCH
+#undef M8_TPAGE
 extern u16 g_SystemPalette1;
 extern u16 g_SystemPalette2;
 
@@ -39,8 +145,6 @@ loop:
 INCLUDE_ASM("asm/battle/nonmatchings/main8", func_8007819C);
 extern u8 D_800D2D24[];
 extern u8 D_800D3294;
-extern u8* D_800D2F5C;
-extern void func_80026338(u8*, s32, s32*, s32*, s32*, s32*, s32*, s32*);
 
 /* func_80078310.s: for each i in 0..2 whose D_800D2D24[i] is not 0x7F, open
  * the TIM at base + kind * 0x460 (kind 0xB for i 1 and 2 while D_800D3294 is
