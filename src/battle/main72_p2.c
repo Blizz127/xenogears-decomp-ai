@@ -73,9 +73,54 @@ s32 func_800AAA20(u8* obj, s32 id, s32 steps, s32 a3, s32 a4) {
 
 INCLUDE_ASM("asm/battle/nonmatchings/main72_p2", func_800AAB34);
 INCLUDE_ASM("asm/battle/nonmatchings/main72_p2", func_800AAD54);
-INCLUDE_ASM("asm/battle/nonmatchings/main72_p2", func_800ADF1C);
 extern u8* func_800A2330(u8* pool);
 
+/* Retarget the object's rotation (+0x54/+0x56/+0x58) to (rx, ry, rz): with
+ * fewer than two steps set it at once (and raise +5); otherwise, when it
+ * changes, fill the +0x70 pool record as a type-3 turn from the current angles
+ * by the wrapped (-0x800..0x7FF) deltas over `steps`. */
+void func_800ADF1C(u8* pool, u8* obj, s32 steps, s32 rx, s32 ry, s32 rz) {
+    u8* e;
+
+    if (steps < 2) {
+        *(s16*)(obj + 0x54) = rx;
+        *(s16*)(obj + 0x56) = ry;
+        *(s16*)(obj + 0x58) = rz;
+        obj[5] = 1;
+        return;
+    }
+    if (*(s16*)(obj + 0x54) == rx && *(s16*)(obj + 0x56) == ry && *(s16*)(obj + 0x58) == rz) {
+        return;
+    }
+    e = *(u8**)(obj + 0x70) ?: func_800A2330(pool);
+    if (e != NULL) {
+        e[0] = 1;
+        e[2] = 3;
+        e[1] = 0;
+        e[3] = 0xFE;
+        *(u16*)(e + 4) = *(u16*)(obj + 0x54);
+        *(u16*)(e + 6) = *(u16*)(obj + 0x56);
+        *(u16*)(e + 8) = *(u16*)(obj + 0x58);
+        rx = (rx - *(s16*)(obj + 0x54)) & 0xFFF;
+        if (rx >= 0x800) {
+            rx -= 0x1000;
+        }
+        *(u16*)(e + 0xA) = rx;
+        ry = (ry - *(s16*)(obj + 0x56)) & 0xFFF;
+        if (ry >= 0x800) {
+            ry -= 0x1000;
+        }
+        *(u16*)(e + 0xC) = ry;
+        rz = (rz - *(s16*)(obj + 0x58)) & 0xFFF;
+        if (rz >= 0x800) {
+            rz -= 0x1000;
+        }
+        *(u16*)(e + 0xE) = rz;
+        *(u16*)(e + 0x10) = 0;
+        *(u16*)(e + 0x12) = steps;
+        *(u8**)(obj + 0x70) = e;
+    }
+}
 /* Take (once) the object's +0x70 pool record (func_800A2330 from `pool`) and
  * fill it like func_800B0164's: type 1, kind + 7, 0xFE, then the distance from
  * the object's +0x5C position to (x, y, z) + 1, a3, arg4, the target point
