@@ -2,7 +2,65 @@
 
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/main101", func_800B8098);
+extern u8 D_800D36B8[];
+extern void func_800B8284(void);
+extern void func_8001BBAC(void);
+extern void ArchiveCdDataSync(s32 mode);
+extern void func_801E8588(void);
+extern void func_801E91E8(void);
+extern void func_801E9594(void);
+extern void func_801E893C(void);
+extern void func_800B7870(void);
+extern void func_800A8B0C(void);
+extern u8 D_8005949C[];
+extern s32 D_80059520[];
+extern s32 D_80059470[];
+extern u8 D_800CCB94[];
+extern u8 D_800C4A39[];
+extern u8 D_800C3EB0__b[] asm("D_800C3EB0");
+extern u8 func_801E7210(u8* a0, s32 a1, s32 a2, u8* a3, u8* a4, u8* a5);
+extern void func_800A5E9C(u8* a0, u8* a1);
+
+/* func_800B8098.s: battle start-up for `mode` (kept in D_800D36B8): set up
+ * the display (func_800B8284) and run func_8001BBAC; modes 1-4 sync the CD
+ * and call that mode's entry (func_801E8588, func_801E91E8, func_801E9594,
+ * func_801E893C), any other mode runs func_800B7870.  Then sync the CD again,
+ * reset the actor slots (func_800A8B0C), store func_801E7210's result at
+ * D_800C3EB0 + 0xB88 and call func_800A5E9C.  The switch table
+ * (jtbl_80070A10) comes from this TU's .rodata, which config/battle.yaml
+ * places at its retail address. */
+void func_800B8098(u32 mode) {
+    D_800D36B8[0] = mode;
+    func_800B8284();
+    func_8001BBAC();
+    switch (mode) {
+    case 1:
+        ArchiveCdDataSync(0);
+        func_801E8588();
+        break;
+    case 2:
+        ArchiveCdDataSync(0);
+        func_801E91E8();
+        break;
+    case 3:
+        ArchiveCdDataSync(0);
+        func_801E9594();
+        break;
+    case 4:
+        ArchiveCdDataSync(0);
+        func_801E893C();
+        break;
+    case 0:
+    case 5:
+    default:
+        func_800B7870();
+        break;
+    }
+    ArchiveCdDataSync(0);
+    func_800A8B0C();
+    D_800C3EB0__b[0xB88] = func_801E7210(D_8005949C, D_80059520[0], D_80059470[0], D_800CCB94, D_800CCB94 + 0x20, D_800C4A39);
+    func_800A5E9C(D_800C4A39, D_800C3EB0__b + 0x4BF9);
+}
 extern void SetDispMask(int mask);
 extern void SoundFreeWdsEntry(s32);
 extern void func_80021B04(void*, s16, s16, s16);

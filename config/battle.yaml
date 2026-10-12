@@ -71,6 +71,8 @@ segments:
       - [0x14C, rodata]
       - [0x520, .rodata, main35_p1]  # jtbl_80070010 (func_8008115C)
       - [0x540, rodata]
+      - [0xF20, .rodata, main101]    # jtbl_80070A10 (func_800B8098)
+      - [0xF38, rodata]
       - [0x133C, c, mainasm_133C]
       # The retail overlay interleaves still-assembly functions with C runs.
       # INCLUDE_ASM expands to a file-scope __asm__ block and cc1 emits every
