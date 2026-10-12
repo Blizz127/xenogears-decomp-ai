@@ -220,8 +220,26 @@ void func_80078310(u8* base, u8 arg1) {
 INCLUDE_ASM("asm/battle/nonmatchings/main8", func_80078508);
 INCLUDE_ASM("asm/battle/nonmatchings/main8", func_800785D4);
 INCLUDE_ASM("asm/battle/nonmatchings/main8", func_80078658);
-INCLUDE_ASM("asm/battle/nonmatchings/main8", func_800787E0);
 #endif
+#ifndef XENO_PC_PORT
+extern u8* D_800C3EAC;
+extern u8 D_800C400B[];
+extern u8 D_800C402F[];
+extern u8 D_800C4022[];
+#endif
+/* Byte-exact under gcc 2.6.3 (BattleGcc263); the port compiles the same
+ * body (shaped like the matched func_8007887C). */
+/* func_800787E0.s: append a 0xF7 entry -- colour b, halfword a -- at the
+ * D_800C3EAC+0x2DA cursor and bump the cursor. */
+void func_800787E0(u8 a, u8 b) {
+    u8* p;
+
+    D_800C400B[D_800C3EAC[0x2DA] * 72] = b;
+    D_800C402F[D_800C3EAC[0x2DA] * 72] = 0xF7;
+    p = D_800C3EAC;
+    *(u16*)(D_800C4022 + p[0x2DA] * 72) = a;
+    p[0x2DA] = p[0x2DA] + 1;
+}
 #ifndef XENO_PC_PORT
 extern u8 D_800C3E8C;
 #endif
@@ -379,15 +397,4 @@ void func_80078658(u8 a, u8 b) {
     p[0x2DA] = p[0x2DA] + 1;
 }
 
-/* func_800787E0.s: append a 0xF7 entry -- colour b, halfword a -- at the
- * D_800C3EAC+0x2DA cursor and bump the cursor. */
-void func_800787E0(u8 a, u8 b) {
-    u8* p;
-
-    D_800C400B[D_800C3EAC[0x2DA] * 72] = b;
-    D_800C402F[D_800C3EAC[0x2DA] * 72] = 0xF7;
-    p = D_800C3EAC;
-    *(u16*)(D_800C4022 + p[0x2DA] * 72) = a;
-    p[0x2DA] = p[0x2DA] + 1;
-}
 #endif
