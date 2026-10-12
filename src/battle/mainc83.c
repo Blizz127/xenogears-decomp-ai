@@ -27,7 +27,605 @@ void func_800B3C74(Obj** task) {
 
 INCLUDE_ASM("asm/battle/nonmatchings/mainc83", func_800B3CD4);
 INCLUDE_ASM("asm/battle/nonmatchings/mainc83", func_800B3E04);
-INCLUDE_ASM("asm/battle/nonmatchings/mainc83", func_800B3F04);
+#include "psyq/libgte.h"
+
+/* 4-bit battle slot of an actor record: +0xAC bits 0-1 above +0xA8 bits 30-31.
+ * The statement expression keeps retail's order (+0xA8 half first) and stops
+ * a narrow destination from shortening the +0xAC load. */
+#define B3F04_ACTOR_SLOT(a) \
+    ({ u32 hi_ = *(u32*)((a) + 0xA8) >> 30; ((*(u32*)((a) + 0xAC) & 3) << 2) | hi_; })
+
+typedef struct {
+    u8 unk0[6];
+    u8 unk6;
+    u8 unk7[7];
+    u16 unkE;
+    u8 unk10[0xC];
+} B3F04SlotRow;
+extern B3F04SlotRow D_800C3EB0__slot[] asm("D_800C3EB0");
+
+typedef struct {
+    u8 unk0[4];
+    SVECTOR eye;
+    SVECTOR at;
+} B3F04Camera;
+
+typedef struct {
+    u8 pad[0x1C];
+    s32 unk1C;
+} B3F04Actor;
+
+extern u8 D_800C3EB0[];
+/* small-data scalar: retail loads it with the assembler's lui/lw macro */
+extern int D_80010000;
+extern u8 D_80059198[];
+extern u8* D_8005919C[];
+extern s16 D_80059454[];
+extern u8 D_800C3564[];
+extern u8* D_800C3568[];
+extern u8 D_800C35D4[];
+extern u8 D_800C3621[];
+extern u8 D_800C3622[];
+extern u16 D_800C3626[];
+extern u8 D_800C3664[];
+extern u8 D_800C3688[];
+extern u8 D_800C372C[];
+extern u8 D_800C3CAC[];
+extern u8 D_800C3CB0[];
+extern u8* D_800C3E1C[];
+extern s32 D_800C3E54[];
+extern u8 D_800C492A[];
+extern s16 D_800D2D4C[];
+extern B3F04Camera D_800D309C;
+extern s16 D_800D3354[];
+extern s16 D_800D335C[];
+extern u16 D_800D3634[];
+extern u8 D_800D3638[];
+extern s16 D_800D36BC[];
+
+extern void func_8001CE74(u8* task);
+extern u8* func_8001D0A4(u8* task, void* callback);
+extern u8* func_8001D164(void* callback);
+extern void func_8001D4E8(u8* actor);
+extern u8* func_8001FBA4(u8* actor, u8* args);
+extern void func_80021FE0(u8* actor, s32 v);
+extern void func_800222BC(u8* actor, s32 anim);
+extern void func_800245D8(u32 a0, u32 a1);
+extern void func_80039DB8(s32 id);
+extern void func_80039E60(s32 id);
+extern void func_80039EC4(s32 id, s32 ch);
+extern void func_8003A14C(s32 id);
+extern void func_8003A89C(s32 a0, s32 a1, s32 a2);
+extern void func_800AA788(u32 v);
+extern void func_800B3E04(void);
+void func_800B4EDC(u8* task);
+extern void func_800B5588(void);
+extern void func_800B572C(u8* actor, u8* slot);
+extern void func_800B5B3C(u8* task);
+extern void func_800B5C18(u8* actor, u8* args);
+extern void func_800B5DC4(u8* actor);
+extern void func_800B5FBC(u8* actor, u8* args);
+extern void func_800B61B0(u8* actor, u8* args);
+extern void func_800B61F8(u8* actor, u8* args);
+extern void func_800B626C(u8* actor, u8* args);
+extern void func_800B62C8(u8* actor, u8* args);
+extern void func_800B639C(u8* actor, u8* args);
+extern void func_800B63F0(u8* actor, u8* args);
+extern void func_800B6438(u8* actor, u8* args);
+extern void func_800B6464(u8* actor, u8* args);
+extern void func_800B64D4(u8* actor, u8* args);
+extern void func_800B6518(u8* actor, u8* args);
+extern void func_800B65B0(u8* actor, u8* args);
+extern void func_800B6808(u8* actor, u8* args);
+extern void func_800B6930(u8* actor, u8* args);
+extern void func_800B6990(u8* p, u8* args);
+extern void func_800B69E4(u8* p, u8* args);
+extern void func_800B6A50(u8* actor, u8* args);
+extern void func_800B6A7C(u8* actor, u8* args);
+extern void func_800B6B98(u8* actor, u8* args);
+extern void func_800B6BFC(u8* actor, u8* args);
+extern void func_800B6C44(u8* actor, u8* args);
+extern void func_800B6C98(u8* actor, u8* args);
+extern void func_800B6CEC(u8* actor, u8* args);
+extern void func_800B6DC0(u8* actor, u8* args);
+extern void func_800B6E84(u8* actor, u8* args);
+extern void func_800BA768(u8* actor);
+extern void func_800BA8F4(u8* actor);
+extern void func_800BC404(u32 mask);
+extern void func_800BD1FC(u32 slot);
+extern void func_800BF730(u8* actor);
+extern void func_800BF8CC(u8* actor);
+extern void func_801FC6FC(u8* actor, u8* args);
+extern void func_801FC7B0(u8* actor, u8* args);
+extern void func_801FC898(void);
+
+/* Battle actor script command: run command `cmd` (1..0x6B) on the actor
+ * record with the command's argument bytes `args`.  Covers animation picks
+ * (0x68/0x69), +0x3C/+0x40/+0xAC/+0xB0 flag bits, velocity set/add from
+ * args[0] scaled by +0x82 (0x21/0x22/0x28/0x29/0x2A/0x2B), packed-id cues
+ * (args[0] | bank id << 16, the bank from the actor's +0x50 record or
+ * D_8005919C; 0x4D/0x4E/0x4F/0x52), battle-wide flags, the waits that rewind
+ * the script pointer (+0x64 -= 2) until the camera settles (0x67) or until
+ * D_800D36BC is non-zero, taking one count (0x50), the jump toward the +0x74
+ * target (0x61) and slot-mask broadcasts to func_800BC404
+ * (0x06/0x07/0x41/0x55/0x65).  Values outside 1..0x6B do nothing. */
+void func_800B3F04(u8* actor, s32 cmd, u8* args) {
+    s32 unused[10]; /* 40 bytes of unused stack, as retail */
+    VECTOR a;
+    VECTOR b;
+    u8* tgt;
+    u8* task;
+    s32 d;
+    s32 m;
+    s32 slot;
+    u32 hi;
+    u8 k;
+
+    switch (cmd) {
+    case 0x6B:
+        func_800B3E04();
+        break;
+    case 0x6A:
+        D_800C492A[0] = 1;
+        D_800C35D4[0] = 0;
+        func_8003A89C(D_800C3E54[0], 0, 0x78);
+        break;
+    case 0x69:
+        if ((*(u32*)(actor + 0xB0) >> 10) & 1) {
+            func_800222BC(actor, *(s32*)(actor + 0x4C));
+            *(u32*)(actor + 0xB0) |= 0x400;
+        } else {
+            func_800222BC(actor, *(s32*)(actor + 0x48));
+            *(u32*)(actor + 0xB0) &= ~0x400;
+        }
+        break;
+    case 0x68:
+        if (*(s8*)(actor + 0xAF) < 0) {
+            func_800222BC(actor, *(s32*)(actor + 0x4C));
+            *(u32*)(actor + 0xB0) |= 0x400;
+        } else {
+            func_800222BC(actor, *(s32*)(actor + 0x48));
+            *(u32*)(actor + 0xB0) &= ~0x400;
+        }
+        break;
+    case 0x66:
+        D_800C3688[0] = 1;
+        break;
+    case 0x64:
+        *(u32*)(actor + 0xB0) |= 0x200;
+    case 0x63:
+        if (D_80059454[0] > 0x200) {
+            *(s16*)(actor + 0x3A) = D_80059454[0];
+            *(s32*)(actor + 0x40) = (*(s32*)(actor + 0x40) & ~0x1F00) | 0x300;
+            *(s32*)(actor + 0x3C) |= 0x10000000;
+        }
+        break;
+    case 0x62:
+        func_800BD1FC(B3F04_ACTOR_SLOT(actor));
+        break;
+    case 0x61:
+        *(s32*)(actor + 4) = (*(s16*)(actor + 0x84) - 1) << 16;
+        tgt = *(u8**)(actor + 0x74);
+        d = (s8)args[0] * *(s16*)(actor + 0x2C) / 4096;
+        if ((*(s32*)(tgt + 0) >> 16) == D_800C3EB0__slot[B3F04_ACTOR_SLOT(tgt)].unkE) {
+            if (!((*(u32*)(actor + 0xAC) >> 2) & 1)) {
+                d = -d;
+            }
+        } else if ((*(s32*)(tgt + 0) >> 16) < D_800C3EB0__slot[B3F04_ACTOR_SLOT(tgt)].unkE) {
+            d = -d;
+        }
+        *(s16*)(actor + 0xA0) = (*(s32*)(tgt + 0) >> 16) + d;
+        *(s16*)(actor + 0xA4) = *(s32*)(tgt + 8) >> 16;
+        *(s16*)(actor + 0xA2) = 0;
+        func_800BA768(actor);
+        break;
+    case 0x5F:
+        D_800C3564[0] = 1;
+        break;
+    case 0x60:
+        D_800C3564[0] = B3F04_ACTOR_SLOT(actor) + 2;
+        break;
+    case 0x59:
+        D_800D3638[0] = 0;
+        break;
+    case 0x5A:
+        D_800D3638[0] = 1;
+        break;
+    case 0x57:
+        func_800AA788(1);
+        break;
+    case 0x58:
+        func_800AA788(0);
+        break;
+    case 0x56:
+        if (D_800C3622[0] != 0) {
+            hi = *(u32*)(actor + 0xA8) >> 30;
+            slot = ((*(u32*)(actor + 0xAC) & 3) << 2) | hi;
+            k = D_800C3EB0__slot[slot].unk6;
+            if (k == 9) {
+                k = 2;
+            }
+            if (k == 10) {
+                k = 6;
+            }
+            if (k == 8) {
+                k = 15;
+            }
+            if (!((D_800C3626[0] >> slot) & 1)) {
+                D_800C3626[0] |= 1 << slot;
+                func_80039E60((k + 0x52) | (*(u16*)(D_8005919C[0] + 0x14) << 16));
+            }
+        }
+        break;
+    case 0x54:
+        func_801FC898();
+        break;
+    case 0x4F:
+        if (*(u8**)(actor + 0x50) != NULL) {
+            func_80039DB8(args[0] | (*(u16*)(*(u8**)(actor + 0x50) + 0x14) << 16));
+        }
+        break;
+    case 0x52:
+        if (*(u8**)(actor + 0x50) != NULL) {
+            func_80039EC4(args[0] | (*(u16*)(*(u8**)(actor + 0x50) + 0x14) << 16), args[1]);
+        }
+        break;
+    case 0x4D:
+        if (*(u8**)(actor + 0x50) != NULL) {
+            func_8003A14C(args[0] | (*(u16*)(*(u8**)(actor + 0x50) + 0x14) << 16));
+        }
+        break;
+    case 0x4E:
+        if (D_8005919C[0] != NULL) {
+            func_8003A14C(args[0] | (*(u16*)(D_8005919C[0] + 0x14) << 16));
+        }
+        break;
+    case 0x4C:
+        *(s32*)(actor + 0x40) |= 2;
+        break;
+    case 0x48:
+        *(s32*)(actor + 0x40) |= 1;
+        break;
+    case 0x67:
+        *(u16*)(actor + 0x9E) += 1;
+        a.vx = D_800D309C.eye.vx - D_800D3354[0];
+        a.vy = D_800D309C.eye.vy - D_800D3354[1];
+        a.vz = D_800D309C.eye.vz - D_800D3354[2];
+        Square0(&a, &a);
+        b.vx = D_800D309C.at.vx - D_800D335C[0];
+        b.vy = D_800D309C.at.vy - D_800D335C[1];
+        b.vz = D_800D309C.at.vz - D_800D335C[2];
+        Square0(&b, &b);
+        if (SquareRoot0(a.vx + a.vy + a.vz) < 4 && SquareRoot0(b.vx + b.vy + b.vz) < 4) {
+            break;
+        }
+        *(s32*)(actor + 0x64) -= 2;
+        break;
+    case 0x50:
+        *(u16*)(actor + 0x9E) += 1;
+        if (D_800D36BC[0] != 0) {
+            D_800D36BC[0]--;
+        } else {
+            *(s32*)(actor + 0x64) -= 2;
+        }
+        break;
+    case 0x46:
+        func_800B61F8(actor, args);
+        D_800D2D4C[0] = 0;
+        break;
+    case 0x51:
+        func_800B626C(actor, args);
+        break;
+    case 0x47:
+        func_800B62C8(actor, args);
+        break;
+    case 0x44:
+        if (D_80010000 != -1) {
+            D_800C3568[0] = actor;
+        }
+        break;
+    case 0x45:
+        if (D_80010000 != -1) {
+            D_800C3568[0] = NULL;
+        }
+        break;
+    case 0x43:
+        *(s32*)(actor + 0x3C) |= 0x80000000;
+        break;
+    case 0x3E:
+        func_800BF8CC(actor);
+        break;
+    case 0x3D:
+        func_800B4EDC(actor);
+        break;
+    case 0x3A:
+        func_800B639C(actor, args);
+        break;
+    case 0x42:
+        *(u32*)(actor + 0xAC) &= ~0x20;
+        break;
+    case 0x38:
+        func_800B63F0(actor, args);
+        break;
+    case 0x37:
+        D_800C3621[0] = 1;
+        break;
+    case 0x34:
+        /* field store + plain deref: lets the D_80059198 load schedule ahead
+         * of the first +0x1C store, as retail */
+        ((B3F04Actor*)actor)->unk1C = (((s8)args[0] << 1) * *(s16*)(actor + 0x82) / 4096) << 5;
+        ((B3F04Actor*)actor)->unk1C *= (*(s32*)D_80059198 + 1) * (*(s32*)D_80059198 + 1);
+        break;
+    case 0x33:
+        if (*(s32*)(actor + 0x48) != 0) {
+            func_800245D8((u32)actor, args[0]);
+        }
+        break;
+    case 0x31:
+        SetGeomOffset(0xA0, 0x70);
+        break;
+    case 0x32:
+        SetGeomOffset(0xA0, 0xA4);
+        break;
+    case 0x30:
+        if (*(u8**)(actor + 0x20) != NULL && (*(s32*)(actor + 0x3C) & 3) == 1) {
+            if (*(u8**)(*(u8**)(actor + 0x20) + 0x34) != NULL) {
+                (*(u8**)(actor + 0x20))[0x3D] = (*(u8**)(*(u8**)(actor + 0x20) + 0x34))[args[0] * 8 + 1];
+                (*(u8**)(actor + 0x20))[0x3C] = (*(u8**)(*(u8**)(actor + 0x20) + 0x34))[args[0] * 8];
+            }
+        }
+        break;
+    case 0x2F:
+        func_800BF730(actor);
+        break;
+    case 0x2C:
+        func_800B6438(actor, args);
+        break;
+    case 0x27:
+        func_800B6464(actor, args);
+        break;
+    case 0x26:
+        func_800B64D4(actor, args);
+        break;
+    case 0x28:
+        *(s32*)(actor + 0xC) = (((s8)args[0] << 4) * *(s16*)(actor + 0x82) / 4096) << 8;
+        break;
+    case 0x29:
+        *(s32*)(actor + 0xC) += (((s8)args[0] << 4) * *(s16*)(actor + 0x82) / 4096) << 8;
+        break;
+    case 0x21:
+        *(s32*)(actor + 0x14) = (((s8)args[0] << 4) * *(s16*)(actor + 0x82) / 4096) << 12;
+        break;
+    case 0x22:
+        *(s32*)(actor + 0x14) += (((s8)args[0] << 4) * *(s16*)(actor + 0x82) / 4096) << 8;
+        break;
+    case 0x2A:
+        *(s32*)(actor + 0x10) = (((s8)args[0] << 4) * *(s16*)(actor + 0x82) / 4096) << 12;
+        break;
+    case 0x2B:
+        *(s32*)(actor + 0x10) += (((s8)args[0] << 4) * *(s16*)(actor + 0x82) / 4096) << 8;
+        break;
+    case 0x1F:
+        *(s32*)(actor + 0x3C) &= ~0x04000000;
+        func_800BA8F4(actor);
+        break;
+    case 0x3F:
+        *(s32*)(actor + 0x3C) |= 0x04000000;
+        break;
+    case 0x3B:
+        *(s32*)(actor + 0x3C) |= 0x20000000;
+        break;
+    case 0x3C:
+        *(s32*)(actor + 0x3C) &= ~0x20000000;
+        break;
+    case 0x35:
+        *(s32*)(actor + 0x3C) |= 0x08000000;
+        break;
+    case 0x36:
+        *(s32*)(actor + 0x3C) &= ~0x08000000;
+        break;
+    case 0x23:
+        func_800B6518(actor, args);
+        break;
+    case 0x40:
+        func_800B65B0(actor, args);
+        break;
+    case 0x1C:
+        func_800B6808(actor, args);
+        break;
+    case 0x1B:
+        func_800B6A50(actor, args);
+        break;
+    case 0x1A:
+        func_8001CE74(*(u8**)(actor + 0x6C));
+        break;
+    case 0x2D:
+        func_800B6930(actor, args);
+        break;
+    case 0x2E:
+        func_800B6990(actor + 0xA0, args);
+        break;
+    case 0x5B:
+        func_800B6990(*(u8**)(actor + 0x20) + 0x44, args);
+        break;
+    case 0x5C:
+        func_800B6990(*(u8**)(actor + 0x20) + 0x4C, args);
+        break;
+    case 0x5D:
+        func_800B69E4(*(u8**)(actor + 0x20) + 0x44, args);
+        break;
+    case 0x5E:
+        func_800B69E4(*(u8**)(actor + 0x20) + 0x4C, args);
+        break;
+    case 0x1D:
+        func_800B6A7C(actor, args);
+        break;
+    case 0x19:
+        func_800B6B98(actor, args);
+        break;
+    case 0x18:
+        func_800B6BFC(actor, args);
+        break;
+    case 0x17:
+        m = (s8)args[0] << 2;
+        *(s32*)(actor + 0xC) = *(s32*)(actor + 0xC) * m / 256;
+        *(s32*)(actor + 0x10) = *(s32*)(actor + 0x10) * m / 256;
+        *(s32*)(actor + 0x14) = *(s32*)(actor + 0x14) * m / 256;
+        break;
+    case 0x16:
+        *(s32*)(actor + 0x3C) |= 0x02000000;
+        break;
+    case 0x15:
+        *(s32*)(actor + 0x3C) |= 0x01000000;
+        break;
+    case 0x11:
+        D_800C3664[0] = 1;
+        break;
+    case 0x12:
+        D_800C372C[0] = 1;
+        D_800C3CAC[0] = D_800C3EB0[0xB88];
+        D_800C3CB0[0] = D_800C3EB0[0xB89];
+        D_800C3CB0[1] = D_800C3EB0[0xB8A];
+        D_800C3CB0[2] = D_800C3EB0[0xB8B];
+        D_800C3EB0[0x4BF8] = 1;
+        D_800C3EB0[0xB88] = 1;
+        D_800C3EB0[0xB89] = 0;
+        D_800C3EB0[0x4BF9] = 0;
+        D_800C3EB0[0xB8A] = 0;
+        D_800C3EB0[0x4BFA] = 0;
+        D_800C3EB0[0xB8B] = 0;
+        D_800C3EB0[0x4BFB] = 0;
+        break;
+    case 0x13:
+        D_800C3664[0] = 0;
+        break;
+    case 0x14:
+        D_800C372C[0] = 0;
+        D_800C3EB0[0x4BF8] = D_800C3CAC[0];
+        D_800C3EB0[0xB88] = D_800C3CAC[0];
+        D_800C3EB0[0xB89] = D_800C3CB0[0];
+        D_800C3EB0[0x4BF9] = D_800C3CB0[0];
+        D_800C3EB0[0xB8A] = D_800C3CB0[1];
+        D_800C3EB0[0x4BFA] = D_800C3CB0[1];
+        D_800C3EB0[0xB8B] = D_800C3CB0[2];
+        D_800C3EB0[0x4BFB] = D_800C3CB0[2];
+        break;
+    case 0x10:
+        *(s32*)(actor + 0) = D_800D335C[0] << 16;
+        *(s32*)(actor + 4) = D_800D335C[1] << 16;
+        *(s32*)(actor + 8) = D_800D335C[2] << 16;
+        break;
+    case 0x53:
+        *(u32*)(actor + 0xAC) &= ~8;
+        *(u32*)(actor + 0xAC) &= ~4;
+        *(s32*)(actor + 0x3C) &= ~8;
+        *(s32*)(actor + 0x3C) &= ~0x10;
+        break;
+    case 0xF:
+        *(u32*)(actor + 0xAC) &= ~8;
+        *(u32*)(actor + 0xAC) &= ~4;
+        *(s32*)(actor + 0x3C) &= ~8;
+        *(s32*)(actor + 0x3C) &= ~0x10;
+        func_80021FE0(actor, 0);
+        break;
+    case 0xE:
+        func_80021FE0(actor, (s8)args[0] * 16);
+        break;
+    case 0xD:
+        func_800B6E84(actor, args);
+        break;
+    case 0xA:
+        func_800B6C44(actor, args);
+        break;
+    case 0xB:
+        func_800B6C98(actor, args);
+        break;
+    case 0x49:
+        if (*(u8**)(actor + 0x20) != NULL) {
+            *(u16*)(*(u8**)(actor + 0x20) + 0) += (s8)args[0];
+            *(s32*)(actor + 0x3C) |= 0x10000000;
+        }
+        break;
+    case 0x4A:
+        if (*(u8**)(actor + 0x20) != NULL) {
+            *(u16*)(*(u8**)(actor + 0x20) + 2) += (s8)args[0];
+            *(s32*)(actor + 0x3C) |= 0x10000000;
+        }
+        break;
+    case 0x4B:
+        if (*(u8**)(actor + 0x20) != NULL) {
+            *(u16*)(*(u8**)(actor + 0x20) + 4) += (s8)args[0];
+            *(s32*)(actor + 0x3C) |= 0x10000000;
+        }
+        break;
+    case 0xC:
+        func_800B6CEC(actor, args);
+        break;
+    case 0x9:
+        *(u16*)(actor + 0x32) += 0x800;
+        *(s32*)(actor + 0xC) = -*(s32*)(actor + 0xC);
+        *(s32*)(actor + 0x10) = -*(s32*)(actor + 0x10);
+        *(s32*)(actor + 0x14) = -*(s32*)(actor + 0x14);
+        break;
+    case 0x1:
+        func_8001D4E8(actor);
+        func_800B572C(actor, func_8001FBA4(actor, args));
+        break;
+    case 0x24:
+        func_801FC7B0(actor, args);
+        break;
+    case 0x25:
+        func_801FC6FC(actor, args);
+        break;
+    case 0x2:
+        task = func_8001D0A4(*(u8**)(actor + 0x6C), func_800B5588);
+        if (task != NULL) {
+            (*(void (**)(u8*))(task + 0xC))(task);
+        }
+        break;
+    case 0x3:
+        func_800B5C18(actor, args);
+        break;
+    case 0x4:
+        while ((task = func_8001D164(func_800B5B3C)) != NULL) {
+            (*(void (**)(u8*))(task + 0xC))(task);
+        }
+        break;
+    case 0x1E:
+        func_800B61B0(actor, args);
+        break;
+    case 0x20:
+        func_800B5DC4(actor);
+        break;
+    case 0x5:
+        func_800B5FBC(actor, args);
+        break;
+    case 0x6:
+        func_800BC404(1 << B3F04_ACTOR_SLOT(D_800C3E1C[0]));
+        break;
+    case 0x55:
+        func_800BC404((1 << B3F04_ACTOR_SLOT(D_800C3E1C[0])) | D_800D3634[0]);
+        break;
+    case 0x7:
+        func_800BC404(1 << B3F04_ACTOR_SLOT(*(u8**)(actor + 0x74)));
+        break;
+    case 0x65:
+        func_800BC404(D_800D3634[0]);
+        break;
+    case 0x41:
+        {
+            u8* q = D_800C3E1C[0];
+
+            func_800BC404((1 << B3F04_ACTOR_SLOT(*(u8**)(actor + 0x74))) | (1 << B3F04_ACTOR_SLOT(q)));
+        }
+        break;
+    case 0x8:
+        *(s32*)(actor + 0x40) |= 0x80000;
+        func_800B6DC0(actor, args);
+        break;
+    }
+}
+
 #include "psyq/libgpu.h"
 
 /* copy an 8x8 texture cell (u = +4 >> 2, v = +5, page from tpage +0xA) to
