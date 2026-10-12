@@ -113,7 +113,7 @@ segments:
       - [0xAF70, c, mainasm_AF70]
       - [0xAFC8, c, main17_q2]
       - [0xB0E8, c, mainc18_q1]
-      # retail bytes: 8007AC80 (C body not yet matching)
+      # retail-build-only TU; 8007AC80 is matched C
       - [0xB190, c, mainasm_B190]
       - [0xB1EC, c, mainc18_q2]
       - [0xB348, c, main19_q1]
