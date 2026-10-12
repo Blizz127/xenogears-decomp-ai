@@ -1,6 +1,7 @@
 #include "common.h"
 #ifndef XENO_PC_PORT
 #include "system/memory.h"
+#include "psyq/libgte.h"
 #endif
 
 
@@ -11,7 +12,41 @@ void func_800BAC50(void *arg0);
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/battle/nonmatchings/main111", func_800BA984);
-INCLUDE_ASM("asm/battle/nonmatchings/main111", func_800BAB0C);
+extern MATRIX D_800D30BC;
+extern s32 D_80050100;
+extern u_long* g_GfxCurOT;
+extern void func_8001E298(void* pSpriteData, void* ot);
+
+/* Work callback: unless D_800C3664 is set, project the integer part of the
+ * sprite's (task +4) 16.16 position through D_800D30BC, store its OT depth
+ * (>> D_80050100, + sprite +0x30; 0 when flag bit 15 is set) at +0x2E and
+ * render it into g_GfxCurOT[depth] when 1 <= depth <= 0xFFF.  The render
+ * branch owns 16 bytes of unused stack. */
+void func_800BAB0C(u8* task) {
+    SVECTOR v;
+    long sxy;
+    long flag;
+    u8* o;
+    s32 z;
+
+    if (D_800C3664 == 0) {
+        o = *(u8**)(task + 4);
+        v.vx = *(s32*)(o + 0) >> 16;
+        v.vy = *(s32*)(o + 4) >> 16;
+        v.vz = *(s32*)(o + 8) >> 16;
+        SetRotMatrix(&D_800D30BC);
+        SetTransMatrix(&D_800D30BC);
+        z = (RotTransPers(&v, &sxy, &sxy, &flag) >> D_80050100) + *(s16*)(o + 0x30);
+        if (flag & 0x8000) {
+            z = 0;
+        }
+        *(s16*)(o + 0x2E) = z;
+        if (z > 0 && z < 0x1000) {
+            long pad[4];
+            func_8001E298(o, g_GfxCurOT + z);
+        }
+    }
+}
 void func_800BABDC__ret(u8* arg0) asm("func_800BABDC");
 
 void func_800BABDC__ret(u8* arg0) {

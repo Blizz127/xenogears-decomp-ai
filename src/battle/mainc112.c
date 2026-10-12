@@ -64,7 +64,37 @@ void func_800BB13C(u8* task) {
     }
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/mainc112", func_800BB248);
+#include "psyq/libgte.h"
+extern s32 func_800AA600(s32 index);
+extern MATRIX D_800D30BC;
+extern s32 D_80050100;
+
+/* Work callback: cache the sprite's (task +4) D_800D3368 actor value from
+ * func_800AA600 at +0x36 (+0x38 = half of it), then project the integer part
+ * of its 16.16 position (+0, +4, +8) through D_800D30BC and store the OT
+ * depth (>> D_80050100, + sprite +0x30; 0 when flag bit 15 is set) at +0x2E.
+ * sxy doubles as RotTransPers' interpolation output. */
+void func_800BB248(u8* task) {
+    SVECTOR v;
+    long sxy;
+    long flag;
+    u8* o = *(u8**)(task + 4);
+    u32 hi = *(u32*)(o + 0xA8) >> 30;
+    s32 z;
+
+    *(s16*)(o + 0x36) = func_800AA600(((*(u32*)(o + 0xAC) & 3) << 2) | hi);
+    *(s16*)(o + 0x38) = *(u16*)(o + 0x36) / 2;
+    v.vx = *(s32*)(o + 0) >> 16;
+    v.vy = *(s32*)(o + 4) >> 16;
+    v.vz = *(s32*)(o + 8) >> 16;
+    SetRotMatrix(&D_800D30BC);
+    SetTransMatrix(&D_800D30BC);
+    z = (RotTransPers(&v, &sxy, &sxy, &flag) >> D_80050100) + *(s16*)(o + 0x30);
+    if (flag & 0x8000) {
+        z = 0;
+    }
+    *(s16*)(o + 0x2E) = z;
+}
 extern void WorkListRemoveTask(void *pTask);
 extern void TimerWorkListRemoveTask(void *pTask);
 extern void HeapFree(void *pMem);
