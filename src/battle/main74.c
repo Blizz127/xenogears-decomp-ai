@@ -101,7 +101,67 @@ void func_800B10EC(s32 index, s32 x, s32 z, s32 radius) {
     }
 }
 INCLUDE_ASM("asm/battle/nonmatchings/main74", func_800B12D0);
-INCLUDE_ASM("asm/battle/nonmatchings/main74", func_800B136C);
+extern u32 func_800BF6F8(void);
+extern void func_800BE790(void);
+extern void func_800B0060(u8* p);
+extern void func_8002A498(int channel);
+extern int ArchiveDataSync(void);
+
+/* Run battle frames (func_800BE790) until no actor has its +0x38 busy byte
+ * set and func_800BF6F8 reports idle; then, if any actor had a +0xC
+ * resource, stop archive channel 0 and, once ArchiveDataSync reports no
+ * pending read, free every such resource with func_800B0060 (running
+ * frames while the read is pending). */
+void func_800B136C(void) {
+    s32 loaded;
+    s32 busy;
+    s32 i;
+    u8* ent;
+
+    loaded = 0;
+    for (;;) {
+        busy = 0;
+        for (i = 0; i < 11; i++) {
+            ent = D_800D3368[i];
+            if (ent != NULL) {
+                if (ent[0x38] != 0) {
+                    busy = 1;
+                }
+                if (*(s32*)(ent + 0xC) != 0) {
+                    loaded = 1;
+                }
+            }
+        }
+        if (func_800BF6F8() != 0) {
+            busy = 1;
+        }
+        if (busy == 0) {
+            break;
+        }
+        func_800BE790();
+    }
+    if (loaded == 0) {
+        return;
+    }
+    func_8002A498(0);
+    busy = 1;
+    for (;;) {
+        if (ArchiveDataSync() == 0) {
+            for (i = 0; i < 11; i++) {
+                u8* actor = D_800D3368[i];
+
+                if (actor != NULL && *(s32*)(actor + 0xC) != 0) {
+                    func_800B0060(actor);
+                }
+            }
+            busy = 0;
+        }
+        if (busy == 0) {
+            break;
+        }
+        func_800BE790();
+    }
+}
 #endif
 
 
