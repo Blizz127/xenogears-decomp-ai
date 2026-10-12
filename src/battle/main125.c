@@ -26,9 +26,9 @@ extern u8 D_800C3EB0[];
  * and append the row to out, returning the number appended.  Retail advances
  * the row base by 4 each iteration (re-adding the 0x8C8C constant) and writes
  * the terminator through out[count], not through the append cursor. */
-/* Not yet byte-matching: the matching build assembles retail bytes for
- * this function from its own asm segment (see config/battle.yaml).  The
- * body below is kept for the port and the differential harnesses. */
+/* The retail build compiles this function's byte-exact C in
+ * mainasm_4F3C4.c.  The body below is kept for the port and the
+ * differential harnesses. */
 #ifdef XENO_PC_PORT
 u32 func_800BEEB4(u32 mask, u32 *out, u32 value) {
     u8 *p = D_800C3EB0;
@@ -60,9 +60,9 @@ extern s32 func_80023124(s32 pointA, s32 pointB);
 /* Retail builds each coordinate pair in a stack local and reads it back as
  * two halfwords, so the pair is a struct, not a fused expression. */
 typedef struct { s16 lo, hi; } BattlePairXZ;
-/* Not yet byte-matching: the matching build assembles retail bytes for
- * this function from its own asm segment (see config/battle.yaml).  The
- * body below is kept for the port and the differential harnesses. */
+/* The retail build compiles this function's byte-exact C in
+ * mainasm_4F3C4.c.  The body below is kept for the port and the
+ * differential harnesses. */
 #ifdef XENO_PC_PORT
 u32 func_800BEF24(u8 *arg0, u8 *arg1) {
     BattlePairXZ a, b;
@@ -116,9 +116,9 @@ extern void func_800245D8(u32 arg0, u32 arg1);
 extern u8 *D_800C3610;
 #endif
 
-/* Not yet byte-matching: the matching build assembles retail bytes for
- * this function from its own asm segment (see config/battle.yaml).  The
- * body below is kept for the port and the differential harnesses. */
+/* The retail build compiles this function's byte-exact C in
+ * mainasm_4F3C4.c.  The body below is kept for the port and the
+ * differential harnesses. */
 #ifdef XENO_PC_PORT
 void func_800BEFF4(u32 arg0) {
     u8 *base = D_800C3610;
