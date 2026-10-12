@@ -117,7 +117,53 @@ void func_800BD024(void *arg0) {
 
 INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BD098);
 INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BD1FC);
-INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BD2E4);
+/* D_800C3EB0 seen as a union of two struct views: the per-record kind bytes
+ * (0x48-byte records at +0x150) and the slot record pointers at +0x8C8C.
+ * Member reads keep 0x150 as the load offset and 0x8C8C as an ori + addu
+ * on the walked slot pointer, and one alias lets CSE share the base. */
+typedef struct {
+    u8 pad[0x150];
+    u8 kinds[1][0x48];
+} M118Kinds;
+
+typedef struct {
+    u8 pad[0x8C8C];
+    u8* slots[11];
+} M118Slots;
+
+typedef union {
+    M118Kinds k;
+    M118Slots s;
+} M118View;
+
+extern M118View D_800C3EB0__v asm("D_800C3EB0");
+/* Array views: the loads split into lui + lw %lo (retail fills a branch
+ * delay slot with the D_800C3E1C lui). */
+extern s32 D_800C360C__a[] asm("D_800C360C");
+extern u8* D_800C3E1C__a[] asm("D_800C3E1C");
+extern void func_800BD1FC(u32 slot);
+
+/* Spawn the queued popups of all 11 slots; once the current actor's record
+ * (D_800C360C - 1) shows a slot of kind 7, the current record
+ * (D_800C3E1C) itself is skipped. */
+void func_800BD2E4(void) {
+    u8 seen7 = 0;
+    s32 i = 0;
+    u8* target;
+    s32 cur;
+
+    do {
+        cur = D_800C360C__a[0] - 1;
+        if (D_800C3EB0__v.k.kinds[cur][i] == 7) {
+            seen7 = 1;
+        }
+        target = D_800C3EB0__v.s.slots[i];
+        if (target != NULL && (D_800C3E1C__a[0] != target || seen7 == 0)) {
+            func_800BD1FC(i);
+        }
+        i++;
+    } while (i != 11);
+}
 INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BD3AC);
 /* The chain head is read through an array view so its load and store
  * split into lui + %lo (retail keeps the %hi in a2); the task pointer is
