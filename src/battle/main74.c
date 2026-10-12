@@ -50,7 +50,218 @@ void func_800B0164(u8* pool, s32 index, u8 a, u8 b, u16 p0, u16 p1, u16 p2, u16 
     }
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/main74", func_800B026C);
+extern void func_800A23E8__s(s32 ctx, u8* trk) asm("func_800A23E8");
+extern s16 func_800B0B14(s32 a0);
+extern s32 func_800B0FF4(s16* a, s16* b);
+extern s32 rcos(s32 a);
+extern s32 rsin(s32 a);
+extern u8* D_800D3368__p[] asm("D_800D3368");
+extern u8 D_800C3B84;
+extern u8 D_800C3B88;
+extern u8 D_800C3B8C;
+extern s16 D_800C3B90;
+extern s16 D_800C3B94;
+extern s16 D_800C3B98;
+extern u16 D_800C3B9C;
+extern s16 D_800C3BA0;
+extern s16 D_800C3BA4;
+extern u16 D_800C3BA8;
+extern u8* D_800C3BAC__p[] asm("D_800C3BAC");
+extern u8 D_800C3EBE[];
+extern u8 D_800C3EC0[];
+extern u8 D_800C3EC2[];
+extern s16 D_800D3354[];
+extern s16 D_800D335C[];
+
+/* func_800B026C.s: step the nine tracks D_800C3BAC[0..8] `count` times.  A
+ * track has a mode byte (+2), owner id (+3), current x/y/z (+4/+6/+8), a
+ * source (+0xA/+0xC/+0xE), a frame (+0x10) and a duration (+0x12).  With
+ * mode & 0xF < 2 the goal is actor +0xA's position (D_800D3368, else its
+ * D_800C3EB4 record) with y less +0xC, averaged with actor +0xE when that is
+ * not negative; otherwise the goal is the literal +0xA/+0xC/+0xE.  Track 7
+ * moves the goal by -D_800C3BA4 along angle D_800C3BA0 and takes D_800C3BA8
+ * off its y; track 8 adds the offset built from D_800C3B90/94/98/9C, takes
+ * x/z back from func_800B0FF4 (against D_800D335C) when it returns nonzero,
+ * and caps y at func_800B0B14(a3).  Mode bit 0 selects interpolation over
+ * the duration or a per-step move.  Finished tracks 0-6 go back through
+ * func_800A23E8, tracks 7 and 8 hold their last frame, and D_800C3B88 notes
+ * whether owner D_800C3B84's track moved (1) or finished (2).  The results
+ * land in D_800C3B90..D_800C3BA8 and D_800D335C / D_800D3354 through the
+ * jtbl_8007079C switch.  `mode & 1` is a switch, so nx/ny/nz may be unset on
+ * some path: retail keeps nx in s7 and spills ny/nz for that reason. */
+void func_800B026C(s32 ctx, s32 count, s32 a2, s32 a3) {
+    s16 pos[3];
+    s32 iter;
+    s32 k;
+    u8* trk;
+    u8* cur;
+    u8* node;
+    s16 nx;
+    s16 ny;
+    s16 nz;
+    u8 mode;
+    s16 x;
+    s16 y;
+    s16 z;
+    s16 idx;
+    s32 c;
+    s32 s;
+    s16 h;
+    s16 t;
+    s16 dur;
+    s16 dx;
+    s16 dy;
+    s16 dz;
+
+    D_800C3B88 = 0;
+    for (iter = 0; iter < count; iter++) {
+        for (k = 0; k < 9; k++) {
+            if (D_800C3BAC__p[k] == NULL) {
+                continue;
+            }
+            trk = D_800C3BAC__p[k];
+            cur = trk;
+            mode = trk[2];
+            if ((mode & 0xF) < 2) {
+                idx = *(s16*)(trk + 0xA);
+                if (D_800D3368__p[idx] != NULL) {
+                    x = *(u16*)(*(u8**)(D_800D3368__p[idx] + 4) + 0x5C);
+                    z = *(u16*)(*(u8**)(D_800D3368__p[idx] + 4) + 0x64);
+                    y = *(u16*)(*(u8**)(D_800D3368__p[idx] + 4) + 0x60) - *(u16*)(trk + 0xC);
+                } else {
+                    x = *(u16*)(D_800C3EBE + idx * 0x1C);
+                    z = *(u16*)(D_800C3EC0 + idx * 0x1C);
+                    y = *(u16*)(D_800C3EC2 + idx * 0x1C) - *(u16*)(trk + 0xC);
+                }
+                idx = *(s16*)(cur + 0xE);
+                if (idx >= 0) {
+                    if (D_800D3368__p[idx] != NULL) {
+                        node = *(u8**)(D_800D3368__p[idx] + 4);
+                        x = (x + *(s32*)(node + 0x5C)) / 2;
+                        y = (y + *(s32*)(node + 0x60) - *(s16*)(cur + 0xC)) / 2;
+                        z = (z + *(s32*)(node + 0x64)) / 2;
+                    } else {
+                        x = (x + *(u16*)(D_800C3EBE + idx * 0x1C)) / 2;
+                        y = (y + *(u16*)(D_800C3EC2 + idx * 0x1C) - *(s16*)(cur + 0xC)) / 2;
+                        z = (z + *(u16*)(D_800C3EC0 + idx * 0x1C)) / 2;
+                    }
+                }
+            } else {
+                x = *(u16*)(trk + 0xA);
+                y = *(u16*)(trk + 0xC);
+                z = *(u16*)(trk + 0xE);
+            }
+            if (k == 7) {
+                y -= D_800C3BA8;
+                x += (-D_800C3BA4 * rcos(D_800C3BA0)) / 4096;
+                z += (-D_800C3BA4 * rsin(D_800C3BA0)) / 4096;
+            }
+            if (k == 8) {
+                c = D_800C3B98 * rcos(D_800C3B94) / 4096;
+                s = D_800C3B98 * rsin(D_800C3B94);
+                if (s < 0) {
+                    s += 0xFFF;
+                }
+                s >>= 12;
+                x += (-s * rcos(D_800C3B90)) / 4096;
+                t = y + (-c - D_800C3B9C);
+                y = t;
+                z += (-s * rsin(D_800C3B90)) / 4096;
+                pos[0] = x;
+                pos[1] = y;
+                pos[2] = z;
+                if (func_800B0FF4(D_800D335C, pos) != 0) {
+                    x = pos[0];
+                    z = pos[2];
+                }
+                h = func_800B0B14(a3);
+                if (t > h) {
+                    y = h;
+                }
+            }
+            if (D_800C3B8C != 0 && k >= 7) {
+                *(s16*)(cur + 4) = x;
+                *(s16*)(cur + 6) = y;
+                *(s16*)(cur + 8) = z;
+            }
+            switch (mode & 1) {
+            case 0:
+                t = *(s16*)(trk + 0x10) + 1;
+                nx = *(s16*)(cur + 4) + (x - *(s16*)(cur + 4)) * t / *(s16*)(trk + 0x12);
+                ny = *(s16*)(cur + 6) + (y - *(s16*)(cur + 6)) * t / *(s16*)(trk + 0x12);
+                nz = *(s16*)(cur + 8) + (z - *(s16*)(cur + 8)) * t / *(s16*)(trk + 0x12);
+                break;
+            case 1:
+                dur = *(s16*)(trk + 0x12);
+                dx = (x - *(s16*)(cur + 4)) / dur;
+                dy = (y - *(s16*)(cur + 6)) / dur;
+                dz = (z - *(s16*)(cur + 8)) / dur;
+                nx = *(s16*)(cur + 4);
+                ny = *(s16*)(cur + 6);
+                nz = *(s16*)(cur + 8);
+                if (dx == 0 && dy == 0 && dz == 0) {
+                    *(s16*)(trk + 0x10) = dur;
+                } else {
+                    nx += dx;
+                    ny += dy;
+                    nz += dz;
+                    *(s16*)(trk + 0x10) = 0;
+                }
+                *(s16*)(cur + 4) = nx;
+                *(s16*)(cur + 6) = ny;
+                *(s16*)(cur + 8) = nz;
+                break;
+            }
+            if (++*(s16*)(trk + 0x10) >= *(s16*)(trk + 0x12)) {
+                if (k >= 7) {
+                    *(s16*)(trk + 0x10) = *(s16*)(trk + 0x12) - 1;
+                } else {
+                    if (trk[3] == D_800C3B84) {
+                        D_800C3B88 |= 2;
+                    }
+                    func_800A23E8__s(ctx, trk);
+                    D_800C3BAC__p[k] = NULL;
+                }
+            } else if (trk[3] == D_800C3B84) {
+                D_800C3B88 |= 1;
+            }
+            switch (k) {
+            case 0:
+                D_800C3B90 = nx;
+                break;
+            case 1:
+                D_800C3BA0 = nx;
+                break;
+            case 2:
+                D_800C3B94 = nx;
+                break;
+            case 3:
+                D_800C3B98 = nx;
+                break;
+            case 4:
+                D_800C3BA4 = nx;
+                break;
+            case 5:
+                D_800C3BA8 = nx;
+                break;
+            case 6:
+                D_800C3B9C = nx;
+                break;
+            case 7:
+                D_800D335C[0] = nx;
+                D_800D335C[1] = ny;
+                D_800D335C[2] = nz;
+                break;
+            case 8:
+                D_800D3354[0] = nx;
+                D_800D3354[1] = ny;
+                D_800D3354[2] = nz;
+                break;
+            }
+        }
+    }
+    D_800C3B8C = 0;
+}
 extern u8* D_800658C8;
 
 s32 func_800B0AB4(void *arg0) {
