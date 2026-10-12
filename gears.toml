@@ -98,7 +98,6 @@ build_variables = {
     maspsx_flags = "--dont-expand-li --use-comm-section --run-assembler"
 }
 paths = [
-    "src/battle/mainl81.",
     "src/battle/mainl92.",
     "src/battle/mainl94.",
     "src/battle/mainl98.",
@@ -231,6 +230,7 @@ paths = [
     "src/battle/main96.",
     "src/battle/main103.",
     "src/battle/mainl133.",
+    "src/battle/mainl81.",
     "src/battle_command_file1/after_controller_cdk.",
 ]
 
