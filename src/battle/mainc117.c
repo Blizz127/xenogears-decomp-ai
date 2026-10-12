@@ -2,7 +2,42 @@
 
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/mainc117", func_800BCBB4);
+extern int rcos(int a);
+extern int rsin(int a);
+extern void func_8001F6B0(u8* obj);
+
+/* func_800BCBB4.s: timer callback installed by func_800BCC60: from the
+ * task's +0x20 tick, set bytes +0x28 (cos) and +0x29/+0x2A (sin) of the
+ * object at task +0x1C to (trig + 0x1000) / 64 + 0x80, capped at
+ * 0xFF, call func_8001F6B0 on the object and advance the tick.  The local
+ * copy t of task gives retail's double copy ($a0 -> $v0 -> $s0), with the
+ * first read through task; c is updated in place step by step, which keeps
+ * it in $v1 (the one-expression form is 10/43). */
+void func_800BCBB4(u8* task) {
+    u8* t = task;
+    s32 ang = *(s32*)(task + 0x20) << 6;
+    u8* obj = *(u8**)(t + 0x1C);
+    s32 c;
+
+    c = rcos(ang) + 0x1000;
+    c >>= 6;
+    c += 0x80;
+    if (c > 0xFF) {
+        c = 0xFF;
+    }
+    obj[0x28] = c;
+    c = rsin(ang) + 0x1000;
+    c >>= 6;
+    c += 0x80;
+    if (c > 0xFF) {
+        c = 0xFF;
+    }
+    obj[0x29] = c;
+    obj[0x2A] = c;
+    func_8001F6B0(obj);
+    (*(s32*)(t + 0x20))++;
+}
+
 INCLUDE_ASM("asm/battle/nonmatchings/mainc117", func_800BCC60);
 #endif
 
