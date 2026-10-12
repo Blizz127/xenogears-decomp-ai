@@ -31,7 +31,116 @@ INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80071B94);
 INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80072270);
 INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80072324);
 INCLUDE_ASM("asm/battle/nonmatchings/main2", func_800723E0);
-INCLUDE_ASM("asm/battle/nonmatchings/main2", func_8007252C);
+typedef struct {
+    u16 unk0;
+    u8 unk2[0x2E];
+    u16 unk30;
+    u16 unk32;
+    u16 unk34;
+    u8 unk36[0x82];
+    u32 unkB8;
+    u8 unkBC[0x18];
+    u16 unkD4;
+    u8 unkD6[0x9A];
+} M2Actor; /* 0x170 */
+typedef struct {
+    u8 unk0[3];
+    u8 unk3;
+    u8 unk4;
+    u8 unk5[0x17];
+} M2Group; /* 0x1C */
+extern M2Actor D_800CCD34[];
+extern M2Group D_800C3EB4[];
+extern u8 D_800D2DCC[];
+extern u8 D_800D2DE4[];
+extern u16 D_800D39DC;
+extern u16 D_800C3608;
+extern u8 D_800C48EA[];
+extern u8 D_800C3D0C__b[] asm("D_800C3D0C");
+extern u16 func_80089C08(u8 idx);
+extern u16 func_80089C9C(s32 mask, u8 idx);
+extern u16 func_80089C48(u8 idx);
+
+/* Party (0..2) and enemy (3..10) status scan: sets D_800D39DC bits and the
+ * battle-end flag D_800C48EA.  The enemy loop walks explicit byte offsets:
+ * `ao` = i * sizeof(M2Actor), `go` = i * sizeof(M2Group), and the mask loop
+ * reuses `go` as its actor offset.  Retail's registers need that reuse
+ * (the shared offset outranks `k` in global alloc) and the for-init order;
+ * the volatile D_800D2DE4 stores keep loop.c from turning the two stores
+ * into a pointer giv. */
+void func_8007252C(void) {
+    s32 i;
+    s32 k;
+    s32 mask;
+    u8* q;
+    s32 ff;
+    s32 go;
+    s32 ao;
+
+    D_800D39DC = 0;
+    for (i = 0; i < 3; i++) {
+        if (D_800D2DCC[i] != 0) {
+            if (D_800CCD34[i].unk30 & 0xC000) {
+                if (D_800CCD34[i].unk30 & 0x8000) {
+                    D_800CCD34[i].unk0 = 0;
+                }
+                D_800D2DE4[i] = 0xFF;
+            } else if (D_800C3EB4[i].unk3 == 0) {
+                D_800D39DC |= func_80089C08(i);
+            }
+        }
+    }
+    for (i = 3, ff = 0xFF, q = D_800C3D0C__b + 15, k = 0, ao = 0x450, go = 0x54; i < 11; q += 4, k++, ao += 0x170, i++, go += 0x1C) {
+        if (D_800D2DCC[k + 3] != 0) {
+            if (((u8*)D_800C3EB4 + 4)[go] == 0) {
+                if (*(u16*)((u8*)D_800CCD34 + 0x30 + ao) & 0xC000) {
+                    if (func_80089C9C(D_800C3608, i) == 0) {
+                        *(u16*)((u8*)D_800CCD34 + ao) = 0;
+                        *(volatile u8*)&D_800D2DE4[k + 3] = ff;
+                        continue;
+                    }
+                    D_800D39DC |= func_80089C08(i);
+                    continue;
+                }
+            } else {
+                if (*(u16*)((u8*)D_800CCD34 + 0xD4 + ao) & 0xC000) {
+                    if (func_80089C9C(D_800C3608, i) == 0) {
+                        *(u32*)((u8*)D_800CCD34 + 0xB8 + ao) = 0;
+                        *(volatile u8*)&D_800D2DE4[k + 3] = ff;
+                        continue;
+                    }
+                    D_800D39DC |= func_80089C08(i);
+                    continue;
+                }
+            }
+            if (((u8*)D_800C3EB4 + 3)[go] == 0 && *q == 0) {
+                D_800D39DC |= func_80089C08(i);
+            }
+        }
+    }
+    if (!(D_800D39DC & 0x7F8)) {
+        D_800C48EA[0] = 1;
+    }
+    if (!(D_800D39DC & 0x7)) {
+        D_800C48EA[0] = 0x81;
+    }
+    if (D_800C48EA[0] == 0) {
+        mask = D_800D39DC;
+        for (i = 0, go = 0; i < 11; i++, go += 0x170) {
+            if (func_80089C9C(mask, i) && (*(u16*)((u8*)D_800CCD34 + 0x34 + go) & 0x1000)) {
+                mask &= func_80089C48(i);
+            }
+        }
+        if (mask == 0) {
+            for (i = 0; i < 11; i++) {
+                if (func_80089C9C(D_800D39DC, i) && (D_800CCD34[i].unk34 & 0x1000)) {
+                    D_800CCD34[i].unk34 &= ~0x1000;
+                    return;
+                }
+            }
+        }
+    }
+}
 
 #ifndef XENO_PC_PORT
 /* Link `count` primitives of 0x28 bytes, every other one from `start`. */
