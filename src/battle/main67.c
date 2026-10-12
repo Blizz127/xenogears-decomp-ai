@@ -68,7 +68,99 @@ u8* func_800A2E88(u8* list, s16 semi) {
 }
 
 INCLUDE_ASM("asm/battle/nonmatchings/main67", func_800A2F94);
-INCLUDE_ASM("asm/battle/nonmatchings/main67", func_800A2FD8);
+#include "psyq/libgte.h"
+#include "battle/gte_inline.h"
+extern s32 D_80050100;
+u32 func_800A2F94(u8* list, u8* e);
+
+/* Psy-Q P_TAG: OT link word. */
+typedef struct {
+    unsigned addr : 24;
+    unsigned len : 8;
+} BattlePrimTag;
+
+/* POLY_FT4 layout. */
+typedef struct {
+    BattlePrimTag tag;
+    u8 r0, g0, b0, code;
+    s16 x0, y0;
+    u8 u0, v0;
+    u16 clut;
+    s16 x1, y1;
+    u8 u1, v1;
+    u16 tpage;
+    s16 x2, y2;
+    u8 u2, v2;
+    u16 pad1;
+    s16 x3, y3;
+    u8 u3, v3;
+    u16 pad2;
+} BattleFt4;
+
+/* One 124-byte list entry.  The corner pads carry state: v[1].pad is the
+ * projected flag, v[2].pad the age (-1 = free) and v[3].pad the lifetime. */
+typedef struct {
+    SVECTOR v[4];
+    u16 rgb[3];        /* 0x20: colour, 10.6 fixed */
+    s16 drgb[3];       /* 0x26: colour step per tick */
+    BattleFt4 prim[2]; /* 0x2C: one per buffer */
+} BattleGfxEntry;
+
+/* Draw and age every live entry of the list: an expired entry is released
+ * through func_800A2F94; otherwise buffer buf's prim takes the colour and
+ * either the corners as screen xy (v[1].pad == 0, linked at ot[0]) or the
+ * corners projected through m (RTPT + RTPS, linked at the SZ3 / 4 >>
+ * D_80050100 slot).  Then age += step and colour -= step * drgb. */
+void func_800A2FD8(u8* list, MATRIX* m, s32 step, u32* ot, s32 buf) {
+    BattleGfxEntry* e;
+    BattleFt4* prim;
+    s32 i;
+    s32 z;
+
+    SetRotMatrix(m);
+    SetTransMatrix(m);
+    e = *(BattleGfxEntry**)list;
+    for (i = 0; i < *(s16*)(list + 4); i++, e++) {
+        if (e->v[2].pad == -1) {
+            continue;
+        }
+        if (e->v[2].pad >= e->v[3].pad) {
+            func_800A2F94(list, (u8*)e);
+            continue;
+        }
+        e->prim[buf].r0 = e->rgb[0] >> 6;
+        e->prim[buf].g0 = e->rgb[1] >> 6;
+        e->prim[buf].b0 = e->rgb[2] >> 6;
+        if (e->v[1].pad == 0) {
+            e->prim[buf].x0 = e->v[0].vx;
+            e->prim[buf].y0 = e->v[0].vy;
+            e->prim[buf].x1 = e->v[1].vx;
+            e->prim[buf].y1 = e->v[1].vy;
+            e->prim[buf].x2 = e->v[2].vx;
+            e->prim[buf].y2 = e->v[2].vy;
+            e->prim[buf].x3 = e->v[3].vx;
+            e->prim[buf].y3 = e->v[3].vy;
+            e->prim[buf].tag.addr = ((BattlePrimTag*)ot)->addr;
+            ((BattlePrimTag*)ot)->addr = (u32)&e->prim[buf];
+        } else {
+            BATTLE_GTE_LDV3(&e->v[0], &e->v[1], &e->v[2]);
+            BATTLE_GTE_RTPT();
+            prim = &e->prim[buf];
+            BATTLE_GTE_STSXY3(&prim->x0, &prim->x1, &prim->x2);
+            BATTLE_GTE_STSZOTZ(&z);
+            z >>= D_80050100;
+            BATTLE_GTE_LDV0(&e->v[3]);
+            BATTLE_GTE_RTPS();
+            BATTLE_GTE_STSXY(&prim->x3);
+            e->prim[buf].tag.addr = ((BattlePrimTag*)(ot + z))->addr;
+            ((BattlePrimTag*)(ot + z))->addr = (u32)prim;
+        }
+        e->v[2].pad += step;
+        e->rgb[0] -= e->drgb[0] * step;
+        e->rgb[1] -= e->drgb[1] * step;
+        e->rgb[2] -= e->drgb[2] * step;
+    }
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main67", func_800A32D8);
 #endif
 
