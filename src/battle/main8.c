@@ -142,7 +142,45 @@ loop:
     }
     p[0x5D] = 0;
 }
-INCLUDE_ASM("asm/battle/nonmatchings/main8", func_8007819C);
+/* Battle gauge strip record (0x60 bytes): two POLY_FT4 set up by
+ * func_800780A8, the strip's VRAM rect and its 0x39-byte buffer. */
+typedef struct {
+    u8 prims[0x50];
+    RECT rect;     /* 0x50 */
+    void* image;   /* 0x58 */
+    u8 pad5C[4];
+} M8Gauge;
+extern M8Gauge D_800D36C8[];
+extern void func_8008F8F4(u8 index, u16 x, u16 y, u16 w, u16 h, u8 animate, u8 refresh);
+extern void* func_8008AC00(s32 size);
+
+/* func_8007819C.s: open gauge windows 5 and 4, then set up the eight strip
+ * records in pairs: each pair shares one func_8008AC00 buffer and one rect
+ * (x 0x3C0, y = pair * 13, 0x3C x 0xD).  The buffer goes through a temp:
+ * the chained `a = b = f()` form makes loop.c pick different givs. */
+void func_8007819C(void) {
+    s32 i;
+    RECT* r;
+    void* buf;
+
+    func_8008F8F4(5, 8, 0x2A, 0x70, 0x12, 0, 0);
+    D_800D2D28[0xB5] = 0;
+    func_8008F8F4(4, 0x20, 0xC8, 0xF4, 0x12, 0, 0);
+    D_800D2D28[0xB4] = 0;
+    for (i = 0; i < 8; i += 2) {
+        buf = func_8008AC00(0x39);
+        D_800D36C8[i].image = buf;
+        D_800D36C8[i + 1].image = buf;
+        r = &D_800D36C8[i].rect;
+        r->x = 0x3C0;
+        r->y = i / 2 * 13;
+        r->w = 0x3C;
+        r->h = 0xD;
+        D_800D36C8[i + 1].rect = *r;
+        func_800780A8((u8*)&D_800D36C8[i], i);
+        func_800780A8((u8*)&D_800D36C8[i + 1], i + 1);
+    }
+}
 extern u8 D_800D2D24[];
 extern u8 D_800D3294;
 
