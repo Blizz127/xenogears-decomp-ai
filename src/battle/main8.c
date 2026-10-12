@@ -217,7 +217,30 @@ void func_80078310(u8* base, u8 arg1) {
         }
     }
 }
-INCLUDE_ASM("asm/battle/nonmatchings/main8", func_80078508);
+extern u8 D_800D2DCC[];
+extern u8 D_800D2DE4[];
+extern u8 D_800D2DF0[];
+extern u16 func_80098AF8(s32 idx, s32 flag);
+
+/* Refresh the 11 slot words: +0x16 and +0 halfwords of D_800D2DF0 get
+ * func_80098AF8(i, 0) for a live slot (D_800D2DCC[i]) and 0xFF otherwise
+ * (one chained store per branch, as retail duplicates them); clear
+ * D_800D2DE4[i], the +0x2C halfword and out[i]. */
+void func_80078508(void* pBuffer) {
+    u8* out = (u8*)pBuffer;
+    s32 i;
+
+    for (i = 0; i < 11; i++) {
+        if (D_800D2DCC[i] != 0) {
+            *(u16*)(D_800D2DF0 + i * 2) = *(u16*)(D_800D2DF0 + 0x16 + i * 2) = func_80098AF8(i, 0);
+        } else {
+            *(u16*)(D_800D2DF0 + i * 2) = *(u16*)(D_800D2DF0 + 0x16 + i * 2) = 0xFF;
+        }
+        D_800D2DE4[i] = 0;
+        *(u16*)(D_800D2DF0 + 0x2C + i * 2) = 0;
+        out[i] = 0;
+    }
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main8", func_800785D4);
 INCLUDE_ASM("asm/battle/nonmatchings/main8", func_80078658);
 #endif
