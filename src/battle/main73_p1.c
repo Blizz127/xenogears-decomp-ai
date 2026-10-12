@@ -31,7 +31,81 @@ s32 func_800AEEF8(u8* obj) {
     return SquareRoot0(dx * dx + dy * dy + dz * dz);
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/main73_p1", func_800AEF68);
+#include "battle/gte_inline.h"
+extern u8* D_800D3368[];
+extern u16 D_800C3D40;
+extern u8 D_800C3EBE[];
+extern u8 D_800C3EC0[];
+extern u8 D_800C3EC2[];
+
+/* Resolve the screen anchor (+0x88/+0x8A/+0x8C) of the object's target: the
+ * +0x58 code picks the actor (0xFF: the lowest set bit of the +0x10A mask;
+ * 0xFE: D_800C3D40; 0xFD/0xFC: the object's +0x20/+0x21 slot; 0xFA: 0x1F;
+ * 1..0x7F: code - 1).  A live actor other than the object itself is
+ * projected through its body matrix (composed with model part +0x5A when
+ * set, into the scratchpad) by the inline GTE RT*V0+TR of the object's +0x64
+ * offset, mirrored into a type-7/8 +0x70 pool record; otherwise the slot's
+ * static anchor (D_800C3EBE table, 28-byte rows) is used. */
+void func_800AEF68(u8* obj) {
+    s32 idx;
+    s16 kind;
+    u8* rec;
+    MATRIX* m;
+    VECTOR out;
+    u8* t;
+
+    idx = 0;
+    if (*(s16*)(obj + 0x58) == 0xFF) {
+        for (idx = 0; idx < 13; idx++) {
+            if ((*(u16*)(obj + 0x10A) >> idx) & 1) {
+                break;
+            }
+        }
+    }
+    kind = *(s16*)(obj + 0x58);
+    if (kind == 0xFE) {
+        idx = D_800C3D40;
+    }
+    if (kind == 0xFD) {
+        idx = obj[0x20];
+    }
+    if (kind == 0xFC) {
+        idx = obj[0x21];
+    }
+    if (kind == 0xFA) {
+        idx = 0x1F;
+    }
+    if (kind > 0 && kind <= 0x7F) {
+        idx = kind - 1;
+    }
+    rec = D_800D3368[idx];
+    if (rec != NULL && idx != obj[0x20]) {
+        if (*(s16*)(obj + 0x5A) != 0) {
+            m = (MATRIX*)0x1F800000;
+            CompMatrix((MATRIX*)(*(u8**)(rec + 4) + 0xC), (MATRIX*)(*(u8**)(rec + 4) + *(s16*)(obj + 0x5A) * 0x7C + 0x2C), m);
+        } else {
+            m = (MATRIX*)(*(u8**)(rec + 4) + 0xC);
+        }
+        SetRotMatrix(m);
+        SetTransMatrix(m);
+        BATTLE_GTE_LDV0(obj + 0x64);
+        BATTLE_GTE_RTV0TR();
+        BATTLE_GTE_STLVNL(&out);
+        *(s16*)(obj + 0x88) = out.vx;
+        *(s16*)(obj + 0x8A) = out.vy;
+        *(s16*)(obj + 0x8C) = out.vz;
+        t = *(u8**)(*(u8**)(obj + 4) + 0x70);
+        if (t != NULL && (u8)(t[2] - 7) < 2) {
+            *(s16*)(t + 0xA) = out.vx;
+            *(s16*)(t + 0xC) = out.vy;
+            *(s16*)(t + 0xE) = out.vz;
+        }
+    } else {
+        *(u16*)(obj + 0x88) = *(u16*)(D_800C3EBE + idx * 28);
+        *(u16*)(obj + 0x8A) = *(u16*)(D_800C3EC2 + idx * 28);
+        *(u16*)(obj + 0x8C) = *(u16*)(D_800C3EC0 + idx * 28);
+    }
+}
 
 /* Move node `index`'s pending flag from `src` to `dst`, release its three
  * handles, then recurse into every later node whose parent it is. */
