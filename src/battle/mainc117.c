@@ -38,7 +38,55 @@ void func_800BCBB4(u8* task) {
     (*(s32*)(t + 0x20))++;
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/mainc117", func_800BCC60);
+extern u8* TimerWorkListAllocateTask(u32 owner, u32 size);
+extern void TimerWorkListSetTaskCallback(void* pTask, void* callback);
+extern void WorkListTaskSetOnFreeCallback(void* pTask, void* callback);
+extern void func_800BCB54(u8* task);
+extern u8 D_800C3EB0[];
+extern u8* D_800C3748[];
+extern u8 D_800C4922[];
+extern u8 D_800591AC[];
+extern u32 D_80059464[];
+
+/* func_800BCC60.s: (re)start the timer task that drives func_800BCBB4.  An
+ * existing task (D_800C3748) is kept when its +0x24 slot already equals
+ * D_800C4922; otherwise func_800BCB54(0) is called.  Then, for slot
+ * D_800C3EB0[0xA72], allocate a 0xC-byte timer task for the owner word at
+ * +0x8CB8 + slot * 4 (none: return), install func_800BCBB4 and the
+ * func_800BCB54 on-free callback, step D_80059464 down when D_800591AC is
+ * set, clear bit 31 of +0x14, point +0x1C at the slot's object (+0x8C8C +
+ * slot * 4), store the slot at +0x24 and clear bit 0 of the object's +0x2B.
+ * First draft. */
+void func_800BCC60(void) {
+    u8* base;
+    u8* task;
+    u8* obj;
+    u32 owner;
+
+    if (D_800C3748[0] != 0) {
+        if (*(u32*)(D_800C3748[0] + 0x24) == D_800C4922[0]) {
+            return;
+        }
+        func_800BCB54(0);
+    }
+    base = D_800C3EB0;
+    owner = *(u32*)(base + base[0xA72] * 4 + 0x8CB8);
+    if (owner == 0) {
+        return;
+    }
+    task = TimerWorkListAllocateTask(owner, 0xC);
+    D_800C3748[0] = task;
+    TimerWorkListSetTaskCallback(task, func_800BCBB4);
+    WorkListTaskSetOnFreeCallback(task, func_800BCB54);
+    if (D_800591AC[0] != 0) {
+        D_80059464[0]--;
+    }
+    *(u32*)(task + 0x14) &= 0x7FFFFFFF;
+    obj = *(u8**)(base + base[0xA72] * 4 + 0x8C8C);
+    *(u8**)(task + 0x1C) = obj;
+    *(u32*)(task + 0x24) = base[0xA72];
+    obj[0x2B] &= 0xFE;
+}
 #endif
 
 
