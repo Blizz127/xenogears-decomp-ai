@@ -649,7 +649,38 @@ void func_800B4EDC(u8* task) {
     MoveImage(&rect, 0x3F0, 0x1EE);
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/mainc83", func_800B4F88);
+/* func_800B4F88.s: build `m` for pose entry `idx` of the actor's parent
+ * (actor +0x20; 8-byte entries from parent +0x34: s8 x, s8 y, then the
+ * rotation halves at +2/+4/+6): RotMatrix, translation = the parent's
+ * +0x20/+0x24/+0x28 plus x and y scaled by the actor's s16 +0x2C (/ 4096;
+ * x negated when +0xAC bit 2 is set), then SetMulMatrix with the parent's
+ * matrix at +0xC.  The entry address is integer arithmetic so the index is
+ * the first addu operand, as in retail. */
+void func_800B4F88(u8* actor, s32 idx, MATRIX* m) {
+    s8* e;
+    s32 x;
+    s32 y;
+    SVECTOR rot;
+
+    if (*(u8**)(actor + 0x20) != NULL) {
+        e = (s8*)(idx * 8 + (u32)*(u8**)(*(u8**)(actor + 0x20) + 0x34));
+        y = e[1];
+        x = e[0];
+        if ((*(u32*)(actor + 0xAC) >> 2) & 1) {
+            x = -x;
+        }
+        y = y * *(s16*)(actor + 0x2C) / 4096;
+        x = x * *(s16*)(actor + 0x2C) / 4096;
+        rot.vx = *(u16*)(e + 2);
+        rot.vy = *(u16*)(*(u8**)(*(u8**)(actor + 0x20) + 0x34) + idx * 8 + 4);
+        rot.vz = *(u16*)(*(u8**)(*(u8**)(actor + 0x20) + 0x34) + idx * 8 + 6);
+        RotMatrix(&rot, m);
+        m->t[0] = *(s32*)(*(u8**)(actor + 0x20) + 0x20) + x;
+        m->t[1] = *(s32*)(*(u8**)(actor + 0x20) + 0x24) + y;
+        m->t[2] = *(s32*)(*(u8**)(actor + 0x20) + 0x28);
+        SetMulMatrix(m, (MATRIX*)(*(u8**)(actor + 0x20) + 0xC));
+    }
+}
 INCLUDE_ASM("asm/battle/nonmatchings/mainc83", func_800B50D4);
 INCLUDE_ASM("asm/battle/nonmatchings/mainc83", func_800B51B0);
 INCLUDE_ASM("asm/battle/nonmatchings/mainc83", func_800B5588);
