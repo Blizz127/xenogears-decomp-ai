@@ -33,7 +33,135 @@ void func_800BB9D4(void) {
                       D_800D3354, D_800D335C, 0x1000);
     }
 }
-INCLUDE_ASM("asm/battle/nonmatchings/mainc114_p2", func_800BBAB8);
+#include "psyq/libgte.h"
+#include "battle/gte_inline.h"
+extern s32 D_800C3CC0__s[] asm("D_800C3CC0");
+extern s32 D_800C3CBC[];
+extern u32 D_800C3678[];
+extern s32 D_800C3674[];
+extern s32 D_8006F99C__w[] asm("D_8006F99C");
+extern s32 D_8006F9AC__w[] asm("D_8006F9AC");
+extern s16 D_800D30A0__s16[] asm("D_800D30A0");
+extern u8* D_800D39EC[];
+extern s16 D_800C373C[];
+extern s32 D_800C3738[];
+typedef struct {
+    u8 unk0[4];
+    SVECTOR eye;
+    SVECTOR at;
+    s16 rx;
+    s16 ry;
+    s16 rz;
+    s16 unk1A;
+    s32 dist;
+} BattleCamera;
+extern BattleCamera D_800D309C__cam asm("D_800D309C");
+extern s16 D_800D3354__s16[] asm("D_800D3354");
+extern s16 D_800D335C__s16[] asm("D_800D335C");
+extern void func_800BC460(u32 mask);
+
+typedef struct { s32 x, y, z, pad; } BattleSetupLongVec;
+typedef struct { s16 x, y, z, pad; } BattleSetupShortVec;
+
+static inline void BattleSetupPackVector(BattleSetupLongVec* src, BattleSetupShortVec* dst) {
+    dst->x = src->x >> 16;
+    dst->y = src->y >> 16;
+    dst->z = src->z >> 16;
+}
+
+/* Per-tick battle camera driver.  Setup mode (D_800C3CC0) 1 runs
+ * func_800BC460; 2 packs the two 16.16 setup vectors D_8006F99C/D_8006F9AC
+ * into the D_800D30A0 eye/target pair; 3 orbits the eye around the
+ * D_800D39EC actor by the D_800C373C angle at the D_800C3738 radius.  While
+ * D_800C3CBC == 1 the current eye/target (D_800D3354/D_800D335C) ease toward
+ * the camera record's by the D_800C3674 factor (inline GTE GPF), snapping
+ * when the step rounds to zero.  Finally the record's distance and pitch/yaw
+ * are rebuilt from the eye->target delta.  The final block owns 48 bytes of
+ * unused stack, as retail. */
+void func_800BBAB8(void) {
+
+    switch (D_800C3CC0__s[0]) {
+    case 0:
+        break;
+    case 1:
+        func_800BC460(D_800C3678[0]);
+        break;
+    case 2:
+        BattleSetupPackVector((BattleSetupLongVec*)D_8006F99C__w, (BattleSetupShortVec*)D_800D30A0__s16);
+        BattleSetupPackVector((BattleSetupLongVec*)D_8006F9AC__w, (BattleSetupShortVec*)D_800D30A0__s16 + 1);
+        break;
+    case 3: {
+        SVECTOR a;
+        SVECTOR b;
+        u8* p = D_800D39EC[0];
+
+        b.vx = a.vx = *(s32*)(p + 0) >> 16;
+        a.vy = *(s32*)(p + 4) >> 16;
+        a.vz = *(s32*)(p + 8) >> 16;
+        b.vz = a.vz - rsin(D_800C373C[0]) * D_800C3738[0] / 4096;
+        b.vy = a.vy - rcos(D_800C373C[0]) * D_800C3738[0] / 4096;
+        D_800D309C__cam.eye = b;
+        D_800D309C__cam.at = a;
+        break;
+    }
+    }
+    if (D_800C3CBC[0] == 1) {
+        VECTOR v;
+
+        BATTLE_GTE_LDDP(D_800C3674[0]);
+        v.vx = D_800D309C__cam.eye.vx - D_800D3354__s16[0];
+        v.vy = D_800D309C__cam.eye.vy - D_800D3354__s16[1];
+        v.vz = D_800D309C__cam.eye.vz - D_800D3354__s16[2];
+        BATTLE_GTE_LDLVL(&v);
+        BATTLE_GTE_GPF12();
+        BATTLE_GTE_STLVL(&v);
+        if (v.vx | v.vz | v.vy) {
+            D_800D3354__s16[0] += v.vx;
+            D_800D3354__s16[1] += v.vy;
+            D_800D3354__s16[2] += v.vz;
+        } else {
+            s16* t = (s16*)&D_800D309C__cam.eye;
+
+            D_800D3354__s16[0] = t[0];
+            D_800D3354__s16[1] = t[1];
+            D_800D3354__s16[2] = t[2];
+        }
+        v.vx = D_800D309C__cam.at.vx - D_800D335C__s16[0];
+        v.vy = D_800D309C__cam.at.vy - D_800D335C__s16[1];
+        v.vz = D_800D309C__cam.at.vz - D_800D335C__s16[2];
+        BATTLE_GTE_LDLVL(&v);
+        BATTLE_GTE_GPF12();
+        BATTLE_GTE_STLVL(&v);
+        if (v.vx | v.vz | v.vy) {
+            D_800D335C__s16[0] += v.vx;
+            D_800D335C__s16[1] += v.vy;
+            D_800D335C__s16[2] += v.vz;
+        } else {
+            s16* t = (s16*)&D_800D309C__cam.at;
+
+            D_800D335C__s16[0] = t[0];
+            D_800D335C__s16[1] = t[1];
+            D_800D335C__s16[2] = t[2];
+        }
+    }
+    {
+    u8 pad0[0x20];
+    VECTOR d;
+    u8 pad1[0x10];
+    VECTOR sq;
+    s32 flat;
+
+    d.vx = D_800D335C__s16[0] - D_800D3354__s16[0];
+    d.vy = D_800D335C__s16[1] - D_800D3354__s16[1];
+    d.vz = D_800D335C__s16[2] - D_800D3354__s16[2];
+    Square0(&d, &sq);
+    flat = SquareRoot0(sq.vx + sq.vz);
+    D_800D309C__cam.dist = SquareRoot0(sq.vx + sq.vy + sq.vz);
+    D_800D309C__cam.ry = -ratan2(d.vz, d.vx);
+    D_800D309C__cam.rx = -ratan2(d.vy, flat);
+    D_800D309C__cam.rz = 0;
+    }
+}
 extern u8* D_800C3680__p[] asm("D_800C3680");
 extern u8* D_800C3684__p[] asm("D_800C3684");
 extern u8 D_800C37C8[];

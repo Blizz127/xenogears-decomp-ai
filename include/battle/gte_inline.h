@@ -15,4 +15,14 @@
 #define BATTLE_GTE_STLVNL(p) \
     __asm__ volatile("swc2 $25, 0(%0)\n\tswc2 $26, 4(%0)\n\tswc2 $27, 8(%0)" : : "r"(p) : "memory")
 
+/* IR0 = v (gte_lddp) */
+#define BATTLE_GTE_LDDP(v) __asm__ volatile("mtc2 %0, $8" : : "r"(v))
+/* IR1..IR3 = *(VECTOR*)p (gte_ldlvl) */
+#define BATTLE_GTE_LDLVL(p) __asm__ volatile("lwc2 $9, 0(%0)\n\tlwc2 $10, 4(%0)\n\tlwc2 $11, 8(%0)" : : "r"(p))
+/* GPF sf=1: IR = IR * IR0 >> 12 (gte_gpf12) */
+#define BATTLE_GTE_GPF12() __asm__ volatile("nop\n\tnop\n\t.word 0x4B98003D")
+/* *(VECTOR*)p = IR1..IR3 (gte_stlvl) */
+#define BATTLE_GTE_STLVL(p) \
+    __asm__ volatile("swc2 $9, 0(%0)\n\tswc2 $10, 4(%0)\n\tswc2 $11, 8(%0)" : : "r"(p) : "memory")
+
 #endif
