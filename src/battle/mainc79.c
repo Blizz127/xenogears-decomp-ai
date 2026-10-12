@@ -16,7 +16,44 @@ void func_800B3658(s16* pos, s32 v) {
     func_800B3358(p);
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/mainc79", func_800B36BC);
+#include "psyq/libgte.h"
+#include "battle/gte_inline.h"
+extern u32 D_800C3558[];
+
+/* Per-tick colour fade of fx (+0x38 total ticks, +0x3C ticks left): while
+ * ticks remain, the current colour +0x48..+0x4A steps from the start colour
+ * +0x45..+0x47 toward the target +0x42..+0x44 (delta * left / 2 through GTE
+ * GPF, divided by total / 2).  Once done, the colour is the target; a black
+ * target also calls the D_800C3558 object's +0xC handler with that object. */
+void func_800B36BC(u8* fx) {
+    u8* w;
+    VECTOR v;
+
+    w = fx;
+    if (*(s32*)(fx + 0x3C) == 0) {
+        fx[0x48] = fx[0x42];
+        fx[0x49] = fx[0x43];
+        fx[0x4A] = fx[0x44];
+        if ((fx[0x48] | fx[0x49] | fx[0x4A]) == 0) {
+            (*(void (**)(u32*))(D_800C3558[0] + 0xC))((u32*)D_800C3558[0]);
+        }
+    } else {
+        *(s32*)(w + 0x3C) -= 1;
+        v.vx = w[0x42] - w[0x45];
+        v.vy = w[0x43] - w[0x46];
+        v.vz = w[0x44] - w[0x47];
+        BATTLE_GTE_LDDP(*(s32*)(w + 0x3C) >> 1);
+        BATTLE_GTE_LDLVL(&v);
+        BATTLE_GTE_GPF0();
+        BATTLE_GTE_STLVL(&v);
+        v.vx /= *(s32*)(w + 0x38) >> 1;
+        v.vy /= *(s32*)(w + 0x38) >> 1;
+        v.vz /= *(s32*)(w + 0x38) >> 1;
+        w[0x48] = w[0x42] - v.vx;
+        w[0x49] = w[0x43] - v.vy;
+        w[0x4A] = w[0x44] - v.vz;
+    }
+}
 #endif
 
 

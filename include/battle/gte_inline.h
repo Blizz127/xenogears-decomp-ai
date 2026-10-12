@@ -19,6 +19,8 @@
 #define BATTLE_GTE_LDDP(v) __asm__ volatile("mtc2 %0, $8" : : "r"(v))
 /* IR1..IR3 = *(VECTOR*)p (gte_ldlvl) */
 #define BATTLE_GTE_LDLVL(p) __asm__ volatile("lwc2 $9, 0(%0)\n\tlwc2 $10, 4(%0)\n\tlwc2 $11, 8(%0)" : : "r"(p))
+/* GPF sf=0: IR = IR * IR0 (gte_gpf0) */
+#define BATTLE_GTE_GPF0() __asm__ volatile("nop\n\tnop\n\t.word 0x4B90003D")
 /* GPF sf=1: IR = IR * IR0 >> 12 (gte_gpf12) */
 #define BATTLE_GTE_GPF12() __asm__ volatile("nop\n\tnop\n\t.word 0x4B98003D")
 /* *(VECTOR*)p = IR1..IR3 (gte_stlvl) */
