@@ -187,7 +187,25 @@ void func_800BDB08(u8* task) {
     }
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BDB74);
+extern u8 func_80021AD8(u8 v, s32 d);
+
+/* fade-out step: run the shared popup step, fade the three colour bytes at
+ * +0x80..+0x82 through func_80021AD8(+0x80, -8) (each call reads +0x80),
+ * count down +0x88 and call +0x0C(task) once it goes negative or the
+ * colour reaches black.  The callback is called through `task`, as in
+ * func_800BDB08: calling it through the void* parameter loses retail's s1
+ * copy of task (size 148 vs 160). */
+void func_800BDB74(void* taskp) {
+    u8* task = (u8*)taskp;
+
+    func_800BDF1C();
+    task[0x80] = func_80021AD8(task[0x80], -8);
+    task[0x81] = func_80021AD8(task[0x80], -8);
+    task[0x82] = func_80021AD8(task[0x80], -8);
+    if (--*(s32*)(task + 0x88) < 0 || (task[0x80] | task[0x81] | task[0x82]) == 0) {
+        (*(void (**)(u8*))(task + 0xC))(task);
+    }
+}
 #endif
 extern void func_800BDB74(void* task);
 /* func_800BDC14.s: run func_800BDF1C, count the task's +0x88 timer down and,
