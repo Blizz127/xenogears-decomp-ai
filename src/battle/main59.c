@@ -5,7 +5,33 @@
 INCLUDE_ASM("asm/battle/nonmatchings/main59", func_8009C134);
 INCLUDE_ASM("asm/battle/nonmatchings/main59", func_8009C198);
 INCLUDE_ASM("asm/battle/nonmatchings/main59", func_8009C4B4);
-INCLUDE_ASM("asm/battle/nonmatchings/main59", func_8009C9C4);
+extern u8* D_800C34B0;
+extern u8* D_800C3DFC;
+extern u8* D_800C3E00;
+extern u8* D_800D2D6C;
+
+/* Latch the action record bytes D_800C3DFC +0x20..+0x23 into D_800C34B0
+ * +0x5FBC..+0x5FBF and +0x5FC2 into +0x5FC0; when the +0x5FBE byte has no
+ * low six bits, OR in (D_800D2D6C +0x84 | D_800C3E00 +0x8A) >> 12.  The
+ * shifted bits are computed before the test (retail does the OR before the
+ * branch and the shift in its delay slot). */
+void func_8009C9C4(void) {
+    u32 a0 = *(u16*)(D_800D2D6C + 0x84);
+    u32 a1 = *(u16*)(D_800C3E00 + 0x8A);
+    u32 v;
+    u32 bits;
+
+    D_800C34B0[0x5FBC] = D_800C3DFC[0x20];
+    D_800C34B0[0x5FBD] = D_800C3DFC[0x21];
+    D_800C34B0[0x5FBE] = D_800C3DFC[0x22];
+    D_800C34B0[0x5FBF] = D_800C3DFC[0x23];
+    D_800C34B0[0x5FC0] = D_800C34B0[0x5FC2];
+    bits = (a0 | a1) >> 12;
+    v = D_800C34B0[0x5FBE];
+    if ((v & 0x3F) == 0) {
+        D_800C34B0[0x5FBE] = bits | v;
+    }
+}
 #endif
 #ifndef XENO_PC_PORT
 extern u8* D_800C34B0;
