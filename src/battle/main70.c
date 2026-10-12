@@ -156,7 +156,40 @@ void func_800A6AE8(void) {
     }
     LoadImage(&D_800D3628, D_800D3608[0]);
 }
-INCLUDE_ASM("asm/battle/nonmatchings/main70", func_800A6F98);
+extern u8* D_800D33E4;
+extern BattleRect D_800D3628__a[] asm("D_800D3628");
+extern void DrawSync(s32 mode);
+extern void func_800A429C(void* p);
+extern void func_800A64E4(void);
+
+/* func_800A6F98.s: when D_800D361A is set, clear word 0 of each 0x30-byte
+ * record of D_800D33E4's +0x118 table (count at +0x10E) whose +0x1A is
+ * set, upload D_800D3604 to the CLUT rect D_800D3628, DrawSync(0) and call
+ * func_800A429C on D_800D3628 - 0x28; then call func_800A64E4 and free the
+ * D_800C3AC4/D_800C3AC8 blocks.  D_800D3628 is used through an array view
+ * so its address stays in $s0 for the - 0x28 (the TU's scalar declaration
+ * folds it into a constant, 45/51). */
+void func_800A6F98(void) {
+    s32 i;
+    u8* rec;
+
+    if (D_800D361A[0] != 0) {
+        rec = *(u8**)(D_800D33E4 + 0x118);
+        for (i = 0; i < D_800D33E4[0x10E]; i++) {
+            if (*(u16*)(rec + 0x1A) != 0) {
+                *(u32*)rec = 0;
+            }
+            rec += 0x30;
+        }
+        LoadImage(D_800D3628__a, D_800D3604[0]);
+        DrawSync(0);
+        func_800A429C((u8*)D_800D3628__a - 0x28);
+    }
+    func_800A64E4();
+    HeapFree(D_800C3AC4);
+    HeapFree(D_800C3AC8);
+}
+
 INCLUDE_ASM("asm/battle/nonmatchings/main70", func_800A7064);
 INCLUDE_ASM("asm/battle/nonmatchings/main70", func_800A7948);
 
