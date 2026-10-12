@@ -3,6 +3,7 @@
 extern u8 D_800D3420[];
 extern u8 D_800D3430[];
 extern u32 func_80079E7C(u16 value);
+extern u32 func_80079ED8(u8 a0, u8 a1, u8 a2, s32 a3);
 extern u32 func_8007A280(u8 a0, u8 a1, u32 a2, u32 a3);
 
 #ifdef XENO_PC_PORT
@@ -15,7 +16,8 @@ extern u32 func_8007A280(u8 a0, u8 a1, u32 a2, u32 a3);
 #endif
 
 #ifdef XENO_PC_PORT
-/* Port body for the retail row-to-party helper wrapper. */
+/* Port body for the retail row-to-party helper wrapper; the retail build
+ * compiles the byte-exact C in the #else branch. */
 void func_8007B424(u8** ppBoard, u8 index) {
     u8* p = *ppBoard;
     u8* row = D_800D3420 + ((u32)index << 6);
@@ -27,7 +29,20 @@ void func_8007B424(u8** ppBoard, u8 index) {
     row[p[1]] = value;
 }
 #else
-INCLUDE_ASM("asm/battle/nonmatchings/main21", func_8007B424);
+/* func_8007B424.s, byte-exact.  base keeps a single set and the +0x10 row
+ * is its own variable.  With `base += 0x10` base has two sets, so sched1
+ * does not boost its `la` and places it ahead of the *ppBoard load. */
+void func_8007B424(u8** ppBoard, u8 index) {
+    u32 off = (u32)index << 6;
+    u8* base = D_800D3420;
+    u8* row;
+    u8 v;
+
+    v = func_80079E7C(*(u16*)(base + off + (*ppBoard)[3] * 2));
+    row = base + 0x10;
+    v = func_80079ED8(v, (*ppBoard)[2], 0, 1);
+    (row + off)[(*ppBoard)[1]] = v;
+}
 #endif
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/battle/nonmatchings/main21", func_8007B4B8);
