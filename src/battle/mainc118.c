@@ -193,7 +193,62 @@ void func_800BD7A0(u8* task) {
     }
     WorkListsDeleteTasks(task);
 }
-INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BD810);
+#include "psyq/libgpu.h"
+
+extern u8* g_GfxCurWorkBuffer__a[] asm("g_GfxCurWorkBuffer");
+extern u8* g_GfxCurWorkBufferEnd__a[] asm("g_GfxCurWorkBufferEnd");
+extern u32* g_GfxCurOT__a[] asm("g_GfxCurOT");
+extern SVECTOR D_8004FB98[4];
+
+/* func_800BD810.s: emit one textured sprite quad (POLY_FT4, 9 words) for
+ * glyph record `glyph` (x,y +0/+2, u,v +4/+5, w,h +6/+7, tpage +0xA,
+ * clut +0xC) in colour word `rgb`, projected through the current GTE
+ * matrices, and link it into the current OT.  The UV stores go in setUV4's
+ * u0,v0,u1,v1,... order; retail's v-first store order comes from the
+ * scheduler, and writing them v-first, as the asm shows, swaps the
+ * registers that hold the two link masks. */
+void func_800BD810(u8* glyph, u32 rgb) {
+    POLY_FT4* prim = (POLY_FT4*)g_GfxCurWorkBuffer__a[0];
+    long p;
+    long flag;
+    s32 x0, y0, x1, y1;
+    u32 u0, v0, u1, v1;
+    u32* ot;
+    u32 w;
+    u32 h;
+
+    if ((u8*)prim + 0x28 >= g_GfxCurWorkBufferEnd__a[0]) {
+        return;
+    }
+    g_GfxCurWorkBuffer__a[0] = (u8*)prim + 0x28;
+    setlen(prim, 9);
+    *(u32*)&prim->r0 = rgb;
+    prim->tpage = *(u16*)(glyph + 0xA);
+    prim->clut = *(u16*)(glyph + 0xC);
+    w = glyph[6];
+    h = glyph[7];
+    x0 = *(u16*)(glyph + 0);
+    y0 = *(u16*)(glyph + 2);
+    x1 = x0 + w;
+    y1 = y0 + h;
+    D_8004FB98[0].vx = x0;
+    D_8004FB98[0].vy = y0;
+    D_8004FB98[1].vy = y0;
+    D_8004FB98[1].vx = x1;
+    D_8004FB98[2].vx = x1;
+    D_8004FB98[3].vx = x0;
+    D_8004FB98[2].vy = y1;
+    D_8004FB98[3].vy = y1;
+    RotTransPers4(&D_8004FB98[0], &D_8004FB98[1], &D_8004FB98[2], &D_8004FB98[3], (long*)&prim->x0,
+                  (long*)&prim->x1, (long*)&prim->x3, (long*)&prim->x2, &p, &flag);
+    u0 = glyph[4];
+    v0 = glyph[5];
+    u1 = u0 + glyph[6];
+    v1 = v0 + glyph[7];
+    setUV4(prim, u0, v0, u1, v0, u0, v1, u1, v1);
+    ot = g_GfxCurOT__a[0];
+    addPrim(ot, prim);
+}
 #include "psyq/libgte.h"
 
 extern MATRIX D_800D30BC;
@@ -773,9 +828,12 @@ void func_800BD7A0(u8* task) {
 }
 
 /* func_800BD810.s: emit one textured sprite quad (POLY_FT4, code 9 words)
- * for glyph record `glyph` (x,y +0/+2, w,h +6/+7, u,v +4/+5, clut +0xA,
- * tpage +0xC) with RGB word `rgb`, projected through the current GTE
- * matrices, and link it into the current OT (retail 24-bit link). */
+ * for glyph record `glyph` (x,y +0/+2, w,h +6/+7, u,v +4/+5, tpage +0xA,
+ * clut +0xC) with RGB word `rgb`, projected through the current GTE
+ * matrices, and link it into the current OT (retail 24-bit link).  The
+ * retail build uses the byte-exact C above (setUV4/addPrim); this arm
+ * stays for the port.  It writes the same prim fields, but routes
+ * RotTransPers4's screen coordinates through a local array. */
 void func_800BD810(u8* glyph, u32 rgb) {
     u8* prim = (u8*)g_GfxCurWorkBuffer;
     long sxy[4];
