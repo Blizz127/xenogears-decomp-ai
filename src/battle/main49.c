@@ -95,7 +95,59 @@ void func_8008DE04(u32 kind, u16 x, u16 y, u16 w) {
         func_80076B00(blk + ((i * 2 + D_800CCB34__a[0]) * 0x28 + 0x140));
     }
 }
-INCLUDE_ASM("asm/battle/nonmatchings/main49", func_8008E430);
+/* Halfword prim stores go through a one-field struct.  With them the stack
+ * load of `h` lands at its first use, as in retail; with raw `*(s16*)`
+ * stores it stays at the function entry (func_8008E430, func_8008F0A8). */
+typedef struct {
+    s16 v;
+} M49Half;
+#define M49_P16(off) (((M49Half*)M49_PRIM(off))->v)
+
+/* func_8008E430.s: the window's bottom edge -- two POLY_FT4 (block +0x1E0 /
+ * +0x230) along the y + h side, half the inner width each, textured from
+ * the frame's bottom cell -- then func_80076B00 on the current buffer's two.
+ * `h` is read as a full word here; func_8008F6E4 passes it as u16. */
+void func_8008E430(u32 kind, u16 x, u16 y, u16 w, s32 h) {
+    u8* blk;
+    s32 i;
+
+    blk = (u8*)D_800D2E38[kind & 0xFF];
+    M49_P16(0x1E8) = x + 8;
+    M49_P16(0x1EA) = y + h - 8;
+    M49_P16(0x1F0) = x + 8 + (w - 16) / 2;
+    M49_P16(0x1F2) = y + h - 8;
+    M49_P16(0x1F8) = x + 8;
+    M49_P16(0x1FA) = y + h + 8;
+    M49_P16(0x200) = x + 8 + (w - 16) / 2;
+    M49_P16(0x202) = y + h + 8;
+    M49_P16(0x238) = x + 8 + (w - 16) / 2;
+    M49_P16(0x23A) = y + h - 8;
+    M49_P16(0x240) = x + 8 + (w - 16) / 2 + (w - 16) / 2;
+    M49_P16(0x242) = y + h - 8;
+    M49_P16(0x248) = x + 8 + (w - 16) / 2;
+    M49_P16(0x24A) = y + h + 8;
+    M49_P16(0x250) = x + 8 + (w - 16) / 2 + (w - 16) / 2;
+    M49_P16(0x252) = y + h + 8;
+    *M49_PRIM(0x1EC) = (M49_UI(0xA274) & 0x3F) * 2 - 8;
+    *M49_PRIM(0x1ED) = M49_UI(0xA278);
+    *M49_PRIM(0x1F4) = (M49_UI(0xA274) & 0x3F) * 2 - 1;
+    *M49_PRIM(0x1F5) = M49_UI(0xA278);
+    *M49_PRIM(0x1FC) = (M49_UI(0xA274) & 0x3F) * 2 - 8;
+    *M49_PRIM(0x1FD) = M49_UI(0xA278) + 0x10;
+    *M49_PRIM(0x204) = (M49_UI(0xA274) & 0x3F) * 2 - 1;
+    *M49_PRIM(0x205) = M49_UI(0xA278) + 0x10;
+    *M49_PRIM(0x23C) = (M49_UI(0xA274) & 0x3F) * 2 - 8;
+    *M49_PRIM(0x23D) = M49_UI(0xA278);
+    *M49_PRIM(0x244) = (M49_UI(0xA274) & 0x3F) * 2 - 1;
+    *M49_PRIM(0x245) = M49_UI(0xA278);
+    *M49_PRIM(0x24C) = (M49_UI(0xA274) & 0x3F) * 2 - 8;
+    *M49_PRIM(0x24D) = M49_UI(0xA278) + 0x10;
+    *M49_PRIM(0x254) = (M49_UI(0xA274) & 0x3F) * 2 - 1;
+    *M49_PRIM(0x255) = M49_UI(0xA278) + 0x10;
+    for (i = 0; i < 2; i++) {
+        func_80076B00(blk + ((i * 2 + D_800CCB34__a[0]) * 0x28 + 0x1E0));
+    }
+}
 /* Window left edge: two POLY_FT4 (block +0x280 / +0x2D0) span the 16-pixel
  * band between the corners, half the inner height each, with the frame
  * texture's left cell; then func_80076B00 on both. */
@@ -140,7 +192,50 @@ void func_8008EA70(u32 kind, u16 x, u16 y, u16 h) {
         func_80076B00(blk + ((i * 2 + D_800CCB34__a[0]) * 0x28 + 0x280));
     }
 }
-INCLUDE_ASM("asm/battle/nonmatchings/main49", func_8008F0A8);
+/* func_8008F0A8.s: the window's right edge -- two POLY_FT4 (block +0x320 /
+ * +0x370) down the x + w side, half the inner height each, textured from the
+ * frame's right cell -- then func_80076B00 on the current buffer's two. */
+void func_8008F0A8(u32 kind, u16 x, u16 y, u16 w, u16 h) {
+    u8* blk;
+    s32 i;
+
+    blk = (u8*)D_800D2E38[kind & 0xFF];
+    M49_P16(0x328) = x + w - 8;
+    M49_P16(0x32A) = y + 8;
+    M49_P16(0x330) = x + w + 8;
+    M49_P16(0x332) = y + 8;
+    M49_P16(0x338) = x + w - 8;
+    M49_P16(0x33A) = y + 8 + (h - 16) / 2;
+    M49_P16(0x340) = x + w + 8;
+    M49_P16(0x342) = y + 8 + (h - 16) / 2;
+    M49_P16(0x378) = x + w - 8;
+    M49_P16(0x37A) = y + 8 + (h - 16) / 2;
+    M49_P16(0x380) = x + w + 8;
+    M49_P16(0x382) = y + 8 + (h - 16) / 2;
+    M49_P16(0x388) = x + w - 8;
+    M49_P16(0x38A) = y + 8 + (h - 16) / 2 + (h - 16) / 2;
+    M49_P16(0x390) = x + w + 8;
+    M49_P16(0x392) = y + 8 + (h - 16) / 2 + (h - 16) / 2;
+    *M49_PRIM(0x32C) = (M49_UI(0xA2A4) & 0x3F) * 2 + 0xE;
+    *M49_PRIM(0x32D) = M49_UI(0xA2A8);
+    *M49_PRIM(0x334) = (M49_UI(0xA2A4) & 0x3F) * 2 + 0x1E;
+    *M49_PRIM(0x335) = M49_UI(0xA2A8);
+    *M49_PRIM(0x33C) = (M49_UI(0xA2A4) & 0x3F) * 2 + 0xE;
+    *M49_PRIM(0x33D) = M49_UI(0xA2A8) + 7;
+    *M49_PRIM(0x344) = (M49_UI(0xA2A4) & 0x3F) * 2 + 0x1E;
+    *M49_PRIM(0x345) = M49_UI(0xA2A8) + 7;
+    *M49_PRIM(0x37C) = (M49_UI(0xA2A4) & 0x3F) * 2 + 0xE;
+    *M49_PRIM(0x37D) = M49_UI(0xA2A8);
+    *M49_PRIM(0x384) = (M49_UI(0xA2A4) & 0x3F) * 2 + 0x1E;
+    *M49_PRIM(0x385) = M49_UI(0xA2A8);
+    *M49_PRIM(0x38C) = (M49_UI(0xA2A4) & 0x3F) * 2 + 0xE;
+    *M49_PRIM(0x38D) = M49_UI(0xA2A8) + 7;
+    *M49_PRIM(0x394) = (M49_UI(0xA2A4) & 0x3F) * 2 + 0x1E;
+    *M49_PRIM(0x395) = M49_UI(0xA2A8) + 7;
+    for (i = 0; i < 2; i++) {
+        func_80076B00(blk + ((i * 2 + D_800CCB34__a[0]) * 0x28 + 0x320));
+    }
+}
 extern u8* D_800D2D28;
 extern u32 D_800D2E38[];
 void func_8008DC34(u32 kind, u16 x, u16 y, u16 w, u16 h);
@@ -237,6 +332,7 @@ void func_8008F8F4(u8 index, u16 x, u16 y, u16 w, u16 h, u8 animate, u8 refresh)
 }
 #undef M49_PRIM
 #undef M49_UI
+#undef M49_P16
 #endif
 
 
