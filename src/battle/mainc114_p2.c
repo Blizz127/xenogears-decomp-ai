@@ -88,7 +88,50 @@ void func_800BBEE0(u8* task) {
         func_800BC2F0(D_800C367C[0]);
     }
 }
-INCLUDE_ASM("asm/battle/nonmatchings/mainc114_p2", func_800BC018);
+extern s32 D_8006F99C__w[] asm("D_8006F99C");
+extern s32 D_8006F9AC__w[] asm("D_8006F9AC");
+extern void AnimScriptTick(void* obj);
+extern void func_80022CDC(void* obj);
+
+/* Timer callback of the setup sprite tasks: tick the sprite's (task +4)
+ * animation and save its position into D_8006F99C (kind 10) or D_8006F9AC;
+ * while +0x64 is still live, repeat once more when +0xAC bit 6 is set; when
+ * +0x64 has run out, call the task's +0xC callback. */
+void func_800BC018(u8* task) {
+    u8* s = *(u8**)(task + 4);
+
+    AnimScriptTick(s);
+    func_80022CDC(s);
+    if (((*(u32*)(s + 0x40) >> 13) & 0xF) == 10) {
+        D_8006F99C__w[0] = *(s32*)(s + 0);
+        D_8006F99C__w[1] = *(s32*)(s + 4);
+        D_8006F99C__w[2] = *(s32*)(s + 8);
+    } else {
+        D_8006F9AC__w[0] = *(s32*)(s + 0);
+        D_8006F9AC__w[1] = *(s32*)(s + 4);
+        D_8006F9AC__w[2] = *(s32*)(s + 8);
+    }
+    if (*(s32*)(s + 0x64) != 0) {
+        if (!((*(u32*)(s + 0xAC) >> 6) & 1)) {
+            return;
+        }
+        AnimScriptTick(s);
+        func_80022CDC(s);
+        if (((*(u32*)(s + 0x40) >> 13) & 0xF) == 10) {
+            D_8006F99C__w[0] = *(s32*)(s + 0);
+            D_8006F99C__w[1] = *(s32*)(s + 4);
+            D_8006F99C__w[2] = *(s32*)(s + 8);
+        } else {
+            D_8006F9AC__w[0] = *(s32*)(s + 0);
+            D_8006F9AC__w[1] = *(s32*)(s + 4);
+            D_8006F9AC__w[2] = *(s32*)(s + 8);
+        }
+        if (*(s32*)(s + 0x64) != 0) {
+            return;
+        }
+    }
+    (*(void (**)(u8*))(task + 0xC))(task);
+}
 INCLUDE_ASM("asm/battle/nonmatchings/mainc114_p2", func_800BC158);
 #endif
 #include "mainc114.c"
