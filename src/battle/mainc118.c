@@ -217,7 +217,42 @@ void func_800BD974(SVECTOR* point, s32* out) {
     out[2] = ReadGeomScreen();
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BDA1C);
+extern MATRIX D_800C3760;
+extern void func_800BD810(u8* glyph, u32 colour);
+
+/* Work callback: draw the popup's glyph quads.  The screen distance goes
+ * into D_800C3760's translation z, the anchor (+0x4A/+0x4E/+0x52) is
+ * projected to a translation, and the rotation (+0x40) and scale (+0x58)
+ * compose onto D_800C3760 before each of the +0x8C glyphs (0x18 bytes from
+ * +0x90) is drawn with colour +0x80.  The anchor halves go through an int
+ * temp so they load with lh, as in retail. */
+void func_800BDA1C(u8* task) {
+    u8* s = *(u8**)(task + 4);
+    MATRIX m;
+    SVECTOR anchor;
+    VECTOR pos;
+    s32 i;
+    u8* g;
+    s32 t;
+
+    D_800C3760.t[2] = ReadGeomScreen();
+    t = *(s16*)(s + 0x4A);
+    anchor.vx = t;
+    t = *(s16*)(s + 0x4E);
+    anchor.vy = t;
+    t = *(s16*)(s + 0x52);
+    anchor.vz = t;
+    func_800BD974(&anchor, (s32*)&pos);
+    RotMatrix((SVECTOR*)(s + 0x40), &m);
+    TransMatrix(&m, &pos);
+    CompMatrix(&D_800C3760, &m, &m);
+    ScaleMatrix(&m, (VECTOR*)(s + 0x58));
+    SetRotMatrix(&m);
+    SetTransMatrix(&m);
+    for (i = 0, g = s + 0x90; i != *(s32*)(s + 0x8C); i++, g += 0x18) {
+        func_800BD810(g, *(u32*)(s + 0x80));
+    }
+}
 extern void func_800BDF1C(void);
 
 /* fade step: run the shared popup step, darken the three colour bytes at
