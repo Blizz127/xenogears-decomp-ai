@@ -74,6 +74,37 @@ s32 func_800AAA20(u8* obj, s32 id, s32 steps, s32 a3, s32 a4) {
 INCLUDE_ASM("asm/battle/nonmatchings/main72_p2", func_800AAB34);
 INCLUDE_ASM("asm/battle/nonmatchings/main72_p2", func_800AAD54);
 INCLUDE_ASM("asm/battle/nonmatchings/main72_p2", func_800ADF1C);
-INCLUDE_ASM("asm/battle/nonmatchings/main72_p2", func_800AE098);
+extern u8* func_800A2330(u8* pool);
+
+/* Take (once) the object's +0x70 pool record (func_800A2330 from `pool`) and
+ * fill it like func_800B0164's: type 1, kind + 7, 0xFE, then the distance from
+ * the object's +0x5C position to (x, y, z) + 1, a3, arg4, the target point
+ * and arg5.  Retail used GNU C's `a ?: b` for the get-or-allocate. */
+void func_800AE098(u8* pool, u8* obj, s32 kind, s32 a3, s32 arg4, s32 arg5, s32 x, s32 y, s32 z) {
+    u8* e;
+    s32 dx;
+    s32 dy;
+    s32 dz;
+
+    e = *(u8**)(obj + 0x70) ?: func_800A2330(pool);
+    if (e != NULL) {
+        e[0] = 1;
+        e[2] = kind + 7;
+        e[1] = 0;
+        e[3] = 0xFE;
+        dx = x - *(s32*)(obj + 0x5C);
+        dy = y - *(s32*)(obj + 0x60);
+        dz = z - *(s32*)(obj + 0x64);
+        *(u16*)(e + 4) = SquareRoot0(dx * dx + dy * dy + dz * dz) + 1;
+        *(u16*)(e + 6) = a3;
+        *(u16*)(e + 8) = arg4;
+        *(u16*)(e + 0xA) = x;
+        *(u16*)(e + 0xC) = y;
+        *(u16*)(e + 0xE) = z;
+        *(u16*)(e + 0x10) = 0;
+        *(u16*)(e + 0x12) = arg5;
+        *(u8**)(obj + 0x70) = e;
+    }
+}
 #endif
 #include "main72.c"
