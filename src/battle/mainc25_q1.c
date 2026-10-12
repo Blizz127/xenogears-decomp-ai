@@ -4,7 +4,50 @@
 #include "common.h"
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/battle/nonmatchings/mainc25_q1", func_8007C840);
-INCLUDE_ASM("asm/battle/nonmatchings/mainc25_q1", func_8007C9D4);
+
+extern u32 func_8007A628(u32 a0, u32 a1);
+extern u8 func_8001BD40(u8 a0, u8 a1);
+extern u32 func_80089C08(u8 idx);
+extern u8 D_800D32A1[];
+extern u8 D_800D3420[];
+
+/* func_8007C9D4.s: clear u16 slot (*pp)[1] of row idx of D_800D3420, then
+ * draw party actors with func_8001BD40(0, 2) until one not tried yet passes
+ * func_8007A628(r, (*pp)[2]) with D_800D32A1[r * 8] set; store
+ * func_80089C08(r) in the slot.  Each failed draw marks tried[r]; stop when
+ * all three are marked.  The found branch recomputes the row address into
+ * dst: loop.c hoists that invariant into the preheader, where it becomes
+ * retail's copy of the first row ($a1 -> $s4); reusing row is 3 insns
+ * longer.  k holds r * 8 so D_800D32A1 is indexed as D_800D32A1($at)
+ * instead of a hoisted la.  Found with a decomp-permuter hint. */
+void func_8007C9D4(u8** pp, u8 idx) {
+    u8 tried[3];
+    u8* row;
+    u8* dst;
+    u8 r;
+    u32 k;
+
+    tried[2] = 0;
+    tried[1] = 0;
+    tried[0] = 0;
+    row = D_800D3420 + (idx << 6);
+    *(u16*)(row + (*pp)[1] * 2) = 0;
+    while (!(tried[0] & tried[1] & tried[2])) {
+        r = func_8001BD40(0, 2);
+        if (tried[r] == 0) {
+            if ((func_8007A628(r, (*pp)[2]) & 0xFF) != 0) {
+                k = r * 8;
+                if (D_800D32A1[k] != 0) {
+                    dst = D_800D3420 + (idx << 6);
+                    *(u16*)(dst + (*pp)[1] * 2) = func_80089C08(r);
+                    return;
+                }
+            }
+            tried[r] = 1;
+        }
+    }
+}
+
 INCLUDE_ASM("asm/battle/nonmatchings/mainc25_q1", func_8007CB20);
 
 extern u32 func_8007A628(u32 a0, u32 a1);
