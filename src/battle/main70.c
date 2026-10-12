@@ -47,7 +47,67 @@ void func_800A8A88(void *arg0) {
 
 INCLUDE_ASM("asm/battle/nonmatchings/main70", func_800A8B0C);
 INCLUDE_ASM("asm/battle/nonmatchings/main70", func_800A8BF0);
-INCLUDE_ASM("asm/battle/nonmatchings/main70", func_800A9540);
+typedef struct {
+    u16 index;
+    u16 unk2;
+    void* buf;
+} BattleFileEntry;
+
+extern u8 D_800CCD88[];
+extern u8 D_800CCDE8[];
+extern u8 D_800C3509[];
+extern BattleFileEntry* D_800C3B78;
+extern void ArchiveGetArchiveOffsetIndices(s32* idx, s32* sub);
+extern void ArchiveSetIndex(s32 idx, s32 sub);
+extern s32 ArchiveDecodeAlignedSize(s32 index);
+extern void func_80029AFC(BattleFileEntry* list, s32 a1, s32 a2);
+
+/* Queue actor `actor`'s battle model files from archive 0x28: a 0x20-byte
+ * list (published at D_800C3B78) of {file index, buffer} entries ending in
+ * a zero entry.  The base file comes from the D_800C3508 pair table for the
+ * actor's +0xCD88 kind; entries are base + 1, base + 2 and, when the actor's
+ * +0xCDE8 extra is within the table's limit, base + 2 + extra.  The archive
+ * position is restored afterwards. */
+void func_800A9540(s32 actor) {
+    s32 sub;
+    u8 kind;
+    s32 extra;
+    BattleFileEntry* p;
+    s32 idx;
+    u8 n;
+    s32 file;
+    register BattleFileEntry* list asm("$18");
+
+    ArchiveGetArchiveOffsetIndices(&idx, &sub);
+    ArchiveSetIndex(0x28, 1);
+    HeapChangeCurrentUser(4, 0);
+    kind = D_800CCD88[actor * 0x170];
+    extra = D_800CCDE8[actor * 0x170];
+    if (D_800C3509[kind * 2] < extra) {
+        extra = 0;
+    }
+    list = HeapAlloc(0x20, 1);
+    D_800C3B78 = list;
+    n = D_800C3509[kind * 2 - 1];
+    p = list;
+    file = n + 1;
+    p->index = file;
+    p->buf = HeapAlloc(ArchiveDecodeAlignedSize(file), 1);
+    file = n + 2;
+    list[1].index = file;
+    list[1].buf = HeapAlloc(ArchiveDecodeAlignedSize(file), 0);
+    p = &list[2];
+    if (extra != 0) {
+        file += extra;
+        list[2].index = file;
+        list[2].buf = HeapAlloc(ArchiveDecodeAlignedSize(file), 1);
+        p = &list[3];
+    }
+    p->index = 0;
+    p->buf = NULL;
+    func_80029AFC(D_800C3B78, 0, 0);
+    ArchiveSetIndex(idx, sub);
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main70", func_800A96B4);
 INCLUDE_ASM("asm/battle/nonmatchings/main70", func_800A979C);
 INCLUDE_ASM("asm/battle/nonmatchings/main70", func_800A9A50);
