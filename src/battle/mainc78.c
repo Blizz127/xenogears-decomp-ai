@@ -2,7 +2,61 @@
 
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/mainc78", func_800B3358);
+#include "psyq/libgte.h"
+#include "battle/gte_inline.h"
+extern s16 D_800C354C[];
+extern s16 D_800C354E[];
+extern s16 D_800C3550[];
+
+/* Per-tick shake fade of s (+0x38 ticks left, +0x3C total): the current
+ * offset +0x1C..+0x20 steps from the start +0x24..+0x28 toward the target
+ * +0x2C..+0x30 (delta * left / 2 through GTE GPF, divided by total / 2) and
+ * is the target once done.  It is published to D_800C354C/E/D_800C3550,
+ * negated on alternate pairs of ticks (+0x34 counter).  A finished zero
+ * offset runs the +0xC callback. */
+void func_800B3358(u8* s) {
+    VECTOR v;
+
+    if (*(s32*)(s + 0x38) == 0) {
+        *(u16*)(s + 0x1C) = *(u16*)(s + 0x2C);
+        *(u16*)(s + 0x1E) = *(u16*)(s + 0x2E);
+        *(u16*)(s + 0x20) = *(u16*)(s + 0x30);
+    } else {
+        *(s32*)(s + 0x38) -= 1;
+        v.vx = *(s16*)(s + 0x2C) - *(s16*)(s + 0x24);
+        v.vy = *(s16*)(s + 0x2E) - *(s16*)(s + 0x26);
+        v.vz = *(s16*)(s + 0x30) - *(s16*)(s + 0x28);
+        BATTLE_GTE_LDDP(*(s32*)(s + 0x38) >> 1);
+        BATTLE_GTE_LDLVL(&v);
+        BATTLE_GTE_GPF0();
+        BATTLE_GTE_STLVL(&v);
+        v.vx /= *(s32*)(s + 0x3C) >> 1;
+        v.vy /= *(s32*)(s + 0x3C) >> 1;
+        v.vz /= *(s32*)(s + 0x3C) >> 1;
+        *(u16*)(s + 0x1C) = *(u16*)(s + 0x2C) - v.vx;
+        *(u16*)(s + 0x1E) = *(u16*)(s + 0x2E) - v.vy;
+        *(u16*)(s + 0x20) = *(u16*)(s + 0x30) - v.vz;
+    }
+    *(s32*)(s + 0x34) += 1;
+    if (*(s32*)(s + 0x34) & 2) {
+        D_800C354C[0] = -*(u16*)(s + 0x1C);
+    } else {
+        D_800C354C[0] = *(u16*)(s + 0x1C);
+    }
+    if (*(s32*)(s + 0x34) & 2) {
+        D_800C354E[0] = -*(u16*)(s + 0x1E);
+    } else {
+        D_800C354E[0] = *(u16*)(s + 0x1E);
+    }
+    if (*(s32*)(s + 0x34) & 2) {
+        D_800C3550[0] = -*(u16*)(s + 0x20);
+    } else {
+        D_800C3550[0] = *(u16*)(s + 0x20);
+    }
+    if (*(s32*)(s + 0x1C) == 0 && *(s16*)(s + 0x20) == 0 && *(s32*)(s + 0x38) == 0) {
+        (*(void (**)(u8*))(s + 0xC))(s);
+    }
+}
 #endif
 
 
