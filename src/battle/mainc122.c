@@ -2,7 +2,56 @@
 
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/mainc122", func_800BE1C4);
+#include "psyq/libgte.h"
+extern MATRIX D_800C3760;
+extern void func_80021B24(void* dst, void* src);
+extern void func_800BD810(u8* glyph, u32 rgb);
+
+/* func_800BE1C4.s: work callback -- draw the task's glyph quads (0x18-byte
+ * entries from +0x70, count +0x6C, colour +0x68) six times, as
+ * func_800BDD3C (mainc120) does once: each pass rotates by the copied +0x38
+ * angles, translates to (160, 70) * 2 at the projection distance, composes
+ * with D_800C3760 and scales by the copied +0x40 vector, then steps the z
+ * angle by -5 and each scale axis by -0x330.  pad (as in func_800BDD3C)
+ * fills sp+0x30..0x37, so rot sits at sp+0x38 as in retail. */
+void func_800BE1C4(u8* task) {
+    MATRIX m;
+    u8 pad[8];
+    SVECTOR rot;
+    VECTOR t;
+    VECTOR scale;
+    long ofx;
+    long ofy;
+    u8* o = *(u8**)(task + 4);
+    s32 k;
+    s32 i;
+    u8* e;
+
+    ReadGeomOffset(&ofx, &ofy);
+    t.vx = (0xA0 - ofx) * 2;
+    t.vy = (0x46 - ofy) * 2;
+    t.vz = ReadGeomScreen();
+    D_800C3760.t[2] = ReadGeomScreen();
+    func_80021B24(&rot, o + 0x38);
+    scale.vx = *(s32*)(o + 0x40);
+    scale.vy = *(s32*)(o + 0x44);
+    scale.vz = *(s32*)(o + 0x48);
+    for (k = 0; k != 6; k++) {
+        RotMatrix(&rot, &m);
+        TransMatrix(&m, &t);
+        CompMatrix(&D_800C3760, &m, &m);
+        ScaleMatrix(&m, &scale);
+        SetRotMatrix(&m);
+        SetTransMatrix(&m);
+        for (i = 0, e = o + 0x70; i != *(s32*)(o + 0x6C); i++, e += 0x18) {
+            func_800BD810(e, *(u32*)(o + 0x68));
+        }
+        rot.vz -= 5;
+        scale.vx -= 0x330;
+        scale.vy -= 0x330;
+        scale.vz -= 0x330;
+    }
+}
 INCLUDE_ASM("asm/battle/nonmatchings/mainc122", func_800BE330);
 INCLUDE_ASM("asm/battle/nonmatchings/mainc122", func_800BE538);
 extern u8 D_800C3784[];
