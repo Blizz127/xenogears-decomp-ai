@@ -12,7 +12,25 @@ void func_8007BC84(u8 **pp, s32 idx) {
     *(u8 *)(row + (*pp)[1]) = v;
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/main24", func_8007BCE8);
+extern u8 D_800D3420[];
+extern u16 func_80089B50(u16 lo, u16 hi);
+
+/* func_8007BCE8.s: store func_80089B50(0, p[2] | p[3] << 8), a random value
+ * in [0, that bound], in halfword slot p[1] of row idx of D_800D3420 (64-byte
+ * rows).  The bound is built in place (hi = p[2], then hi |= p[3] << 8):
+ * retail ors into p[2]'s argument register.  The one-expression form (as
+ * in func_8007B3E4) puts p[3] << 8 there instead. */
+void func_8007BCE8(u8** pp, s32 idx) {
+    u16* row;
+    u16 hi = (*pp)[2];
+    u16 v;
+
+    hi |= (*pp)[3] << 8;
+    v = func_80089B50(0, hi);
+    row = (u16*)(D_800D3420 + ((idx & 0xFF) << 6));
+    row[(*pp)[1]] = v;
+}
+
 INCLUDE_ASM("asm/battle/nonmatchings/main24", func_8007BD5C);
 INCLUDE_ASM("asm/battle/nonmatchings/main24", func_8007BEA8);
 INCLUDE_ASM("asm/battle/nonmatchings/main24", func_8007C040);
