@@ -291,20 +291,14 @@ name = "BattleGcc263Div"
 # gcc 2.6.3 like BattleGcc263, plus maspsx --expand-div: retail main69's
 # signed division (func_800A5BE8's plane height) and main73_p1's
 # (func_800AF2C4) carry the aspsx divide-by-zero / overflow `break` checks.
+# main74 and main68 (formerly the gcc 2.7.2 "BattleDiv" preset) are 2.6.3
+# code too: func_800B10EC's and func_800A44C0's register choices and
+# narrowed loads only come out of 2.6.3, and both TUs stay byte-exact.
 build_variables = {
     gcc = "gcc-2.6.3-psx",
     maspsx_flags = "--expand-div --use-comm-section --run-assembler"
 }
-paths = [ "src/battle/main69.", "src/battle/main73_p1.", "src/battle/main74." ]
-
-[[build_preset]]
-name = "BattleDiv"
-# Default compiler plus maspsx --expand-div: these battle TUs' retail signed
-# divisions carry the aspsx divide-by-zero / overflow break checks.
-build_variables = {
-    maspsx_flags = "--expand-div --use-comm-section --run-assembler"
-}
-paths = [ "src/battle/main68." ]
+paths = [ "src/battle/main69.", "src/battle/main73_p1.", "src/battle/main74.", "src/battle/main68." ]
 
 [[build_preset]]
 name = "WorldMapDiv"

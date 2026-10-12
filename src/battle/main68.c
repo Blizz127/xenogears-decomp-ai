@@ -118,7 +118,59 @@ void func_800A429C(void *arg0) {
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A4348);
 INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A43F8);
-INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A44C0);
+#include "psyq/libgte.h"
+#include "battle/gte_inline.h"
+
+typedef struct {
+    u16 x;
+    u16 y;
+    u16 z;
+    s16 active;
+    SVECTOR local;
+    s16 slot;
+    s16 bone;
+} BattleAnchor;
+
+extern BattleAnchor D_800D3304[];
+
+typedef struct {
+    u8 unk0[0x2C];
+    MATRIX m;
+    u8 unk4C[0x30];
+} BattleModelPart;
+
+/* For the two anchor records at D_800D3304 (0x14 stride: output xyz,
+ * active, local SVECTOR, model slot, part): when the slot's model is present,
+ * transform the local point by the model body's +0xC matrix composed with
+ * that part's matrix (scratchpad, inline GTE RT*V0+TR); otherwise copy the
+ * local point through. */
+void func_800A44C0(u8** models) {
+    s32 i;
+    VECTOR out;
+    u8* body;
+    MATRIX* m = (MATRIX*)0x1F800000;
+
+    for (i = 0; i < 2; i++) {
+        if (D_800D3304[i].active != 0) {
+            if (D_800D3304[i].slot >= 0 && models[D_800D3304[i].slot] != NULL) {
+                body = *(u8**)(models[D_800D3304[i].slot] + 4);
+                CompMatrix((MATRIX*)(body + 0xC), &((BattleModelPart*)(body + 0x7C))[D_800D3304[i].bone].m, m);
+                SetRotMatrix(m);
+                SetTransMatrix(m);
+                BATTLE_GTE_LDV0(&D_800D3304[i].local);
+                BATTLE_GTE_RTV0TR();
+                BATTLE_GTE_STLVNL(&out);
+                D_800D3304[i].x = out.vx;
+                D_800D3304[i].y = out.vy;
+                D_800D3304[i].z = out.vz;
+            } else {
+                D_800D3304[i].x = D_800D3304[i].local.vx;
+                D_800D3304[i].y = D_800D3304[i].local.vy;
+                D_800D3304[i].z = D_800D3304[i].local.vz;
+            }
+        }
+    }
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A4654);
 extern u8 D_800C3E38[];
 extern u8 D_800C3D50[];
