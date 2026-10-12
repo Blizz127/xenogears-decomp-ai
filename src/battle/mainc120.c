@@ -41,7 +41,39 @@ void func_800BDD3C(u8* task) {
     }
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/mainc120", func_800BDE58);
+extern u32 D_800D2D68[];
+extern u8 D_800C3780;
+extern u8 D_800D30EC[];
+extern s32 D_800D3680__a[] asm("D_800D3680");
+extern void TimerWorkListAddTask(u32 owner, void* pTask);
+extern void WorkListAddTask(void* pOwner, void* pTask);
+extern void TimerWorkListSetTaskCallback(void* pTask, void* callback);
+extern void WorkListSetTaskCallback(void* pTask, void* callback);
+extern void WorkListTaskSetOnFreeCallback(void* pTask, void* callback);
+extern void func_800BDD34(void);
+extern void func_800BDCF8(u8* p);
+
+/* func_800BDE58.s: unless the popup task already exists (D_800D2D68) or
+ * D_800C3780 is set, install the static task block D_800D30EC: a timer task
+ * (func_800BDD34) with a work task at +0x1C (func_800BDD3C) and on-free
+ * func_800BDCF8, screen position (0x90, 0x2A), both tasks pointing at the
+ * block, no glyphs (+0x64 = 0), and D_800D3680 = -1. */
+void func_800BDE58(void) {
+    if (D_800D2D68[0] == 0 && D_800C3780 == 0) {
+        D_800D2D68[0] = (u32)D_800D30EC;
+        TimerWorkListAddTask(0, D_800D30EC);
+        WorkListAddTask(D_800D30EC, D_800D30EC + 0x1C);
+        TimerWorkListSetTaskCallback(D_800D30EC, func_800BDD34);
+        WorkListSetTaskCallback(D_800D30EC + 0x1C, func_800BDD3C);
+        WorkListTaskSetOnFreeCallback(D_800D30EC, func_800BDCF8);
+        *(s16*)(D_800D30EC + 0x50) = 0x90;
+        *(s16*)(D_800D30EC + 0x52) = 0x2A;
+        *(u8**)(D_800D30EC + 4) = D_800D30EC;
+        *(u8**)(D_800D30EC + 0x20) = D_800D30EC;
+        *(s32*)(D_800D30EC + 0x64) = 0;
+        D_800D3680__a[0] = -1;
+    }
+}
 INCLUDE_ASM("asm/battle/nonmatchings/mainc120", func_800BDF1C);
 #endif
 
