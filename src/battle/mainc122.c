@@ -53,7 +53,63 @@ void func_800BE1C4(u8* task) {
     }
 }
 INCLUDE_ASM("asm/battle/nonmatchings/mainc122", func_800BE330);
-INCLUDE_ASM("asm/battle/nonmatchings/mainc122", func_800BE538);
+extern u8 D_800C3EB0[];
+extern u8* D_800C3610[];
+extern s32 D_80059464;
+extern u8 D_800591AC;
+extern u8 D_800C3780;
+extern void func_800245D8(u32 a0, u32 a1);
+extern void func_800BD3AC(u8* target, u32 value, u32 kind);
+extern s32 func_800BF6F8(void);
+extern void func_800BE790(void);
+extern void func_800BE0DC(void);
+
+/* func_800BE538.s: show party slot `slot`'s popups synchronously: with
+ * D_80059464 = 0, D_800591AC = 1 and D_800C3780 = 1,
+ * play the slot actor's animation 0xA, spawn up to three popups
+ * (func_800BD3AC kinds 0, 1 and 0xA for the nonzero values) with
+ * D_800C3610 forced to 1, run frames (func_800BE790) until func_800BF6F8
+ * reports idle and the animation leaves 0xA, then restore the animation and
+ * the flags and call func_800BE0DC.  main36 declares it (u8 slot, ...). */
+void func_800BE538(u32 slot, u32 v0, u32 v1, u32 v2) {
+    u8* base;
+    u8* actor;
+    s32 anim;
+    u8* saved;
+
+    D_80059464 = 0;
+    D_800591AC = 1;
+    base = (u8*)(u32)D_800C3EB0;
+    actor = *(u8**)(slot * 4 + base + 0x8C8C);
+    D_800C3780 = 1;
+    if (actor != NULL) {
+        anim = *(s8*)(actor + 0xAF);
+        func_800245D8((u32)actor, 0xA);
+        saved = D_800C3610[0];
+        D_800C3610[0] = (u8*)1;
+        if (v0 != 0) {
+            func_800BD3AC(actor, v0, 0);
+        }
+        if (v1 != 0) {
+            func_800BD3AC(actor, v1, 1);
+        }
+        if (v2 != 0) {
+            func_800BD3AC(actor, v2, 0xA);
+        }
+        D_800C3610[0] = saved;
+        while (func_800BF6F8() != 0) {
+            func_800BE790();
+        }
+        while (*(s8*)(actor + 0xAF) == 0xA) {
+            func_800BE790();
+        }
+        func_800245D8((u32)actor, anim);
+    }
+    D_800C3780 = 0;
+    func_800BE0DC();
+    D_80059464 = 0;
+    D_800591AC = 0;
+}
 extern u8 D_800C3784[];
 
 void func_800BE6A0(s32 value, u8* out, s32 count, s32 bias) {
