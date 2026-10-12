@@ -271,7 +271,6 @@ paths = [
     "src/battle/main8.",
     "src/battle/mainasm_146F0.",
     "src/battle/main70.",
-    "src/battle/main65.",
     "src/battle/main61.",
     "src/battle/main62.",
     "src/battle/mainasm_16244.",
@@ -304,7 +303,7 @@ build_variables = {
     gcc = "gcc-2.6.3-psx",
     maspsx_flags = "--expand-div --use-comm-section --run-assembler"
 }
-paths = [ "src/battle/main69.", "src/battle/main73_p1.", "src/battle/main74.", "src/battle/main68." ]
+paths = [ "src/battle/main69.", "src/battle/main73_p1.", "src/battle/main74.", "src/battle/main68.", "src/battle/main65." ]
 
 [[build_preset]]
 name = "WorldMapDiv"
