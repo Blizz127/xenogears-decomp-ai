@@ -2,7 +2,79 @@
 
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/main87", func_800B5DF4);
+#include "psyq/libgte.h"
+extern u8* g_GfxCurWorkBuffer__a[] asm("g_GfxCurWorkBuffer");
+extern u8* g_GfxCurWorkBufferEnd__a[] asm("g_GfxCurWorkBufferEnd");
+extern u32* g_GfxCurOT__a[] asm("g_GfxCurOT");
+extern MATRIX D_8004FBB8;
+extern MATRIX D_800C3574;
+extern s32 D_80050100;
+extern void AddPrim(void* ot, void* p);
+
+/* func_800B5DF4.s: work-list draw callback for the object at task+4 (skipped
+ * while obj->0x34 != 0).  Projects obj's position (16.16 at +0/+4/+8) with
+ * D_800C3574 (obj->0x3F bit 0) or D_8004FBB8 as rotation+translation, stores
+ * the OT depth in obj->0x2E, projects the position minus (obj->0xC/0x10/0x14
+ * >> (obj->0x36 + 8)) as the second vertex, and links a LINE_F2-sized
+ * packet (word obj->0x28) plus an optional E1 draw-mode packet.  Each branch
+ * makes its own SetRotMatrix/SetTransMatrix calls (retail's cross-jumped
+ * tail with the matrix in $s0), and the packet pointer is a copy of the
+ * tested work pointer, as retail keeps them in $a1 and $s2. */
+void func_800B5DF4(u8* task) {
+    u8* obj = *(u8**)(task + 4);
+    u8* work;
+    u8* line;
+    SVECTOR sv;
+    long flag;
+    s32 depth;
+    u32 shift;
+    u32 mode;
+    u8* pkt;
+    u32* ot;
+
+    if (*(u16*)(obj + 0x34) != 0) {
+        return;
+    }
+    work = g_GfxCurWorkBuffer__a[0];
+    if (work + 0x10 >= g_GfxCurWorkBufferEnd__a[0]) {
+        return;
+    }
+    sv.vx = *(s32*)(obj + 0) >> 16;
+    sv.vy = *(s32*)(obj + 4) >> 16;
+    sv.vz = *(s32*)(obj + 8) >> 16;
+    g_GfxCurWorkBuffer__a[0] = work + 0x10;
+    line = work;
+    if (obj[0x3F] & 1) {
+        SetRotMatrix(&D_800C3574);
+        SetTransMatrix(&D_800C3574);
+    } else {
+        SetRotMatrix(&D_8004FBB8);
+        SetTransMatrix(&D_8004FBB8);
+    }
+    depth = RotTransPers(&sv, (long*)(line + 8), &flag, &flag) >> D_80050100;
+    shift = *(u16*)(obj + 0x36) + 8;
+    *(u16*)(obj + 0x2E) = depth;
+    sv.vx -= *(s32*)(obj + 0xC) >> shift;
+    sv.vy -= *(s32*)(obj + 0x10) >> shift;
+    sv.vz -= *(s32*)(obj + 0x14) >> shift;
+    RotTransPers(&sv, (long*)(line + 0xC), &flag, &flag);
+    line[3] = 3;
+    *(u32*)(line + 4) = *(u32*)(obj + 0x28);
+    AddPrim(g_GfxCurOT__a[0] + depth, line);
+    pkt = g_GfxCurWorkBuffer__a[0];
+    if (pkt + 8 >= g_GfxCurWorkBufferEnd__a[0]) {
+        return;
+    }
+    mode = obj[0x3C] >> 5;
+    if (mode == 0) {
+        return;
+    }
+    g_GfxCurWorkBuffer__a[0] = pkt + 8;
+    pkt[3] = 1;
+    ot = g_GfxCurOT__a[0] + depth;
+    *(u32*)(pkt + 4) = 0xE1000000 | (((mode - 1) & 3) << 5);
+    AddPrim(ot, pkt);
+}
 extern void WorkListSetTaskCallback(void* pTask, void* callback);
 extern void func_800B5DF4(u8* task);
 
