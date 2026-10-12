@@ -90,7 +90,43 @@ void func_80073F08(void) {
     }
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80073FB8);
+extern u8 D_800C3E4C;
+extern u8* D_800D2E38[];
+
+/* Link prims into the OT at D_800CCB04 + 4: the D_800C3EA4 +0x8920 prim
+ * for buffer D_800CCB34 (0xC stride); while D_800C3E4C is 1, a 0x34-byte
+ * prim for each of the four slots whose D_800D2D28 +0x7F flag is set; the
+ * +0x8908 prim; then for each of the seven D_800D2E38 records whose
+ * D_800D2D28 +0xB0 flag is set, func_800728B8 on the record and ten of its
+ * prims picked by the record's +0x5A4 index. */
+void func_80073FB8(void) {
+    s32 i;
+    u8* e;
+
+    AddPrim(D_800CCB04__a_s32[0] + 4, (D_800CCB34 * 0xC) + 0x8920 + D_800C3EA4);
+    for (i = 0; i < 4; i++) {
+        if (((u8*)D_800D2D28 + i)[0x7F] != 0 && D_800C3E4C == 1) {
+            AddPrim(D_800CCB04__a_s32[0] + 4, ((i * 2 + ((u8*)D_800D2D28 + i)[0x84]) * 0x34) + 0x5A0 + D_800C3EA4);
+        }
+    }
+    AddPrim(D_800CCB04__a_s32[0] + 4, (D_800CCB34 * 0xC) + 0x8908 + D_800C3EA4);
+    for (i = 0; i < 7; i++) {
+        if (*((u8*)D_800D2D28 + i + 0xB0) != 0) {
+            e = D_800D2E38[i];
+            func_800728B8(e, *(s32*)(e + 0x5A0), e[0x5A4]);
+            AddPrim(D_800CCB04__a_s32[0] + 4, e + (e[0x5A4] * 0x28 + 0x280));
+            AddPrim(D_800CCB04__a_s32[0] + 4, e + (e[0x5A4] * 0x28 + 0x2D0));
+            AddPrim(D_800CCB04__a_s32[0] + 4, e + (e[0x5A4] * 0x28 + 0x320));
+            AddPrim(D_800CCB04__a_s32[0] + 4, e + (e[0x5A4] * 0x28 + 0x370));
+            AddPrim(D_800CCB04__a_s32[0] + 4, e + (e[0x5A4] * 0x28 + 0x140));
+            AddPrim(D_800CCB04__a_s32[0] + 4, e + (e[0x5A4] * 0x28 + 0x190));
+            AddPrim(D_800CCB04__a_s32[0] + 4, e + (e[0x5A4] * 0x28 + 0x1E0));
+            AddPrim(D_800CCB04__a_s32[0] + 4, e + (e[0x5A4] * 0x28 + 0x230));
+            AddPrim(D_800CCB04__a_s32[0] + 4, e + (e[0x5A4] * 0x24 + 0x3C0));
+            AddPrim(D_800CCB04__a_s32[0] + 4, e + (e[0x5A4] * 0xC + 0x408));
+        }
+    }
+}
 extern u8 D_800C3EB6[];
 extern u8 D_800D32A1[];
 
