@@ -47,10 +47,9 @@ extern s32 D_800CCB34__a[] asm("D_800CCB34");
 extern u8* D_800C3EA4__a[] asm("D_800C3EA4");
 
 /* Current-buffer prim field at block offset `off` (prims are 0x28 apart per
- * buffer), and the window frame texture origin from the battle UI state. */
+ * buffer), and a byte of the battle UI state (frame texture cells). */
 #define M49_PRIM(off) (blk + D_800CCB34__a[0] * 0x28 + (off))
-#define M49_FRAME_U ((D_800C3EA4__a[0][0xA25C] & 0x3F) * 2)
-#define M49_FRAME_V (D_800C3EA4__a[0][0xA260])
+#define M49_UI(off) (D_800C3EA4__a[0][off])
 
 /* Window top edge: two POLY_FT4 (block +0x140 / +0x190, per buffer) span
  * the 16-pixel band between the corners, half the inner width each, with
@@ -76,34 +75,78 @@ void func_8008DE04(u32 kind, u16 x, u16 y, u16 w) {
     *(s16*)M49_PRIM(0x1AA) = y + 8;
     *(s16*)M49_PRIM(0x1B0) = x + 8 + (w - 16) / 2 + (w - 16) / 2;
     *(s16*)M49_PRIM(0x1B2) = y + 8;
-    *M49_PRIM(0x14C) = M49_FRAME_U;
-    *M49_PRIM(0x14D) = M49_FRAME_V;
-    *M49_PRIM(0x154) = M49_FRAME_U + 7;
-    *M49_PRIM(0x155) = M49_FRAME_V;
-    *M49_PRIM(0x15C) = M49_FRAME_U;
-    *M49_PRIM(0x15D) = M49_FRAME_V + 0x10;
-    *M49_PRIM(0x164) = M49_FRAME_U + 7;
-    *M49_PRIM(0x165) = M49_FRAME_V + 0x10;
-    *M49_PRIM(0x19C) = M49_FRAME_U;
-    *M49_PRIM(0x19D) = M49_FRAME_V;
-    *M49_PRIM(0x1A4) = M49_FRAME_U + 7;
-    *M49_PRIM(0x1A5) = M49_FRAME_V;
-    *M49_PRIM(0x1AC) = M49_FRAME_U;
-    *M49_PRIM(0x1AD) = M49_FRAME_V + 0x10;
-    *M49_PRIM(0x1B4) = M49_FRAME_U + 7;
-    *M49_PRIM(0x1B5) = M49_FRAME_V + 0x10;
+    *M49_PRIM(0x14C) = (M49_UI(0xA25C) & 0x3F) * 2;
+    *M49_PRIM(0x14D) = M49_UI(0xA260);
+    *M49_PRIM(0x154) = (M49_UI(0xA25C) & 0x3F) * 2 + 7;
+    *M49_PRIM(0x155) = M49_UI(0xA260);
+    *M49_PRIM(0x15C) = (M49_UI(0xA25C) & 0x3F) * 2;
+    *M49_PRIM(0x15D) = M49_UI(0xA260) + 0x10;
+    *M49_PRIM(0x164) = (M49_UI(0xA25C) & 0x3F) * 2 + 7;
+    *M49_PRIM(0x165) = M49_UI(0xA260) + 0x10;
+    *M49_PRIM(0x19C) = (M49_UI(0xA25C) & 0x3F) * 2;
+    *M49_PRIM(0x19D) = M49_UI(0xA260);
+    *M49_PRIM(0x1A4) = (M49_UI(0xA25C) & 0x3F) * 2 + 7;
+    *M49_PRIM(0x1A5) = M49_UI(0xA260);
+    *M49_PRIM(0x1AC) = (M49_UI(0xA25C) & 0x3F) * 2;
+    *M49_PRIM(0x1AD) = M49_UI(0xA260) + 0x10;
+    *M49_PRIM(0x1B4) = (M49_UI(0xA25C) & 0x3F) * 2 + 7;
+    *M49_PRIM(0x1B5) = M49_UI(0xA260) + 0x10;
     for (i = 0; i < 2; i++) {
         func_80076B00(blk + ((i * 2 + D_800CCB34__a[0]) * 0x28 + 0x140));
     }
 }
 INCLUDE_ASM("asm/battle/nonmatchings/main49", func_8008E430);
-INCLUDE_ASM("asm/battle/nonmatchings/main49", func_8008EA70);
+/* Window left edge: two POLY_FT4 (block +0x280 / +0x2D0) span the 16-pixel
+ * band between the corners, half the inner height each, with the frame
+ * texture's left cell; then func_80076B00 on both. */
+void func_8008EA70(u32 kind, u16 x, u16 y, u16 h) {
+    u8* blk;
+    s32 i;
+
+    blk = (u8*)D_800D2E38[kind & 0xFF];
+    *(s16*)M49_PRIM(0x288) = x - 8;
+    *(s16*)M49_PRIM(0x28A) = y + 8;
+    *(s16*)M49_PRIM(0x290) = x + 8;
+    *(s16*)M49_PRIM(0x292) = y + 8;
+    *(s16*)M49_PRIM(0x298) = x - 8;
+    *(s16*)M49_PRIM(0x29A) = y + 8 + (h - 16) / 2;
+    *(s16*)M49_PRIM(0x2A0) = x + 8;
+    *(s16*)M49_PRIM(0x2A2) = y + 8 + (h - 16) / 2;
+    *(s16*)M49_PRIM(0x2D8) = x - 8;
+    *(s16*)M49_PRIM(0x2DA) = y + 8 + (h - 16) / 2;
+    *(s16*)M49_PRIM(0x2E0) = x + 8;
+    *(s16*)M49_PRIM(0x2E2) = y + 8 + (h - 16) / 2;
+    *(s16*)M49_PRIM(0x2E8) = x - 8;
+    *(s16*)M49_PRIM(0x2EA) = y + 8 + (h - 16) / 2 + (h - 16) / 2;
+    *(s16*)M49_PRIM(0x2F0) = x + 8;
+    *(s16*)M49_PRIM(0x2F2) = y + 8 + (h - 16) / 2 + (h - 16) / 2;
+    *M49_PRIM(0x28C) = (M49_UI(0xA28C) & 0x3F) * 2 + 0xE;
+    *M49_PRIM(0x28D) = M49_UI(0xA290);
+    *M49_PRIM(0x294) = (M49_UI(0xA28C) & 0x3F) * 2 + 0x1E;
+    *M49_PRIM(0x295) = M49_UI(0xA290);
+    *M49_PRIM(0x29C) = (M49_UI(0xA28C) & 0x3F) * 2 + 0xE;
+    *M49_PRIM(0x29D) = M49_UI(0xA290) + 7;
+    *M49_PRIM(0x2A4) = (M49_UI(0xA28C) & 0x3F) * 2 + 0x1E;
+    *M49_PRIM(0x2A5) = M49_UI(0xA290) + 7;
+    *M49_PRIM(0x2DC) = (M49_UI(0xA28C) & 0x3F) * 2 + 0xE;
+    *M49_PRIM(0x2DD) = M49_UI(0xA290);
+    *M49_PRIM(0x2E4) = (M49_UI(0xA28C) & 0x3F) * 2 + 0x1E;
+    *M49_PRIM(0x2E5) = M49_UI(0xA290);
+    *M49_PRIM(0x2EC) = (M49_UI(0xA28C) & 0x3F) * 2 + 0xE;
+    *M49_PRIM(0x2ED) = M49_UI(0xA290) + 7;
+    *M49_PRIM(0x2F4) = (M49_UI(0xA28C) & 0x3F) * 2 + 0x1E;
+    *M49_PRIM(0x2F5) = M49_UI(0xA290) + 7;
+    for (i = 0; i < 2; i++) {
+        func_80076B00(blk + ((i * 2 + D_800CCB34__a[0]) * 0x28 + 0x280));
+    }
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main49", func_8008F0A8);
 extern u8* D_800D2D28;
 extern u32 D_800D2E38[];
 void func_8008DC34(u32 kind, u16 x, u16 y, u16 w, u16 h);
 void func_8008DE04(u32 kind, u16 x, u16 y, u16 w);
-void func_8008E430(u32 kind, u16 x, u16 y, u16 w, u16 h);
+/* func_8008E430 itself reads h as a full word; this caller passes it as u16. */
+extern void func_8008E430__h16(u32 kind, u16 x, u16 y, u16 w, u16 h) asm("func_8008E430");
 void func_8008EA70(u32 kind, u16 x, u16 y, u16 h);
 void func_8008F0A8(u32 kind, u16 x, u16 y, u16 w, u16 h);
 
@@ -127,7 +170,7 @@ void func_8008F6E4(u8 kind, u16 x, u16 y, u16 w, s32 h) {
     *(s16*)(blk + D_800CCB34__a[0] * 0x24 + 0x3E2) = y + h;
     func_8008DC34(i, x, y, w, h);
     func_8008DE04(i, x, y, w);
-    func_8008E430(i, x, y, w, h);
+    func_8008E430__h16(i, x, y, w, h);
     func_8008EA70(i, x, y, h);
     func_8008F0A8(i, x, y, w, h);
     blk[0x5A4] = *(u8*)D_800CCB34__a;
@@ -193,8 +236,7 @@ void func_8008F8F4(u8 index, u16 x, u16 y, u16 w, u16 h, u8 animate, u8 refresh)
     }
 }
 #undef M49_PRIM
-#undef M49_FRAME_U
-#undef M49_FRAME_V
+#undef M49_UI
 #endif
 
 
