@@ -3,7 +3,32 @@
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/battle/nonmatchings/main42", func_80089CCC);
-INCLUDE_ASM("asm/battle/nonmatchings/main42", func_8008A144);
+extern u8* D_800D2D28;
+extern u8* D_800C3EA4;
+extern void LoadImage(void* rect, void* p);
+typedef struct {
+    u8 pad[0x8950];
+    s16 rects[4][4];
+    u32 data[4][0x18C];
+} BattleTexAnim;
+
+/* Every other frame (D_800D2D28 +0xAA parity), upload the next column of the
+ * four animated texture strips of the D_800C3EA4 work block: rect i at
+ * +0x8950 + i * 8 from strip i (0x18C words each, from +0x8970) at the
+ * D_800D2D28 +0x30 column, which then advances by 4 and wraps past 0xC6. */
+void func_8008A144(void) {
+    D_800D2D28[0xAA]++;
+    if (D_800D2D28[0xAA] & 1) {
+        LoadImage(((BattleTexAnim*)D_800C3EA4)->rects[0], &((BattleTexAnim*)D_800C3EA4)->data[0][*(s32*)(D_800D2D28 + 0x30)]);
+        LoadImage(((BattleTexAnim*)D_800C3EA4)->rects[1], &((BattleTexAnim*)D_800C3EA4)->data[1][*(s32*)(D_800D2D28 + 0x30)]);
+        LoadImage(((BattleTexAnim*)D_800C3EA4)->rects[2], &((BattleTexAnim*)D_800C3EA4)->data[2][*(s32*)(D_800D2D28 + 0x30)]);
+        LoadImage(((BattleTexAnim*)D_800C3EA4)->rects[3], &((BattleTexAnim*)D_800C3EA4)->data[3][*(s32*)(D_800D2D28 + 0x30)]);
+        *(u32*)(D_800D2D28 + 0x30) += 4;
+        if (*(u32*)(D_800D2D28 + 0x30) >= 0xC7) {
+            *(u32*)(D_800D2D28 + 0x30) = 0;
+        }
+    }
+}
 #endif
 
 

@@ -264,6 +264,7 @@ paths = [
     "src/battle/main66.",
     "src/battle/main72_p2.",
     "src/battle/main50.",
+    "src/battle/main42.",
     "src/battle/main61.",
     "src/battle/main62.",
     "src/battle/mainasm_16244.",
