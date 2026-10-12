@@ -157,7 +157,76 @@ void func_800A9540(s32 actor) {
     ArchiveSetIndex(idx, sub);
 }
 INCLUDE_ASM("asm/battle/nonmatchings/main70", func_800A96B4);
-INCLUDE_ASM("asm/battle/nonmatchings/main70", func_800A979C);
+extern void ResolveArchiveEntryPointers(u8* entry);
+extern void func_800A8BF0(s32 slot, u16 kind, void* a2, void* a3, s16 x, s16 y, s16 z, s16 w,
+                          s32 a8);
+extern void func_8002DDE4(void* a0, u32 a1, u32 a2, u32 a3, u32 s0, u32 s1, u32 s2);
+extern void* memcpy(void* dst, const void* src, u32 n);
+extern void DrawSync(s32 mode);
+
+/* func_800A979C.s: set up slot idx through func_800A8BF0 from the
+ * D_800C3B78 file list and set that slot's +0x38 and +0x22 bytes; then, when
+ * list entry 2 is loaded, resolve it: with a nonzero halfword count, copy its
+ * +8..+0xC data and set up `count` more slots idx * 2 + 0xD + i (kind 2 for
+ * the first, 7 for the rest, 2 less for the last) from that copy, filling
+ * each slot's +0x5E and +0x6A..+0x6E halfwords from the entry's table;
+ * with a zero count, hand the entry's data to func_8002DDE4.  Frees the
+ * entry, the list and list entry 0's buffer.  `slot` is built in two steps,
+ * which keeps idx * 2 inside the loop as retail has it. */
+void func_800A979C(s32 idx, s16 x, s16 y, s16 z, s16 w) {
+    u8* entry;
+    u16* p;
+    s16 count;
+    s32 size;
+    void* buf;
+    s32 i;
+    s32 kind;
+    s32 slot;
+    s32 sub;
+
+    func_800A8BF0(idx, 0, D_800C3B78[1].buf, D_800C3B78[0].buf, x, y, z, w, 0);
+    ((u8*)D_800D3368[idx])[0x38] = 1;
+    ((u8*)D_800D3368[idx])[0x22] = 1;
+    entry = D_800C3B78[2].buf;
+    if (entry != NULL) {
+        ResolveArchiveEntryPointers(entry);
+        p = *(u16**)(entry + 4);
+        count = *(s16*)p;
+        if (count != 0) {
+            p += 2;
+            size = *(s32*)(entry + 0xC) - *(s32*)(entry + 8);
+            buf = HeapAlloc(size, 0);
+            memcpy(buf, *(void**)(entry + 8), size);
+            for (i = 0; i < count; i++) {
+                if (i == 0) {
+                    kind = 2;
+                } else {
+                    kind = 7;
+                }
+                if (i == count - 1) {
+                    kind -= 2;
+                }
+                slot = idx * 2;
+                sub = i + 0xD;
+                slot += sub;
+                func_800A8BF0(slot, kind, buf, *(void**)(entry + 0xC), x, y, z, w, 0);
+                *(u16*)(D_800D3368[slot] + 0x5E) = *p++;
+                ((u8*)D_800D3368[slot])[0x5C] = idx;
+                ((u8*)D_800D3368[slot])[0x5D] = 2;
+                ((u8*)D_800D3368[slot])[0x36] = 1;
+                *(u16*)(D_800D3368[slot] + 0x6A) = *p++;
+                *(u16*)(D_800D3368[slot] + 0x6C) = *p++;
+                *(u16*)(D_800D3368[slot] + 0x6E) = *p++;
+            }
+        } else {
+            func_8002DDE4(*(void**)(entry + 8), 1, x, y, 1, z, w);
+        }
+        HeapFree(entry);
+    }
+    HeapFree(D_800C3B78);
+    DrawSync(0);
+    HeapFree(D_800C3B78[0].buf);
+}
 extern s32 D_800CCC5C;
 extern s16 D_800D39E8;
 extern s16 D_800C3B80;
