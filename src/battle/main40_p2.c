@@ -12,7 +12,88 @@ void func_80089038(void);
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/main40_p2", func_80088B80);
+extern u8* D_800D2D28;
+extern u8 D_800C207C;
+/* D_800C2054 is read as two rows of five words: func_8008887C(x0, y0, x1, y1)
+ * gets a random target x from row 0 and a random target y from row 1.
+ * Indexing row 1 of this 2-D view gives retail's base-first add for `pb`;
+ * widening `r` where it is assigned and loading the row-0 base once into
+ * `tbl` give retail's andi/la/sll order for `pa`. */
+extern s32 D_800C2054__2d[2][5] asm("D_800C2054");
+extern s32 D_800C2080;
+extern s32 D_800C2084;
+extern s32 D_800C3A7C;
+extern s32 D_800C3A80;
+extern s32 D_800CCB34__w asm("D_800CCB34");
+extern u8 D_800CCB34__b[] asm("D_800CCB34");
+extern u8 func_8001BD40(u8 min, u8 max);
+extern void func_8008887C(u16 x, u16 y, s32 a2, s32 a3);
+extern void func_80088990(void);
+extern void func_80076B68(u8* p);
+extern void func_80076BF0(u8* p);
+
+void func_80088B80(void) {
+    s32 i;
+    s32 j;
+    s32 k;
+    s32* pa;
+    s32* pb;
+
+    if (D_800D2D28[0xAD] == 0) {
+        return;
+    }
+    if (D_800C207C != 0) {
+        if (func_8001BD40(0, 0x63) >= 0x60) {
+            s32 r = func_8001BD40(0, 4);
+            s32* tbl = D_800C2054__2d[0];
+
+            pa = &tbl[r];
+            pb = &D_800C2054__2d[1][func_8001BD40(0, 4)];
+            func_8008887C(*(u16*)(D_800D2DB4 + 0x5D9C), *(u16*)(D_800D2DB4 + 0x5D9E), *pa, *pb);
+        }
+        if (D_800C207C != 0) {
+            goto draw;
+        }
+    }
+    func_80088990();
+    ((u16*)D_800D2DB4)[0x5D9C / 2] = D_800C3A7C + D_800C2080 / 256;
+    ((u16*)D_800D2DB4)[0x5D9E / 2] = D_800C3A80 + D_800C2084 / 256;
+draw:
+    D_800D2DB4[0x5D72] =
+        func_80076A10(0xB9, D_800D2DB4 + 0xD20, *(s16*)(D_800D2DB4 + 0x5D9C), *(s16*)(D_800D2DB4 + 0x5D9E));
+    D_800D2DB4[0x5D94] = D_800CCB34__b[0];
+    D_800D2DB4[0x5D71] = func_80076A10((*(u16*)(D_800D2DB4 + 0x5D9C) & 0xF) + 0xA9, D_800D2DB4 + 0x3C0, 0xA0, 0x64);
+    D_800D2DB4[0x5D93] = D_800CCB34__b[0];
+    D_800D2DB4[0x5D73] =
+        func_80076A10(0x82, D_800D2DB4 + 0xFA0, *(s16*)(D_800D2DB4 + 0x5D9C), *(s16*)(D_800D2DB4 + 0x5D9E));
+    D_800D2DB4[0x5D95] = D_800CCB34__b[0];
+    for (i = 0; i < D_800D2DB4[0x5D72]; i++) {
+        func_80076B68(D_800D2DB4 + 0xD20 + (i * 2 + D_800D2DB4[0x5D94]) * 0x28);
+    }
+    for (i = 0; i < D_800D2DB4[0x5D73]; i++) {
+        func_80076B68(D_800D2DB4 + 0xFA0 + (i * 2 + D_800D2DB4[0x5D95]) * 0x28);
+    }
+    for (i = 0; i < D_800D2DB4[0x5D71]; i++) {
+        func_80076B68(D_800D2DB4 + 0x3C0 + (i * 2 + D_800D2DB4[0x5D93]) * 0x28);
+    }
+    D_800D2DB4[0x5D96] = func_80076A10((*(u16*)(D_800D2DB4 + 0x5D9E) & 0xF) + 0xC9, D_800D2DB4 + 0x32A0,
+                                       *(s16*)(D_800D2DB4 + 0x5D9C), *(s16*)(D_800D2DB4 + 0x5D9E));
+    D_800D2DB4[0x5D97] = D_800CCB34;
+    for (i = 0; i < D_800D2DB4[0x5D96]; i++) {
+        func_80076BF0(D_800D2DB4 + 0x32A0 + (i * 2 + D_800D2DB4[0x5D97]) * 0x28);
+    }
+    if (D_800C207C == 0) {
+        for (i = 0; i < 2; i++) {
+            for (j = 0; j < 10; j++) {
+                k = i * 10 + j;
+                func_80076A10(func_8001BD40(0, 9) + 0xBA, D_800D2DB4 + 0x46A0 + k * 0x50, (s16)(0x82 + j * 6),
+                              (s16)(0xA + i * 0xBD));
+                func_80076B68(D_800D2DB4 + 0x46A0 + (k * 2 + D_800CCB34__w) * 0x28);
+            }
+        }
+        D_800D2DB4[0x5D98] = D_800CCB34;
+    }
+}
 
 #ifndef XENO_PC_PORT
 void func_80089038(void) {
