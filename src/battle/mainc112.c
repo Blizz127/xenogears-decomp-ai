@@ -107,7 +107,101 @@ void func_800BB314(u8 *p) {
     HeapFree(p);
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/mainc112", func_800BB350);
+extern u32 WorkListsAddTasks(u32 a0, u32 a1, void* a2, void* a3, void* a4);
+extern void func_80023804(void* pSpriteData);
+extern void func_800239A0(void* pSpriteData);
+extern void SpriteSetScale(void* object, short scale);
+extern void func_800BB314(u8* p);
+/* Read and written through casts so they are plain (not in-struct) fixed
+ * accesses; that lets them schedule past the sprite's field stores, as retail. */
+extern s8 D_800591AC__s[] asm("D_800591AC");
+extern s8 D_800591A8__s[] asm("D_800591A8");
+extern u8 D_8006BE10[];
+
+typedef struct {
+    u8 pad0[8];
+    s32 unk8;
+    s16 unkC;
+} B350Anim;
+
+typedef struct {
+    s32 x;              /* 0x00 */
+    s32 y;              /* 0x04 */
+    s32 z;              /* 0x08 */
+    u8 pad0C[0x18];
+    u8* unk24;          /* 0x24 */
+    u8 pad28[0xE];
+    u16 unk36;          /* 0x36 */
+    u16 unk38;          /* 0x38 */
+    u8 pad3A[2];
+    u32 unk3C;          /* 0x3C */
+    u32 unk40;          /* 0x40 */
+    u8 pad44[4];
+    s32 unk48;          /* 0x48 */
+    s32 unk4C;          /* 0x4C */
+    u8 pad50[0x1C];
+    u8* unk6C;          /* 0x6C */
+    u8 pad70[0xC];
+    B350Anim* unk7C;    /* 0x7C */
+    u8 pad80[2];
+    u16 unk82;          /* 0x82 */
+    u8 pad84[0x24];
+    u32 unkA8_0 : 1;    /* 0xA8 */
+    u32 unkA8_1 : 29;
+    u32 slotLo : 2;     /* battle slot, low two bits */
+    u32 slotHi : 2;     /* 0xAC: battle slot, high two bits */
+    u32 unkAC_2 : 30;
+} B350Sprite;
+
+/* Create the actor for party slot `slot` when its task-table entry
+ * (D_800C3EB0 + 0x8C8C) is empty: a 0x19C-byte work/timer task (callbacks
+ * func_800BB13C / func_800BB248 / func_800BB314) whose sprite at +0x38 takes
+ * its x/z from the slot's 0x1C-byte record, its scale from func_800AA600 and
+ * the 4-bit slot in the +0xA8/+0xAC bitfields; the sprite and task go into the
+ * table's +0x8C8C and +0x8CB8 rows.  The heap flag D_800591AC is held at 0
+ * around the allocation. */
+void func_800BB350(u32 slot) {
+    u8* task;
+    B350Sprite* spr;
+    u8 saved;
+    u8* rec;
+
+    if (((BattleTaskTable*)D_800C3EB0)->tasks[slot] == NULL) {
+        saved = *(u8*)D_800591AC__s;
+        *(u8*)D_800591AC__s = 0;
+        task = (u8*)WorkListsAddTasks(0x19C, 0, func_800BB13C, func_800BB248, func_800BB314);
+        spr = (B350Sprite*)(task + 0x38);
+        spr->unk6C = task;
+        *(B350Sprite**)(task + 4) = spr;
+        *(B350Sprite**)(task + 0x20) = spr;
+        func_80023804(spr);
+        func_800239A0(spr);
+        spr->unk40 = (spr->unk40 & 0xFFFE1FFF) | 0x8000;
+        spr->unk6C = task;
+        spr->unk3C &= ~3;
+        spr->unkA8_0 = 0;
+        spr->unk7C->unk8 = 0;
+        spr->unk7C->unkC = 0;
+        spr->unk82 = *(u16*)D_800591A8__s;
+        rec = D_800C3EB0 + slot * 0x1C;
+        *(s32*)(task + 0x38) = *(u16*)(rec + 0xE) << 16; /* spr->x, addressed off the task as retail */
+        spr->z = *(u16*)(rec + 0x10) << 16;
+        spr->y = 0;
+        spr->unk36 = func_800AA600(slot);
+        spr->unk82 = 0x2000;
+        spr->unk38 = spr->unk36 >> 1;
+        SpriteSetScale(spr, 0x2000);
+        spr->unk24 = D_8006BE10;
+        ((BattleTaskTable*)D_800C3EB0)->tasks[slot] = (u8*)spr;
+        ((BattleTaskTable*)D_800C3EB0)->flags[slot] = (s32)task;
+        spr->unk4C = 0;
+        spr->unk48 = 0;
+        *(u8*)D_800591AC__s = saved;
+        spr->slotLo = slot;
+        spr->slotHi = slot >> 2;
+    }
+}
+
 typedef struct { s16 x, y; } Pos;
 typedef struct Task {
     u8 pad0[0xC];
@@ -116,7 +210,7 @@ typedef struct Task {
     s32 id;
 } Task;
 extern void func_800A979C(s32, s16, s16, s32, s16);
-extern void func_800BB350(s32);
+extern void func_800BB350(u32);
 extern u16 D_800C3666[];
 extern Pos D_800C3668[];
 extern u8 D_800C3CB8[];
