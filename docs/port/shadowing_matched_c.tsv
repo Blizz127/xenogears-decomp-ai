@@ -66,6 +66,7 @@ func_80039C4C	port arm spanning the body in src/slus_006.64/system/sound.c	func_
 func_80039C8C	port arm spanning the body in src/slus_006.64/system/sound.c	func_80039C8C
 func_8003A14C	port arm in src/slus_006.64/system/sound.c	func_8003A14C
 func_8003E1F8	port arm in src/slus_006.64/system/sound.c	func_8003E1F8
+func_80070F40	pc_port MIPS-runtime launcher func_80070F40 (pc_port/src/battle_mips_runtime.c; interprets the retail body)	func_80070F40
 func_800716D8	generated logging stub (matched C not linked)	func_800716D8
 func_80071FEC	pc_port body wm_80071FEC (pc_port/src/world_map_helper_71fec.c)	wm_80071FEC
 func_800721E4	pc_port body wm_800721E4 (pc_port/src/world_map_mode9_lifecycle.c)	wm_800721E4
