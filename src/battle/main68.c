@@ -171,7 +171,59 @@ void func_800A44C0(u8** models) {
         }
     }
 }
-INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A4654);
+#include "battle/spad_stack.h"
+extern u8 D_800D33E4[];
+extern u8 D_800CCC5C[];
+extern u8 D_800C3DA0[];
+extern u8 D_800C3E38[];
+extern u8 D_800C3E48[];
+extern u8 D_800C3D50[];
+extern u8 D_800C3EA0[];
+s32 func_800A3E98(u8* e, s32 ticks);
+extern void func_800A6AE8(void);
+extern void GfxLineScrollUpdate(void* pLineScroll);
+void func_800A48EC(u8* models, u8* hdr, MATRIX* view, void* unused3, u32 unused4, u8* ot, s32 bufIndex,
+                   s32 otCount);
+extern s32 func_800273C4(void* ctx, SVECTOR* eye, SVECTOR* at, MATRIX* mtx, void* ot, s32 renderCtxIndex);
+void func_800A4DB8(u8* s, SVECTOR* eye, SVECTOR* at, MATRIX* view, u32* ot, s32 idx);
+
+/* Per-frame battle-effect render: light matrix, advance every effect-image
+ * record of D_800D33E4, run func_800A6AE8 on the scratchpad stack, line
+ * scrolls, the model list, the two D_800C3D50 packets and the D_800C3EA0
+ * effect.  The record count is re-read after every record. */
+void func_800A4654(MATRIX* view, MATRIX* light, u32 a2, u8* ot, s32 bufIndex, SVECTOR* eye, SVECTOR* at,
+                   s32 otCount) {
+    u8* rec;
+    s32 i;
+
+    if (light != NULL) {
+        SetLightMatrix(light);
+    }
+    rec = *(u8**)(*(u8**)D_800D33E4 + 0x118);
+    i = 0;
+    if (i < (*(u8**)D_800D33E4)[0x10E]) {
+        u8* owner;
+        do {
+            func_800A3E98(rec, *(s32*)D_800CCC5C);
+            owner = *(u8**)D_800D33E4;
+            i++;
+            rec += 0x30;
+        } while (i < owner[0x10E]);
+    }
+    BATTLE_SPAD_STACK_SET(0x1F8003FC);
+    func_800A6AE8();
+    BATTLE_SPAD_STACK_RESET();
+    for (i = 0; i < 2; i++) {
+        GfxLineScrollUpdate(D_800C3DA0 + i * 0x18);
+    }
+    if (*(u8**)D_800C3E38 != NULL) {
+        func_800A48EC(*(u8**)D_800C3E48, *(u8**)D_800C3E38, view, light, a2, ot, bufIndex, otCount);
+    }
+    for (i = 0; i < 2; i++) {
+        func_800273C4(((void**)D_800C3D50)[i], eye, at, view, ot + otCount * 4 - 4, bufIndex);
+    }
+    func_800A4DB8(*(u8**)D_800C3EA0, eye, at, view, (u32*)(ot + otCount * 4 - 4), bufIndex);
+}
 extern u8 D_800C3E38[];
 extern u8 D_800C3D50[];
 extern void *D_800C3EA0__s_void asm("D_800C3EA0");
