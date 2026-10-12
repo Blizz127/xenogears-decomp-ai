@@ -69,7 +69,24 @@ s32 func_8009A1AC(s32 arg0) {
 }
 #endif
 
-INCLUDE_ASM("asm/battle/nonmatchings/main54", func_8009A258);
+/* func_8009A258.s: byte +0x14 of entry b (0x28 stride) in actor a's 0x5F0
+ * table at +0x1058, plus actor a's +0x5B, clamped to 100.  The sum is a u8
+ * (retail copies it into the clamp register and masks it for the test and the
+ * return), and the +0x1058 table offset is added to a * 0x5F0 before the
+ * base, so it stays out of the load offset. */
+u32 func_8009A258(u8 a, u8 b) {
+    u8* base = D_800C34B0;
+    u32 o = a * 0x5F0 + 0x1058;
+    u8* t = (u8*)(o + (u32)base) + b * 0x28;
+    u8* q = (u8*)(a * 0x170 + (u32)base);
+    u8 v;
+
+    v = t[0x14] + q[0x5B];
+    if (v >= 0x65) {
+        v = 0x64;
+    }
+    return v;
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main54", func_8009A2D4);
 #endif
 
@@ -83,9 +100,9 @@ u32 func_8009A7B8(u8 index) {
 }
 
 
-/* ---- Port bodies (fo/bat3).  Not byte-matching: the matching build keeps
- * the retail bytes from the INCLUDE_ASM block above; these are compiled only
- * for the port and the differential harness. ---- */
+/* ---- Port bodies (fo/bat3), compiled only for the port and the
+ * differential harness.  The retail build compiles func_8009A258 from its
+ * byte-exact C above; func_8009A2D4 is still retail asm. ---- */
 #ifndef XENO_PC_PORT
 extern u8* D_800C34B0;
 #endif
