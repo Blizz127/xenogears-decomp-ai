@@ -1,6 +1,7 @@
 #include "common.h"
 #ifndef XENO_PC_PORT
 #include "system/memory.h"
+#include "psyq/libgte.h"
 #endif
 
 
@@ -157,7 +158,124 @@ void func_800A9540(s32 actor) {
 }
 INCLUDE_ASM("asm/battle/nonmatchings/main70", func_800A96B4);
 INCLUDE_ASM("asm/battle/nonmatchings/main70", func_800A979C);
-INCLUDE_ASM("asm/battle/nonmatchings/main70", func_800A9A50);
+extern s32 D_800CCC5C;
+extern s16 D_800D39E8;
+extern s16 D_800C3B80;
+extern u16 D_800C3D40__u asm("D_800C3D40");
+extern u16 D_800C3E30__u asm("D_800C3E30");
+extern u8 D_800C3DF8;
+extern MATRIX* D_800D2FC0;
+extern u16 D_800C3D14;
+extern s32 D_80050104;
+extern s32 func_800AA600(s32 index);
+extern s32 func_800AA650(s32 index);
+void func_800B10EC(s32, s32, s32, s32);
+void func_800A4CF8(s32 arg0);
+extern void func_800AAA20(u8* actor, s32* list, s32 steps, s32 buf, s32 rate);
+extern void func_800B026C(s32* list, s32 steps, s32 a2, s32 buf);
+extern void func_800AAB34(u8* actor);
+void func_800A44C0(u8** models);
+void func_8009F844(u8* actor, MATRIX* view, MATRIX* light, s32 a3, s32 rate, u32* ot,
+                   s32 buf);
+void func_800A2FD8(u8* list, MATRIX* m, s32 step, u32* ot, s32 buf);
+
+/* func_800A9A50.s: add D_800CCC5C + 1 to D_800C3E88 (capped at 6) and take
+ * out whole steps of 2; advance the D_800C3CF0 and D_800C3B7C rsin phases
+ * into D_800D39E8 and D_800C3B80, and derive three colour bytes from the
+ * latter through func_800AA514.  When slot D_800C3D40 of D_800D3368 is set
+ * and its +0x4A bit 0x20 is clear, compare it with slots 0..10
+ * (func_800AA600 / func_800AA650 / func_800B10EC), then func_800A4CF8.  Run
+ * func_800AAA20 on every set slot, func_800B026C when D_800C3DF8 is set,
+ * func_800AAB34 on slots whose +0x5C byte is below 0xFF, func_800A44C0, and
+ * while D_800C3B74 is set func_8009F844 on slots 0..30 with the derived or
+ * the D_800658C8 back colour.  Ends with func_800A2FD8 on D_800C3D04. */
+void func_800A9A50(MATRIX* view, MATRIX* light, u32* ot, s32 buf) {
+    s32 steps;
+    u8 bg[3];
+    s32 i;
+    s32 j;
+    u8* body;
+    u8* other;
+    s32 v;
+    u8** slot;
+    u8* actor;
+
+    steps = 0;
+    D_800C3E88 += D_800CCC5C + 1;
+    if (D_800C3E88 >= 7) {
+        D_800C3E88 = 6;
+    }
+    while (D_800C3E88 >= 2) {
+        D_800C3E88 -= 2;
+        steps++;
+    }
+    D_800C3CF0 += steps * 56;
+    D_800D39E8 = (rsin(D_800C3CF0) + 0x1000) / 800 + 4;
+    D_800C3B7C += 0x80;
+    D_800C3B80 = (rsin(D_800C3B7C) + 0x1000) / 32;
+    bg[0] = func_800AA514(D_800C3B80, 0x20, ((u8*)D_800658C8)[0x474]);
+    bg[1] = func_800AA514(D_800C3B80, 0x20, ((u8*)D_800658C8)[0x475]);
+    bg[2] = func_800AA514(D_800C3B80, 0x20, ((u8*)D_800658C8)[0x476]);
+    if (D_800D3368[D_800C3D40__u] != 0 && !(*(u16*)(D_800D3368[D_800C3D40__u] + 0x4A) & 0x20)) {
+        for (j = 0; j < 11; j++) {
+            if (D_800D3368[j] != 0 && D_800C3D40__u != j && ((u8*)D_800D3368[j])[0x5C] == 0xFF &&
+                !((D_800C3E30__u >> j) & 1) && ((u8*)D_800D3368[j])[0x34] != 0) {
+                body = *(u8**)(D_800D3368[D_800C3D40__u] + 4);
+                v = func_800AA600(j);
+                other = *(u8**)(D_800D3368[j] + 4);
+                if (*(s32*)(other + 0x60) - v < *(s32*)(body + 0x60)) {
+                    v = func_800AA600(D_800C3D40__u);
+                    if (*(s32*)(*(u8**)(D_800D3368[D_800C3D40__u] + 4) + 0x60) - v <
+                        *(s32*)(other + 0x60)) {
+                        v = func_800AA650(j);
+                        v += func_800AA650(D_800C3D40__u);
+                        func_800B10EC(D_800C3D40__u, *(s32*)(*(u8**)(D_800D3368[j] + 4) + 0x5C),
+                                      *(s32*)(*(u8**)(D_800D3368[j] + 4) + 0x64), v);
+                    }
+                }
+            }
+        }
+        func_800A4CF8(D_800C3D40__u);
+    }
+    for (i = 0; i < 32; i++) {
+        if (D_800D3368[i] != 0) {
+            func_800AAA20((u8*)D_800D3368[i], &D_800C3D0C, steps, buf, D_800CCC5C);
+        }
+    }
+    i = 0;
+    if (D_800C3DF8 != 0) {
+        func_800B026C(&D_800C3D0C, steps, 0, buf);
+    }
+    slot = (u8**)D_800D3368;
+    for (; i < 32; i++) {
+        actor = *slot++;
+        if (actor != NULL && actor[0x5C] < 0xFF) {
+            func_800AAB34(actor);
+        }
+    }
+    func_800A44C0((u8**)D_800D3368);
+    SetColorMatrix(D_800D2FC0);
+    if (D_800C3B74 != 0) {
+        for (i = 0; i < 31; i++) {
+            if (D_800D3368[i] != 0) {
+                if ((D_800C3D14 >> i) & 1) {
+                    SetBackColor(bg[0], bg[1], bg[2]);
+                } else {
+                    SetBackColor(((u8*)D_800658C8)[0x474], ((u8*)D_800658C8)[0x475],
+                                 ((u8*)D_800658C8)[0x476]);
+                }
+                if (*(u16*)(D_800D3368[i] + 0x4A) & 0x40) {
+                    D_80050104 = 0;
+                } else {
+                    D_80050104 = 1;
+                }
+                func_8009F844((u8*)D_800D3368[i], view, light, 1, D_800CCC5C, ot, buf);
+                D_80050104 = 0;
+            }
+        }
+    }
+    func_800A2FD8((u8*)&D_800C3D04, view, steps, ot, buf);
+}
 
 #ifndef XENO_PC_PORT
 void func_800A9F94(void) {
@@ -173,7 +291,74 @@ void func_800A9F94(void) {
 }
 #endif
 
-INCLUDE_ASM("asm/battle/nonmatchings/main70", func_800A9FF0);
+extern s32 D_800C3D0C__a[] asm("D_800C3D0C");
+extern void func_8009F794(void* list, s32 release);
+extern void func_8003852C(void* p);
+extern void func_800A2ACC(s32 ctx, u8* nodes);
+extern void func_800A2BB8(s32 ctx, u8* nodes, u8 id);
+extern void func_8009F708(void* set);
+extern void func_800B0060(u8* p);
+extern void func_800A429C(void* p);
+
+#define M70_REC ((u8*)D_800D3368[idx])
+
+/* func_800A9FF0.s: free actor slot idx of D_800D3368 and everything it owns
+ * (the +0xA8/+0xAC buffers, the +4 list, through func_800B0060 for slots
+ * outside 0x13..0x1E, the +0x110 buffer, the +0x118 and +0x114 element
+ * arrays), clear the slot, and for idx below 3 free slots idx * 2 + 0xD and
+ * idx * 2 + 0xE as well. */
+void func_800A9FF0(s32 idx) {
+    s32 i;
+
+    if (D_800D3368[idx] != 0) {
+        if (*(void**)(M70_REC + 0xA8) != NULL) {
+            HeapFree(*(void**)(M70_REC + 0xA8));
+            func_8009F794(*(void**)M70_REC, 1);
+        }
+        if (M70_REC[0x62] != 0) {
+            func_8003852C(*(void**)(*(u8**)(M70_REC + 0xB0) + 8));
+        }
+        if (*(void**)(M70_REC + 0xAC) != NULL) {
+            HeapFree(*(void**)(M70_REC + 0xAC));
+        }
+        if ((u32)(idx - 0x13) >= 0xC) {
+            if (*(u8**)(M70_REC + 4) != NULL) {
+                func_800A2ACC((s32)D_800C3D0C__a, *(u8**)(M70_REC + 4));
+                func_800A2BB8((s32)D_800C3D0C__a, *(u8**)(M70_REC + 4), 0xFF);
+                func_8009F708(*(void**)(M70_REC + 4));
+                *(void**)M70_REC = NULL;
+                *(void**)(M70_REC + 4) = NULL;
+            }
+            func_800B0060(M70_REC);
+        } else if (*(u8**)(M70_REC + 4) != NULL) {
+            func_800A2ACC((s32)D_800C3D0C__a, *(u8**)(M70_REC + 4));
+            func_800A2BB8((s32)D_800C3D0C__a, *(u8**)(M70_REC + 4), 0xFF);
+            HeapFree(*(void**)(M70_REC + 4));
+        }
+        if (M70_REC[0x10C] != 0) {
+            HeapFree(*(void**)(M70_REC + 0x110));
+        }
+        if (M70_REC[0x10E] != 0) {
+            for (i = 0; i < M70_REC[0x10E]; i++) {
+                func_800A429C((u8*)(i * 0x30 + *(s32*)(M70_REC + 0x118)));
+            }
+            HeapFree(*(void**)(M70_REC + 0x118));
+        }
+        if (M70_REC[0x10D] != 0) {
+            for (i = 0; i < M70_REC[0x10D]; i++) {
+                func_800A8A88((u8*)(i * 0x24 + *(s32*)(M70_REC + 0x114)));
+            }
+            HeapFree(*(void**)(M70_REC + 0x114));
+        }
+        HeapFree(M70_REC);
+        D_800D3368[idx] = 0;
+    }
+    if (idx < 3) {
+        func_800A9FF0(idx * 2 + 0xD);
+        func_800A9FF0(idx * 2 + 0xE);
+    }
+}
+#undef M70_REC
 extern u32 D_800D3368[];
 extern s16 D_800C3D40;
 extern s16 D_800C3E30;
