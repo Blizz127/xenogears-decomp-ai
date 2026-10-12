@@ -52,7 +52,83 @@ void func_800BE1C4(u8* task) {
         scale.vz -= 0x330;
     }
 }
-INCLUDE_ASM("asm/battle/nonmatchings/mainc122", func_800BE330);
+extern u32 WorkListsAddTasks(u32 a0, u32 a1, void* a2, void* a3, void* a4);
+extern int rand(void);
+extern void func_800BE11C(void);
+extern void func_800BE1C4(u8* task);
+extern void func_800BE6E8(s32 value, u8* out, s32 digits, u8 lead, s32 bias);
+extern s32 func_80026DCC(u8* pTable, s32 index, u8* pPrimBuffer, s16 ofsX, s16 ofsY);
+extern s32 D_800D3630;
+extern s16 D_800C3752[];
+extern u8* D_800D2F5C[];
+
+/* func_800BE330.s: spawn a number popup task (0x130 bytes; timer
+ * func_800BE11C, work func_800BE1C4) for `value`: random drift +0x64 from
+ * {16, 8, 6, -8}, +0x60 = 0x20, code 0x2E, scale 0x2000, rotation 0, colour
+ * by D_800D3630 (2 green, 3 magenta, 0xB blue, else grey), the digits as
+ * glyph quads from +0x70 (count +0x6C), each glyph's +6/+7 shrunk by one.
+ * Codegen points: the cases go 0xB, 3, 2, default (the order the bodies
+ * appear in retail); D_800D3630 is read before the zeroing stores; the glyph
+ * buffer offset is added to t last; the shrink loop indexes from t. */
+void func_800BE330(s32 value) {
+    u8* t;
+    u8 digits[8];
+    s32 v;
+    s32 x;
+    s32 i;
+    u8* g;
+    s32 mode;
+
+    t = (u8*)WorkListsAddTasks(0x130, 0, func_800BE11C, func_800BE1C4, 0);
+    v = -(((rand() & 3) - 2) * 8);
+    *(s32*)(t + 0x64) = v;
+    if (v == 0) {
+        *(s32*)(t + 0x64) = 6;
+    }
+    *(s32*)(t + 0x60) = 0x20;
+    t[0x6B] = 0x2E;
+    *(s32*)(t + 0x40) = 0x2000;
+    *(s32*)(t + 0x44) = 0x2000;
+    *(s32*)(t + 0x48) = 0x2000;
+    mode = D_800D3630;
+    *(s32*)(t + 0x6C) = 0;
+    *(s16*)(t + 0x38) = 0;
+    *(s16*)(t + 0x3A) = 0;
+    *(s16*)(t + 0x3C) = 0;
+    switch (mode) {
+    case 0xB:
+        t[0x68] = 0;
+        t[0x69] = 0;
+        t[0x6A] = 0x80;
+        break;
+    case 3:
+        t[0x68] = 0x80;
+        t[0x69] = 0;
+        t[0x6A] = 0x80;
+        break;
+    case 2:
+        t[0x68] = 0;
+        t[0x69] = 0x80;
+        t[0x6A] = 0;
+        break;
+    default:
+        t[0x68] = 0x80;
+        t[0x69] = 0x80;
+        t[0x6A] = 0x80;
+        break;
+    }
+    func_800BE6E8(value, digits, 5, 0, 0);
+    x = D_800C3752[digits[0]];
+    *(s32*)(t + 0x6C) = 0;
+    for (i = 0; i != digits[0]; i++, x += 10) {
+        *(s32*)(t + 0x6C) += func_80026DCC(D_800D2F5C[0], digits[i + 1] + 0x72,
+                                           t + (*(s32*)(t + 0x6C) * 0x18 + 0x70), x, -8);
+    }
+    for (i = 0; i != *(s32*)(t + 0x6C); i++) {
+        t[i * 0x18 + 0x76]--;
+        t[i * 0x18 + 0x77]--;
+    }
+}
 extern u8 D_800C3EB0[];
 extern u8* D_800C3610[];
 extern s32 D_80059464;
