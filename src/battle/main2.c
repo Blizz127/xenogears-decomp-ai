@@ -245,7 +245,32 @@ void func_80074F70(void) {
 }
 #endif
 
-INCLUDE_ASM("asm/battle/nonmatchings/main2", func_8007500C);
+extern u8 D_800D3725[][0x60];
+extern u8 D_800D3726[][0x60];
+extern u8 D_800D36C8[][0x60];
+/* Retail passes x zero-extended to 16 bits and the rest unconverted. */
+extern void func_80076C78(u8* p, u16 x, s32 y, s32 u, s32 v, s32 w);
+
+/* Draw the eight 0x60-byte gauge records at D_800D36C8: each active one
+ * (+0x5D set) gets its +0x5E width centred on x 0x40 (record 0, y 0x2C) or
+ * 0x9A (the rest, y 0xCA, v = i / 2 * 13), then the record's current-buffer
+ * prim is linked into the OT. */
+void func_8007500C(void) {
+    s32 i;
+
+    for (i = 0; i < 8; i++) {
+        if (D_800D3725[i][0] != 0) {
+            if (i == 0) {
+                func_80076C78(D_800D36C8[i] + D_800CCB34 * 0x28, 0x40 - D_800D3726[i][0] / 2, 0x2C, 0, 0,
+                              D_800D3726[i][0]);
+            } else {
+                func_80076C78(D_800D36C8[i] + D_800CCB34 * 0x28, 0x9A - D_800D3726[i][0] / 2, 0xCA, 0,
+                              (u8)(i / 2 * 13), D_800D3726[i][0]);
+            }
+            AddPrim(D_800CCB04__a_s32[0] + 4, D_800D36C8[i] + D_800CCB04__a_s32[12] * 0x28);
+        }
+    }
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80075168);
 INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80075938);
 #endif
