@@ -119,8 +119,35 @@ void func_800BAC50(void *arg0) {
 }
 #endif
 
-INCLUDE_ASM("asm/battle/nonmatchings/main111", func_800BACBC);
 extern u8 D_800C3EB0[];
+
+/* func_800BACBC.s: project party slot `slot`'s actor (D_800C3EB0 + 0x8C8C
+ * table; 16.16 position at +0/+4/+8) through D_800D30BC:
+ * *depth = RotTransPers' result >> 4, *sx / *sy = the screen position,
+ * *left = sx - 0x30, *width = 0x30, *mid = sx - 0x18.  Reading the
+ * integer parts as `word >> 16` gives retail's signed `lh` of the high
+ * halves; plain s16 reads load with `lhu`. */
+void func_800BACBC(u32 slot, s16* sx, s16* sy, s16* depth, s16* left, s16* width, s16* mid) {
+    u8* base = (u8*)(u32)D_800C3EB0;
+    u8* actor = *(u8**)(slot * 4 + base + 0x8C8C);
+    SVECTOR v;
+    u16 sxy[4];
+    long flag;
+
+    v.vx = *(s32*)(actor + 0) >> 16;
+    v.vy = *(s32*)(actor + 4) >> 16;
+    v.vz = *(s32*)(actor + 8) >> 16;
+    PushMatrix();
+    SetRotMatrix(&D_800D30BC);
+    SetTransMatrix(&D_800D30BC);
+    *depth = RotTransPers(&v, (long*)sxy, &flag, &flag) >> 4;
+    *sx = sxy[0];
+    *sy = sxy[1];
+    *left = sxy[0] - 0x30;
+    *width = 0x30;
+    *mid = sxy[0] - 0x18;
+    PopMatrix();
+}
 extern void func_800BFC80(u8* task, s32 a1, s32 a2);
 extern void func_8001CE74(u8* task);
 
