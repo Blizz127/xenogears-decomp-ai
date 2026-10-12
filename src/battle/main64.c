@@ -49,7 +49,147 @@ ItemList* func_8009EBA8(u8* data, ItemList* list) {
     return list;
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/main64", func_8009EC4C);
+/* 0x7C-byte node of the set built by func_8009EC4C; node 0 is the header. */
+typedef struct BattlePartNode {
+    struct BattlePartNode* parent; /* +0x00 */
+    u8 unk4;
+    u8 unk5;
+    u8 unk6;
+    u8 unk7;
+    u16 part;  /* +0x08: ItemList index, 0xFFFF for none */
+    u16 index; /* +0x0A: node number; in node 0, the node count */
+    u8 unkC[0x40];
+    u16 unk4C;
+    u16 unk4E;
+    u16 unk50;
+    u16 unk52;
+    u16 unk54;
+    u16 unk56;
+    u16 unk58;
+    u16 unk5A;
+    u32 unk5C;
+    u32 unk60;
+    u32 unk64;
+    u32 model;     /* +0x68: func_8002CB54 output */
+    u32 modelCopy; /* +0x6C */
+    u32 unk70;
+    u32 unk74;
+    u32 unk78;
+} BattlePartNode;
+
+extern void func_8002CB54(u8* modelData, u32* out1, u32* out2);
+extern void func_8002CC10(s16 x, s16 y);
+extern void func_8002CC74(s16 x, s16 y);
+extern void func_8002C8CC(u8* a0, void* a1, s32 a2);
+extern void func_8009F708(void* set);
+extern void* memcpy(void* dst, const void* src, u32 n);
+
+/* func_8009EC4C.s: build a node set from (part, parent) u16 pairs; the list
+ * runs while part is below list->count or is 0xFFFF.  Node 0 is a header
+ * holding the node count; node k + 1 gets pair k: its parent pointer (none
+ * for 0xFFFF), and for a real part the func_8002CB54 output for list item
+ * `part`, set up through func_8002C8CC (after func_8002CC10/func_8002CC74
+ * with a4..a7 when a3 is set) and copied to the second buffer.  Returns NULL
+ * when there are no pairs or an allocation fails. */
+BattlePartNode* func_8009EC4C(ItemList* list, u16* pairs, s32 a2, s32 a3, s16 a4, s16 a5,
+                              s16 a6, s16 a7) {
+    u16* p;
+    s32 n;
+    BattlePartNode* set;
+    BattlePartNode* node;
+    s32 idx;
+    u16 part;
+    u16 parent;
+
+    HeapChangeCurrentUser(4, 0);
+    p = pairs;
+    for (n = 0; p[0] < list->count || p[0] == 0xFFFF; p += 2) {
+        n++;
+    }
+    if (n == 0) {
+        return NULL;
+    }
+    n++;
+    set = HeapAlloc(n * sizeof(BattlePartNode), 0);
+    if (set == NULL) {
+        return NULL;
+    }
+    p = pairs;
+    node = set + 1;
+    idx = 1;
+    part = p[0];
+    parent = p[1];
+    set->unk4 = 1;
+    set->unk5 = 1;
+    set->unk6 = 1;
+    set->unk4C = 0x1000;
+    set->unk4E = 0x1000;
+    set->unk50 = 0x1000;
+    set->parent = NULL;
+    set->unk7 = 0;
+    set->part = 0xFFFF;
+    set->index = n;
+    set->model = 0;
+    set->modelCopy = 0;
+    set->unk54 = 0;
+    set->unk56 = 0;
+    set->unk58 = 0;
+    set->unk5C = 0;
+    set->unk60 = 0;
+    set->unk64 = 0;
+    set->unk70 = 0;
+    set->unk74 = 0;
+    set->unk78 = 0;
+    while (part < list->count || part == 0xFFFF) {
+        if (parent == 0xFFFF) {
+            node->parent = NULL;
+        } else {
+            node->parent = set + parent + 1;
+        }
+        node->index = idx++;
+        node->unk4 = 1;
+        node->unk5 = 1;
+        node->unk7 = 1;
+        node->unk4C = 0x1000;
+        node->unk4E = 0x1000;
+        node->unk50 = 0x1000;
+        node->unk6 = 0;
+        node->unk52 = 0;
+        node->part = part;
+        if (part != 0xFFFF) {
+            func_8002CB54(list->items[part], &node->model, &node->modelCopy);
+            if (node->model == 0) {
+                func_8009F708(set);
+                return NULL;
+            }
+            if (a3 != 0) {
+                func_8002CC10(a4, a5);
+                func_8002CC74(a6, a7);
+            }
+            func_8002C8CC(list->items[part], (void*)node->model, a2);
+            memcpy((void*)node->modelCopy, (void*)node->model,
+                   *(u32*)(list->items[part] + 0x34));
+            node->unk54 = 0;
+        } else {
+            node->model = 0;
+            node->modelCopy = 0;
+            node->unk54 = 0;
+        }
+        node->unk56 = 0;
+        node->unk58 = 0;
+        node->unk5C = 0;
+        node->unk60 = 0;
+        node->unk64 = 0;
+        node->unk70 = 0;
+        node->unk74 = 0;
+        node->unk78 = 0;
+        node++;
+        p += 2;
+        part = p[0];
+        parent = p[1];
+    }
+    return set;
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main64", func_8009EF3C);
 INCLUDE_ASM("asm/battle/nonmatchings/main64", func_8009F1C4);
 #endif
