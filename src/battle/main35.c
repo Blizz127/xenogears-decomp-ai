@@ -175,9 +175,9 @@ extern u16 D_800C3D64;
 extern u16 func_80089C08(u8);
 #if BATTLE_PART(3)
 /* Retail 84750: actor-filtered range, table mask, no group/rank sorting. */
-/* Not yet byte-matching: the matching build assembles retail bytes for
- * this function from its own asm segment (see config/battle.yaml).  The
- * body below is kept for the port and the differential harnesses. */
+/* The byte-matching C is in src/battle/mainasm_14C60.c (its own asm
+ * segment, see config/battle.yaml).  The body below is the port arm, kept
+ * for the port and the differential harnesses. */
 #ifdef XENO_PC_PORT
 u32 func_80084750(u32 arg0) {
     s32 remaining = 8;
