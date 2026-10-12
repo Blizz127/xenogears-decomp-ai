@@ -561,8 +561,8 @@ extern u8* D_800C3E00;
 extern u8* D_800C3DFC;
 #endif
 #ifdef XENO_PC_PORT
-/* Coexistence: decompiled and logic-faithful, but not byte-exact yet, so the
- * matching build assembles retail bytes below and the port uses this body. */
+/* Port body; the retail build compiles the byte-exact C in the #else branch.
+ */
 /* func_80099FB0.s: copy the four D_800C3DFC status bytes into the
  * D_800C34B0 +0x5FBC block, mirror +0x5FC2 into +0x5FC0, and when the
  * copied +0x5FBE byte has no low-6 bits, fold in the top nibble of the
@@ -584,7 +584,27 @@ void func_80099FB0(void) {
     }
 }
 #else
-INCLUDE_ASM("asm/battle/nonmatchings/main53", func_80099FB0);
+/* func_80099FB0.s, byte-exact: as func_8009C9C4 (main59) does with other
+ * halfwords, the flag bits are computed before the +0x5FBE test. */
+extern u8* D_800C3DFC;
+
+void func_80099FB0(void) {
+    u32 a0 = *(u16*)(D_800C3E00 + 0x8C);
+    u32 a1 = *(u16*)(D_800C3E00 + 0x8E);
+    u32 v;
+    u32 bits;
+
+    D_800C34B0[0x5FBC] = D_800C3DFC[0x20];
+    D_800C34B0[0x5FBD] = D_800C3DFC[0x21];
+    D_800C34B0[0x5FBE] = D_800C3DFC[0x22];
+    D_800C34B0[0x5FBF] = D_800C3DFC[0x23];
+    D_800C34B0[0x5FC0] = D_800C34B0[0x5FC2];
+    bits = (a0 | a1) >> 12;
+    v = D_800C34B0[0x5FBE];
+    if ((v & 0x3F) == 0) {
+        D_800C34B0[0x5FBE] = bits | v;
+    }
+}
 #endif
 #ifndef XENO_PC_PORT
 extern u8* D_800C34B0;
