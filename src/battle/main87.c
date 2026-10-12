@@ -213,7 +213,48 @@ void func_800B626C(void) {
     HeapFree(stack);
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/main87", func_800B62C8);
+extern void func_800A979C(s32 idx, s16 x, s16 y, s16 z, s16 w);
+extern void func_800BEE2C(u32 a0, u32 a1, u32 a2);
+extern u8* D_800C3E1C__a[] asm("D_800C3E1C");
+extern u16 D_800D3634__a[] asm("D_800D3634");
+
+/* func_800B62C8.s: on a HeapAlloc(0x4000, 1) stack (the $sp switch of
+ * func_800B626C), call func_800BEE2C(0xB, mask, p[0]).  Mode 2 first runs
+ * func_800A979C(0xB, 0x300, 0x100, 0, 0x1DB) and takes the mask as one bit
+ * selected by the current record's (D_800C3E1C) +0xAC low two bits and +0xA8
+ * top two bits; otherwise the mask is D_800D3634.  Each branch makes its own
+ * func_800BEE2C call (retail's shared call tail), and the two bit fields go
+ * through temps so +0xA8 is loaded first while +0xAC stays the first `or`
+ * operand. */
+void func_800B62C8(u32 unused, u8* p) {
+    u8* stack = HeapAlloc(0x4000, 1);
+    u32 hi;
+    u32 lo;
+
+    __asm__ volatile(
+        "\taddu  $t0, %0, $zero\n"
+        "\tsw    $sp, 0($t0)\n"
+        "\taddiu $t0, $t0, -4\n"
+        "\taddu  $sp, $t0, $zero\n"
+        :
+        : "r"(stack + 0x3E00)
+        : "t0", "memory");
+    if (p[0] == 2) {
+        func_800A979C(0xB, 0x300, 0x100, 0, 0x1DB);
+        hi = *(u32*)(D_800C3E1C__a[0] + 0xA8) >> 30;
+        lo = (*(u32*)(D_800C3E1C__a[0] + 0xAC) & 3) << 2;
+        func_800BEE2C(0xB, 1 << (lo | hi), p[0]);
+    } else {
+        func_800BEE2C(0xB, D_800D3634__a[0], p[0]);
+    }
+    __asm__ volatile(
+        "\taddiu $sp, $sp, 4\n"
+        "\tlw    $sp, 0($sp)\n"
+        :
+        :
+        : "memory");
+    HeapFree(stack);
+}
 #endif
 
 

@@ -240,6 +240,7 @@ func_800B6004	port arm in src/battle/main87.c	func_800B6004
 func_800B61B0	port arm in src/battle/main87.c	func_800B61B0
 func_800B61F8	port arm in src/battle/main87.c	func_800B61F8
 func_800B626C	port arm in src/battle/main87.c	func_800B626C
+func_800B62C8	port arm in src/battle/main87.c	func_800B62C8
 func_800B6464	port arm in src/battle/mainc89.c	func_800B6464
 func_800B6518	port arm in src/battle/main90.c	func_800B6518
 func_800B6808	port arm in src/battle/main90.c	func_800B6808
