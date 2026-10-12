@@ -244,7 +244,6 @@ paths = [
     "battle/mainc11",
     "battle/mainc120.",
     "battle/mainc123.",
-    "battle/mainc124.",
     "battle/mainc126.",
     "battle/mainc127.",
     "battle/mainc129.",
@@ -287,12 +286,16 @@ name = "BattleCdkG0"
 # other LHS.  Scoped to this TU because -G0 across BattleCdk breaks at
 # least mainc29_q2 (the first differing TU; others untested); mainc122's
 # other bodies match either way.
+# mainc124 (2026-10-12): func_800BED4C matches only with the CDK cc1 at -G0
+# (its scalar D_800C3610 view gets a split %hi in $s0 and keeps scalar alias
+# rules; CDK -G8: each reload is a $at macro, +2 insns; 2.7.2, 2.6.3 and
+# 2.6.0 at -G8 or -G0: 41 insns, far off); func_800BEDE8 matches either way.
 build_variables = {
     gcc = "gcc-2.7.2-cdk-psx",
     maspsx_flags = "--dont-expand-li --use-comm-section --run-assembler",
     gp_flag = "-G0"
 }
-paths = [ "src/battle/mainc122." ]
+paths = [ "src/battle/mainc122.", "src/battle/mainc124." ]
 
 [[build_preset]]
 name = "XenoGraphicsLibrary"
