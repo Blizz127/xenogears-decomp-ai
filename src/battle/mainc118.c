@@ -9,7 +9,57 @@ void func_800BD024(void *arg0);
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BCD98);
+extern u16 D_800C3D14[];
+extern u8 D_800C3EB0[];
+extern void func_800BCC60(void);
+extern void func_800BCB54(s32 a0);
+extern void* func_8001D0A4(void* pTask, void* pCallback);
+void func_800BD098(u8* owner);
+void func_800BCFAC(u8* task);
+
+/* Owner task of slot i: the pointer table at D_800C3EB0 + 0x8CB8.  An
+ * inline helper on purpose, as for func_800B853C's table: its copies give
+ * retail's register roles for the base and the 0x8CB8 offset. */
+static inline u8* BCD98_Owner(s32 i) {
+    u8* base = D_800C3EB0;
+
+    return *(u8**)((u8*)(i * 4 + base) + 0x8CB8);
+}
+
+/* func_800BCD98.s: latch the slot mask in D_800C3D14, run func_800BCC60
+ * (mask set) or func_800BCB54(0), then for each of the 11 slots with an
+ * owner: where the mask bit is set and func_8001D0A4 finds no
+ * func_800BCFAC task, start one with func_800BD098; where it is clear, call
+ * the found task's +0xC callback on it.  The port arm is the XENO_PC_PORT
+ * body further down. */
+void func_800BCD98(u16 mask) {
+    s32 i;
+    u8* owner;
+    u8* task;
+
+    D_800C3D14[0] = mask;
+    if (mask != 0) {
+        func_800BCC60();
+    } else {
+        func_800BCB54(0);
+    }
+    for (i = 0; i != 11; i++, mask >>= 1) {
+        if (mask & 1) {
+            owner = BCD98_Owner(i);
+            if (owner != NULL && func_8001D0A4(owner, func_800BCFAC) == NULL) {
+                func_800BD098(owner);
+            }
+        } else {
+            owner = BCD98_Owner(i);
+            if (owner != NULL) {
+                task = func_8001D0A4(owner, func_800BCFAC);
+                if (task != NULL) {
+                    (*(void (**)(u8*))(task + 0xC))(task);
+                }
+            }
+        }
+    }
+}
 INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BCEAC);
 #include "psyq/libgte.h"
 
