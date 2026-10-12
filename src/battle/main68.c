@@ -133,10 +133,18 @@ typedef struct {
 
 extern BattleAnchor D_800D3304[];
 
+/* One 0x7C-byte model part; a model body's parts start at body + 0x7C. */
 typedef struct {
-    u8 unk0[0x2C];
-    MATRIX m;
-    u8 unk4C[0x30];
+    u8 unk0[7];
+    u8 visible;      /* 0x07 */
+    u16 model;       /* 0x08: model list index, 0xFFFF = none */
+    u8 unkA[0x22];
+    MATRIX m;        /* 0x2C */
+    u8 unk4C[6];
+    s16 kind;        /* 0x52: 0 last OT slot, 1/2 billboard, 4..7 draw variant */
+    u8 unk54[0x14];
+    u8* buffers[2];  /* 0x68: per-buffer packet memory */
+    u8 unk70[0xC];
 } BattleModelPart;
 
 /* For the two anchor records at D_800D3304 (0x14 stride: output xyz,
@@ -270,7 +278,86 @@ void func_800A4820(void) {
     } while (var_s1_2 < 2);
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A48EC);
+extern s32 D_80050100;
+extern s32 func_8002C700(u8* model, u8* buffer, u32* ot, s32 variant);
+
+typedef struct {
+    u8** list;
+} BattleModelSet;
+
+/* Draw every part of the model body hdr (count - 1 parts from +0x7C)
+ * through func_8002C700 with the part matrix composed onto view at
+ * scratchpad +0x40.  Billboard kinds 1/2 replace the rotation (kind 1 keeps
+ * view's column 1).  Kind 0 draws into the last OT slot with D_80050100 =
+ * 0x10; the caller's D_80050100 is restored for the others and on exit.
+ * The parts are walked through hdr itself, as retail. */
+#define M68_PART(p) ((BattleModelPart*)(p))
+void func_800A48EC(u8* models, u8* hdr, MATRIX* view, void* unused3, u32 unused4, u8* ot, s32 bufIndex,
+                   s32 otCount) {
+    MATRIX* m;
+    s32 saved;
+    u32 i;
+    u32 n;
+    s32 variant;
+
+    m = (MATRIX*)0x1F800040;
+    n = *(u16*)(hdr + 0xA) - 1;
+    hdr += 0x7C;
+    saved = D_80050100;
+    for (i = 0; i < n; i++, hdr += 0x7C) {
+        if (M68_PART(hdr)->model == 0xFFFF || M68_PART(hdr)->visible == 0) {
+            continue;
+        }
+        CompMatrix(view, &M68_PART(hdr)->m, m);
+        if ((u16)((u16)M68_PART(hdr)->kind - 1) < 2) {
+            m->m[0][0] = 0x1000;
+            m->m[0][2] = 0;
+            m->m[1][0] = 0;
+            m->m[1][2] = 0;
+            m->m[2][0] = 0;
+            m->m[2][2] = 0x1000;
+            if (M68_PART(hdr)->kind == 1) {
+                m->m[0][1] = view->m[0][1];
+                m->m[1][1] = view->m[1][1];
+                m->m[2][1] = view->m[2][1];
+            } else {
+                m->m[0][1] = 0;
+                m->m[1][1] = 0x1000;
+                m->m[2][1] = 0;
+            }
+        }
+        SetRotMatrix(m);
+        SetTransMatrix(m);
+        switch (M68_PART(hdr)->kind) {
+        case 4:
+            variant = 2;
+            break;
+        case 5:
+            variant = 3;
+            break;
+        case 6:
+            variant = 4;
+            break;
+        case 7:
+            variant = 5;
+            break;
+        default:
+            variant = 0;
+            break;
+        }
+        if (M68_PART(hdr)->kind == 0) {
+            D_80050100 = 0x10;
+            func_8002C700(((BattleModelSet*)models)->list[M68_PART(hdr)->model], M68_PART(hdr)->buffers[bufIndex],
+                          (u32*)(ot + otCount * 4 - 4), variant);
+        } else {
+            D_80050100 = saved;
+            func_8002C700(((BattleModelSet*)models)->list[M68_PART(hdr)->model], M68_PART(hdr)->buffers[bufIndex],
+                          (u32*)ot, variant);
+        }
+    }
+    D_80050100 = saved;
+}
+#undef M68_PART
 INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A4B3C);
 s32 func_800AA650(s32);
 void func_800B10EC(s32, s32, s32, s32);
