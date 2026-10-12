@@ -76,7 +76,194 @@ s16 func_800A35C8(s16 arg0, s16 arg1, s16 arg2) {
 }
 #ifndef XENO_PC_PORT
 
-INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A3640);
+typedef struct {
+    s16 x, y, w, h;
+} M68Rect;
+extern void StoreImage(M68Rect* rect, u32* p);
+extern void DrawSync(s32 mode);
+
+/* func_800A3640.s: construct an effect-image record (19 arguments; the port
+ * arm below documents the fields).  Written as a K&R definition, so the
+ * narrow parameters arrive promoted.  `width` and `height` must be s16: their
+ * zero tests then read the spilled int (retail's lw; sll 16).  Other shapes
+ * retail's code needs: e[0x10] stored before e[0x11], the colour-fill bound
+ * written inline and counted with `row`, and the stripe-fill switch on
+ * ((s16)outY + row) % 3 inside a for column loop. */
+u8* func_800A3640(e, parent, type, flags, source, ax, ay, az, bx, by, bz, outX, outY, width, height, period, param0,
+                  param1, callback)
+u8* e;
+u8* parent;
+u16 type;
+u16 flags;
+u8* source;
+u16 ax, ay, az, bx, by, bz;
+u16 outX, outY;
+s16 width, height;
+u16 period, param0, param1;
+void* callback;
+{
+    M68Rect rect;
+    s32 half;
+    s32 row;
+    s32 col;
+    u16 color;
+    u16 carry;
+
+    if (*(u16*)(e + 0x1A) != 0) {
+        return NULL;
+    }
+    HeapChangeCurrentUser(4, 0);
+    *(u16*)(e + 0x1A) = 1;
+    e[0x10] = type;
+    e[0x11] = 0;
+    *(u8**)(e + 0x0) = parent;
+    *(u16*)(e + 0x14) = 0;
+    *(u16*)(e + 0x18) = 0xFFFF;
+    *(u16*)(e + 0x16) = period;
+    *(u16*)(e + 0x20) = param0;
+    *(u16*)(e + 0x22) = param1;
+    *(void**)(e + 0x24) = callback;
+    *(u8**)(e + 0x1C) = source;
+    if (!(type & 1)) {
+        flags &= 0xFD0F;
+    }
+    if (type & 4) {
+        flags &= 0xFEFF;
+    }
+    if (width == 0) {
+        width = 0x100;
+    }
+    if (height == 0) {
+        height = 0x100;
+    }
+    switch (type) {
+    case 0:
+    case 1:
+        half = ((s16)width + 1) / 2;
+        width = half * 2;
+        *(u16*)(e + 0x28) = outX;
+        *(u16*)(e + 0x2A) = outY;
+        *(u16*)(e + 0x2C) = width;
+        *(u16*)(e + 0x2E) = height;
+        *(u16*)(e + 0x12) = width * height;
+        if (flags & 0x100) {
+            *(void**)(e + 0xC) = HeapAlloc((s16)width * (s16)height * 2, 0);
+        }
+        if (flags & 0x200) {
+            *(void**)(e + 0x8) = HeapAlloc((s16)width * (s16)height * 2, 0);
+        }
+        if (flags & 0x400) {
+            *(void**)(e + 0x4) = HeapAlloc((s16)width * (s16)height * 2, 0);
+        }
+        switch (flags & 0xF) {
+        case 1:
+            rect.x = ax;
+            rect.y = ay;
+            rect.w = width;
+            rect.h = height;
+            StoreImage(&rect, *(u32**)(e + 0x4));
+            DrawSync(0);
+            break;
+        case 2:
+            color = ((az & 0x3F) << 10) + ((ay & 0x1F) << 5) | (ax & 0x1F);
+            for (row = 0; row < (s16)width * (s16)height; row++) {
+                (*(u16**)(e + 0x4))[row] = color;
+            }
+            break;
+        }
+        switch ((flags >> 4) & 0xF) {
+        case 1:
+            rect.x = bx;
+            rect.y = by;
+            rect.w = width;
+            rect.h = height;
+            StoreImage(&rect, *(u32**)(e + 0x8));
+            DrawSync(0);
+            break;
+        case 2:
+            color = ((bz & 0x3F) << 10) + ((by & 0x1F) << 5) | (bx & 0x1F);
+            for (row = 0; row < (s16)width * (s16)height; row++) {
+                (*(u16**)(e + 0x8))[row] = color;
+            }
+            break;
+        }
+        return e;
+    case 4:
+    case 5:
+        *(u16*)(e + 0x28) = outX;
+        *(u16*)(e + 0x2A) = outY;
+        *(u16*)(e + 0x2C) = width;
+        *(u16*)(e + 0x2E) = height;
+        *(u16*)(e + 0x12) = width * height;
+        if (flags & 0x100) {
+            *(void**)(e + 0xC) = HeapAlloc((s16)width * (s16)height * 2, 0);
+        }
+        if (flags & 0x200) {
+            *(void**)(e + 0x8) = HeapAlloc((s16)width * (s16)height * 2, 0);
+        }
+        if (flags & 0x400) {
+            *(void**)(e + 0x4) = HeapAlloc((s16)width * (s16)height * 2, 0);
+        }
+        switch (flags & 0xF) {
+        case 1:
+            for (row = 0; row < (s16)height; row++) {
+                for (col = 0; col < (s16)width; col++) {
+                    (*(u16**)(e + 0x4))[row * (s16)width + col] =
+                        *(u16*)(source + ((s16)ay + row) * 6 + ((s16)ax + col) * 2);
+                }
+            }
+            break;
+        case 2:
+            for (row = 0; row < (s16)height; row++) {
+                for (col = 0; col < (s16)width; col++) {
+                    switch (((s16)outY + row) % 3) {
+                    case 0:
+                        carry = ax;
+                        break;
+                    case 1:
+                        carry = ay;
+                        break;
+                    case 2:
+                        carry = az;
+                        break;
+                    }
+                    (*(u16**)(e + 0x4))[row * (s16)width + col] = carry;
+                }
+            }
+            break;
+        }
+        switch ((flags >> 4) & 0xF) {
+        case 1:
+            for (row = 0; row < (s16)height; row++) {
+                for (col = 0; col < (s16)width; col++) {
+                    (*(u16**)(e + 0x8))[row * (s16)width + col] =
+                        *(u16*)(source + ((s16)by + row) * 6 + ((s16)bx + col) * 2);
+                }
+            }
+            break;
+        case 2:
+            for (row = 0; row < (s16)height; row++) {
+                for (col = 0; col < (s16)width; col++) {
+                    switch (((s16)outY + row) % 3) {
+                    case 0:
+                        carry = bx;
+                        break;
+                    case 1:
+                        carry = by;
+                        break;
+                    case 2:
+                        carry = bz;
+                        break;
+                    }
+                    (*(u16**)(e + 0x8))[row * (s16)width + col] = carry;
+                }
+            }
+            break;
+        }
+        return e;
+    }
+    return e;
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A3E98);
 #endif
 
