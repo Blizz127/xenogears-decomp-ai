@@ -34,7 +34,60 @@ void func_800BB9D4(void) {
     }
 }
 INCLUDE_ASM("asm/battle/nonmatchings/mainc114_p2", func_800BBAB8);
-INCLUDE_ASM("asm/battle/nonmatchings/mainc114_p2", func_800BBEE0);
+extern u8* D_800C3680__p[] asm("D_800C3680");
+extern u8* D_800C3684__p[] asm("D_800C3684");
+extern u8 D_800C37C8[];
+extern s16 D_800C3CCC[];
+extern s16 D_800C3CD4[];
+extern s16 D_800D30A0__s16[] asm("D_800D30A0");
+extern s16 D_800D30A8[];
+extern u8 D_800C3CC4[];
+extern u32 D_800C367C[];
+extern void func_8001CE74(u8* task);
+extern void TimerWorkListRemoveTask(void* task);
+extern void WorkListRemoveTask(void* task);
+extern void func_800BC2F0(u32 a0);
+
+/* Free callback of the setup sprite tasks: a kind-10 sprite (+0x40 bits
+ * 13..16) releases the D_800C3680 owner slot, any other the D_800C3684 one,
+ * restoring the saved view vector (D_800C3CCC / D_800C3CD4) into
+ * D_800D30A0[0] / [1] unless D_800C37C8 is set; then release the children
+ * (when +0xAC bit 5 is set), unlink and free the task, and once the
+ * D_800C3CC4 count drops to zero hand D_800C367C to func_800BC2F0.  The
+ * later mainc114.c bodies type these globals with their own structs, hence
+ * the asm-named aliases. */
+void func_800BBEE0(u8* task) {
+    u8* sprite = *(u8**)(task + 4);
+
+    if (((*(u32*)(sprite + 0x40) >> 13) & 0xF) == 10) {
+        if (D_800C3680__p[0] == task) {
+            D_800C3680__p[0] = 0;
+            if (D_800C37C8[0] == 0) {
+                D_800D30A0__s16[0] = D_800C3CCC[0];
+                D_800D30A0__s16[1] = D_800C3CCC[1];
+                D_800D30A0__s16[2] = D_800C3CCC[2];
+            }
+        }
+    } else {
+        if (D_800C3684__p[0] == task) {
+            D_800C3684__p[0] = 0;
+            if (D_800C37C8[0] == 0) {
+                D_800D30A8[0] = D_800C3CD4[0];
+                D_800D30A8[1] = D_800C3CD4[1];
+                D_800D30A8[2] = D_800C3CD4[2];
+            }
+        }
+    }
+    if ((*(u32*)(sprite + 0xAC) >> 5) & 1) {
+        func_8001CE74(task);
+    }
+    TimerWorkListRemoveTask(task);
+    WorkListRemoveTask(task + 0x1C);
+    HeapFree(task);
+    if (--D_800C3CC4[0] == 0) {
+        func_800BC2F0(D_800C367C[0]);
+    }
+}
 INCLUDE_ASM("asm/battle/nonmatchings/mainc114_p2", func_800BC018);
 INCLUDE_ASM("asm/battle/nonmatchings/mainc114_p2", func_800BC158);
 #endif
