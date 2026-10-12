@@ -94,7 +94,306 @@ void func_800A8B0C(void) {
         *(s16*)((u8*)D_800D330A + off) = 0;
     }
 }
-INCLUDE_ASM("asm/battle/nonmatchings/main70", func_800A8BF0);
+extern void ResolveArchiveEntryPointers(u8* entry);
+extern void* memcpy(void* dst, const void* src, u32 n);
+extern void SetPolyFT4(void* p);
+extern void SetSemiTrans(void* p, s32 abe);
+extern u16 GetClut(s32 x, s32 y);
+extern u16 GetTPage(s32 tp, s32 abr, s32 x, s32 y);
+extern s32 D_800C3B6C;
+extern u8* D_800C3B70;
+extern u8 D_800C3EB7[];
+extern s32 D_800C3D0C__a[] asm("D_800C3D0C");
+extern s32 func_8003864C(s32 a0, s32 a1);
+extern void SoundAddSedsEntry(s32 a0);
+extern void func_80030988(s32 a0, s32 a1, s32 a2, s32 a3);
+extern void func_8002DDE4__s(s32 file, s16 a1, s16 x, s16 y, s16 a4, s16 z, s16 w) asm("func_8002DDE4");
+extern void func_800A7064(u8* e, s32 a1, s32 a2, s32 a3, s32 a4, s32 a5, s32 a6, s32 n, s32 x, s32 y,
+                          s32 a10, s32 a11, s32 z, s32 w, s32 b0, s32 b1, s32 b2, s32 b3, s32 b4,
+                          s32 b5);
+extern void func_800AA898(u8* actor, s32* list, u8* a2, s32 a3);
+extern void func_800AA934(u8 *obj, u8 *src, s32 id, s32 slot);
+extern void func_800AFF9C(u8* actor);
+extern void func_8002C644(u8* p);
+extern void func_8002C4BC(u8* p);
+
+extern void func_8009F794(void* list, s32 release);
+extern void* func_8009EBA8(u8* data, void* list);
+extern void* func_8009EC4C(void* list, u16* pairs, s32 a2, s32 a3, s16 a4, s16 a5, s16 a6, s16 a7);
+void func_800AA6E0(u8* p);
+
+/* Actor records (0x11C bytes, D_800D3368[slot]) and the part tables
+ * func_800A8BF0 hangs off them. */
+typedef struct {
+    u8 unk0[4];
+    s32 unk4;
+    s32 unk8;
+    s32 unkC;
+    u8 unk10[0xA];
+    s16 unk1A;
+    u8 unk1C[0x14];
+} A8BF0Item;
+
+typedef struct {
+    u16 unk0;
+    u16 unk2;
+    u16 unk4;
+    u16 unk6;
+    u8 unk8[6];
+    u16 unkE;
+} A8BF0Key;
+
+typedef struct {
+    u16 unk0;
+    u8 unk2[0x16];
+    A8BF0Key* unk18;
+    u8 unk1C[8];
+} A8BF0Part;
+
+typedef struct {
+    u32* unk0;
+    u8* unk4;
+    u8 unk8[0x14];
+    s16 unk1C;
+    u8 unk1E[0x2];
+    u8 unk20;
+    u8 unk21[0x1];
+    u8 unk22;
+    u8 unk23[0x1];
+    u16 unk24;
+    u16 unk26;
+    u16 unk28;
+    u8 unk2A;
+    u8 unk2B[0x9];
+    u8 unk34;
+    u8 unk35[0x15];
+    u16 unk4A;
+    u8 unk4C[0x16];
+    u8 unk62;
+    u8 unk63;
+    u8 unk64[0x2C];
+    s16 unk90;
+    s16 unk92;
+    s16 unk94;
+    s16 unk96;
+    u8 unk98[0x10];
+    u8* unkA8;
+    u8* unkAC;
+    u8* unkB0;
+    u8 unkB4[0x58];
+    u8 unk10C;
+    u8 unk10D;
+    u8 unk10E;
+    u8 unk10F[0x5];
+    u8* unk114;
+    A8BF0Item* unk118;
+} A8BF0Actor;
+
+/* func_800A8BF0.s: create actor `slot` (if below 0x20 and free) as a
+ * 0x11C-byte record under heap user 4, from the model archive a3 and the
+ * sound archive a2.  Unless kind & 1: resolve a3 and its +0x10 table, upload
+ * its +4 file through func_8002DDE4, copy its +8..+0xC data to D_800C3B70 and
+ * hand that to the first empty one of the 20 D_800C3ACC lists.  Unless
+ * kind & 4: resolve a2 and its sub-archives and register its SEDS entry if it
+ * is not loaded yet (+0x62).  Then copy the model header (table entry 1) into
+ * the actor, build the model with func_8009EC4C (posed at x/y/z/w unless
+ * kind & 0x40 or header flag 4), place it at pos[0..2] when given, set up the
+ * two semi-transparent POLY_FT4 at +0xB8, allocate the header's 0x30-byte
+ * (+0x118) and 0x24-byte (+0x114) part tables, and unless kind & 2 swap
+ * D_800C3B70 for a private copy kept at +0xA8.
+ * Retail keeps the a2 sub-archive, the header and the walk through it in
+ * one register, so `p` is all three; `k` is also func_8002DDE4's flag.
+ * The func_800A7064 call reads its arguments with unsequenced `*p++`: cc1
+ * 2.6.3 evaluates them left to right, as retail does, but a host compiler
+ * need not, so a native build must read them into temporaries first. */
+void func_800A8BF0(s32 slot, u16 kind, u8* a2, u8* a3, s16 x, s16 y, s16 z, s16 w, s16* pos) {
+    A8BF0Actor* actor;
+    u8* src;
+    u8* snd;
+    s32 file;
+    u16* pairs;
+    s32 size;
+    s32 len;
+    u8* tbl;
+    s32 bit;
+    s32 k;
+    s32 off;
+    u8* q;
+    u8* prim;
+    u16* p;
+    A8BF0Part* e;
+    s32 n;
+    s32 j;
+    u8* copy;
+
+    HeapChangeCurrentUser(4, 0);
+    if (slot >= 0x20 || D_800D3368[slot] != 0) {
+        return;
+    }
+    actor = HeapAlloc(0x11C, 0);
+    if (!(kind & 1)) {
+        ResolveArchiveEntryPointers(a3);
+        ResolveArchiveEntryPointers(*(u8**)(a3 + 0x10));
+    }
+    actor->unk62 = 0;
+    actor->unk63 = 0;
+    if (!(kind & 4)) {
+        ResolveArchiveEntryPointers(a2);
+        ResolveArchiveEntryPointers(*(u8**)(a2 + 8));
+        p = *(u16**)(a2 + 4);
+        ResolveArchiveEntryPointers((u8*)p);
+        ResolveArchiveEntryPointers(*(u8**)(p + 2));
+        snd = *(u8**)(a2 + 8);
+        if (*(s32*)(snd + 0xC) != *(s32*)(snd + 8) && func_8003864C(*(s32*)(snd + 8), 0) == 0) {
+            SoundAddSedsEntry(*(s32*)(snd + 8));
+            actor->unk62 = 1;
+        }
+    }
+    tbl = *(u8**)(a3 + 0x10);
+    p = *(u16**)(tbl + 4);
+    file = *(s32*)(a3 + 4);
+    src = *(u8**)(a3 + 8);
+    pairs = *(u16**)(a3 + 0xC);
+    D_800D3368[slot] = (u32)actor;
+    actor->unk24 = p[1];
+    actor->unk26 = p[2];
+    actor->unk28 = p[3];
+    actor->unk2A = ((u8*)p)[0xA];
+    actor->unk4A = p[6];
+    size = (u8*)pairs - src;
+    if (actor->unk4A & 0x200) {
+        func_80030988(2, 2, 0x40, 0x40);
+    }
+    if (!(kind & 1)) {
+        k = 0;
+        if (!(kind & 0x40)) {
+            bit = actor->unk4A & 4;
+            k = bit == 0;
+        }
+        func_8002DDE4__s(file, k, x, y, k, z, w);
+        D_800C3B70 = HeapAlloc(size, 1);
+        memcpy(D_800C3B70, src, size);
+        for (D_800C3B6C = 0; D_800C3B6C < 0x14; D_800C3B6C++) {
+            if (D_800C3ACC[D_800C3B6C][0] == 0) {
+                break;
+            }
+        }
+        func_8009EBA8(D_800C3B70, D_800C3ACC[D_800C3B6C]);
+    }
+    actor->unk0 = D_800C3ACC[D_800C3B6C];
+    if (!(kind & 0x40)) {
+        if (actor->unk4A & 4) {
+            actor->unk4 = func_8009EC4C(actor->unk0, pairs, 2, 0, 0, 0, 0, 0);
+        } else {
+            actor->unk4 = func_8009EC4C(actor->unk0, pairs, 2, 1, x, y, z, w);
+        }
+    } else {
+        actor->unk4 = func_8009EC4C(actor->unk0, pairs, 0, 0, 0, 0, 0, 0);
+    }
+    if (pos != NULL) {
+        *(s32*)(actor->unk4 + 0x5C) = pos[0];
+        *(s32*)(actor->unk4 + 0x60) = pos[1];
+        *(s32*)(actor->unk4 + 0x64) = pos[2];
+    }
+    if (!(kind & 1)) {
+        actor->unk90 = x;
+        actor->unk92 = y;
+        actor->unk94 = z;
+        actor->unk96 = w;
+    } else {
+        actor->unk90 = -1;
+    }
+    if (!(kind & 4) && !(kind & 0x80)) {
+        actor->unkAC = a2;
+    } else {
+        actor->unkAC = NULL;
+    }
+    for (k = 0; k < 2; k++) {
+        off = k * 0x28 + 0xB8;
+        prim = (u8*)actor + off;
+        q = (u8*)actor + k * 0x28;
+        SetPolyFT4(prim);
+        SetSemiTrans(prim, 1);
+        q[0xBC] = ((u8*)D_800658C8)[0x478];
+        q[0xBD] = ((u8*)D_800658C8)[0x479];
+        q[0xBE] = ((u8*)D_800658C8)[0x47A];
+        *(s16*)(q + 0xC6) = GetClut(0x30, 0x1CC);
+        *(s16*)(q + 0xCE) = GetTPage(0, 2, 0x380, 0);
+        q[0xC4] = 0xC0;
+        q[0xC5] = 0xC0;
+        q[0xCC] = 0xFE;
+        q[0xCD] = 0xC0;
+        q[0xD4] = 0xC0;
+        q[0xD5] = 0xFE;
+        q[0xDC] = 0xFE;
+        q[0xDD] = 0xFE;
+    }
+    if (!(kind & 0x40)) {
+        actor->unk1C = (((s16*)p)[4] * *(s16*)((u8*)D_800658C8 + 0x344)) >> 12;
+    } else {
+        actor->unk1C = p[4];
+    }
+    actor->unk10C = ((u8*)p)[0xE];
+    func_800AA6E0((u8*)actor);
+    actor->unk10E = ((u8*)p)[0x10];
+    if (actor->unk10E != 0) {
+        actor->unk118 = HeapAlloc(actor->unk10E * 0x30, 0);
+        for (k = 0; k < actor->unk10E; k++) {
+            actor->unk118[k].unk1A = 0;
+            actor->unk118[k].unk4 = 0;
+            actor->unk118[k].unk8 = 0;
+            actor->unk118[k].unkC = 0;
+        }
+    }
+    actor->unk10D = ((u8*)p)[0x12];
+    if (actor->unk10D != 0) {
+        p += 10;
+        e = HeapAlloc(actor->unk10D * 0x24, 0);
+        actor->unk114 = (u8*)e;
+        for (k = 0; k < actor->unk10D; k++, e++) {
+            n = ((s16*)p)[0x11];
+            e->unk0 = *p++;
+            func_800A7064((u8*)e, ((s32*)(tbl + 8))[k], (s16)*p++, (s16)*p++, (s16)*p++, (s16)*p++, (s16)*p++, n,
+                          (s16)(x + *p++), (s16)(y + *p++), (s16)*p++, (s16)*p++, (s16)(z + *p++), w,
+                          *(u8*)p++, *(u8*)p++, *(u8*)p++, *(u8*)p++, *(u8*)p++, *(u8*)p);
+            p += 2;
+            for (j = 0; j < n; j++) {
+                e->unk18[j].unk6 = *p++;
+                e->unk18[j].unkE = *p++;
+                e->unk18[j].unk0 = *p++;
+                e->unk18[j].unk2 = *p++;
+                e->unk18[j].unk4 = *p++;
+            }
+        }
+    }
+    actor->unk20 = slot;
+    actor->unk22 = 0;
+    if (D_800C3EB7[slot * 0x1C] != 0 && slot < 0xB) {
+        actor->unk34 = 0;
+    } else {
+        actor->unk34 = 1;
+    }
+    if (!(kind & 0x40)) {
+        p = *(u16**)(a2 + 4);
+        actor->unkB0 = *(u8**)(a2 + 8);
+        func_800AA898((u8*)actor, D_800C3D0C__a, (u8*)(p + 4), *(s32*)(p + 2));
+        func_800AA934((u8*)actor, (u8*)actor, (s32)D_800C3D0C__a, 0);
+        func_800AFF9C((u8*)actor);
+    }
+    if (!(kind & 2)) {
+        func_8002C644(D_800C3B70);
+        func_8002C4BC(D_800C3B70);
+        len = (s32)HeapGetNextBlockHeader((HeapBlock*)D_800C3B70);
+        copy = HeapAlloc(len, 0);
+        memcpy(copy, D_800C3B70, len);
+        HeapFree(D_800C3B70);
+        func_8009F794(actor->unk0, 0);
+        func_8009EBA8(copy, actor->unk0);
+        actor->unkA8 = copy;
+    } else {
+        actor->unkA8 = NULL;
+    }
+}
 typedef struct {
     u16 index;
     u16 unk2;
@@ -158,8 +457,8 @@ void func_800A9540(s32 actor) {
 }
 INCLUDE_ASM("asm/battle/nonmatchings/main70", func_800A96B4);
 extern void ResolveArchiveEntryPointers(u8* entry);
-extern void func_800A8BF0(s32 slot, u16 kind, void* a2, void* a3, s16 x, s16 y, s16 z, s16 w,
-                          s32 a8);
+extern void func_800A8BF0(s32 slot, u16 kind, u8* a2, u8* a3, s16 x, s16 y, s16 z, s16 w,
+                          s16* pos);
 extern void func_8002DDE4(void* a0, u32 a1, u32 a2, u32 a3, u32 s0, u32 s1, u32 s2);
 extern void* memcpy(void* dst, const void* src, u32 n);
 extern void DrawSync(s32 mode);
