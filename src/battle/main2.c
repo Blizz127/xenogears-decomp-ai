@@ -354,7 +354,22 @@ void func_800742A0(void) {
     } while (var_s0 < 3);
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/main2", func_800743A4);
+/* func_800743A4.s: when the prim set at *(D_800C3EA4 + 0xA230) is enabled
+ * (+0x669), add its four double-buffered 0x28-byte prims (0x50 apart; the
+ * buffer index is +0x668) to OT entry 1 (D_800CCB04 + 4).  The set pointer
+ * is re-read after every AddPrim, as in retail. */
+void func_800743A4(void) {
+    if (*(u8*)(*(u8**)(D_800C3EA4 + 0xA230) + 0x669) != 0) {
+        AddPrim(D_800CCB04__a_s32[0] + 4,
+                (*(u8*)(*(u8**)(D_800C3EA4 + 0xA230) + 0x668) * 0x28) + *(u8**)(D_800C3EA4 + 0xA230));
+        AddPrim(D_800CCB04__a_s32[0] + 4,
+                (*(u8*)(*(u8**)(D_800C3EA4 + 0xA230) + 0x668) * 0x28) + 0x50 + *(u8**)(D_800C3EA4 + 0xA230));
+        AddPrim(D_800CCB04__a_s32[0] + 4,
+                (*(u8*)(*(u8**)(D_800C3EA4 + 0xA230) + 0x668) * 0x28) + 0xA0 + *(u8**)(D_800C3EA4 + 0xA230));
+        AddPrim(D_800CCB04__a_s32[0] + 4,
+                (*(u8*)(*(u8**)(D_800C3EA4 + 0xA230) + 0x668) * 0x28) + 0xF0 + *(u8**)(D_800C3EA4 + 0xA230));
+    }
+}
 extern void *D_800C3EA4;
 extern s32 D_800CCB04__a_s32[] asm("D_800CCB04");
 
