@@ -26,10 +26,107 @@ void func_80074EEC(void);
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80071AE0);
+extern u8 D_800D2CAF;
+extern u16 D_800D2C94;
+extern u16 D_800C48E8;
+extern u8* D_800C3EAC;
+extern u8 D_800D3014;
+extern void func_80079E18(u8 index);
+extern void func_80079E4C(u8 index);
+extern void func_800716D8(void);
+
+/* func_80071AE0.s: when D_800D2CAF is set and D_800C48E8 masks nothing in
+ * D_800D2C94 (func_80071964's test): func_80079E18(7), clear byte 0x2DB
+ * of D_800C3EAC, run the battle frame (func_800716D8) up to 59 times while
+ * D_800D3014 stays 8, set byte 0x2DB back to 1, func_80079E4C(7) and run
+ * one more frame.  First draft. */
+void func_80071AE0(void) {
+    s32 n;
+
+    if (D_800D2CAF != 0 && (D_800D2C94 & D_800C48E8) == 0) {
+        func_80079E18(7);
+        n = 0x3B;
+        D_800C3EAC[0x2DB] = 0;
+        do {
+            func_800716D8();
+            if (D_800D3014 != 8) {
+                break;
+            }
+        } while (--n != 0);
+        D_800C3EAC[0x2DB] = 1;
+        func_80079E4C(7);
+        func_800716D8();
+    }
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80071B94);
-INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80072270);
-INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80072324);
+extern u16 D_800D2C9E;
+extern u16 D_800D2E06[];
+extern u8 D_800D2DE4[];
+extern u16 func_80089C9C(s32 mask, u8 idx);
+
+/* func_80072270.s: when D_800D2C9E has any of its low three bits set, for
+ * each party actor i < 3 that func_80089C9C(D_800D2C9E, i) selects: clear
+ * D_800D2DE4[i], copy the u16 eleven slots back (D_800D2E06[i - 11]) into
+ * D_800D2E06[i] and set byte +0x7C + i of D_800D2D28; then clear
+ * D_800D2C9E.  The D_800D2D28 byte is addressed as (base + i)[0x7C], which
+ * gives retail's base-first addu. */
+void func_80072270(void) {
+    s32 i;
+
+    if (D_800D2C9E & 7) {
+        for (i = 0; i < 3; i++) {
+            if (func_80089C9C(D_800D2C9E, i) != 0) {
+                D_800D2DE4[i] = 0;
+                D_800D2E06[i] = D_800D2E06[i - 11];
+                ((u8*)D_800D2D28 + i)[0x7C] = 1;
+            }
+        }
+    }
+    D_800D2C9E = 0;
+}
+extern u16 D_800D39E0;
+extern u8 D_800C402F[];
+extern u8 D_800D2E5C;
+extern u8 D_800D2E60;
+extern u16 func_80089C9C(s32 mask, u8 idx);
+extern void func_80085AC4(u8 a0);
+extern void func_80071B94(s32 a0);
+
+/* func_80072324.s: for each enemy actor i in 3..10 that
+ * func_80089C9C(D_800D39E0, i) selects: clear 256 bytes, reset the 32
+ * D_800C402F command bytes to 0xFF (as func_800792F8), set D_800D2E5C = 4
+ * and D_800D2E60 = 0x17, then call func_80085AC4(i) and func_80071B94(1).
+ * ORIGINAL BUG, kept on purpose: the 256-byte clear goes through p, which
+ * is never assigned (retail clears from whatever $s2 holds on entry; its
+ * caller func_800723E0 does not set $s2 either), apparently meant to be
+ * D_800D2E5C (func_800799C8 clears that block the same way).  The bound is
+ * computed from the running copy q, so loop.c does not hoist it into
+ * another saved register; 0xFF is a constant in the store, which loop.c
+ * hoists after the i setup, as in retail. */
+void func_80072324(void) {
+    s32 i;
+    s32 k;
+    u8* p;
+    u8* q;
+    u8* end;
+
+    for (i = 3; i < 11; i++) {
+        if (func_80089C9C(D_800D39E0, i) != 0) {
+            q = p;
+            end = q + 0x100;
+            do {
+                *q++ = 0;
+            } while (q < end);
+            for (k = 0x8B8; k >= 0; k -= 0x48) {
+                D_800C402F[k] = 0xFF;
+            }
+            D_800D2E5C = 4;
+            D_800D2E60 = 0x17;
+            func_80085AC4(i);
+            func_80071B94(1);
+        }
+    }
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main2", func_800723E0);
 typedef struct {
     u16 unk0;
