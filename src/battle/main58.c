@@ -7,7 +7,23 @@ INCLUDE_ASM("asm/battle/nonmatchings/main58", func_8009B1E4);
 INCLUDE_ASM("asm/battle/nonmatchings/main58", func_8009B46C);
 INCLUDE_ASM("asm/battle/nonmatchings/main58", func_8009B684);
 INCLUDE_ASM("asm/battle/nonmatchings/main58", func_8009BAC4);
-INCLUDE_ASM("asm/battle/nonmatchings/main58", func_8009BD94);
+#include "battle/c34b0.h"
+extern u8* D_800C34B0;
+extern u8* D_800C3DFC;
+extern u8 D_800C3E50;
+extern u8* D_800D2DC8;
+
+/* Slot D_800C3E50: state byte +0x5FA0 = 2 (struct view: pointer loaded
+ * first), then word +0x5F6C = D_800C3DFC[0x11] * D_800D2DC8 word +0x64 / 20
+ * (pointer arithmetic: index loaded first).  Same family as main62's
+ * func_8009E278 / func_8009E2EC. */
+void func_8009BD94(void) {
+    u32 prod;
+
+    ((BattleC34B0*)D_800C34B0)->state[D_800C3E50] = 2;
+    prod = D_800C3DFC[0x11] * *(u32*)(D_800D2DC8 + 0x64);
+    ((u32*)(D_800C34B0 + 0x5F6C))[D_800C3E50] = prod / 20;
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main58", func_8009BE0C);
 #endif
 #ifndef XENO_PC_PORT

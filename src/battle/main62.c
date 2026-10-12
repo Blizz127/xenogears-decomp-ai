@@ -8,13 +8,7 @@ extern u8 D_800C3E50;
 extern u8* D_800C34B0;
 extern u8* D_800D2DC8;
 
-/* The D_800C34B0 block seen as a struct, for the per-slot state bytes at
- * +0x5FA0.  Written as a member access, the block pointer loads before the
- * slot index (retail's order); pointer arithmetic loads the index first. */
-typedef struct {
-    u8 pad[0x5FA0];
-    u8 state[1];
-} BattleC34B0;
+#include "battle/c34b0.h"
 
 /* Slot D_800C3E50: state byte +0x5FA0 = 2, word +0x5F6C =
  * D_800D2DC8[0x4F] * D_800D2DC8 word +0x64, divided by 10 first. */
