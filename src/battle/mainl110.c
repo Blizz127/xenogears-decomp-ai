@@ -61,7 +61,54 @@ void func_800BA59C(void *arg0, s16 arg1) {
 }
 #endif
 
-INCLUDE_ASM("asm/battle/nonmatchings/mainl110", func_800BA614);
+/* func_800BA614.s: aim the record at its target (+0xA0..+0xA4): clamp the
+ * ground height there (func_80021B04 / func_800A5914 / func_800A5870) to
+ * the target y, derive the vertical speed (+0x10) from the planar distance
+ * and height difference, then set heading and x/z velocity
+ * (func_800BA59C).  The vectors are plain arrays: including libgte.h
+ * would redefine the VECTOR/SVECTOR typedefs after the retail block.  Retail loads v.vy before
+ * the target y (v on the left of the test) and computes dy before the
+ * planar deltas; the other orders are 2-10 instructions off or one longer. */
+extern void func_80021B04(void* arg0, s16 arg1, s16 arg2, s16 arg3);
+extern s32 func_800A5914(s32 v, u32 arg1, s32 arg2);
+extern s32 func_800A579C(s32 v);
+extern void func_800A5870(s32 v, s32 r, s32 out);
+extern int ratan2(int y, int x);
+extern void Square0(s32* in, s32* out);
+extern int SquareRoot0(int a);
+
+void func_800BA614(u8* rec) {
+    s32 d[4];
+    s16 v[4];
+    s32 out[4];
+    s32 r;
+    s32 dy;
+    s32 heading;
+    s32 len;
+    s32 speed;
+    s32 a2;
+
+    func_80021B04(v, *(s16*)(rec + 0xA0), *(s16*)(rec + 0xA2), *(s16*)(rec + 0xA4));
+    r = func_800A5914((s32)v, *(u32*)(rec + 0x78), 4);
+    if (r < 0) {
+        r = func_800A579C((s32)v);
+    }
+    func_800A5870((s32)v, r, (s32)out);
+    if (v[1] > *(s16*)(rec + 0xA2)) {
+        v[1] = *(u16*)(rec + 0xA2);
+    }
+    dy = ((v[1] << 16) - *(s32*)(rec + 4)) >> 16;
+    d[0] = *(s16*)(rec + 0xA0) - *(s16*)(rec + 2);
+    d[2] = *(s16*)(rec + 0xA4) - *(s16*)(rec + 0xA);
+    heading = -ratan2(d[2], d[0]);
+    Square0(d, d);
+    len = SquareRoot0(d[0] + d[2]);
+    speed = *(s32*)(rec + 0x18);
+    a2 = ((-*(s32*)(rec + 0x1C) * len) << 4) / (speed >> 11);
+    a2 += speed * dy / len;
+    *(s32*)(rec + 0x10) = a2;
+    func_800BA59C(rec, heading);
+}
 INCLUDE_ASM("asm/battle/nonmatchings/mainl110", func_800BA768);
 #endif
 

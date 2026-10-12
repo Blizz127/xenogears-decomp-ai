@@ -248,6 +248,7 @@ func_800B9258	port arm spanning the body in src/battle/mainc107.c	func_800B9258
 func_800B9B30	port arm spanning the body in src/battle/mainc108.c	func_800B9B30
 func_800B9B54	generated logging stub (matched C not linked)	func_800B9B54
 func_800BA59C	port arm in src/battle/mainl110.c	func_800BA59C
+func_800BA614	port arm in src/battle/mainl110.c	func_800BA614
 func_800BA8F4	pc_port body func_800BA8F4 (pc_port/src/game_overrides.c)	func_800BA8F4
 func_800BA984	port arm in src/battle/main111.c	func_800BA984
 func_800BAB0C	port arm in src/battle/main111.c	func_800BAB0C
