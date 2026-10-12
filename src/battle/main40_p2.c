@@ -134,7 +134,27 @@ void func_80089110(void) {
     }
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/main40_p2", func_800891E4);
+extern u8 D_800D2C34;
+
+/* Both selectors are u8 locals computed before the first call: retail
+ * forms D_800D2C34 - 0x25 in s0 ahead of the first jal and masks it after. */
+void func_800891E4(void) {
+    s32 i;
+    u8 a = D_800D2C34 - 0x5D;
+    u8 b = D_800D2C34 - 0x25;
+
+    D_800D2DB4[0x5D77] = func_80076A10(a, D_800D2DB4 + 0x3E80, 0xA0, 0x64);
+    D_800D2DB4[0x5D86] = D_800CCB34;
+    D_800D2DB4[0x5D7F] = func_80076A10(b, D_800D2DB4 + 0x43D0, 0xA0, 0x64);
+    D_800D2DB4[0x5D8E] = D_800CCB34;
+    for (i = 0; i < D_800D2DB4[0x5D77]; i++) {
+        func_80076B68(D_800D2DB4 + 0x3E80 + (i * 2 + D_800D2DB4[0x5D86]) * 0x28);
+    }
+    for (i = 0; i < D_800D2DB4[0x5D7F]; i++) {
+        func_80076BF0(D_800D2DB4 + 0x43D0 + (i * 2 + D_800D2DB4[0x5D8E]) * 0x28);
+    }
+}
+
 extern u16 D_800D2C2A;
 extern void func_8008AAA0(u32 value);
 extern u8 D_800C3CF8[];
