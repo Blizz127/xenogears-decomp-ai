@@ -12,7 +12,72 @@ void func_800B5FBC(u8* obj) {
     *(s8*)(obj + 0x2B) = 0x40;
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/main87", func_800B6004);
+#include "psyq/libgte.h"
+extern u8* g_GfxCurWorkBuffer__a[] asm("g_GfxCurWorkBuffer");
+extern u8* g_GfxCurWorkBufferEnd__a[] asm("g_GfxCurWorkBufferEnd");
+extern u32* g_GfxCurOT__a[] asm("g_GfxCurOT");
+extern MATRIX D_8004FBB8;
+extern s32 D_80050100;
+extern void AddPrim(void* ot, void* p);
+
+/* func_800B6004.s: work-list draw callback: like func_800B5DF4, but always
+ * projecting through D_8004FBB8 and taking the second vertex from the
+ * linked object at obj->0x70.  Retail re-stores obj's position into sv
+ * before overwriting it with the linked object's; positions are 16.16, so
+ * the integer parts are read as `word >> 16` (retail's lh).  The second
+ * packet has its own pointer and takes its OT entry before its draw-mode
+ * word, as in retail. */
+void func_800B6004(u8* task) {
+    u8* obj = *(u8**)(task + 4);
+    u8* work;
+    u8* other;
+    SVECTOR sv;
+    long flag;
+    s32 depth;
+    u32 mode;
+    u8* pkt;
+    u32* ot;
+
+    if (*(u16*)(obj + 0x34) != 0) {
+        return;
+    }
+    work = g_GfxCurWorkBuffer__a[0];
+    other = *(u8**)(obj + 0x70);
+    if (work + 0x10 >= g_GfxCurWorkBufferEnd__a[0]) {
+        return;
+    }
+    sv.vx = *(s32*)(obj + 0) >> 16;
+    sv.vy = *(s32*)(obj + 4) >> 16;
+    sv.vz = *(s32*)(obj + 8) >> 16;
+    g_GfxCurWorkBuffer__a[0] = work + 0x10;
+    SetRotMatrix(&D_8004FBB8);
+    SetTransMatrix(&D_8004FBB8);
+    depth = RotTransPers(&sv, (long*)(work + 8), &flag, &flag) >> D_80050100;
+    *(u16*)(obj + 0x2E) = depth;
+    sv.vx = *(s32*)(obj + 0) >> 16;
+    sv.vy = *(s32*)(obj + 4) >> 16;
+    sv.vz = *(s32*)(obj + 8) >> 16;
+    sv.vx = *(s32*)(other + 0) >> 16;
+    sv.vy = *(s32*)(other + 4) >> 16;
+    sv.vz = *(s32*)(other + 8) >> 16;
+    RotTransPers(&sv, (long*)(work + 0xC), &flag, &flag);
+    work[3] = 3;
+    *(u32*)(work + 4) = *(u32*)(obj + 0x28);
+    AddPrim(g_GfxCurOT__a[0] + depth, work);
+    pkt = g_GfxCurWorkBuffer__a[0];
+    if (pkt + 8 >= g_GfxCurWorkBufferEnd__a[0]) {
+        return;
+    }
+    mode = obj[0x3C] >> 5;
+    if (mode == 0) {
+        return;
+    }
+    g_GfxCurWorkBuffer__a[0] = pkt + 8;
+    pkt[3] = 1;
+    ot = g_GfxCurOT__a[0] + depth;
+    *(u32*)(pkt + 4) = 0xE1000000 | (((mode - 1) & 3) << 5);
+    AddPrim(ot, pkt);
+}
 extern void WorkListSetTaskCallback(void* pTask, void* callback);
 extern void func_800B6004(u8* task);
 
