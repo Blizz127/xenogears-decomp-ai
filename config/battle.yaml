@@ -74,7 +74,7 @@ segments:
       - [0xCAC, .rodata, main74]     # jtbl_8007079C (func_800B026C)
       - [0xCD0, rodata]
       - [0xD60, .rodata, mainc83]    # jtbl_80070850 (func_800B3F04)
-      - [0xF0C, rodata]
+      - [0xF0C, .rodata, mainc99]    # jtbl_800709FC (func_800B7870)
       - [0xF20, .rodata, main101]    # jtbl_80070A10 (func_800B8098)
       - [0xF38, rodata]
       - [0x133C, c, mainasm_133C]
