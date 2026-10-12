@@ -27,7 +27,36 @@ u16 func_8009D948(void) {
 }
 
 INCLUDE_ASM("asm/battle/nonmatchings/main61", func_8009DA04);
-INCLUDE_ASM("asm/battle/nonmatchings/main61", func_8009DB54);
+extern u8* D_800D2DC8;
+
+/* Scale a0 by the target's resistance byte (D_800D2DC8 + 0x88 + index of
+ * the highest set bit of D_800C3DFC's +8 mask): unchanged for 0, 0 for 20
+ * and above, else a0 * (20 - r) / 20 (signed).  As in retail, idx is not
+ * initialised: with an empty mask the not-found path reads whatever the
+ * register holds (the port arm uses 0).  The (u32) cast on the index is
+ * what retail's addressing needs (found by a permuter run). */
+u32 func_8009DB54(u32 a0) {
+    u32 mask = *(u16*)(D_800C3DFC + 0x8);
+    u32 i;
+    u32 idx;
+    u32 r;
+
+    for (i = 0; (i & 0xFF) < 0x10; i++) {
+        if (mask & (0x8000 >> i)) {
+            idx = i;
+            break;
+        }
+    }
+    r = D_800D2DC8[(u32)((idx & 0xFF) + 0x88)];
+    if (r != 0) {
+        if (r < 0x14) {
+            a0 = (s32)(a0 * (0x14 - r)) / 20;
+        } else {
+            a0 = 0;
+        }
+    }
+    return a0;
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main61", func_8009DBFC);
 #endif
 
