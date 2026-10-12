@@ -53,7 +53,66 @@ void func_80076CE8(POLY_FT4* p, s16 x, s16 y, u8 u, u8 v, s32 w, s32 h) {
 #endif
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/battle/nonmatchings/main6", func_80076D58);
-INCLUDE_ASM("asm/battle/nonmatchings/main6", func_80076EA4);
+/* 4-byte records at D_800D2F68; only `width` (SystemRenderStringEntry's
+ * result) is backed by another reader, the other names are by offset. */
+typedef struct {
+    u8 width;
+    u8 unk1;
+    u8 unk2;
+    u8 unk3;
+} BattleTextRec;
+extern BattleTextRec D_800D2F68[];
+/* Image pointer wrapped as an aggregate element on purpose: arrays of
+ * aggregates keep gcc's offset-giv addressing (lw %lo(sym)(at)) that
+ * retail has; a plain void*[] turns into a pointer walk. */
+typedef struct {
+    void* data;
+} BattleImageRef;
+extern BattleImageRef D_800C3E5C[];
+extern void* func_8008AC00(s32 kind);
+extern void* func_800338D8(s32 id);
+extern s32 SystemRenderStringEntry(void* pString, void* pWork, s32 height, s32 flag);
+extern void func_800769E8(void* pRect, void* pData);
+extern void HeapFree(void* p);
+extern void* bzero(unsigned char* p, int size);
+
+/* For i in 0..10: render the strings func_800338D8 returns for ids 0xA + i
+ * and 0x15 + i into a fresh 0x30C-byte buffer (SystemRenderStringEntry, 0x1B,
+ * flag 0 then 1), store the widths in D_800D2F68 records i and 11 + i (with
+ * +2 = 0x78, +3 = 13 (i + 1), +1 = 0 / 1) and upload the buffer to
+ * (0x3DE, 0x10D + 13 i) 30x13.  The buffers are freed, then the ten
+ * D_800C3E5C images go to (0x3DE + 2 i, 0x100) 6x13. */
+void func_80076EA4(void) {
+    BattleImageRef buf[11];
+    RECT r;
+    s32 i;
+
+    for (i = 0; i < 11; i++) {
+        buf[i].data = func_8008AC00(0x1B);
+        bzero(buf[i].data, 0x30C);
+        D_800D2F68[i].width = SystemRenderStringEntry(func_800338D8(i + 0xA), buf[i].data, 0x1B, 0);
+        D_800D2F68[i + 11].width = SystemRenderStringEntry(func_800338D8(i + 0x15), buf[i].data, 0x1B, 1);
+        D_800D2F68[i].unk2 = D_800D2F68[i + 11].unk2 = 0x78;
+        D_800D2F68[i].unk3 = D_800D2F68[i + 11].unk3 = i * 0xD + 0xD;
+        D_800D2F68[i].unk1 = 0;
+        D_800D2F68[i + 11].unk1 = 1;
+        r.y = i * 0xD + 0x10D;
+        r.x = 0x3DE;
+        r.w = 0x1E;
+        r.h = 0xD;
+        func_800769E8(&r, buf[i].data);
+    }
+    for (i = 0; i < 11; i++) {
+        HeapFree(buf[i].data);
+    }
+    for (i = 0; i < 10; i++) {
+        r.x = 0x3DE + i * 2;
+        r.y = 0x100;
+        r.w = 6;
+        r.h = 0xD;
+        func_800769E8(&r, D_800C3E5C[i].data);
+    }
+}
 
 #ifndef XENO_PC_PORT
 void func_80077074(void) {
@@ -100,7 +159,45 @@ void func_80077364(POLY_FT4* prims, u8 index) {
     }
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/main6", func_80077454);
+extern u32 D_800D2E38[];
+extern u8 D_800594D4[];
+extern s32 D_800595A0;
+extern u8* D_800D2D28;
+
+/* Prepare battle window `index`'s prims: for both buffers, the background
+ * POLY_G4 (block +0x3C0) gets the D_800594D4 colour on all four corners and
+ * semi-transparency, and its DR_MODE (block +0x408) the tpage of the frame
+ * texture (UI state +0xA25C/+0xA260, abr D_800595A0); then func_80077364
+ * sets up the four edge prim pairs (+0x140 .. +0x320). */
+void func_80077454(u8 index) {
+    u8* blk;
+    u8 i;
+
+    blk = (u8*)D_800D2E38[index];
+    for (i = 0; i < 2; i++) {
+        SetPolyG4((POLY_G4*)((i * 0x24 + 0x3C0) + blk));
+        (blk + i * 0x24)[0x3C4] = D_800594D4[0];
+        (blk + i * 0x24)[0x3C5] = D_800594D4[1];
+        (blk + i * 0x24)[0x3C6] = D_800594D4[2];
+        (blk + i * 0x24)[0x3CC] = D_800594D4[0];
+        (blk + i * 0x24)[0x3CD] = D_800594D4[1];
+        (blk + i * 0x24)[0x3CE] = D_800594D4[2];
+        (blk + i * 0x24)[0x3D4] = D_800594D4[0];
+        (blk + i * 0x24)[0x3D5] = D_800594D4[1];
+        (blk + i * 0x24)[0x3D6] = D_800594D4[2];
+        (blk + i * 0x24)[0x3DC] = D_800594D4[0];
+        (blk + i * 0x24)[0x3DD] = D_800594D4[1];
+        (blk + i * 0x24)[0x3DE] = D_800594D4[2];
+        SetSemiTrans((POLY_G4*)((i * 0x24 + 0x3C0) + blk), 1);
+        SetDrawMode((DR_MODE*)((i * 0xC + 0x408) + blk), 0, 0,
+                    GetTPage(0, D_800595A0, *(s32*)((u8*)D_800C3EA4 + 0xA25C), *(s32*)((u8*)D_800C3EA4 + 0xA260)),
+                    (RECT*)D_800D2D28);
+    }
+    func_80077364((POLY_FT4*)(blk + 0x140), 1);
+    func_80077364((POLY_FT4*)(blk + 0x1E0), 2);
+    func_80077364((POLY_FT4*)(blk + 0x280), 3);
+    func_80077364((POLY_FT4*)(blk + 0x320), 4);
+}
 #endif
 
 
