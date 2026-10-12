@@ -228,6 +228,10 @@ name = "BattleCdk"
 # main125_q1 (2026-10-12): its only function, func_800BEE2C, encodes its
 # constants as `addiu $r,$zero,K` (the literal flavour) and sits right
 # before mainasm_4F3C4 (also CDK); under Default it is 2 instructions off.
+# main75 (2026-10-12): plain C for func_800B15D8 comes within 3 of its 45
+# instructions only here (the same C is 49 instructions under 2.7.2, 2.6.3
+# and 2.6.0).  The last 3 need a do/while(0) scheduling barrier in the body
+# (see main75.c); main75's other bodies stay byte-exact.
 build_variables = {
     gcc = "gcc-2.7.2-cdk-psx",
     maspsx_flags = "--dont-expand-li --use-comm-section --run-assembler"
@@ -265,6 +269,7 @@ paths = [
     "src/battle/main77.",
     "src/battle/mainasm_B190.",
     "src/battle/main125_q1.",
+    "src/battle/main75.",
     "src/battle_command_file1/after_controller_cdk.",
 ]
 
