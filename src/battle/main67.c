@@ -67,7 +67,18 @@ u8* func_800A2E88(u8* list, s16 semi) {
     return (u8*)(*(s16*)(list + 4) * 0x7C + *(u32*)list);
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/main67", func_800A2F94);
+/* Release entry e (0x7C bytes) of the list: its index lowers the free cursor
+ * at +6 when not above it, +0x16 = -1; returns the index. */
+u32 func_800A2F94(u8* list, u8* e) {
+    u32 idx = (u32)(e - *(u8**)list) / 0x7C;
+
+    if (*(s16*)(list + 6) >= (s32)idx) {
+        *(s16*)(list + 6) = idx;
+    }
+    *(s16*)(e + 0x16) = -1;
+    return idx;
+}
+
 #include "psyq/libgte.h"
 #include "battle/gte_inline.h"
 extern s32 D_80050100;
@@ -161,7 +172,52 @@ void func_800A2FD8(u8* list, MATRIX* m, s32 step, u32* ot, s32 buf) {
         e->rgb[2] -= e->drgb[2] * step;
     }
 }
-INCLUDE_ASM("asm/battle/nonmatchings/main67", func_800A32D8);
+
+/* Fill the 0x70-byte trail record e (a NULL e does nothing and returns
+ * whatever v0 holds): colour starts (r0/g0/b0 << 6) at +0x64/+0x66/+0x68,
+ * per-step fades ((start - (end << 6)) / (s16)steps) at +0x6A/+0x6C/+0x6E,
+ * +0x60 = min(arg4, 7).  The colour starts are stored through volatile:
+ * retail reloads each one (lh) for its divide, while a plain store lets CSE
+ * reuse the stored value. */
+s32 func_800A32D8(u8* e, u32 a1, u16 a2, u8 a3, s16 arg4, u16 steps, u8 r0, u8 g0, u8 b0, u8 r1,
+                  u8 g1, u8 b1, u16 arg12, u16 arg13, u16 arg14, u16 arg15, u16 arg16, u16 arg17,
+                  u16 arg18) {
+    s32 r;
+    s32 g;
+    s32 b;
+
+    if (e != NULL) {
+        e[3] = arg18;
+        *(s16*)(e + 0x5E) = -1;
+        *(u16*)(e + 0x0) = a2;
+        e[2] = a3;
+        *(u32*)(e + 0x4) = a1;
+        *(u16*)(e + 0xC) = arg12;
+        *(u16*)(e + 0xE) = arg13;
+        *(u16*)(e + 0x10) = arg14;
+        *(u16*)(e + 0x14) = arg15;
+        *(u16*)(e + 0x16) = arg16;
+        *(u16*)(e + 0x18) = arg17;
+        *(u16*)(e + 0x5C) = 0;
+        if (arg4 < 7) {
+            *(u16*)(e + 0x60) = arg4;
+        } else {
+            *(u16*)(e + 0x60) = 7;
+        }
+        *(volatile u16*)(e + 0x64) = r0 << 6;
+        r = (*(s16*)(e + 0x64) - (r1 << 6)) / (s16)steps;
+        *(volatile u16*)(e + 0x66) = g0 << 6;
+        g = (*(s16*)(e + 0x66) - (g1 << 6)) / (s16)steps;
+        *(volatile u16*)(e + 0x68) = b0 << 6;
+        b = (*(s16*)(e + 0x68) - (b1 << 6)) / (s16)steps;
+        *(u16*)(e + 0x62) = steps;
+        *(u32*)(e + 0x8) = 0;
+        *(u16*)(e + 0x6A) = r;
+        *(u16*)(e + 0x6C) = g;
+        *(u16*)(e + 0x6E) = b;
+        return 0;
+    }
+}
 #endif
 
 
@@ -171,9 +227,9 @@ void func_800A3484(s16* p) {
 }
 
 
-/* ---- Port bodies (fo/bat3 gfx helper).  Not byte-matching: the matching
- * build keeps the retail bytes from the INCLUDE_ASM block above; these are
- * compiled only for the port and the differential harness. ---- */
+/* ---- Port bodies (fo/bat3 gfx helper).  The matching build compiles the
+ * byte-exact C above; these are compiled only for the port and the
+ * differential harness. ---- */
 #ifdef XENO_PC_PORT
 #include "psyq/libgte.h"
 #include "psyq/libgpu.h"
