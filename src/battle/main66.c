@@ -70,7 +70,11 @@ typedef struct BattleNode7C {
     u8 pending;
     u8 unk8[2];
     u16 index;
-    u8 unkC[0x64];
+    u8 unkC[0x48];
+    s16 rot[3];
+    u16 unk5A;
+    s32 pos[3];
+    u8 unk68[8];
     u8* handle70;
     u8* handle74;
     u8* handle78;
@@ -178,7 +182,130 @@ s32 func_800A2434(Pool20* list, BattleNode7C* nodes, u8* anim, s32 loop, s32 arg
     }
     return 0;
 }
-INCLUDE_ASM("asm/battle/nonmatchings/main66", func_800A2704);
+/* func_800A2704.s: func_800A2434 plus the record's current triples.  When
+ * the record carries rot (pos) triples (flags bit 0 (1) clear), each node
+ * after node 0 takes the next one into `rot` (`pos`) while they last and is
+ * marked at +4 (and +5 for rot); a 0xFFFF key or a handle whose byte 3 is
+ * 0xFF only skips that triple.  Unlike func_800A2434 it never releases
+ * handles.  The declaration order gives retail's spill slots (args, nRot,
+ * nPos, n, frames). */
+s32 func_800A2704(Pool20* list, BattleNode7C* nodes, u8* anim, s32 loop, s32 arg4) {
+    u8* args;
+    u16 nRot;
+    u16 nPos;
+    u16 n;
+    u16 frames;
+    u16 flags;
+    u16 crot;
+    u16 cpos;
+    s16* tri;
+    u8* keys;
+    u8* ch;
+    s32 i;
+
+    if (*(u16*)(anim + 6) != 0) {
+        func_800A2ACC((s32)list, (u8*)nodes);
+        func_800A1B50(nodes, (s16*)anim);
+        return 1;
+    }
+    loop &= 1;
+    crot = 0;
+    nRot = *(u16*)(anim + 0xC);
+    n = nodes->index;
+    cpos = 0;
+    nPos = *(u16*)(anim + 0xE);
+    if (nRot + 1 < n) {
+        n = nRot + 1;
+    }
+    frames = *(u16*)(anim + 2);
+    if (!loop) {
+        frames--;
+    }
+    flags = *(u16*)(anim + 4);
+    anim += 0x18;
+    tri = (s16*)(anim + (nRot + 1) * 6);
+    keys = (u8*)tri;
+    if (!(flags & 1)) {
+        keys += nRot * 6;
+    }
+    if (!(flags & 2)) {
+        keys += nPos * 6;
+    }
+    for (i = 0; i < n; i++) {
+        args = anim + 4;
+        if (*(u16*)anim != 0xFFFF) {
+            if (nodes->handle70 != NULL) {
+                ch = nodes->handle70;
+                if (ch[3] == 0xFF) {
+                    goto rot_skip;
+                }
+            } else {
+                ch = func_800A2330(list);
+            }
+            if (!(flags & 1) && i != 0 && crot < nRot) {
+                nodes->rot[0] = *tri++;
+                crot++;
+                nodes->rot[1] = *tri++;
+                nodes->rot[2] = *tri++;
+                nodes->unk4[0] = 1;
+                nodes->unk4[1] = 1;
+            }
+            if (ch != NULL) {
+                ch[0] = 1;
+                ch[1] = loop;
+                ch[2] = args[0];
+                ch[3] = arg4;
+                *(u8**)(ch + 8) = *(u8**)(ch + 4) = keys + *(u16*)anim;
+                *(u16*)(ch + 0x10) = 0;
+                *(u16*)(ch + 0x12) = frames;
+                nodes->handle70 = ch;
+            }
+        } else {
+        rot_skip:
+            if (!(flags & 1) && i != 0 && crot < nRot) {
+                tri += 3;
+                crot++;
+            }
+        }
+        anim += 2;
+        if (*(u16*)anim != 0xFFFF) {
+            if (nodes->handle74 != NULL) {
+                ch = nodes->handle74;
+                if (ch[3] == 0xFF) {
+                    goto pos_skip;
+                }
+            } else {
+                ch = func_800A2330(list);
+            }
+            if (!(flags & 2) && i != 0 && cpos < nPos) {
+                nodes->pos[0] = *tri++;
+                cpos++;
+                nodes->pos[1] = *tri++;
+                nodes->pos[2] = *tri++;
+                nodes->unk4[0] = 1;
+            }
+            if (ch != NULL) {
+                ch[0] = 1;
+                ch[1] = loop;
+                ch[2] = args[1];
+                ch[3] = arg4;
+                *(u8**)(ch + 8) = *(u8**)(ch + 4) = keys + *(u16*)anim;
+                *(u16*)(ch + 0x10) = 0;
+                *(u16*)(ch + 0x12) = frames;
+                nodes->handle74 = ch;
+            }
+        } else {
+        pos_skip:
+            if (!(flags & 2) && i != 0 && cpos < nPos) {
+                tri += 3;
+                cpos++;
+            }
+        }
+        anim += 4;
+        nodes++;
+    }
+    return 0;
+}
 /* Walks the BattleNode7C nodes by raw offset: +0xA count, +0x70/+0x74/+0x78
  * handles. */
 void func_800A2ACC(s32 ctx, u8* nodes) {
