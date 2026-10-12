@@ -68,7 +68,355 @@ void func_8009F794(ItemList* list, s32 release) {
     }
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/main65", func_8009F844);
+#include "psyq/libgte.h"
+#include "psyq/libgpu.h"
+#include "battle/gte_inline.h"
+extern s32 D_80050100;
+extern u8 D_800C3D6C;
+typedef struct {
+    s16 x;
+    s16 y;
+    s16 z;
+    s16 active;
+    u8 unk8[0xC];
+} F844Anchor; /* 0x14 */
+extern F844Anchor D_800D3304[];
+extern s16 D_800D39E8;
+
+extern void func_8002C700(u32 model, u32 a1, u32* ot, s32 a3);
+extern u8* func_800A2E88(s32 a0, u8 a1);
+extern void func_800A3E98(u8* p, s32 rate);
+extern void func_800A7948(s16* p, s16* v, MATRIX* view, u32* ot, s32 buf, s32 scale, s32 y);
+
+typedef struct {
+    SVECTOR v;
+    s16 x;
+    s16 y;
+    s16 z;
+    s16 pad;
+} F844Pt; /* 0x10 */
+
+/* func_8009F844.s: draw actor `actor` (if +0x34 is set) into `ot` for
+ * buffer `buf`.  Aims light rows 1-2 at the two D_800D3304 anchors (the
+ * direction scaled by active / (active + distance)) and composes the root
+ * node's +0xC matrix with `view` into m1.  Unless +0x4A bit 0 is set, and
+ * while D_800C3D6C is on, it projects the corners of the subtractive shadow
+ * POLY_FT4 at +0xB8 + buf * 0x28 (shrunk as the actor rises), links it into
+ * the OT and sets +0x39 from its depth.  Nodes 1..count-1 (0x7C bytes, from
+ * +4) get light and rotation matrices; a positive node +0x52 swaps the
+ * rotation for the actor's +0x1C scale (mode 1 keeps m1's y column).  Each
+ * node draws model (*list)[node +8] through func_8002C700, unless that index
+ * is 0xFFFF or node +7 is zero.  The +0x114 records (0x24 bytes) have their
+ * vertices moved into node space and go to func_800A7948; the +0x118 records
+ * (0x30 bytes) go to func_800A3E98.  The +0x110 trail records (0x70 bytes)
+ * push two points into their history (screen space when +2 is zero, else
+ * world space) and respawn their func_800A2E88 effect once +0x5E passes
+ * +0x60 or none exists.  If +0x5E wraps to zero, the rest of that record is
+ * skipped, including the record step, as in retail.  m0, m1 and spad are
+ * scratchpad matrices.  The OT link goes through libgpu's P_TAG (a struct
+ * field), which lets the scheduler move the z0 store past it as retail
+ * does. */
+void func_8009F844(u8* actor, MATRIX* view, MATRIX* light, s32 a3, s32 rate, u32* ot, s32 buf) {
+    SVECTOR v;
+    VECTOR lv0;
+    VECTOR lv1;
+    s32 z0;
+    s32 z1;
+    u32 count;
+    u32** list;
+    u8* nodes;
+    u8* nodes0;
+    u16 scale;
+    MATRIX* m0;
+    MATRIX* m1;
+    s32 sc;
+    MATRIX* spad;
+    s32 k;
+    s16 dx;
+    s16 dy;
+    s16 dz;
+    s32 d;
+    s16 a;
+    F844Pt* pt;
+    u8* e;
+    s32 j;
+    s32 sz;
+    s32 idx;
+    s16* rec;
+    u8* r8;
+    s32 par;
+    u8* src0;
+    u8* src1;
+    u8* rec8;
+    u8* q0;
+    u8* q1;
+
+    m0 = (MATRIX*)0x1F800020;
+    m1 = (MATRIX*)0x1F800040;
+    spad = (MATRIX*)0x1F800000;
+    if (actor[0x34] == 0) {
+        return;
+    }
+    list = *(u32***)(actor + 0);
+    scale = *(u16*)(actor + 0x1C);
+    nodes = *(u8**)(actor + 4);
+    sc = scale;
+    nodes0 = nodes;
+    count = *(u16*)(nodes + 0xA);
+    for (k = 0; k < 2; k++) {
+        if (D_800D3304[k].active != 0) {
+            dx = D_800D3304[k].x - *(u16*)(nodes + 0x5C);
+            dy = D_800D3304[k].y -
+                 ((*(s32*)(nodes + 0x60) - *(s16*)(actor + 0x24) * ((sc * *(s16*)(nodes + 0x4E)) >> 12)) >> 13);
+            dz = D_800D3304[k].z - *(u16*)(nodes + 0x64);
+            d = SquareRoot0(dx * dx + dy * dy + dz * dz) + 1;
+            a = D_800D3304[k].active;
+            light->m[k + 1][0] = ((dx << 12) / d * a) / (a + d);
+            a = D_800D3304[k].active;
+            light->m[k + 1][1] = ((dy << 12) / d * a) / (a + d);
+            a = D_800D3304[k].active;
+            light->m[k + 1][2] = ((dz << 12) / d * a) / (a + d);
+        } else {
+            light->m[k + 1][0] = 0;
+            light->m[k + 1][1] = 0;
+            light->m[k + 1][2] = 0;
+        }
+    }
+    CompMatrix(view, (MATRIX*)(nodes + 0xC), m1);
+    if (!(*(u16*)(actor + 0x4A) & 1) && D_800C3D6C != 0) {
+        CompMatrix((MATRIX*)(nodes + 0xC), (MATRIX*)(*(u8**)(actor + 4) + 0xA8), spad);
+        SetRotMatrix(spad);
+        SetTransMatrix(spad);
+        v.vx = 0;
+        v.vy = 0;
+        v.vz = 0x1000;
+        BATTLE_GTE_LDV0(&v);
+        BATTLE_GTE_RTV0TR();
+        BATTLE_GTE_STLVNL(&lv0);
+        v.vx = 0;
+        v.vy = 0;
+        v.vz = 0;
+        BATTLE_GTE_LDV0(&v);
+        BATTLE_GTE_RTV0TR();
+        BATTLE_GTE_STLVNL(&lv1);
+        v.vy = -ratan2(lv0.vz - lv1.vz, lv0.vx - lv1.vx);
+        v.vx = 0;
+        v.vz = 0;
+        RotMatrix(&v, m0);
+        m0->t[0] = lv1.vx;
+        m0->t[1] = *(s16*)(actor + 0x60);
+        m0->t[2] = lv1.vz;
+        CompMatrix(view, m0, m0);
+        sz = (s16)*(u16*)(actor + 0x1C) - (*(s16*)(actor + 0x60) - *(s32*)(*(u8**)(actor + 4) + 0x60)) / 4;
+        if (sz < 0) {
+            sz = 0;
+        }
+        spad->m[0][0] = sz;
+        spad->m[0][1] = 0;
+        spad->m[0][2] = 0;
+        spad->m[1][0] = 0;
+        spad->m[1][1] = sz;
+        spad->m[1][2] = 0;
+        spad->m[2][0] = 0;
+        spad->m[2][1] = 0;
+        spad->m[2][2] = sz;
+        MulMatrix(m0, spad);
+        SetRotMatrix(m0);
+        SetTransMatrix(m0);
+        v.vx = *(u16*)(actor + 0x26);
+        v.vy = 0;
+        v.vz = *(u16*)(actor + 0x28);
+        BATTLE_GTE_LDV0(&v);
+        BATTLE_GTE_RTPS();
+        e = actor + (buf * 0x28 + 0xB8);
+        BATTLE_GTE_STSXY(e + 8);
+        BATTLE_GTE_STSZOTZ(&z0);
+        v.vx = -*(u16*)(actor + 0x26);
+        BATTLE_GTE_LDV0(&v);
+        BATTLE_GTE_RTPS();
+        BATTLE_GTE_STSXY(e + 0x10);
+        BATTLE_GTE_STSZOTZ(&z1);
+        if (z1 < z0) {
+            z0 = z1;
+        }
+        v.vx = *(u16*)(actor + 0x26);
+        v.vz = -*(u16*)(actor + 0x28);
+        BATTLE_GTE_LDV0(&v);
+        BATTLE_GTE_RTPS();
+        BATTLE_GTE_STSXY(e + 0x18);
+        BATTLE_GTE_STSZOTZ(&z1);
+        if (z1 < z0) {
+            z0 = z1;
+        }
+        v.vx = -*(u16*)(actor + 0x26);
+        BATTLE_GTE_LDV0(&v);
+        BATTLE_GTE_RTPS();
+        BATTLE_GTE_STSXY(e + 0x20);
+        BATTLE_GTE_STSZOTZ(&z1);
+        if (z1 < z0) {
+            z0 = z1;
+        }
+        z0 >>= D_80050100;
+        addPrim(ot + z0, actor + (buf * 0x28 + 0xB8));
+        if (z0 >= 0x2D9) {
+            z0 = 0x2D8;
+        }
+        actor[0x39] = 0x6B - z0 / 8;
+    }
+    MulMatrix0(light, (MATRIX*)(nodes + 0x2C), m0);
+    nodes += 0x7C;
+    for (k = 1; k < count; k++, nodes += 0x7C) {
+        if (*(u16*)(nodes + 8) != 0xFFFF && nodes[7] != 0) {
+            MulMatrix0(m0, (MATRIX*)(nodes + 0x2C), spad);
+            SetLightMatrix(spad);
+            CompMatrix(m1, (MATRIX*)(nodes + 0x2C), spad);
+            if (*(s16*)(nodes + 0x52) > 0) {
+                spad->m[0][0] = *(u16*)(actor + 0x1C);
+                spad->m[0][2] = 0;
+                spad->m[1][0] = 0;
+                spad->m[1][2] = 0;
+                spad->m[2][0] = 0;
+                spad->m[2][2] = *(u16*)(actor + 0x1C);
+                if (*(s16*)(nodes + 0x52) == 1) {
+                    spad->m[0][1] = m1->m[0][1];
+                    spad->m[1][1] = m1->m[1][1];
+                    spad->m[2][1] = m1->m[2][1];
+                } else {
+                    spad->m[0][1] = 0;
+                    spad->m[1][1] = *(u16*)(actor + 0x1C);
+                    spad->m[2][1] = 0;
+                }
+            }
+            SetRotMatrix(spad);
+            SetTransMatrix(spad);
+            func_8002C700((*list)[*(u16*)(nodes + 8)], *(u32*)(nodes + buf * 4 + 0x68), ot, a3);
+        }
+    }
+    rec = *(s16**)(actor + 0x114);
+    for (k = 0; k < actor[0x10D]; rec += 0x12, k++) {
+        VECTOR out;
+        SVECTOR rot;
+
+        if (rec[0] >= 0) {
+            rot.vx = (-D_800D39E8 * rsin(*(s16*)(nodes0 + 0x56) + 0x400)) / 4096;
+            rot.vz = (D_800D39E8 * rcos(*(s16*)(nodes0 + 0x56) + 0x400)) / 4096;
+            rot.vy = *(u16*)(actor + 0x3E);
+            CompMatrix((MATRIX*)(nodes0 + 0xC), (MATRIX*)(nodes0 + rec[0] * 0x7C + 0x2C), spad);
+            SetRotMatrix(spad);
+            SetTransMatrix(spad);
+            for (j = 0; j < rec[2]; j++) {
+                BATTLE_GTE_LDV0(*(u8**)(rec + 0xA) + j * 8);
+                BATTLE_GTE_RTV0TR();
+                BATTLE_GTE_STLVNL(&out);
+                *(u16*)(*(u8**)(*(u8**)(rec + 0xE) + j * 4) + 4) = out.vx;
+                *(u16*)(*(u8**)(*(u8**)(rec + 0xE) + j * 4) + 6) = out.vy;
+                *(u16*)(*(u8**)(*(u8**)(rec + 0xE) + j * 4) + 8) = out.vz;
+            }
+            for (j = 0, pt = *(F844Pt**)(rec + 0xC); j < rec[5]; j++, pt++) {
+                CompMatrix((MATRIX*)(nodes0 + 0xC), (MATRIX*)(nodes0 + pt->v.pad * 0x7C + 0x2C), spad);
+                SetRotMatrix(spad);
+                SetTransMatrix(spad);
+                BATTLE_GTE_LDV0(&pt->v);
+                BATTLE_GTE_RTV0TR();
+                BATTLE_GTE_STLVNL(&out);
+                pt->x = out.vx;
+                pt->y = out.vy;
+                pt->z = out.vz;
+            }
+            func_800A7948(rec, &rot.vx, view, ot, buf, scale, *(s16*)(actor + 0x60));
+        }
+    }
+    r8 = *(u8**)(actor + 0x118);
+    for (k = 0; k < actor[0x10E]; k++, r8 += 0x30) {
+        func_800A3E98(r8, rate);
+    }
+    rec8 = *(u8**)(actor + 0x110);
+    for (k = 0; k < actor[0x10C]; k++) {
+        if (*(s16*)rec8 >= 0) {
+            *(s16*)(rec8 + 0x5C) = (*(s16*)(rec8 + 0x5C) - 1) & 7;
+            if (rec8[2] == 0) {
+                CompMatrix(m1, (MATRIX*)(nodes0 + *(s16*)rec8 * 0x7C + 0x2C), spad);
+                SetRotMatrix(spad);
+                SetTransMatrix(spad);
+                BATTLE_GTE_LDV0(rec8 + 0xC);
+                BATTLE_GTE_RTPS();
+                BATTLE_GTE_STSXY(rec8 + (*(s16*)(rec8 + 0x5C) * 4 + 0x1C));
+                BATTLE_GTE_LDV0(rec8 + 0x14);
+                BATTLE_GTE_RTPS();
+                BATTLE_GTE_STSXY(rec8 + (*(s16*)(rec8 + 0x5C) * 4 + 0x3C));
+                if (++*(s16*)(rec8 + 0x5E) == 0) {
+                    continue;
+                }
+                if (*(s16*)(rec8 + 0x60) < *(s16*)(rec8 + 0x5E) || *(u8**)(rec8 + 8) == NULL) {
+                    *(u16*)(rec8 + 0x5E) = 1;
+                    *(u8**)(rec8 + 8) = func_800A2E88(*(s32*)(rec8 + 4), rec8[3]);
+                    *(s16*)(*(u8**)(rec8 + 8) + 0xE) = 0;
+                    *(s16*)(*(u8**)(rec8 + 8) + 0x16) = 0;
+                    *(u16*)(*(u8**)(rec8 + 8) + 0x1E) = *(u16*)(rec8 + 0x62);
+                    *(u16*)(*(u8**)(rec8 + 8) + 0x20) = *(u16*)(rec8 + 0x64);
+                    *(u16*)(*(u8**)(rec8 + 8) + 0x22) = *(u16*)(rec8 + 0x66);
+                    *(u16*)(*(u8**)(rec8 + 8) + 0x24) = *(u16*)(rec8 + 0x68);
+                    *(u16*)(*(u8**)(rec8 + 8) + 0x26) = *(u16*)(rec8 + 0x6A);
+                    *(u16*)(*(u8**)(rec8 + 8) + 0x28) = *(u16*)(rec8 + 0x6C);
+                    *(u16*)(*(u8**)(rec8 + 8) + 0x2A) = *(u16*)(rec8 + 0x6E);
+                    idx = (*(s16*)(rec8 + 0x5C) + *(s16*)(rec8 + 0x5E)) & 7;
+                    *(u16*)(*(u8**)(rec8 + 8) + 0) = *(u16*)(rec8 + idx * 4 + 0x1C);
+                    *(u16*)(*(u8**)(rec8 + 8) + 2) = *(u16*)(rec8 + idx * 4 + 0x1E);
+                    *(u16*)(*(u8**)(rec8 + 8) + 0x10) = *(u16*)(rec8 + idx * 4 + 0x3C);
+                    *(u16*)(*(u8**)(rec8 + 8) + 0x12) = *(u16*)(rec8 + idx * 4 + 0x3E);
+                }
+                *(u16*)(*(u8**)(rec8 + 8) + 8) = *(u16*)(rec8 + *(s16*)(rec8 + 0x5C) * 4 + 0x1C);
+                *(u16*)(*(u8**)(rec8 + 8) + 0xA) = *(u16*)(rec8 + *(s16*)(rec8 + 0x5C) * 4 + 0x1E);
+                *(u16*)(*(u8**)(rec8 + 8) + 0x18) = *(u16*)(rec8 + *(s16*)(rec8 + 0x5C) * 4 + 0x3C);
+                *(u16*)(*(u8**)(rec8 + 8) + 0x1A) = *(u16*)(rec8 + *(s16*)(rec8 + 0x5C) * 4 + 0x3E);
+            } else {
+                CompMatrix((MATRIX*)(nodes0 + 0xC), (MATRIX*)(nodes0 + *(s16*)rec8 * 0x7C + 0x2C), spad);
+                SetRotMatrix(spad);
+                SetTransMatrix(spad);
+                par = *(u16*)(rec8 + 0x5C) & 1;
+                src0 = rec8 + (par * 0x10 + 0x1C);
+                src1 = rec8 + (par * 0x10 + 0x3C);
+                BATTLE_GTE_LDV0(rec8 + 0xC);
+                BATTLE_GTE_RTV0TR();
+                BATTLE_GTE_STLVNL(src0);
+                BATTLE_GTE_LDV0(rec8 + 0x14);
+                BATTLE_GTE_RTV0TR();
+                BATTLE_GTE_STLVNL(src1);
+                if (++*(s16*)(rec8 + 0x5E) == 0) {
+                    continue;
+                }
+                if (*(s16*)(rec8 + 0x60) < *(s16*)(rec8 + 0x5E) || *(u8**)(rec8 + 8) == NULL) {
+                    *(u16*)(rec8 + 0x5E) = 1;
+                    *(u8**)(rec8 + 8) = func_800A2E88(*(s32*)(rec8 + 4), rec8[3]);
+                    *(s16*)(*(u8**)(rec8 + 8) + 0xE) = 1;
+                    *(s16*)(*(u8**)(rec8 + 8) + 0x16) = 0;
+                    *(u16*)(*(u8**)(rec8 + 8) + 0x1E) = *(u16*)(rec8 + 0x62);
+                    *(u16*)(*(u8**)(rec8 + 8) + 0x20) = *(u16*)(rec8 + 0x64);
+                    *(u16*)(*(u8**)(rec8 + 8) + 0x22) = *(u16*)(rec8 + 0x66);
+                    *(u16*)(*(u8**)(rec8 + 8) + 0x24) = *(u16*)(rec8 + 0x68);
+                    *(u16*)(*(u8**)(rec8 + 8) + 0x26) = *(u16*)(rec8 + 0x6A);
+                    *(u16*)(*(u8**)(rec8 + 8) + 0x28) = *(u16*)(rec8 + 0x6C);
+                    *(u16*)(*(u8**)(rec8 + 8) + 0x2A) = *(u16*)(rec8 + 0x6E);
+                    q0 = rec8 + ((1 - par) * 0x10 + 0x1C);
+                    q1 = rec8 + ((1 - par) * 0x10 + 0x3C);
+                    *(u16*)(*(u8**)(rec8 + 8) + 0) = *(u16*)(q0 + 0);
+                    *(u16*)(*(u8**)(rec8 + 8) + 2) = *(u16*)(q0 + 4);
+                    *(u16*)(*(u8**)(rec8 + 8) + 4) = *(u16*)(q0 + 8);
+                    *(u16*)(*(u8**)(rec8 + 8) + 0x10) = *(u16*)(q1 + 0);
+                    *(u16*)(*(u8**)(rec8 + 8) + 0x12) = *(u16*)(q1 + 4);
+                    *(u16*)(*(u8**)(rec8 + 8) + 0x14) = *(u16*)(q1 + 8);
+                }
+                *(u16*)(*(u8**)(rec8 + 8) + 8) = *(u16*)(src0 + 0);
+                *(u16*)(*(u8**)(rec8 + 8) + 0xA) = *(u16*)(src0 + 4);
+                *(u16*)(*(u8**)(rec8 + 8) + 0xC) = *(u16*)(src0 + 8);
+                *(u16*)(*(u8**)(rec8 + 8) + 0x18) = *(u16*)(src1 + 0);
+                *(u16*)(*(u8**)(rec8 + 8) + 0x1A) = *(u16*)(src1 + 4);
+                *(u16*)(*(u8**)(rec8 + 8) + 0x1C) = *(u16*)(src1 + 8);
+            }
+        }
+        rec8 += 0x70;
+    }
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main65", func_800A0838);
 INCLUDE_ASM("asm/battle/nonmatchings/main65", func_800A1B50);
 typedef struct {
