@@ -72,7 +72,34 @@ s32 func_800B0AB4(void *arg0) {
 INCLUDE_ASM("asm/battle/nonmatchings/main74", func_800B0B14);
 INCLUDE_ASM("asm/battle/nonmatchings/main74", func_800B0D70);
 INCLUDE_ASM("asm/battle/nonmatchings/main74", func_800B0FF4);
-INCLUDE_ASM("asm/battle/nonmatchings/main74", func_800B10EC);
+extern u8* D_800D3368[];
+extern s32 SquareRoot0(s32 a);
+extern s32 ratan2(s32 y, s32 x);
+extern s32 rcos(s32 a);
+extern s32 rsin(s32 a);
+
+/* If (x, z) lies within `radius` of actor `index`'s (D_800D3368) +0x5C/+0x64
+ * position, push the actor out onto the circle of that radius around
+ * (x, z): back along the offset, then sideways by rcos/rsin of the ratan2
+ * heading (flipped by 0x800 when the actor's +0x56 facing points the other
+ * way) scaled by the overlap. */
+void func_800B10EC(s32 index, s32 x, s32 z, s32 radius) {
+    s32 dx = x - *(s32*)(*(u8**)(D_800D3368[index] + 4) + 0x5C);
+    s32 dz = z - *(s32*)(*(u8**)(D_800D3368[index] + 4) + 0x64);
+    s32 dist = SquareRoot0(dx * dx + dz * dz) + 1;
+    s32 angle;
+    s32 rem;
+
+    if (dist < radius) {
+        angle = ratan2(dz, -dx);
+        if ((u32)(((*(s16*)(*(u8**)(D_800D3368[index] + 4) + 0x56) - angle) & 0xFFF) - 0x401) < 0x7FF) {
+            angle += 0x800;
+        }
+        rem = radius - dist;
+        *(s32*)(*(u8**)(D_800D3368[index] + 4) + 0x5C) = x - dx * radius / dist - rcos(angle) * rem / 4096;
+        *(s32*)(*(u8**)(D_800D3368[index] + 4) + 0x64) = z - dz * radius / dist - rsin(angle) * rem / 4096;
+    }
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main74", func_800B12D0);
 INCLUDE_ASM("asm/battle/nonmatchings/main74", func_800B136C);
 #endif

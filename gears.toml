@@ -294,7 +294,7 @@ build_variables = {
     gcc = "gcc-2.6.3-psx",
     maspsx_flags = "--expand-div --use-comm-section --run-assembler"
 }
-paths = [ "src/battle/main69.", "src/battle/main73_p1." ]
+paths = [ "src/battle/main69.", "src/battle/main73_p1.", "src/battle/main74." ]
 
 [[build_preset]]
 name = "BattleDiv"
