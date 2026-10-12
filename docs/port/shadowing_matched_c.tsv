@@ -133,8 +133,10 @@ func_80089348	port arm in src/battle/main40.c	func_80089348
 func_800894C8	pc_port body wm_800894C8 (pc_port/src/world_map_common_tail.c)	wm_800894C8
 func_800897CC	port arm in src/battle/main40.c	func_800897CC
 func_80089FD0	port arm spanning the body in src/field/main/misc.c	func_80089FD0
+func_8008A144	port arm in src/battle/main42.c	func_8008A144
 func_8008A148	port arm in src/field/main/misc.c	func_8008A148
 func_8008A274	generated logging stub (matched C not linked)	func_8008A274
+func_8008A3EC	port arm in src/battle/main43.c	func_8008A3EC
 func_8008A52C	pc_port body wm_8008A52C (pc_port/src/world_map_resume_initializers.c)	wm_8008A52C
 func_8008AA40	port arm spanning the body in src/battle/main43.c	func_8008AA40
 func_8008AB94	generated logging stub (matched C not linked)	func_8008AB94
@@ -195,20 +197,24 @@ func_800AF180	port arm in src/battle/main73.c	func_800AF180
 func_800AF270	port arm in src/battle/main73.c	func_800AF270
 func_800AF2C4	port arm in src/battle/main73.c	func_800AF2C4
 func_800AF400	port arm in src/battle/main73.c	func_800AF400
+func_800AF518	port arm in src/battle/main73.c	func_800AF518
 func_800B0060	generated logging stub (matched C not linked)	func_800B0060
 func_800B00F4	port arm in src/battle/main74.c	func_800B00F4
 func_800B0164	port arm in src/battle/main74.c	func_800B0164
+func_800B10EC	port arm in src/battle/main74.c	func_800B10EC
 func_800B168C	port arm in src/battle/main.c	func_800B168C
 func_800B16A4	port arm in src/battle/main.c	func_800B16A4
 func_800B1EA0	port arm in src/battle/main77.c	func_800B1EA0
 func_800B3348	port arm in src/battle/main.c	func_800B3348
 func_800B3350	port arm in src/battle/main.c	func_800B3350
 func_800B3B6C	port arm spanning the body in src/battle/mainl81.c	func_800B3B6C
+func_800B5854	port arm in src/battle/mainc84.c	func_800B5854
 func_800B5FBC	port arm in src/battle/main87.c	func_800B5FBC
 func_800B61B0	port arm in src/battle/main87.c	func_800B61B0
 func_800B61F8	port arm in src/battle/main87.c	func_800B61F8
 func_800B626C	port arm in src/battle/main87.c	func_800B626C
 func_800B6518	port arm in src/battle/main90.c	func_800B6518
+func_800B6808	port arm in src/battle/main90.c	func_800B6808
 func_800B8354	generated logging stub (matched C not linked)	func_800B8354
 func_800B89F4	port arm in src/battle/main.c	func_800B89F4
 func_800B8D7C	generated logging stub (matched C not linked)	func_800B8D7C
@@ -217,10 +223,14 @@ func_800B9B30	port arm spanning the body in src/battle/mainc108.c	func_800B9B30
 func_800B9B54	generated logging stub (matched C not linked)	func_800B9B54
 func_800BA59C	port arm in src/battle/mainl110.c	func_800BA59C
 func_800BA8F4	pc_port body func_800BA8F4 (pc_port/src/game_overrides.c)	func_800BA8F4
+func_800BA984	port arm in src/battle/main111.c	func_800BA984
+func_800BAB0C	port arm in src/battle/main111.c	func_800BAB0C
 func_800BAC50	port arm in src/battle/main111.c	func_800BAC50
+func_800BADD4	port arm in src/battle/main111.c	func_800BADD4
 func_800BAF40	port arm in src/battle/main.c	func_800BAF40
 func_800BB080	port arm in src/battle/mainc112.c	func_800BB080
 func_800BB13C	port arm in src/battle/mainc112.c	func_800BB13C
+func_800BB248	port arm in src/battle/mainc112.c	func_800BB248
 func_800BB314	port arm in src/battle/mainc112.c	func_800BB314
 func_800BB540	port arm in src/battle/mainc112.c	func_800BB540
 func_800BB620	port arm in src/battle/mainc112.c	func_800BB620
@@ -243,6 +253,7 @@ func_800BEF24	port arm in src/battle/main125.c	func_800BEF24
 func_800BEFF4	port arm in src/battle/main125.c	func_800BEFF4
 func_800BF720	port arm spanning the body in src/battle/main128.c	func_800BF720
 func_800BFBA0	generated logging stub (matched C not linked)	func_800BFBA0
+func_800BFC80	port arm in src/battle/mainl133.c	func_800BFC80
 func_800BFD88	generated logging stub (matched C not linked)	func_800BFD88
 func_800BFDA8	port arm in src/battle/mainc134.c	func_800BFDA8
 func_800C06E4	port arm in src/battle/mainc134.c	func_800C06E4
