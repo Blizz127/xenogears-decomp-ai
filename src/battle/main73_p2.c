@@ -3,7 +3,37 @@
 #define BATTLE_TU_PART 2
 #include "common.h"
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/main73_p2", func_800AF438);
+extern u8 D_800C3D40;
+extern s32 func_800AF400(void);
+
+/* Decode target code `code` into a bit index and store *out = 1 << index:
+ * 0xFF -> func_800AF400(), 0xFE -> D_800C3D40, 0xFD/0xF9 -> obj[0x20],
+ * 0xFC -> obj[0x21], 0xFA -> 31, 0xF8/0xF7 -> obj[0x20] * 2 + 13/14, any
+ * other code is the index itself.  Returns the index byte, which
+ * func_800AAD54 reads at 7 of its 10 call sites; that second use is why
+ * retail keeps the `andi` ahead of the SLLV. */
+u8 func_800AF438(u8* obj, s32 code, u16* out) {
+    u8 c = code;
+
+    if (c == 0xFF) {
+        code = func_800AF400();
+    } else if (c == 0xFE) {
+        code = D_800C3D40;
+    } else if (c == 0xFD || c == 0xF9) {
+        code = obj[0x20];
+    } else if (c == 0xFC) {
+        code = obj[0x21];
+    } else if (c == 0xFA) {
+        code = 0x1F;
+    } else if (c == 0xF8) {
+        code = obj[0x20] * 2 + 0xD;
+    } else if (c == 0xF7) {
+        code = obj[0x20] * 2 + 0xE;
+    }
+    *out = 1 << (u8)code;
+    return code;
+}
+
 extern s32 func_8009C050(u8 idx);
 extern u8 D_800CCD1E[];
 
