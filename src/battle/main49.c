@@ -35,24 +35,72 @@ void func_8008DC34(u32 kind, u16 x, u16 y, u16 w, u16 h) {
         glyph[3] = 0xF7;
     }
     *(s32*)(blk + 0x5A0) = 0;
-    *(s32*)(blk + 0x5A0) = func_80076A10(glyph[0], blk + *(s32*)(blk + 0x5A0) * 0x50, x, y) + *(s32*)(blk + 0x5A0);
-    *(s32*)(blk + 0x5A0) =
-        func_80076A10(glyph[1], blk + *(s32*)(blk + 0x5A0) * 0x50, x + w - 8, y) + *(s32*)(blk + 0x5A0);
-    *(s32*)(blk + 0x5A0) =
-        func_80076A10(glyph[2], blk + *(s32*)(blk + 0x5A0) * 0x50, x, y + h - 8) + *(s32*)(blk + 0x5A0);
-    *(s32*)(blk + 0x5A0) =
-        func_80076A10(glyph[3], blk + *(s32*)(blk + 0x5A0) * 0x50, x + w - 8, y + h - 8) + *(s32*)(blk + 0x5A0);
+    *(s32*)(blk + 0x5A0) += func_80076A10(glyph[0], blk + *(s32*)(blk + 0x5A0) * 0x50, x, y);
+    *(s32*)(blk + 0x5A0) += func_80076A10(glyph[1], blk + *(s32*)(blk + 0x5A0) * 0x50, x + w - 8, y);
+    *(s32*)(blk + 0x5A0) += func_80076A10(glyph[2], blk + *(s32*)(blk + 0x5A0) * 0x50, x, y + h - 8);
+    *(s32*)(blk + 0x5A0) += func_80076A10(glyph[3], blk + *(s32*)(blk + 0x5A0) * 0x50, x + w - 8, y + h - 8);
     for (i = 0; i < 4; i++) {
         func_80076B00(blk + (i * 2 + D_800CCB34) * 0x28);
     }
 }
-INCLUDE_ASM("asm/battle/nonmatchings/main49", func_8008DE04);
+extern s32 D_800CCB34__a[] asm("D_800CCB34");
+extern u8* D_800C3EA4__a[] asm("D_800C3EA4");
+
+/* Current-buffer prim field at block offset `off` (prims are 0x28 apart per
+ * buffer), and the window frame texture origin from the battle UI state. */
+#define M49_PRIM(off) (blk + D_800CCB34__a[0] * 0x28 + (off))
+#define M49_FRAME_U ((D_800C3EA4__a[0][0xA25C] & 0x3F) * 2)
+#define M49_FRAME_V (D_800C3EA4__a[0][0xA260])
+
+/* Window top edge: two POLY_FT4 (block +0x140 / +0x190, per buffer) span
+ * the 16-pixel band between the corners, half the inner width each, with
+ * the frame texture's 8x16 edge cell; then func_80076B00 on both. */
+void func_8008DE04(u32 kind, u16 x, u16 y, u16 w) {
+    u8* blk;
+    s32 i;
+
+    blk = (u8*)D_800D2E38[kind & 0xFF];
+    *(s16*)M49_PRIM(0x148) = x + 8;
+    *(s16*)M49_PRIM(0x14A) = y - 8;
+    *(s16*)M49_PRIM(0x150) = x + 8 + (w - 16) / 2;
+    *(s16*)M49_PRIM(0x152) = y - 8;
+    *(s16*)M49_PRIM(0x158) = x + 8;
+    *(s16*)M49_PRIM(0x15A) = y + 8;
+    *(s16*)M49_PRIM(0x160) = x + 8 + (w - 16) / 2;
+    *(s16*)M49_PRIM(0x162) = y + 8;
+    *(s16*)M49_PRIM(0x198) = x + 8 + (w - 16) / 2;
+    *(s16*)M49_PRIM(0x19A) = y - 8;
+    *(s16*)M49_PRIM(0x1A0) = x + 8 + (w - 16) / 2 + (w - 16) / 2;
+    *(s16*)M49_PRIM(0x1A2) = y - 8;
+    *(s16*)M49_PRIM(0x1A8) = x + 8 + (w - 16) / 2;
+    *(s16*)M49_PRIM(0x1AA) = y + 8;
+    *(s16*)M49_PRIM(0x1B0) = x + 8 + (w - 16) / 2 + (w - 16) / 2;
+    *(s16*)M49_PRIM(0x1B2) = y + 8;
+    *M49_PRIM(0x14C) = M49_FRAME_U;
+    *M49_PRIM(0x14D) = M49_FRAME_V;
+    *M49_PRIM(0x154) = M49_FRAME_U + 7;
+    *M49_PRIM(0x155) = M49_FRAME_V;
+    *M49_PRIM(0x15C) = M49_FRAME_U;
+    *M49_PRIM(0x15D) = M49_FRAME_V + 0x10;
+    *M49_PRIM(0x164) = M49_FRAME_U + 7;
+    *M49_PRIM(0x165) = M49_FRAME_V + 0x10;
+    *M49_PRIM(0x19C) = M49_FRAME_U;
+    *M49_PRIM(0x19D) = M49_FRAME_V;
+    *M49_PRIM(0x1A4) = M49_FRAME_U + 7;
+    *M49_PRIM(0x1A5) = M49_FRAME_V;
+    *M49_PRIM(0x1AC) = M49_FRAME_U;
+    *M49_PRIM(0x1AD) = M49_FRAME_V + 0x10;
+    *M49_PRIM(0x1B4) = M49_FRAME_U + 7;
+    *M49_PRIM(0x1B5) = M49_FRAME_V + 0x10;
+    for (i = 0; i < 2; i++) {
+        func_80076B00(blk + ((i * 2 + D_800CCB34__a[0]) * 0x28 + 0x140));
+    }
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main49", func_8008E430);
 INCLUDE_ASM("asm/battle/nonmatchings/main49", func_8008EA70);
 INCLUDE_ASM("asm/battle/nonmatchings/main49", func_8008F0A8);
 extern u8* D_800D2D28;
 extern u32 D_800D2E38[];
-extern s32 D_800CCB34__a[] asm("D_800CCB34");
 void func_8008DC34(u32 kind, u16 x, u16 y, u16 w, u16 h);
 void func_8008DE04(u32 kind, u16 x, u16 y, u16 w);
 void func_8008E430(u32 kind, u16 x, u16 y, u16 w, u16 h);
@@ -144,6 +192,9 @@ void func_8008F8F4(u8 index, u16 x, u16 y, u16 w, u16 h, u8 animate, u8 refresh)
         }
     }
 }
+#undef M49_PRIM
+#undef M49_FRAME_U
+#undef M49_FRAME_V
 #endif
 
 
