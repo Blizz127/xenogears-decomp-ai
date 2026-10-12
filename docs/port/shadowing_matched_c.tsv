@@ -141,6 +141,7 @@ func_8008A148	port arm in src/field/main/misc.c	func_8008A148
 func_8008A274	generated logging stub (matched C not linked)	func_8008A274
 func_8008A3EC	port arm in src/battle/main43.c	func_8008A3EC
 func_8008A52C	pc_port body wm_8008A52C (pc_port/src/world_map_resume_initializers.c)	wm_8008A52C
+func_8008A684	port arm in src/battle/main43.c	func_8008A684
 func_8008AA40	port arm spanning the body in src/battle/main43.c	func_8008AA40
 func_8008AB94	generated logging stub (matched C not linked)	func_8008AB94
 func_8008ABB8	generated logging stub (matched C not linked)	func_8008ABB8
