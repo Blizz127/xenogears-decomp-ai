@@ -104,7 +104,6 @@ paths = [
     "src/battle/mainl98.",
     "src/battle/mainl109.",
     "src/battle/mainl115.",
-    "src/battle/mainl133.",
 ]
 
 [[build_preset]]
@@ -231,6 +230,7 @@ paths = [
     "src/battle/main111.",
     "src/battle/main96.",
     "src/battle/main103.",
+    "src/battle/mainl133.",
     "src/battle_command_file1/after_controller_cdk.",
 ]
 
