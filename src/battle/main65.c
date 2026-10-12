@@ -71,7 +71,161 @@ void func_8009F794(ItemList* list, s32 release) {
 INCLUDE_ASM("asm/battle/nonmatchings/main65", func_8009F844);
 INCLUDE_ASM("asm/battle/nonmatchings/main65", func_800A0838);
 INCLUDE_ASM("asm/battle/nonmatchings/main65", func_800A1B50);
-INCLUDE_ASM("asm/battle/nonmatchings/main65", func_800A1CF4);
+typedef struct {
+    u8 unk0[0x54];
+    s16 rot[3];
+    u16 unk5A;
+    s32 pos[3];
+    u8 unk68[8];
+    u8* h70;
+    u8* h74;
+    u8* h78;
+} M65Node; /* 0x7C, the node layout of func_8009EC4C (main64) */
+extern u8* func_800A2330(u8* ctx);
+extern void func_800A23E8(u8* a0, u32 p);
+
+/* func_800A1CF4.s: one pass over the nodes after node 0 of a func_8009EC4C
+ * set, driven by the halfword record `anim` (+4 flags, +6, +0xC and +0xE
+ * counts, triples from +0x18, skipping (+0xC count + 1) triples when +6 is
+ * 0).  While triples remain, one that differs from the node's +0x54 halfword
+ * triple (stored wrapped to +-0x800 after & 0xFFF, so `rot`) or its +0x5C
+ * word triple (`pos`) gets a handle from func_800A2330 in +0x70 / +0x74;
+ * otherwise a handle whose byte 3 is not 0xFF is released through
+ * func_800A23E8.  The handle takes a3 (0 means 1) at +0x12, a5 & 1 and a6
+ * as bytes 1 and 3, and a4 & 1 picks its +0xA..+0xE form.  Returns the node
+ * count minus one. */
+u16 func_800A1CF4(u8* ctx, M65Node* nodes, s16* anim, s32 a3, s32 a4, s32 a5, s32 a6) {
+    M65Node* node;
+    u16 nrot;
+    u16 crot;
+    u16 npos;
+    u16 cpos;
+    u16 count;
+    u16 flags;
+    s32 i;
+    s32 x;
+    s32 y;
+    s32 z;
+    u8* h;
+
+    if (a3 == 0) {
+        a3 = 1;
+    }
+    crot = 0;
+    cpos = 0;
+    a5 &= 1;
+    nrot = anim[6];
+    i = anim[3];
+    npos = anim[7];
+    a4 &= 1;
+    flags = anim[2];
+    anim += 0xC;
+    if (i == 0) {
+        anim += (nrot + 1) * 3;
+    }
+    count = *(u16*)((u8*)nodes + 0xA) - 1;
+    node = nodes;
+    for (i = 0; i < count; i++) {
+        node++;
+        if (!(flags & 1) && crot < nrot) {
+            x = *anim++;
+            y = *anim++;
+            z = *anim++;
+            crot++;
+            if (node->rot[0] != x || node->rot[1] != y || node->rot[2] != z) {
+                if (node->h70 != NULL) {
+                    h = node->h70;
+                    if (h[3] == 0xFF) {
+                        goto pos;
+                    }
+                } else {
+                    h = func_800A2330(ctx);
+                }
+                if (h != NULL) {
+                    h[0] = 1;
+                    h[1] = a5;
+                    h[2] = a4 + 3;
+                    h[3] = a6;
+                    *(u16*)(h + 4) = node->rot[0];
+                    *(u16*)(h + 6) = node->rot[1];
+                    *(u16*)(h + 8) = node->rot[2];
+                    x = (x - node->rot[0]) & 0xFFF;
+                    if (x >= 0x800) {
+                        x -= 0x1000;
+                    }
+                    *(s16*)(h + 0xA) = x;
+                    y = (y - node->rot[1]) & 0xFFF;
+                    if (y >= 0x800) {
+                        y -= 0x1000;
+                    }
+                    *(s16*)(h + 0xC) = y;
+                    z = (z - node->rot[2]) & 0xFFF;
+                    if (z >= 0x800) {
+                        z -= 0x1000;
+                    }
+                    *(s16*)(h + 0xE) = z;
+                    if (a4 != 0) {
+                        *(u16*)(h + 0xA) += node->rot[0];
+                        *(u16*)(h + 0xC) += node->rot[1];
+                        *(u16*)(h + 0xE) += node->rot[2];
+                    }
+                    *(u16*)(h + 0x10) = 0;
+                    *(u16*)(h + 0x12) = a3;
+                    node->h70 = h;
+                    goto pos;
+                }
+            }
+        }
+        if (node->h70 != NULL && node->h70[3] != 0xFF) {
+            func_800A23E8(ctx, (u32)node->h70);
+            node->h70 = NULL;
+        }
+    pos:
+        if (!(flags & 2) && cpos < npos) {
+            x = *anim++;
+            y = *anim++;
+            z = *anim++;
+            cpos++;
+            if (node->pos[0] != x || node->pos[1] != y || node->pos[2] != z) {
+                if (node->h74 != NULL) {
+                    h = node->h74;
+                    if (h[3] == 0xFF) {
+                        continue;
+                    }
+                } else {
+                    h = func_800A2330(ctx);
+                }
+                if (h != NULL) {
+                    h[0] = 1;
+                    h[1] = a5;
+                    h[2] = a4 + 3;
+                    h[3] = a6;
+                    *(u16*)(h + 4) = node->pos[0];
+                    *(u16*)(h + 6) = node->pos[1];
+                    *(u16*)(h + 8) = node->pos[2];
+                    if (a4 != 0) {
+                        *(s16*)(h + 0xA) = x;
+                        *(s16*)(h + 0xC) = y;
+                        *(s16*)(h + 0xE) = z;
+                    } else {
+                        *(s16*)(h + 0xA) = x - (u16)node->pos[0];
+                        *(s16*)(h + 0xC) = y - (u16)node->pos[1];
+                        *(s16*)(h + 0xE) = z - (u16)node->pos[2];
+                    }
+                    *(u16*)(h + 0x10) = 0;
+                    *(u16*)(h + 0x12) = a3;
+                    node->h74 = h;
+                    continue;
+                }
+            }
+        }
+        if (node->h74 != NULL && node->h74[3] != 0xFF) {
+            func_800A23E8(ctx, (u32)node->h74);
+            node->h74 = NULL;
+        }
+    }
+    return count;
+}
 #endif
 #ifdef XENO_PC_PORT
 /* Instruction-faithful port bodies of unmatched main65 functions (M-a).
