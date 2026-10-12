@@ -4,7 +4,42 @@
 #include "common.h"
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/battle/nonmatchings/main73_p2", func_800AF438);
-INCLUDE_ASM("asm/battle/nonmatchings/main73_p2", func_800AF518);
+extern s32 func_8009C050(u8 idx);
+extern u8 D_800CCD1E[];
+
+/* Resolve slot `code` of the actor's +0x14/+0x18 pointer tables.  0xFF first
+ * refreshes the +0x2A slot byte from func_8009C050's flags and the +0x4A
+ * status bits (D_800CCD1E: 0x170-byte records); 0xFE and 0xFF then take the
+ * slot from +0x2A (bit 7 goes to *flag).  Slots below 0x40 read
+ * (+0x14)[slot + 1], others (+0x18)[slot - 0x3F]. */
+u32 func_800AF518(u8* obj, u8 code, u32* flag) {
+    u32 bits;
+
+    *flag = 0;
+    if (code >= 0xFE) {
+        if (code == 0xFF) {
+            bits = func_8009C050(obj[0x20]);
+            if ((bits & 4) && (*(u16*)(obj + 0x4A) & 0x100)) {
+                obj[0x2A] = 0x1B;
+            } else if ((bits & 2) && (*(u16*)(obj + 0x4A) & 0x80)) {
+                if (!(*(u16*)(D_800CCD1E + obj[0x20] * 0x170) & 1)) {
+                    obj[0x2A] = 6;
+                }
+            } else if (!(*(u16*)(obj + 0x4A) & 0x400)) {
+                obj[0x2A] = 1;
+            }
+            if (bits & 1) {
+                obj[0x2A] |= 0x80;
+            }
+        }
+        code = obj[0x2A] & 0x7F;
+        *flag = obj[0x2A] & 0x80;
+    }
+    if (code < 0x40) {
+        return (*(u32**)(obj + 0x14))[code + 1];
+    }
+    return (*(u32**)(obj + 0x18))[code - 0x3F];
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main73_p2", func_800AF678);
 void func_800AFA98(u8 *arg0, u8 *arg1, s32 arg2) {
     u8 *var_s0;
