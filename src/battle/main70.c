@@ -21,7 +21,120 @@ INCLUDE_ASM("asm/battle/nonmatchings/main70", func_800A5EB4);
 INCLUDE_ASM("asm/battle/nonmatchings/main70", func_800A6444);
 INCLUDE_ASM("asm/battle/nonmatchings/main70", func_800A64E4);
 INCLUDE_ASM("asm/battle/nonmatchings/main70", func_800A6884);
-INCLUDE_ASM("asm/battle/nonmatchings/main70", func_800A6AE8);
+typedef struct {
+    u8 active;
+    u8 kind;
+    u8 factor;
+    s8 r;
+    s8 g;
+    s8 b;
+} BattleClutFade;
+
+typedef struct {
+    u8 data[0x88];
+} BattleBlock88;
+
+typedef struct {
+    s16 x, y, w, h;
+} BattleRect;
+
+/* Unsized arrays: retail splits these addresses into %hi/%lo pseudos, and
+ * the extra insns give retail's argument-load schedule; the scalars below
+ * are small-data loads. */
+extern u8 D_800D3611[];
+extern u16 D_800D361A[];
+extern s16 D_800D2D2C[];
+extern s16 D_800C3EA8[];
+extern u16* D_800D3604[];
+extern u16* D_800D3608[];
+extern BattleBlock88* D_800C3AC4;
+extern BattleBlock88* D_800C3AC8;
+extern BattleClutFade D_800C3AAC[];
+extern s32 D_800C3EA0;
+extern s32 D_800C3D50;
+extern u8* D_800D2D40;
+extern u8* D_800D2D48;
+extern BattleRect D_800D3628;
+extern void* memcpy(void* dst, const void* src, u32 n);
+extern void func_80025D4C(s32 count, u16* a, u16* b, u16* c, s32 r, s32 g, s32 bl, s32 kind, s32 factor);
+extern void func_80026F44(s32 count, s32 factor, u16* dst, const u16* src);
+extern void func_800A6884(u8* src, s32 index, u32* dst);
+extern int LoadImage(BattleRect* rect, u16* p);
+
+/* Battle CLUT fade: when D_800D3611 and D_800D361A are set, clear the flag,
+ * refresh the working CLUT D_800D3608 from D_800D3604 and copy the 0x88-byte
+ * D_800C3AC4 block to D_800C3AC8.  Each active D_800C3AAC slot fades the CLUT
+ * (kinds 0-3: func_80025D4C with the slot's r/g/b; kind 4: func_80026F44 from
+ * the source copy), then func_800A6884 runs over the colour words of the
+ * ground-effect prims (D_800C3EA0 record +0x173C/+0x16DC), the D_800C3D50
+ * strips and D_800D2D40/D_800D2D48, writing into the D_800C3AC8 block.
+ * Finally the CLUT is uploaded with LoadImage. */
+void func_800A6AE8(void) {
+    s32 i;
+    s32 j;
+    u32* out;
+    s32 o1;
+    s32 o2;
+    s32 o3;
+
+    if (D_800D3611[0] == 0 || D_800D361A[0] == 0) {
+        return;
+    }
+    D_800D3611[0] = 0;
+    memcpy(D_800D3608[0], D_800D3604[0], D_800D2D2C[0] * D_800C3EA8[0] * 2);
+    *D_800C3AC8 = *D_800C3AC4;
+    for (i = 0; i < 4; i++) {
+        if (D_800C3AAC[i].active == 0) {
+            continue;
+        }
+        switch (D_800C3AAC[i].kind) {
+        case 0:
+        case 1:
+        case 2:
+        case 3:
+            func_80025D4C(D_800D2D2C[0] * D_800C3EA8[0], D_800D3608[0], D_800D3608[0], D_800D3608[0], D_800C3AAC[i].r,
+                          D_800C3AAC[i].g, D_800C3AAC[i].b, D_800C3AAC[i].kind, D_800C3AAC[i].factor);
+            break;
+        case 4:
+            func_80026F44(D_800D2D2C[0] * D_800C3EA8[0], D_800C3AAC[i].factor, D_800D3608[0], D_800D3604[0]);
+            break;
+        }
+        out = (u32*)D_800C3AC8;
+        for (j = 0; j < 4; j++) {
+            o1 = j * 0x24 + 0x173C;
+            o2 = j * 0x18 + 0x16DC;
+            o3 = j * 0x18 + 0x280;
+            if (D_800C3EA0 != 0) {
+                func_800A6884((u8*)(o1 + D_800C3EA0 + 0x4), i, out++);
+                func_800A6884((u8*)(o1 + D_800C3EA0 + 0xC), i, out++);
+                func_800A6884((u8*)(o1 + D_800C3EA0 + 0x14), i, out++);
+                func_800A6884((u8*)(o1 + D_800C3EA0 + 0x1C), i, out++);
+                func_800A6884((u8*)(o2 + D_800C3EA0 + 0x4), i, out++);
+            } else {
+                out += 5;
+            }
+            if (D_800C3D50 != 0) {
+                func_800A6884((u8*)(o3 + D_800C3D50 + 0x4), i, out++);
+            } else {
+                out++;
+            }
+        }
+        for (j = 0; j < 2; j++) {
+            o1 = j * 0x24 + 0x2E0;
+            if (D_800C3D50 != 0) {
+                func_800A6884((u8*)(o1 + D_800C3D50 + 0x4), i, out++);
+                func_800A6884((u8*)(o1 + D_800C3D50 + 0xC), i, out++);
+                func_800A6884((u8*)(o1 + D_800C3D50 + 0x14), i, out++);
+                func_800A6884((u8*)(o1 + D_800C3D50 + 0x1C), i, out++);
+            } else {
+                out += 4;
+            }
+        }
+        func_800A6884(D_800D2D40, i, out++);
+        func_800A6884(D_800D2D48, i, out);
+    }
+    LoadImage(&D_800D3628, D_800D3608[0]);
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main70", func_800A6F98);
 INCLUDE_ASM("asm/battle/nonmatchings/main70", func_800A7064);
 INCLUDE_ASM("asm/battle/nonmatchings/main70", func_800A7948);
