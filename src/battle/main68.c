@@ -299,8 +299,44 @@ void func_800A429C(void *arg0) {
 #undef M68_EFFECT_HEAP_PTR
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A4348);
-INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A43F8);
+/* func_800A4348.s, byte-exact: type-4 frame: scale each u16 texel at +0x4
+ * by (s16)factor / 32 into the +0x1C buffer (6-byte rows).  The row
+ * address is its own statement (row = (+0x2A + y) * 6 + buffer), as retail
+ * computes it before adding the column; one expression is 12/44.  The
+ * 16-byte frame with no saves is 2.6.3's unused stack slot, as in retail. */
+void func_800A4348(u8* e, s16 factor) {
+    u16* src = *(u16**)(e + 4);
+    s32 y;
+    s32 x;
+    u32 row;
+
+    for (y = 0; y < *(s16*)(e + 0x2E); y++) {
+        for (x = 0; x < *(s16*)(e + 0x2C); x++) {
+            row = (*(s16*)(e + 0x2A) + y) * 6 + *(u32*)(e + 0x1C);
+            *(u16*)((*(s16*)(e + 0x28) + x) * 2 + row) = (*src * factor) / 32;
+            src++;
+        }
+    }
+}
+
+/* func_800A43F8.s, byte-exact: type-5 frame: the +0x8 texel plus
+ * (+0x4 texel - +0x8 texel) * (s16)factor / 32, same row form. */
+void func_800A43F8(u8* e, s16 factor) {
+    u16* src = *(u16**)(e + 4);
+    u16* base = *(u16**)(e + 8);
+    s32 y;
+    s32 x;
+    u32 row;
+
+    for (y = 0; y < *(s16*)(e + 0x2E); y++) {
+        for (x = 0; x < *(s16*)(e + 0x2C); x++) {
+            row = (*(s16*)(e + 0x2A) + y) * 6 + *(u32*)(e + 0x1C);
+            *(u16*)((*(s16*)(e + 0x28) + x) * 2 + row) = *base + ((*src - *base) * factor) / 32;
+            src++;
+            base++;
+        }
+    }
+}
 #include "psyq/libgte.h"
 #include "battle/gte_inline.h"
 
