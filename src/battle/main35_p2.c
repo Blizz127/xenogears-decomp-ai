@@ -358,8 +358,212 @@ void func_80082F7C(u32 arg0) {
 reject:
     func_8008AA74(arg0);
 }
-INCLUDE_ASM("asm/battle/nonmatchings/main35_p2", func_800830A8);
-INCLUDE_ASM("asm/battle/nonmatchings/main35_p2", func_80083340);
+extern u16 D_800CCD64[][184], D_800CCD6C[][184], D_800CCE08[][184], D_800CCE0C[][184];
+
+/* func_800830A8.s, byte-exact WITH THE FAMILY'S CROSS-JUMP CONSTRUCT (see
+ * below): a command-ring step on D_800D3014 (the func_8008115C family).
+ * Events 4/6/7 toggle the actor's 0x8000 status bit: when the u16 at
+ * D_800CCE0C (0x170 stride) has it, clear it there and at D_800CCD6C;
+ * otherwise clear bit 0x20 at D_800CCE08 and bit 0x1000 at D_800CCD64 and
+ * set 0x8000 at D_800CCE0C and D_800CCD6C; then context +0x2DE = 1.
+ * Events 1 and 0 make the reject call func_8008AA74(0x4F) when the row's
+ * +0x34/+0x2E halfword is set, else state 0x16/0x10.  Event 2 checks
+ * +0x2C (state 0x17), then with +0x2F6 set and D_800C3E29 == 2 moves to
+ * state 0x12; event 3 follows func_8008115C's case 3 with +0x24/+0x28 and
+ * states 0x18/0x13.  The switch table is this object's .rodata
+ * (jtbl_80070190).  The four status arrays are separate symbols: retail
+ * schedules their loads across each other's stores.
+ * Construct: retail keeps events 2 and 3's identical "+0x2F6 = 1, reject"
+ * blocks apart, but gcc's final jump pass cross-jumps them in every
+ * natural spelling tried.  Storing the first one through an s32 local
+ * keeps them distinct (decomp-permuter found this on func_80081318).  It
+ * is not a natural match; count it apart. */
+void func_800830A8(u32 arg0) {
+    u32 actor;
+    switch (D_800D3014) {
+    case 4:
+    case 6:
+    case 7:
+        actor = arg0 & 0xFF;
+        if (D_800CCE0C[actor][0] & 0x8000) {
+            D_800CCE0C[actor][0] &= 0x7FFF;
+            D_800CCD6C[actor][0] &= 0x7FFF;
+        } else {
+            D_800CCE08[actor][0] &= 0xFFDF;
+            D_800CCD64[actor][0] &= 0xEFFF;
+            D_800CCE0C[actor][0] |= 0x8000;
+            D_800CCD6C[actor][0] |= 0x8000;
+        }
+        ((u8 *)D_800C3EAC)[0x2DE] = 1;
+        return;
+    case 1: {
+        u8 *row = (u8 *)D_800C3EAC + (arg0 & 0xFF) * 64;
+
+        if (*(u16 *)(row + 0x34)) {
+            arg0 = 0x4F;
+            goto reject;
+        }
+    }
+        ((u8 *)D_800C3EAC)[0x2DD] = 0x16;
+        return;
+    case 2: {
+        u8 *row = (u8 *)D_800C3EAC + (arg0 & 0xFF) * 64;
+
+        if (!*(u16 *)(row + 0x2C)) {
+            ((u8 *)D_800C3EAC)[0x2DD] = 0x17;
+            return;
+        }
+        if (((u8 *)D_800C3EAC)[0x2F6] && D_800C3E29 == 2) {
+            ((u8 *)D_800C3EAC)[0x2DD] = 0x12;
+            ((u8 *)D_800C3EAC)[0x2F6] = 0;
+            return;
+        }
+        arg0 = 0x4F;
+        {
+            s32 on = 1;
+
+            ((u8 *)D_800C3EAC)[0x2F6] = on;
+        }
+        goto reject;
+    }
+    case 3: {
+        u8 *row = (u8 *)D_800C3EAC + (arg0 & 0xFF) * 64;
+
+        if (!*(u16 *)(row + 0x24)) {
+            ((u8 *)D_800C3EAC)[0x2DD] = 0x18;
+            return;
+        }
+        if (((u8 *)D_800C3EAC)[0x2F6] && D_800C3E29 == 3) {
+            if (*(u16 *)(row + 0x28)) func_8008AA74(0x4F);
+            else ((u8 *)D_800C3EAC)[0x2DD] = 0x13;
+            ((u8 *)D_800C3EAC)[0x2F6] = 0;
+            return;
+        }
+        arg0 = 0x4F;
+        ((u8 *)D_800C3EAC)[0x2F6] = 1;
+        goto reject;
+    }
+    case 0: {
+        u8 *row = (u8 *)D_800C3EAC + (arg0 & 0xFF) * 64;
+
+        if (*(u16 *)(row + 0x2E)) {
+            arg0 = 0x4F;
+            goto reject;
+        }
+    }
+        ((u8 *)D_800C3EAC)[0x2DD] = 0x10;
+        return;
+    default:
+        return;
+    }
+reject:
+    func_8008AA74(arg0);
+}
+
+extern u8 func_8008BED8(u32);
+extern void func_8008B908(u32);
+
+/* func_80083340.s, byte-exact WITH THE CROSS-JUMP CONSTRUCT (twice): a
+ * command-ring step on D_800D3014 (the func_8008115C family).  Events
+ * 4/6/7: func_8008B908(actor) if func_8008BED8(actor) is nonzero, else
+ * state 0x16.  Event 0 checks +0x36 (state 0x15), then with +0x2F6 set and
+ * D_800C3E29 == 0 rejects or moves to state 0x10 by +0x2E; event 2 checks
+ * +0x2C (state 0x17), then moves to state 0x12; event 3 follows
+ * func_8008115C's case 3 with +0x24/+0x28 and states 0x18/0x13; event 1
+ * rejects when +0x34 is set, else state 0x11.  The switch table is this
+ * object's .rodata (jtbl_800701B0).  Construct, as in func_800830A8:
+ * events 0, 2 and 3 end in identical "+0x2F6 = 1, reject" blocks that
+ * retail keeps apart; the first stores through an s32 local and the second
+ * through an s16 local, so the final jump pass cannot merge any two of
+ * them.  Not a natural match; count it apart. */
+void func_80083340(u32 arg0) {
+    u32 actor;
+    switch (D_800D3014) {
+    case 4:
+    case 6:
+    case 7:
+        actor = arg0 & 0xFF;
+        if (func_8008BED8(actor)) {
+            func_8008B908(actor);
+            return;
+        }
+        ((u8 *)D_800C3EAC)[0x2DD] = 0x16;
+        return;
+    case 0: {
+        u8 *row = (u8 *)D_800C3EAC + (arg0 & 0xFF) * 64;
+
+        if (!*(u16 *)(row + 0x36)) {
+            ((u8 *)D_800C3EAC)[0x2DD] = 0x15;
+            return;
+        }
+        if (((u8 *)D_800C3EAC)[0x2F6] && D_800C3E29 == 0) {
+            if (*(u16 *)(row + 0x2E)) func_8008AA74(0x4F);
+            else ((u8 *)D_800C3EAC)[0x2DD] = 0x10;
+            ((u8 *)D_800C3EAC)[0x2F6] = 0;
+            return;
+        }
+        arg0 = 0x4F;
+        {
+            s32 on = 1;
+
+            ((u8 *)D_800C3EAC)[0x2F6] = on;
+        }
+        goto reject;
+    }
+    case 2: {
+        u8 *row = (u8 *)D_800C3EAC + (arg0 & 0xFF) * 64;
+
+        if (!*(u16 *)(row + 0x2C)) {
+            ((u8 *)D_800C3EAC)[0x2DD] = 0x17;
+            return;
+        }
+        if (((u8 *)D_800C3EAC)[0x2F6] && D_800C3E29 == 2) {
+            ((u8 *)D_800C3EAC)[0x2DD] = 0x12;
+            ((u8 *)D_800C3EAC)[0x2F6] = 0;
+            return;
+        }
+        arg0 = 0x4F;
+        {
+            s16 on = 1;
+
+            ((u8 *)D_800C3EAC)[0x2F6] = on;
+        }
+        goto reject;
+    }
+    case 3: {
+        u8 *row = (u8 *)D_800C3EAC + (arg0 & 0xFF) * 64;
+
+        if (!*(u16 *)(row + 0x24)) {
+            ((u8 *)D_800C3EAC)[0x2DD] = 0x18;
+            return;
+        }
+        if (((u8 *)D_800C3EAC)[0x2F6] && D_800C3E29 == 3) {
+            if (*(u16 *)(row + 0x28)) func_8008AA74(0x4F);
+            else ((u8 *)D_800C3EAC)[0x2DD] = 0x13;
+            ((u8 *)D_800C3EAC)[0x2F6] = 0;
+            return;
+        }
+        arg0 = 0x4F;
+        ((u8 *)D_800C3EAC)[0x2F6] = 1;
+        goto reject;
+    }
+    case 1: {
+        u8 *row = (u8 *)D_800C3EAC + (arg0 & 0xFF) * 64;
+
+        if (*(u16 *)(row + 0x34)) {
+            arg0 = 0x4F;
+            goto reject;
+        }
+    }
+        ((u8 *)D_800C3EAC)[0x2DD] = 0x11;
+        return;
+    default:
+        return;
+    }
+reject:
+    func_8008AA74(arg0);
+}
+
 INCLUDE_ASM("asm/battle/nonmatchings/main35_p2", func_80083580);
 INCLUDE_ASM("asm/battle/nonmatchings/main35_p2", func_80083748);
 INCLUDE_ASM("asm/battle/nonmatchings/main35_p2", func_80083948);
