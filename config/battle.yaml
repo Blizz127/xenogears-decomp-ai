@@ -70,8 +70,7 @@ segments:
       - [0x8C, .rodata, main14]      # jtbl_8006FB7C + jtbl_8006FBDC
       - [0x14C, rodata]
       - [0x520, .rodata, main35_p1]  # jtbl_80070010 (func_8008115C)
-      - [0x540, rodata]
-      - [0x620, .rodata, main35_p2]  # jtbl_80070110..jtbl_800701F0 (func_800829F4..func_80083748)
+      - [0x540, .rodata, main35_p2]  # jtbl_80070030..jtbl_800701F0 (all 15 command-ring steps)
       - [0x720, rodata]
       - [0x938, .rodata, main57]     # jtbl_80070428 (func_8009AFD8)
       - [0x988, rodata]
