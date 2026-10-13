@@ -119,7 +119,36 @@ void func_80079778(u8 a) {
     }
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/main12", func_80079840);
+extern u16 func_80089C08(u8 idx);
+extern u8 D_800D342E[];
+extern u8 D_800D3439[];
+extern u8 D_800D343E[];
+extern u8 D_800D2CA4[];
+extern u16 D_800C48E8;
+
+/* func_80079840.s: for an enemy e (>= 3), initialise its 64-byte
+ * D_800D3400 AI record (index e - 3): +0x2E = func_80089C08(a), copy the
+ * five D_800D2CA4 bytes to +0x39.., and set +0x3E to whether D_800C48E8
+ * masks func_80089C08 of actor a's +0x3C byte in the D_800C3EAC rows.
+ * Fields are addressed through splat's per-field labels, as main12 does
+ * elsewhere; (base + (a << 6))[0x3C] gives retail's base-first addu. */
+void func_80079840(u8 a, u8 e) {
+    u8 k;
+    s32 i;
+
+    if (e >= 3) {
+        k = e - 3;
+        *(u16*)(D_800D342E + (k << 6)) = func_80089C08(a);
+        for (i = 0; i < 5; i++) {
+            D_800D3439[(k << 6) + i] = D_800D2CA4[i];
+        }
+        if (D_800C48E8 & func_80089C08((D_800C3EAC + (a << 6))[0x3C])) {
+            D_800D343E[k << 6] = 1;
+        } else {
+            D_800D343E[k << 6] = 0;
+        }
+    }
+}
 #endif
 
 
