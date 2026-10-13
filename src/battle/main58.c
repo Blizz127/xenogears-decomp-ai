@@ -2,7 +2,33 @@
 
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/main58", func_8009B104);
+extern u8* D_800C34B0;
+
+/* func_8009B104.s, byte-exact: seed character idx's HP words in its
+ * 0x170-byte D_800C34B0 record (+0x104 current, +0x108 max) from the
+ * record at a1 (+0x4C/+0x4E halfwords, x50).  When the max exceeds 99999
+ * both are capped at 99999.  Retail writes that capped max through the
+ * record's +0xA4 block (+0x64), so `stats` is its own pointer, set up
+ * front; the cap is an if/else (a ternary compares the other way round). */
+void func_8009B104(u32 idx, u8* a1) {
+    u8* rec = D_800C34B0 + (idx & 0xFF) * 0x170;
+    u8* stats = rec + 0xA4;
+    s32 cap = 99999;
+    s32 hp;
+
+    if (cap < *(u16*)(a1 + 0x4E) * 50) {
+        hp = *(u16*)(a1 + 0x4C) * 50;
+        if (cap < hp) {
+            *(u32*)(rec + 0x104) = cap;
+        } else {
+            *(u32*)(rec + 0x104) = hp;
+        }
+        *(u32*)(stats + 0x64) = 99999;
+    } else {
+        *(u32*)(rec + 0x104) = *(u16*)(a1 + 0x4C) * 50;
+        *(u32*)(rec + 0x108) = *(u16*)(a1 + 0x4E) * 50;
+    }
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main58", func_8009B1E4);
 INCLUDE_ASM("asm/battle/nonmatchings/main58", func_8009B46C);
 INCLUDE_ASM("asm/battle/nonmatchings/main58", func_8009B684);
