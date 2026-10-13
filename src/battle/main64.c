@@ -199,6 +199,8 @@ ItemList* func_8009EBA8(u8* data, ItemList* list) {
     return list;
 }
 
+#include "psyq/libgte.h"
+
 /* 0x7C-byte node of the set built by func_8009EC4C; node 0 is the header. */
 typedef struct BattlePartNode {
     struct BattlePartNode* parent; /* +0x00 */
@@ -208,7 +210,8 @@ typedef struct BattlePartNode {
     u8 unk7;
     u16 part;  /* +0x08: ItemList index, 0xFFFF for none */
     u16 index; /* +0x0A: node number; in node 0, the node count */
-    u8 unkC[0x40];
+    MATRIX local; /* +0x0C */
+    MATRIX world; /* +0x2C */
     u16 unk4C;
     u16 unk4E;
     u16 unk50;
@@ -340,7 +343,75 @@ BattlePartNode* func_8009EC4C(ItemList* list, u16* pairs, s32 a2, s32 a3, s16 a4
     }
     return set;
 }
-INCLUDE_ASM("asm/battle/nonmatchings/main64", func_8009EF3C);
+/* func_8009EF3C.s, byte-exact: rebuild the matrices of a part-node set
+ * for the 4.12 multiplier `scale`.  The header's world matrix gets its
+ * position (+0x5C) and its RotMatrix / RotMatrixYXZ (+6) rotation (+0x54);
+ * its local matrix is that times the scratchpad matrix diag(scale * the
+ * +0x4C/+0x4E/+0x50 scales >> 12).  Each later node with +5 set rebuilds
+ * its local rotation and clears +5, takes +4 = 1 from a parent whose +4 is
+ * 1, and with +4 set takes its position and composes its world matrix with
+ * the parent's (CompMatrix) or, without a parent, copies the local one.
+ * Then +4 is cleared on every node after the header.  Returns the node
+ * count.  The parameter is the walking `node` and `set` keeps the header:
+ * the other way round, retail's two prologue copies come out swapped. */
+u32 func_8009EF3C(BattlePartNode* node, s32 scale) {
+    BattlePartNode* set = node;
+    MATRIX* sm = (MATRIX*)0x1F800000;
+    u32 count = set->index;
+    u32 i;
+
+    set->world.t[0] = set->unk5C;
+    set->world.t[1] = set->unk60;
+    set->world.t[2] = set->unk64;
+    if (set->unk6) {
+        RotMatrixYXZ((SVECTOR*)&set->unk54, &set->world);
+    } else {
+        RotMatrix((SVECTOR*)&set->unk54, &set->world);
+    }
+    sm->m[0][0] = (scale * (s16)node->unk4C) >> 12;
+    sm->m[0][1] = 0;
+    sm->m[0][2] = 0;
+    sm->m[1][0] = 0;
+    sm->m[1][1] = (scale * (s16)node->unk4E) >> 12;
+    sm->m[1][2] = 0;
+    sm->m[2][0] = 0;
+    sm->m[2][1] = 0;
+    sm->m[2][2] = (scale * (s16)node->unk50) >> 12;
+    MulMatrix0(&node->world, sm, &node->local);
+    node->local.t[0] = node->world.t[0];
+    node->local.t[1] = node->world.t[1];
+    node->local.t[2] = node->world.t[2];
+    for (i = 1; i < count; i++) {
+        node++;
+        if (node->unk5) {
+            if (node->unk6) {
+                RotMatrixYXZ((SVECTOR*)&node->unk54, &node->local);
+            } else {
+                RotMatrix((SVECTOR*)&node->unk54, &node->local);
+            }
+            node->unk5 = 0;
+        }
+        if (node->parent != NULL && node->parent->unk4 == 1) {
+            node->unk4 = 1;
+        }
+        if (node->unk4) {
+            node->local.t[0] = node->unk5C;
+            node->local.t[1] = node->unk60;
+            node->local.t[2] = node->unk64;
+            if (node->parent != NULL) {
+                CompMatrix(&node->parent->world, &node->local, &node->world);
+            } else {
+                node->world = node->local;
+            }
+        }
+    }
+    for (i = 1; i < count; i++) {
+        set++;
+        set->unk4 = 0;
+    }
+    return count;
+}
+
 INCLUDE_ASM("asm/battle/nonmatchings/main64", func_8009F1C4);
 #endif
 
