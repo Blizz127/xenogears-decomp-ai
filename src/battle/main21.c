@@ -98,7 +98,40 @@ u8 func_8007B608(u8** pp, u8 index, s32 n) {
     return r;
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/main21", func_8007B6C0);
+extern u8 g_GameState[];
+extern u8 D_800CCDEC[];
+extern u32 D_800D3410[];
+
+/* func_8007B6C0.s, byte-exact: battle-script op storing a u32 into word
+ * p[1] of row `index` of D_800D3410 (p = *ppBoard).  Mode p[2] == 1 stores
+ * the +0xCDEC word of the 0x170-byte record of character
+ * func_80079E7C(halfword p[3] of the D_800D3420 row); mode 2 stores the
+ * g_GameState +0x1924 word.  As in func_8007B424, base keeps one set and
+ * the -0x10 row is its own variable; mode 2's row is a local too, which
+ * keeps D_800D3410 in a register (a flat `D_800D3410 + off + i * 4` lets
+ * combine fold the symbol into an $at store). */
+void func_8007B6C0(u8** ppBoard, u8 index) {
+    switch ((*ppBoard)[2]) {
+    case 1: {
+        u32 off = (u32)index << 6;
+        u8* base = D_800D3420;
+        u8* row;
+        u8 v;
+
+        v = func_80079E7C(*(u16*)(base + off + (*ppBoard)[3] * 2));
+        row = base - 0x10;
+        *(u32*)(row + off + (*ppBoard)[1] * 4) = *(u32*)(D_800CCDEC + v * 0x170);
+        break;
+    }
+    case 2: {
+        u32 off = (u32)index << 6;
+        u8* row = (u8*)D_800D3410;
+
+        *(u32*)(row + off + (*ppBoard)[1] * 4) = *(u32*)(g_GameState + 0x1924);
+        break;
+    }
+    }
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main21", func_8007B7B0);
 #endif
 #ifndef XENO_PC_PORT
