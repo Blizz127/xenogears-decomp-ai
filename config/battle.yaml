@@ -71,7 +71,7 @@ segments:
       - [0x14C, rodata]
       - [0x520, .rodata, main35_p1]  # jtbl_80070010 (func_8008115C)
       - [0x540, rodata]
-      - [0x660, .rodata, main35_p2]  # jtbl_80070150 + jtbl_80070170 (func_80082D4C, func_80082F7C)
+      - [0x620, .rodata, main35_p2]  # jtbl_80070110..jtbl_80070170 (func_800829F4..func_80082F7C)
       - [0x6A0, rodata]
       - [0x938, .rodata, main57]     # jtbl_80070428 (func_8009AFD8)
       - [0x988, rodata]

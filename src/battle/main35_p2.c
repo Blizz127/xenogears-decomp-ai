@@ -51,8 +51,156 @@ INCLUDE_ASM("asm/battle/nonmatchings/main35_p2", func_800822C4);
 INCLUDE_ASM("asm/battle/nonmatchings/main35_p2", func_80082504);
 INCLUDE_ASM("asm/battle/nonmatchings/main35_p2", func_800826CC);
 INCLUDE_ASM("asm/battle/nonmatchings/main35_p2", func_80082820);
-INCLUDE_ASM("asm/battle/nonmatchings/main35_p2", func_800829F4);
-INCLUDE_ASM("asm/battle/nonmatchings/main35_p2", func_80082BB0);
+extern u8 D_800D366C;
+extern void func_80087A38(u32);
+extern void func_80084A7C(u32);
+extern void func_80077698(void);
+
+/* func_800829F4.s, byte-exact: a command-ring step on D_800D3014 (the
+ * func_8008115C family).  Events 4/6/7: the reject call func_8008AA74(0x4F)
+ * when the actor row's +0x3C target is 0xFF, else func_80087A38(actor),
+ * func_80084A7C(actor), state 0x19, func_80077698() and D_800D366C = 0.
+ * Events 1 and 0 reject when the row's +0x34/+0x36 halfword is set, else
+ * state 0x11/0x15; event 2 -> state 0x12; event 3 follows
+ * func_8008115C's case 3 with +0x28/+0x24 and states 0x13/0x18.  The
+ * switch table is this object's .rodata (jtbl_80070110).  The target row
+ * is addressed with `actor << 6`: as `actor * 64` the base and offset
+ * registers swap (3/111). */
+void func_800829F4(u32 arg0) {
+    u32 actor;
+    switch (D_800D3014) {
+    case 4:
+    case 6:
+    case 7:
+        actor = arg0 & 0xFF;
+        if (((u8 *)D_800C3EAC + (actor << 6))[0x3C] == 0xFF) {
+            arg0 = 0x4F;
+            goto reject;
+        }
+        func_80087A38(actor);
+        func_80084A7C(actor);
+        ((u8 *)D_800C3EAC)[0x2DD] = 0x19;
+        func_80077698();
+        D_800D366C = 0;
+        return;
+    case 1: {
+        u8 *row = (u8 *)D_800C3EAC + (arg0 & 0xFF) * 64;
+
+        if (*(u16 *)(row + 0x34)) {
+            arg0 = 0x4F;
+            goto reject;
+        }
+    }
+        ((u8 *)D_800C3EAC)[0x2DD] = 0x11;
+        return;
+    case 2:
+        ((u8 *)D_800C3EAC)[0x2DD] = 0x12;
+        return;
+    case 3: {
+        u8 *row = (u8 *)D_800C3EAC + (arg0 & 0xFF) * 64;
+
+        if (!*(u16 *)(row + 0x28)) {
+            ((u8 *)D_800C3EAC)[0x2DD] = 0x13;
+            return;
+        }
+        if (((u8 *)D_800C3EAC)[0x2F6] && D_800C3E29 == 3) {
+            if (*(u16 *)(row + 0x24)) func_8008AA74(0x4F);
+            else ((u8 *)D_800C3EAC)[0x2DD] = 0x18;
+            ((u8 *)D_800C3EAC)[0x2F6] = 0;
+            return;
+        }
+        arg0 = 0x4F;
+        ((u8 *)D_800C3EAC)[0x2F6] = 1;
+        goto reject;
+    }
+    case 0: {
+        u8 *row = (u8 *)D_800C3EAC + (arg0 & 0xFF) * 64;
+
+        if (*(u16 *)(row + 0x36)) {
+            arg0 = 0x4F;
+            goto reject;
+        }
+    }
+        ((u8 *)D_800C3EAC)[0x2DD] = 0x15;
+        return;
+    default:
+        return;
+    }
+reject:
+    func_8008AA74(arg0);
+}
+
+extern u8 func_8008BED8(u32);
+extern void func_8008B908(u32);
+
+/* func_80082BB0.s, byte-exact: a command-ring step on D_800D3014 (the
+ * func_8008115C family).  Events 4/6/7: func_8008B908(actor) if
+ * func_8008BED8(actor) is nonzero, else state 0x11.  Events 0 and 1 make
+ * the reject call func_8008AA74(0x4F) when the row's +0x2E/+0x34 halfword
+ * is set, else state 0x10/0x16; event 2 -> state 0x12; event 3 follows
+ * func_8008115C's case 3 with +0x28/+0x24 and states 0x13/0x18.  The
+ * switch table is this object's .rodata (jtbl_80070130).  Each event
+ * keeps its own row local, as in func_80082D4C. */
+void func_80082BB0(u32 arg0) {
+    u32 actor;
+    switch (D_800D3014) {
+    case 4:
+    case 6:
+    case 7:
+        actor = arg0 & 0xFF;
+        if (func_8008BED8(actor)) {
+            func_8008B908(actor);
+            return;
+        }
+        ((u8 *)D_800C3EAC)[0x2DD] = 0x11;
+        return;
+    case 0: {
+        u8 *row = (u8 *)D_800C3EAC + (arg0 & 0xFF) * 64;
+
+        if (*(u16 *)(row + 0x2E)) {
+            arg0 = 0x4F;
+            goto reject;
+        }
+    }
+        ((u8 *)D_800C3EAC)[0x2DD] = 0x10;
+        return;
+    case 2:
+        ((u8 *)D_800C3EAC)[0x2DD] = 0x12;
+        return;
+    case 3: {
+        u8 *row = (u8 *)D_800C3EAC + (arg0 & 0xFF) * 64;
+
+        if (!*(u16 *)(row + 0x28)) {
+            ((u8 *)D_800C3EAC)[0x2DD] = 0x13;
+            return;
+        }
+        if (((u8 *)D_800C3EAC)[0x2F6] && D_800C3E29 == 3) {
+            if (*(u16 *)(row + 0x24)) func_8008AA74(0x4F);
+            else ((u8 *)D_800C3EAC)[0x2DD] = 0x18;
+            ((u8 *)D_800C3EAC)[0x2F6] = 0;
+            return;
+        }
+        arg0 = 0x4F;
+        ((u8 *)D_800C3EAC)[0x2F6] = 1;
+        goto reject;
+    }
+    case 1: {
+        u8 *row = (u8 *)D_800C3EAC + (arg0 & 0xFF) * 64;
+
+        if (*(u16 *)(row + 0x34)) {
+            arg0 = 0x4F;
+            goto reject;
+        }
+    }
+        ((u8 *)D_800C3EAC)[0x2DD] = 0x16;
+        return;
+    default:
+        return;
+    }
+reject:
+    func_8008AA74(arg0);
+}
+
 extern void func_8009AA44(u32);
 extern volatile u16 D_800CCDC4[][184];
 extern u16 D_800CCDC6[][184];
