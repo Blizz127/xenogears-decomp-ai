@@ -128,7 +128,24 @@ void func_80090B90(s32 x, s32 y, s32* frame, u8* timer) {
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80090C44);
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80090E7C);
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80091064);
-INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80091604);
+/* func_80091604.s, byte-exact: func_8009023C's 8-row twin.  The running
+ * count at D_800D2D28 +0xF8 starts at 0; each of 8 rows adds
+ * func_80076A10(0x66, D_800C3EA4 + 0xBA8 + count * 0x50, 0x20, y + 0x38 +
+ * row * 8) to it.  Then +0xA5 = D_800CCB34 and +0x9C = 1. */
+void func_80091604(s32 y) {
+    s32 dy;
+    s32 i;
+
+    i = 0;
+    dy = 0x38;
+    *(s32*)(D_800D2D28 + 0xF8) = 0;
+    do {
+        *(s32*)(D_800D2D28 + 0xF8) = func_80076A10(0x66, D_800C3EA4 + 0xBA8 + *(s32*)(D_800D2D28 + 0xF8) * 0x50, 0x20, (s16)(dy + y)) + *(s32*)(D_800D2D28 + 0xF8);
+        dy += 8;
+    } while (++i < 8);
+    D_800D2D28[0xA5] = D_800CCB34;
+    D_800D2D28[0x9C] = 1;
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_800916D4);
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_8009187C);
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80091B38);
