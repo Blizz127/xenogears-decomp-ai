@@ -158,7 +158,42 @@ INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80092B74);
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_800930AC);
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80093578);
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_8009382C);
-INCLUDE_ASM("asm/battle/nonmatchings/main51", func_800939CC);
+extern u16 D_800C324E;
+extern u16 D_800C3250;
+extern u16 D_800C3252;
+extern u16 D_800C323A;
+extern u8 g_GameState[];
+extern u8 D_800D2D24[];
+extern u8 D_800CCD62[];
+extern u16 func_80089C6C(u16 bits, u8 b);
+extern void func_80093578(u8 a, u8 b);
+extern void func_8009382C(u8 a, u8 b);
+
+/* func_800939CC.s, byte-exact: when func_80089C6C accepts the halfword at
+ * g_GameState + 0x16DA + D_800D2D24[a] * 32 for b and actor a's D_800CCD62
+ * halfword (0x170-byte records) has none of the bits of mask b
+ * (D_800C324E, D_800C3250, D_800C3252, D_800C323A), run
+ * func_80093578(a, b) and func_8009382C(a, b) and set bytes +0x66A
+ * (D_800CCB34) and +0x66B (1) of the record pointed to by the word at
+ * D_800C3EA4 + 0xA230; otherwise clear its +0x66B.  gcc 2.6.x code (main51
+ * is BattleGcc263); first draft. */
+void func_800939CC(u8 a, u8 b) {
+    u16 masks[4];
+
+    masks[0] = D_800C324E;
+    masks[1] = D_800C3250;
+    masks[2] = D_800C3252;
+    masks[3] = D_800C323A;
+    if (func_80089C6C(*(u16*)(g_GameState + 0x16DA + D_800D2D24[a] * 32), b) != 0
+        && !(*(u16*)(D_800CCD62 + a * 0x170) & masks[b])) {
+        func_80093578(a, b);
+        func_8009382C(a, b);
+        (*(u8**)(D_800C3EA4 + 0xA230))[0x66A] = D_800CCB34;
+        (*(u8**)(D_800C3EA4 + 0xA230))[0x66B] = 1;
+    } else {
+        (*(u8**)(D_800C3EA4 + 0xA230))[0x66B] = 0;
+    }
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80093B08);
 #endif
 
