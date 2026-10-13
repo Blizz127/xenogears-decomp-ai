@@ -195,6 +195,7 @@ func_80097D64	pc_port body wm_80097D64 (pc_port/src/world_map_teardown_7299c.c)	
 func_800984EC	port arm spanning the body in src/field/main/misc7.c	func_800984EC
 func_80099FB0	port arm in src/battle/main53.c	func_80099FB0
 func_8009A258	port arm in src/battle/main54.c	func_8009A258
+func_8009A854	port arm in src/battle/main55.c	func_8009A854
 func_8009AFD8	port arm in src/battle/main57.c	func_8009AFD8
 func_8009BD94	port arm in src/battle/main58.c	func_8009BD94
 func_8009C050	port arm in src/battle/main58.c	func_8009C050
