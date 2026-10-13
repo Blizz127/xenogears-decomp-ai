@@ -3,9 +3,10 @@
 
 #ifndef XENO_PC_PORT
 extern u8 D_800D3430[];
-/* Declared u32 as in main26/main28/mainasm_D854: func_8007BD5C keeps the
- * result unmasked and masks it at each use (declared u8, it is masked once
- * at the call). */
+/* Declared u32 as in main26/main28/mainasm_D854.  func_8007BD5C keeps the
+ * result unmasked and masks it at each use; it matches with this
+ * declaration and a u32 `r`, and also with a u8 declaration and a u8 `r`
+ * (a u8 declaration with a u32 `r` masks it once at the call). */
 extern u32 func_8001BD40(u32 lo, u8 hi);
 
 void func_8007BC84(u8 **pp, s32 idx) {
