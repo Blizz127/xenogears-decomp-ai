@@ -282,7 +282,23 @@ s32 func_800B0AB4(void *arg0) {
 
 INCLUDE_ASM("asm/battle/nonmatchings/main74", func_800B0B14);
 INCLUDE_ASM("asm/battle/nonmatchings/main74", func_800B0D70);
-INCLUDE_ASM("asm/battle/nonmatchings/main74", func_800B0FF4);
+extern s32 SquareRoot0(s32 a);
+extern s32 func_800B0D70(s16* d, s16* b);
+
+/* func_800B0FF4.s, byte-exact: d = (a - b).xz scaled to 512 / (|d| + 1),
+ * then func_800B0D70(d, b), whose result is returned.  Halfwords 1 and 3 of
+ * d are never written (func_800B0D70 reads no others). */
+s32 func_800B0FF4(s16* a, s16* b) {
+    s16 d[4];
+    s32 len;
+
+    d[0] = a[0] - b[0];
+    d[2] = a[2] - b[2];
+    len = SquareRoot0(d[0] * d[0] + d[2] * d[2]) + 1;
+    d[0] = (d[0] << 9) / len;
+    d[2] = (d[2] << 9) / len;
+    return func_800B0D70(d, b);
+}
 extern u8* D_800D3368[];
 extern s32 SquareRoot0(s32 a);
 extern s32 ratan2(s32 y, s32 x);
