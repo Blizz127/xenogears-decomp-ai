@@ -98,7 +98,6 @@ build_variables = {
     maspsx_flags = "--dont-expand-li --use-comm-section --run-assembler"
 }
 paths = [
-    "src/battle/mainl92.",
     "src/battle/mainl94.",
     "src/battle/mainl98.",
     "src/battle/mainl109.",
@@ -280,6 +279,12 @@ paths = [
     # 308 vs 280 and 368 vs 356 bytes); func_800B9020 compiles to the same
     # bytes.
     "src/battle/main106.",
+    # mainl92 (2026-10-13, moved from BattleLiteral): func_800B6A7C matches
+    # under the CDK cc1; with the same leave-li flags it is 13/71 off under
+    # 2.7.2, 2.6.3 and 2.6.0 (under 2.7.2: an actor/value s-register swap
+    # that declaration order does not move).  mainl92's func_800B6B98 and
+    # func_800B6BFC compile to the same bytes under the CDK cc1.
+    "src/battle/mainl92.",
     "src/battle_command_file1/after_controller_cdk.",
 ]
 
