@@ -2,8 +2,110 @@
 
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/main56", func_8009AB38);
-INCLUDE_ASM("asm/battle/nonmatchings/main56", func_8009AC48);
+extern u8* D_800C34B0;
+extern u8* D_800C3DFC;
+
+/* func_8009AB38.s, byte-exact: when actor idx's ready flag is set (+0x124
+ * bit 13 for a +0x15A bit 7 actor, +0x88 bit 10 otherwise), mark its
+ * command slots with 1: the 0x690-stride table at +0x2228 for a +0x15A
+ * bit 7 actor, else the 0x5F0-stride table at +0x1058 (the port arm's
+ * bat3_actor_flag and bat3_stamp_slots, inline).  Codegen: the second
+ * +0x15A test reads through its own pointer p2; each table pointer is
+ * built in place, offset first (`q = (u8*)(idx * 0x690 + 0x2228);
+ * q += base`; func_8009AEFC's one-expression `(u8*)(off + base)` form
+ * gets the operand order but not the registers); the two tables use
+ * separate pointers (one shared pointer swaps $v0/$v1 in the else
+ * block). */
+void func_8009AB38(u8 idx) {
+    u8* p = D_800C34B0 + idx * 0x170;
+    u32 flag;
+    u8* q;
+    u8* r;
+    u8* p2;
+
+    if (p[0x15A] & 0x80) {
+        flag = *(u16*)(p + 0x124) & 0x2000;
+    } else {
+        flag = *(u16*)(p + 0x88) & 0x400;
+    }
+    if (flag != 0) {
+        p2 = D_800C34B0 + idx * 0x170;
+        if (p2[0x15A] & 0x80) {
+            q = (u8*)(idx * 0x690 + 0x2228);
+            q += (u32)D_800C34B0;
+            *(u16*)(q + 0x348) = 1;
+            *(u16*)(q + 0x398) = 1;
+            *(u16*)(q + 0x3C0) = 1;
+            *(u16*)(q + 0x3E8) = 1;
+            *(u16*)(q + 0x410) = 1;
+            *(u16*)(q + 0x438) = 1;
+            *(u16*)(q + 0x460) = 1;
+        } else {
+            r = (u8*)(idx * 0x5F0 + 0x1058);
+            r += (u32)D_800C34B0;
+            *(u16*)(r + 0x370) = 1;
+            *(u16*)(r + 0x3C0) = 1;
+            *(u16*)(r + 0x3E8) = 1;
+            *(u16*)(r + 0x410) = 1;
+            *(u16*)(r + 0x438) = 1;
+            *(u16*)(r + 0x460) = 1;
+            *(u16*)(r + 0x488) = 1;
+            *(u16*)(r + 0x4B0) = 1;
+            *(u16*)(r + 0x4D8) = 1;
+            *(u16*)(r + 0x500) = 1;
+        }
+    }
+}
+/* func_8009AC48.s, byte-exact: unless `check` is set and D_800C3DFC+0xA
+ * bit 8 is clear, consume actor idx's ready flag: stamp its command slots
+ * with 0x2000 as func_8009AB38 does, then clear the flag bit through p2.
+ * First draft from func_8009AB38. */
+void func_8009AC48(u8 idx, u8 check) {
+    u8* p;
+    u32 flag;
+    u8* q;
+    u8* r;
+    u8* p2;
+
+    if (check != 0 && !(*(u16*)(D_800C3DFC + 0xA) & 0x100)) {
+        return;
+    }
+    p = D_800C34B0 + idx * 0x170;
+    if (p[0x15A] & 0x80) {
+        flag = *(u16*)(p + 0x124) & 0x2000;
+    } else {
+        flag = *(u16*)(p + 0x88) & 0x400;
+    }
+    if (flag != 0) {
+        p2 = D_800C34B0 + idx * 0x170;
+        if (p2[0x15A] & 0x80) {
+            q = (u8*)(idx * 0x690 + 0x2228);
+            q += (u32)D_800C34B0;
+            *(u16*)(q + 0x348) = 0x2000;
+            *(u16*)(q + 0x398) = 0x2000;
+            *(u16*)(q + 0x3C0) = 0x2000;
+            *(u16*)(q + 0x3E8) = 0x2000;
+            *(u16*)(q + 0x410) = 0x2000;
+            *(u16*)(q + 0x438) = 0x2000;
+            *(u16*)(q + 0x460) = 0x2000;
+            *(u16*)(p2 + 0x124) &= 0xDFFF;
+        } else {
+            r = (u8*)(idx * 0x5F0 + 0x1058);
+            r += (u32)D_800C34B0;
+            *(u16*)(r + 0x370) = 0x2000;
+            *(u16*)(r + 0x3C0) = 0x2000;
+            *(u16*)(r + 0x3E8) = 0x2000;
+            *(u16*)(r + 0x410) = 0x2000;
+            *(u16*)(r + 0x438) = 0x2000;
+            *(u16*)(r + 0x460) = 0x2000;
+            *(u16*)(r + 0x488) = 0x2000;
+            *(u16*)(r + 0x4B0) = 0x2000;
+            *(u16*)(r + 0x4D8) = 0x2000;
+            *(u16*)(r + 0x500) = 0x2000;
+            *(u16*)(p2 + 0x88) &= 0xFBFF;
+        }
+    }
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main56", func_8009ADA0);
 #endif
 
@@ -49,8 +151,10 @@ void func_8009AEFC(u8 index) {
 }
 
 
-/* ---- Port bodies (fo/bat3).  Not byte-matching: the matching build keeps
- * the retail bytes from the INCLUDE_ASM block above. ---- */
+/* ---- Port bodies (fo/bat3).  The retail build compiles the byte-exact C
+ * above for func_8009AB38 and func_8009AC48; func_8009ADA0 still assembles
+ * from its INCLUDE_ASM site.  The bodies below are kept for the port and
+ * the differential harnesses. ---- */
 #ifndef XENO_PC_PORT
 extern u8* D_800C3DFC;
 #endif
