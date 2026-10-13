@@ -146,10 +146,112 @@ void func_80091604(s32 y) {
     D_800D2D28[0xA5] = D_800CCB34;
     D_800D2D28[0x9C] = 1;
 }
-INCLUDE_ASM("asm/battle/nonmatchings/main51", func_800916D4);
+extern u8 D_800D2D24[];
+extern u8 D_800C3CFA[];
+extern void func_80076CE8(u8* p, s32 x, s32 y, s32 a3, s32 a4, s32 a5, s32 a6);
+extern u32 func_8009A258(s32 a, s32 b);
+extern void func_8008AAA0(u32 value);
+
+/* func_800916D4.s, byte-exact: with k = c * 2 + b, set up the
+ * func_80076CE8 sprite at +0x140 + D_800CCB34 * 40 of the record pointed to
+ * by the word at D_800C3EA4 + 0xA230 (0x20, 0xA4, (u8)(k % 2 * 120),
+ * (u8)(k / 2 * 16), 0x60, 0x10) and clear its +0x66E count; for an actor a
+ * whose D_800D2D24 byte is 1, pass func_8009A258(a, k + 0x16) to
+ * func_8008AAA0 and add one func_80076C78 sprite per D_800C3CFA entry
+ * (three, 0xFF = none) at x 0x8C, 0x94, 0x9C, counting them in +0x66E.
+ * gcc 2.6.x code; func_8009A258 takes int arguments here (its second one is
+ * passed unmasked), and the loop's sprite address reads the record pointer
+ * through the D_800C3EA4 word, not a local (retail adds it last). */
+void func_800916D4(u8 b, u8 c, u8 a) {
+    u32 k = c * 2 + b;
+    u32 q = k / 2;
+    u32 r = k - q * 2;
+    s32 i;
+    u16 x;
+
+    func_80076CE8(*(u8**)(D_800C3EA4 + 0xA230) + 0x140 + *(s32*)&D_800CCB34 * 40, 0x20, 0xA4, (u8)(r * 120), (u8)(q * 16), 0x60, 0x10);
+    (*(u8**)(D_800C3EA4 + 0xA230))[0x66E] = 0;
+    if (D_800D2D24[a] == 1) {
+        func_8008AAA0(func_8009A258(a, k + 0x16));
+        for (i = 0, x = 0x8C; i < 3; i++, x += 8) {
+            if (D_800C3CFA[i] != 0xFF) {
+                func_80076C78(*(u8**)(D_800C3EA4 + 0xA230) + 0x190 + ((*(u8**)(D_800C3EA4 + 0xA230))[0x66E] * 2 + *(s32*)&D_800CCB34) * 40, x, 0xA6, (u8)(D_800C3CFA[i] * 8 + 0x78), 0, 8);
+                (*(u8**)(D_800C3EA4 + 0xA230))[0x66E]++;
+            }
+        }
+    }
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_8009187C);
-INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80091B38);
-INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80091D38);
+extern u8 g_GameState[];
+extern u8 D_800D2D24[];
+extern u8 D_800D32A1[];
+extern s32 D_800D367C;
+extern s32 D_800CCB34__w[] asm("D_800CCB34");
+
+/* func_80091B38.s, byte-exact: func_8009382C's two-line string sprite for
+ * table D_800D367C at x 0x30, with id = D_800D2D24[a] * 32 + (c * 2 + b) * 2
+ * (D_800D32A1 byte of a clear) or g_GameState[0x30C + D_800D2D24[a] * 0xA4]
+ * * 32 + (c * 2 + b) * 2.  Same codegen as func_8009382C (u32 `str` copy of
+ * the u16 id after bzero, word view of D_800CCB34); first draft. */
+void func_80091B38(u8 a, u8 b, u8 c) {
+    s16 r[4];
+    u16 id;
+    u8* buf;
+    s32 n1;
+    s32 n2;
+    u32 str;
+
+    if (D_800D32A1[a * 8] == 0) {
+        id = D_800D2D24[a] * 32 + (c * 2 + b) * 2;
+    } else {
+        id = g_GameState[0x30C + D_800D2D24[a] * 0xA4] * 32 + (c * 2 + b) * 2;
+    }
+    buf = func_8008AC00(0x39);
+    bzero(buf, 0x618);
+    str = id;
+    n1 = SystemRenderStringEntry(GetStringEntry(D_800D367C, str), buf, 0x39, 0);
+    n2 = SystemRenderStringEntry(GetStringEntry(D_800D367C, str | 1), buf, 0x39, 1);
+    r[0] = 0x3C0;
+    r[2] = 0x3C;
+    r[1] = 0;
+    r[3] = 0xD;
+    func_800769E8(r, buf);
+    func_80076C78(*(u8**)(D_800C3EA4 + 0xA230) + 0x280 + D_800CCB34__w[0] * 40, 0x30, 0xB6, 0, 0, n1 & 0xFF);
+    func_80076C78(*(u8**)(D_800C3EA4 + 0xA230) + 0x2D0 + D_800CCB34__w[0] * 40, 0x30, 0xC6, 0, 0, n2 & 0xFF);
+    HeapFree(buf);
+}
+extern u8 g_GameState[];
+extern u8 D_800D2D24[];
+extern u8 D_800D32A1[];
+extern u16 func_80089C6C(u16 bits, u8 b);
+extern void func_800916D4(u8 b, u8 c, u8 a);
+extern void func_8009187C(u8 a, u8 b, u8 c);
+extern void func_80091B38(u8 a, u8 b, u8 c);
+
+/* func_80091D38.s, byte-exact: when func_80089C6C accepts the halfword at
+ * g_GameState + 0x16C2 (D_800D32A1 byte of a clear) or + 0x16C6 (set) +
+ * D_800D2D24[a] * 32 for b + c * 2, run func_800916D4(b, c, a),
+ * func_8009187C(a, b, c) and func_80091B38(a, b, c) and set bytes +0x66A
+ * (D_800CCB34) and +0x66B (1) of the record pointed to by the word at
+ * D_800C3EA4 + 0xA230; otherwise clear its +0x66B.  First draft. */
+void func_80091D38(u8 a, u8 b, u8 c) {
+    u8 ok = 0;
+
+    if (D_800D32A1[a * 8] == 0) {
+        ok = func_80089C6C(*(u16*)(g_GameState + 0x16C2 + D_800D2D24[a] * 32), b + c * 2) != 0;
+    } else if (func_80089C6C(*(u16*)(g_GameState + 0x16C6 + D_800D2D24[a] * 32), b + c * 2) != 0) {
+        ok = 1;
+    }
+    if (ok) {
+        func_800916D4(b, c, a);
+        func_8009187C(a, b, c);
+        func_80091B38(a, b, c);
+        (*(u8**)(D_800C3EA4 + 0xA230))[0x66A] = D_800CCB34;
+        (*(u8**)(D_800C3EA4 + 0xA230))[0x66B] = 1;
+    } else {
+        (*(u8**)(D_800C3EA4 + 0xA230))[0x66B] = 0;
+    }
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80091EC4);
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_8009209C);
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80092298);
