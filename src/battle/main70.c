@@ -622,7 +622,37 @@ void func_800A9540(s32 actor) {
     func_80029AFC(D_800C3B78, 0, 0);
     ArchiveSetIndex(idx, sub);
 }
-INCLUDE_ASM("asm/battle/nonmatchings/main70", func_800A96B4);
+extern char* ArchiveGetFilePath(int entryIndex);
+
+/* Queue battle data pair `index` from archive 0x28 (sub-index 0): a 0x18-byte
+ * list (published at D_800C3B78) of files index * 2 + 1 and index * 2 + 2,
+ * each with a HeapAlloc(size, 1) buffer of its decoded size, then a zero entry.
+ * ArchiveGetFilePath of the first file is called and its result unused.  The
+ * archive position is restored afterwards.  The func_800A9540 pattern. */
+void func_800A96B4(s32 index) {
+    s32 idx;
+    s32 sub;
+    BattleFileEntry* list;
+    s32 file;
+
+    ArchiveGetArchiveOffsetIndices(&idx, &sub);
+    ArchiveSetIndex(0x28, 0);
+    HeapChangeCurrentUser(4, 0);
+    list = HeapAlloc(0x18, 1);
+    D_800C3B78 = list;
+    index *= 2;
+    file = index + 1;
+    ArchiveGetFilePath(file);
+    list[0].index = file;
+    list[0].buf = HeapAlloc(ArchiveDecodeAlignedSize(file), 1);
+    file = index + 2;
+    list[1].index = file;
+    list[1].buf = HeapAlloc(ArchiveDecodeAlignedSize(file), 1);
+    list[2].index = 0;
+    list[2].buf = NULL;
+    func_80029AFC(D_800C3B78, 0, 0);
+    ArchiveSetIndex(idx, sub);
+}
 extern void ResolveArchiveEntryPointers(u8* entry);
 extern void func_800A8BF0(s32 slot, u16 kind, u8* a2, u8* a3, s16 x, s16 y, s16 z, s16 w,
                           s16* pos);
