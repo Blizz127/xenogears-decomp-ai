@@ -3,7 +3,27 @@
 
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/main30", func_8007E7E4);
+extern u16 func_80089BEC(u8 index);
+extern u16 D_800CCD62[][184];
+
+/* func_8007E7E4.s, byte-exact: script op that sets (p[2] != 0) or clears
+ * the func_80089BEC(p[1] + 7) bit in the u16 at the start of each of the
+ * three 0x170-byte rows at D_800CCD62 (p = *ppBoard, re-read per row).
+ * The rows are a 2D array: a flat `D_800CCD62[i * 184]` keeps the base in a
+ * register and compares the row pointer against base + 0x450, where retail
+ * compares it against the constant end address. */
+void func_8007E7E4(u8** ppBoard) {
+    s32 i;
+    u8 on = (*ppBoard)[2] != 0;
+
+    for (i = 0; i < 3; i++) {
+        if (on) {
+            D_800CCD62[i][0] |= func_80089BEC((*ppBoard)[1] + 7);
+        } else {
+            D_800CCD62[i][0] &= ~func_80089BEC((*ppBoard)[1] + 7);
+        }
+    }
+}
 #endif
 
 
