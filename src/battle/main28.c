@@ -59,7 +59,43 @@ void func_8007E1D0(u8 **pp, s32 idx) {
     *(u16 *)(off + row) = result;
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/main28", func_8007E234);
+extern u8 D_800D32A1[][8];
+extern u32 func_8007A744(u8 index);
+
+/* func_8007E234.s, byte-exact: battle-script op building a 3-bit party
+ * mask into halfword p[1] of row `index` of D_800D3420 (p = *ppBoard).
+ * For party members 2, 1, 0 that func_8007A744 accepts, the bit is set
+ * by mode p[2]: 1 when the member's D_800D32A1 entry is set, 2 when it is
+ * clear, any other mode always.  The mask is shifted once per member and
+ * stored >> 1. */
+void func_8007E234(u8** ppBoard, u8 index) {
+    u16 flags = 0;
+    s32 i;
+    u16* row;
+
+    for (i = 2; i >= 0; i--) {
+        if ((u8)func_8007A744(i) != 0) {
+            switch ((*ppBoard)[2]) {
+            case 1:
+                if (D_800D32A1[i][0] != 0) {
+                    flags |= 1;
+                }
+                break;
+            case 2:
+                if (D_800D32A1[i][0] == 0) {
+                    flags |= 1;
+                }
+                break;
+            default:
+                flags |= 1;
+                break;
+            }
+        }
+        flags <<= 1;
+    }
+    row = (u16*)(D_800D3420 + ((u32)index << 6));
+    row[(*ppBoard)[1]] = flags >> 1;
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main28", func_8007E334);
 INCLUDE_ASM("asm/battle/nonmatchings/main28", func_8007E438);
 INCLUDE_ASM("asm/battle/nonmatchings/main28", func_8007E554);
