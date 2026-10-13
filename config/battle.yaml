@@ -170,9 +170,11 @@ segments:
       # retail bytes: 80084854 (C body not yet matching); matched C: 80084750
       - [0x14C60, c, mainasm_14C60]
       - [0x14F8C, c, main35_p3_q2]
-      # retail bytes: 80084B40 (C body not yet matching)
+      # matched C: 80084B40
       - [0x15050, c, mainasm_15050]
-      - [0x15238, c, main35_p4]
+      # matched C: 80084D28 (gcc 2.6.3); retail bytes: 80084DE4 (C body not yet matching)
+      - [0x15238, c, mainasm_15238]
+      - [0x15594, c, main35_p4]
       # retail bytes: 80085388, 80085454, 80085618, 80085AC4 (C body not yet matching)
       - [0x15898, c, mainasm_15898]
       - [0x16068, c, main36_p2]

@@ -357,6 +357,12 @@ paths = [
     # but it only forces the immediate.  func_8009B098 compiles to the
     # same bytes under 2.7.2 and 2.6.x.
     "src/battle/main57.",
+    # mainasm_15238 (2026-10-13): split off the front of main35_p4.
+    # func_80084D28 matches only under 2.6.x (2.6.0 and 2.6.3): retail's
+    # loop counter increment sits in the first branch's delay slot, which
+    # no 2.7.2 spelling reproduces (main35_p4's func_80085084 onward is
+    # 2.7.2).  func_80084DE4 is still asm.
+    "src/battle/mainasm_15238.",
 ]
 
 [[build_preset]]

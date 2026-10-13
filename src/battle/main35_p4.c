@@ -1,10 +1,9 @@
-/* Retail TU part 4 of main35.c (see the BATTLE_TU_PART note there): the
- * still-assembly run below, then that file's part-4 C bodies. */
+/* Retail TU part 4 of main35.c (see the BATTLE_TU_PART note there):
+ * func_80085084, then that file's part-4 C bodies.  The run before it
+ * (func_80084D28, func_80084DE4) is gcc 2.6.3 code in mainasm_15238.c. */
 #define BATTLE_TU_PART 4
 #include "common.h"
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/main35_p4", func_80084D28);
-INCLUDE_ASM("asm/battle/nonmatchings/main35_p4", func_80084DE4);
 extern u8 D_800D3014;
 extern u8 D_800C3E2C;
 extern u16 D_800C3D64;
