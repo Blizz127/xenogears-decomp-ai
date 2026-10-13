@@ -50,7 +50,7 @@ extern u8 D_800D2CE0[];
 extern u8* func_8008AC00(s32 size);
 extern void bzero(void* p, s32 n);
 extern s32 D_800D329C;
-extern u8* GetStringEntry(s32 table, u8 id);
+extern u8* GetStringEntry(s32 table, s32 id);
 extern s32 SystemRenderStringEntry(u8* str, u8* buf, s32 w, s32 flags);
 extern void func_800769E8(s16* rect, u8* buf);
 extern s32 D_800C3EA4;
@@ -157,7 +157,41 @@ INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80092784);
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80092B74);
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_800930AC);
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80093578);
-INCLUDE_ASM("asm/battle/nonmatchings/main51", func_8009382C);
+extern u8 D_800CCD88[];
+extern s32 D_800C3DE8;
+extern s32 D_800CCB34__w[] asm("D_800CCB34");
+
+/* func_8009382C.s, byte-exact: render strings id and id | 1 of table
+ * D_800C3DE8 (id = (D_800CCD88[a * 0x170] * 4 + b) * 2) into a 0x39-wide
+ * buffer, upload it at (0x3C0, 0) and set up two text sprites at
+ * +0x280 / +0x2D0 + D_800CCB34 * 40 of the record pointed to by the word at
+ * D_800C3EA4 + 0xA230 (func_8009070C's shape with two lines).  Codegen:
+ * D_800CCB34 is read as a word through an unsized-array view (retail keeps
+ * its address in a saved register across the first func_80076C78 call);
+ * the u16 id is copied to a u32 `str` after bzero (retail's late
+ * andi 0xFFFF; a decomp-permuter hint), and GetStringEntry takes an s32
+ * index, as its definition does. */
+void func_8009382C(u8 a, u8 b) {
+    s16 r[4];
+    u16 id = (D_800CCD88[a * 0x170] * 4 + b) * 2;
+    u8* buf = func_8008AC00(0x39);
+    s32 n1;
+    s32 n2;
+    u32 str;
+
+    bzero(buf, 0x618);
+    str = id;
+    n1 = SystemRenderStringEntry(GetStringEntry(D_800C3DE8, str), buf, 0x39, 0);
+    n2 = SystemRenderStringEntry(GetStringEntry(D_800C3DE8, str | 1), buf, 0x39, 1);
+    r[0] = 0x3C0;
+    r[2] = 0x3C;
+    r[1] = 0;
+    r[3] = 0xD;
+    func_800769E8(r, buf);
+    func_80076C78(*(u8**)(D_800C3EA4 + 0xA230) + 0x280 + D_800CCB34__w[0] * 40, 0x88, 0xB6, 0, 0, n1 & 0xFF);
+    func_80076C78(*(u8**)(D_800C3EA4 + 0xA230) + 0x2D0 + D_800CCB34__w[0] * 40, 0x88, 0xC6, 0, 0, n2 & 0xFF);
+    HeapFree(buf);
+}
 extern u16 D_800C324E;
 extern u16 D_800C3250;
 extern u16 D_800C3252;
