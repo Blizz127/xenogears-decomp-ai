@@ -387,6 +387,12 @@ paths = [
     # CDK cc1: 7 short); main26's func_8007D30C compiles to the same bytes
     # under 2.6.3.
     "src/battle/main26.",
+    # mainasm_D854 (2026-10-13): func_8007D344 (same shape as main26's
+    # func_8007D1DC) and func_8007D478 match under 2.6.3 and 2.6.0; the
+    # 2.7.2 cc1 compiles them 1 and 8 insns short, the CDK cc1 5 and 5.
+    # The TU's func_8007D5B0 and func_8007D610 compile to the same bytes
+    # under 2.6.3.
+    "src/battle/mainasm_D854.",
 ]
 
 [[build_preset]]
