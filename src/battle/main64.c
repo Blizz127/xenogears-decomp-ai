@@ -21,7 +21,65 @@ s32 func_8009E53C(u8 idx) {
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/battle/nonmatchings/main64", func_8009E5C8);
-INCLUDE_ASM("asm/battle/nonmatchings/main64", func_8009E788);
+
+extern u8* D_800D2D6C;
+
+/* func_8009E788.s, byte-exact: by the D_800C34B0+0x5FC2 mode, tick down
+ * the g_GameState+0x22B6 counter of D_800D2D6C's +4 id (modes 0, 15), of
+ * its +7 id (modes 2, 17), or of both (modes 3-14).  The switch table is
+ * this object's .rodata (placed at jtbl_800704CC by config/battle.yaml).
+ * Each case has its own decrement: the final jump pass cross-jumps the
+ * copies into retail's shared tail, and modes 0 and 15 keep separate
+ * blocks.  One decrement after the switch lets it merge those two blocks
+ * (six instructions short).  -= 1 gives retail's `addiu 0xFF` under gcc
+ * 2.6.x (the BattleGcc263 preset), as in main57's func_8009AFD8. */
+void func_8009E788(void) {
+    u32 id;
+
+    switch (D_800C34B0[0x5FC2]) {
+    case 0:
+        id = D_800D2D6C[4];
+        if (g_GameState[0x22B6 + id] != 0) {
+            g_GameState[0x22B6 + id] -= 1;
+        }
+        break;
+    case 3:
+    case 4:
+    case 5:
+    case 6:
+    case 7:
+    case 8:
+    case 9:
+    case 10:
+    case 11:
+    case 12:
+    case 13:
+    case 14:
+        id = D_800D2D6C[4];
+        if (g_GameState[0x22B6 + id] != 0) {
+            g_GameState[0x22B6 + id] -= 1;
+        }
+        id = D_800D2D6C[7];
+        if (g_GameState[0x22B6 + id] != 0) {
+            g_GameState[0x22B6 + id] -= 1;
+        }
+        break;
+    case 15:
+        id = D_800D2D6C[4];
+        if (g_GameState[0x22B6 + id] != 0) {
+            g_GameState[0x22B6 + id] -= 1;
+        }
+        break;
+    case 2:
+    case 17:
+        id = D_800D2D6C[7];
+        if (g_GameState[0x22B6 + id] != 0) {
+            g_GameState[0x22B6 + id] -= 1;
+        }
+        break;
+    }
+}
+
 INCLUDE_ASM("asm/battle/nonmatchings/main64", func_8009E868);
 typedef struct {
     u8** items;

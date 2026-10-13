@@ -357,6 +357,11 @@ paths = [
     # but it only forces the immediate.  func_8009B098 compiles to the
     # same bytes under 2.7.2 and 2.6.x.
     "src/battle/main57.",
+    # main64 (2026-10-13): func_8009E788 has the same `-= 1` decrement
+    # (addiu 0xFF only under 2.6.0/2.6.3; `+= 0xFF` also matches under
+    # 2.7.2).  main64's other C (func_8009E53C, func_8009EBA8,
+    # func_8009EC4C, func_8009F5B0) is the same under 2.7.2 and 2.6.x.
+    "src/battle/main64.",
 ]
 
 [[build_preset]]
