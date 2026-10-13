@@ -3,12 +3,199 @@
 
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/main28", func_8007D8C0);
-INCLUDE_ASM("asm/battle/nonmatchings/main28", func_8007DA1C);
-INCLUDE_ASM("asm/battle/nonmatchings/main28", func_8007DB78);
-INCLUDE_ASM("asm/battle/nonmatchings/main28", func_8007DCF8);
-INCLUDE_ASM("asm/battle/nonmatchings/main28", func_8007DE78);
-INCLUDE_ASM("asm/battle/nonmatchings/main28", func_8007DFD4);
+extern u8 D_800D3420[];
+extern u8 D_800D32A1[][8];
+extern u32 func_8007A628(u8 a0, u8 a1);
+extern u32 func_8007A280(u8 a0, u8 a1, u32 a2, u32 a3);
+extern u32 func_8001BD40(u32 lo, u8 hi);
+extern u32 func_80089C08(u8 idx);
+
+/* func_8007D8C0 .. func_8007DFD4, byte-exact: six battle-script ops on
+ * p = *ppBoard that pick a random combatant.  Each clears halfword p[2]
+ * of row `index` of D_800D3420, collects the slots i that
+ * func_8007A628(i, k) accepts (func_8007DB78/DCF8/DFD4: and whose
+ * D_800D32A1 byte is set) and whose func_8007A280(i, p[1], 0, 1) mask
+ * meets halfword p[3] of the row, and stores func_80089C08 of a random one
+ * (func_8001BD40(0, count - 1)) in halfword p[2]:
+ *   func_8007D8C0  slots 0..2,  k = 0
+ *   func_8007DA1C  slots 3..10, k = 0
+ *   func_8007DB78  slots 0..2,  k = 0, D_800D32A1
+ *   func_8007DCF8  slots 3..10, k = 0, D_800D32A1
+ *   func_8007DE78  slots 0..2,  k = 1
+ *   func_8007DFD4  slots 0..2,  k = 1, D_800D32A1
+ * gcc 2.6.x code (main28 is BattleGcc263).  The loop reads the row through
+ * its own pointer `vars`, set after the func_8007A280 call: retail copies
+ * the row pointer into an s-register before the first store, and reading
+ * through `row` in the loop computes it there directly (func_8007D8C0: 344
+ * vs 348 bytes). */
+void func_8007D8C0(u8** ppBoard, u8 index) {
+    u8 list[8];
+    s32 i = 0;
+    s32 n = 0;
+    u16* row;
+    u16* vars;
+    u16* dst;
+    u16 v;
+    u32 m;
+
+    row = (u16*)(D_800D3420 + ((u32)index << 6));
+    row[(*ppBoard)[2]] = 0;
+    for (; i < 3; i++) {
+        if ((u8)func_8007A628(i, 0) != 0) {
+            m = func_8007A280(i, (*ppBoard)[1], 0, 1);
+            vars = (u16*)(D_800D3420 + ((u32)index << 6));
+            if (vars[(*ppBoard)[3]] & m) {
+                list[n] = i;
+                n++;
+            }
+        }
+    }
+    if (n != 0) {
+        v = func_80089C08(list[(u8)func_8001BD40(0, n - 1)]);
+        dst = (u16*)(D_800D3420 + ((u32)index << 6));
+        dst[(*ppBoard)[2]] = v;
+    }
+}
+void func_8007DA1C(u8** ppBoard, u8 index) {
+    u8 list[8];
+    s32 n = 0;
+    s32 i = 3;
+    u16* row;
+    u16* vars;
+    u16* dst;
+    u16 v;
+    u32 m;
+
+    row = (u16*)(D_800D3420 + ((u32)index << 6));
+    row[(*ppBoard)[2]] = 0;
+    for (; i < 11; i++) {
+        if ((u8)func_8007A628(i, 0) != 0) {
+            m = func_8007A280(i, (*ppBoard)[1], 0, 1);
+            vars = (u16*)(D_800D3420 + ((u32)index << 6));
+            if (vars[(*ppBoard)[3]] & m) {
+                list[n] = i;
+                n++;
+            }
+        }
+    }
+    if (n != 0) {
+        v = func_80089C08(list[(u8)func_8001BD40(0, n - 1)]);
+        dst = (u16*)(D_800D3420 + ((u32)index << 6));
+        dst[(*ppBoard)[2]] = v;
+    }
+}
+void func_8007DB78(u8** ppBoard, u8 index) {
+    u8 list[8];
+    s32 i = 0;
+    s32 n = 0;
+    u16* row;
+    u16* vars;
+    u16* dst;
+    u16 v;
+    u32 m;
+
+    row = (u16*)(D_800D3420 + ((u32)index << 6));
+    row[(*ppBoard)[2]] = 0;
+    for (; i < 3; i++) {
+        if ((u8)func_8007A628(i, 0) != 0 && D_800D32A1[i][0] != 0) {
+            m = func_8007A280(i, (*ppBoard)[1], 0, 1);
+            vars = (u16*)(D_800D3420 + ((u32)index << 6));
+            if (vars[(*ppBoard)[3]] & m) {
+                list[n] = i;
+                n++;
+            }
+        }
+    }
+    if (n != 0) {
+        v = func_80089C08(list[(u8)func_8001BD40(0, n - 1)]);
+        dst = (u16*)(D_800D3420 + ((u32)index << 6));
+        dst[(*ppBoard)[2]] = v;
+    }
+}
+void func_8007DCF8(u8** ppBoard, u8 index) {
+    u8 list[8];
+    s32 i = 3;
+    s32 n = 0;
+    u16* row;
+    u16* vars;
+    u16* dst;
+    u16 v;
+    u32 m;
+
+    row = (u16*)(D_800D3420 + ((u32)index << 6));
+    row[(*ppBoard)[2]] = 0;
+    for (; i < 11; i++) {
+        if ((u8)func_8007A628(i, 0) != 0 && D_800D32A1[i][0] != 0) {
+            m = func_8007A280(i, (*ppBoard)[1], 0, 1);
+            vars = (u16*)(D_800D3420 + ((u32)index << 6));
+            if (vars[(*ppBoard)[3]] & m) {
+                list[n] = i;
+                n++;
+            }
+        }
+    }
+    if (n != 0) {
+        v = func_80089C08(list[(u8)func_8001BD40(0, n - 1)]);
+        dst = (u16*)(D_800D3420 + ((u32)index << 6));
+        dst[(*ppBoard)[2]] = v;
+    }
+}
+void func_8007DE78(u8** ppBoard, u8 index) {
+    u8 list[8];
+    s32 i = 0;
+    s32 n = 0;
+    u16* row;
+    u16* vars;
+    u16* dst;
+    u16 v;
+    u32 m;
+
+    row = (u16*)(D_800D3420 + ((u32)index << 6));
+    row[(*ppBoard)[2]] = 0;
+    for (; i < 3; i++) {
+        if ((u8)func_8007A628(i, 1) != 0) {
+            m = func_8007A280(i, (*ppBoard)[1], 0, 1);
+            vars = (u16*)(D_800D3420 + ((u32)index << 6));
+            if (vars[(*ppBoard)[3]] & m) {
+                list[n] = i;
+                n++;
+            }
+        }
+    }
+    if (n != 0) {
+        v = func_80089C08(list[(u8)func_8001BD40(0, n - 1)]);
+        dst = (u16*)(D_800D3420 + ((u32)index << 6));
+        dst[(*ppBoard)[2]] = v;
+    }
+}
+void func_8007DFD4(u8** ppBoard, u8 index) {
+    u8 list[8];
+    s32 i = 0;
+    s32 n = 0;
+    u16* row;
+    u16* vars;
+    u16* dst;
+    u16 v;
+    u32 m;
+
+    row = (u16*)(D_800D3420 + ((u32)index << 6));
+    row[(*ppBoard)[2]] = 0;
+    for (; i < 3; i++) {
+        if ((u8)func_8007A628(i, 1) != 0 && D_800D32A1[i][0] != 0) {
+            m = func_8007A280(i, (*ppBoard)[1], 0, 1);
+            vars = (u16*)(D_800D3420 + ((u32)index << 6));
+            if (vars[(*ppBoard)[3]] & m) {
+                list[n] = i;
+                n++;
+            }
+        }
+    }
+    if (n != 0) {
+        v = func_80089C08(list[(u8)func_8001BD40(0, n - 1)]);
+        dst = (u16*)(D_800D3420 + ((u32)index << 6));
+        dst[(*ppBoard)[2]] = v;
+    }
+}
 #endif
 void func_80087EDC(s32, s32, s32);               /* extern */
 void func_800883AC(s32, void *, s32);            /* extern */
