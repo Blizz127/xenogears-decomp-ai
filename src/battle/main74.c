@@ -311,7 +311,52 @@ void func_800B10EC(s32 index, s32 x, s32 z, s32 radius) {
         *(s32*)(*(u8**)(D_800D3368[index] + 4) + 0x64) = z - dz * radius / dist - rsin(angle) * rem / 4096;
     }
 }
-INCLUDE_ASM("asm/battle/nonmatchings/main74", func_800B12D0);
+extern s32 D_800C360C;
+typedef struct BattleRec48 {
+    u8 b[0x48];
+} BattleRec48;
+extern BattleRec48 D_800C4000__r[] asm("D_800C4000");
+
+/* func_800B12D0.s, byte-exact: 1 when the command-mask bit for byte `index`
+ * of the current actor's (D_800C360C - 1) 0x48-byte record at D_800C4000 is
+ * clear in `mask` (kinds 0/1 -> bit 0, 5 -> bit 1, 4 -> bit 2, 2/3 -> bit 3,
+ * in retail's case order), or when mask's low byte is 0; otherwise 0.  The
+ * switch table is this object's .rodata (jtbl_800707C4, placed by
+ * config/battle.yaml).  The record is indexed as a struct array: the flat
+ * `[(D_800C360C - 1) * 0x48 + index]` lets gcc fold the -0x48 into the
+ * base address (one instruction short). */
+u32 func_800B12D0(u32 index, u32 mask) {
+    u32 result = 0;
+
+    switch (D_800C4000__r[D_800C360C - 1].b[index]) {
+    case 0:
+    case 1:
+        if (!(mask & 1)) {
+            result = 1;
+        }
+        break;
+    case 5:
+        if (!(mask & 2)) {
+            result = 1;
+        }
+        break;
+    case 4:
+        if (!(mask & 4)) {
+            result = 1;
+        }
+        break;
+    case 2:
+    case 3:
+        if (!(mask & 8)) {
+            result = 1;
+        }
+        break;
+    }
+    if (!(mask & 0xFF)) {
+        result = 1;
+    }
+    return result;
+}
 extern u32 func_800BF6F8(void);
 extern void func_800BE790(void);
 extern void func_800B0060(u8* p);
