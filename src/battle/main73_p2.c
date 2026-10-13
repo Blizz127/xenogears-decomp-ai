@@ -169,7 +169,36 @@ void func_800AFC68(u8* task) {
     a->next(task);
 }
 INCLUDE_ASM("asm/battle/nonmatchings/main73_p2", func_800AFD98);
-INCLUDE_ASM("asm/battle/nonmatchings/main73_p2", func_800AFF9C);
+extern s32 func_800A5914(SVECTOR* pos, s32 tri, s32 tries);
+extern s32 func_800A579C(SVECTOR* pos);
+extern s32 func_800A5870(SVECTOR* pos, s32 tri, VECTOR* normal);
+
+/* func_800AFF9C.s, byte-exact: walk-mesh floor query for obj.  The model's
+ * (obj +4) position +0x5C/+0x60/+0x64 goes into a short vector; the cached
+ * triangle obj +0x1E is refreshed with func_800A5914(pos, tri, 4), or with
+ * func_800A579C(pos) when that is negative; func_800A5870 then sets pos.vy
+ * to the floor height, which goes to obj +0x60 and, unless obj +0x36 is set,
+ * back into the model's +0x60.  The port runs the lifted body in main73.c.
+ * The model coordinates are read as s16 halves (lhu); s32 reads are lw. */
+void func_800AFF9C(u8* obj) {
+    VECTOR normal;
+    SVECTOR pos;
+    s16 tri;
+
+    pos.vx = *(s16*)(*(u8**)(obj + 4) + 0x5C);
+    pos.vy = *(s16*)(*(u8**)(obj + 4) + 0x60);
+    pos.vz = *(s16*)(*(u8**)(obj + 4) + 0x64);
+    tri = func_800A5914(&pos, *(s16*)(obj + 0x1E), 4);
+    *(s16*)(obj + 0x1E) = tri;
+    if (tri < 0) {
+        *(s16*)(obj + 0x1E) = func_800A579C(&pos);
+    }
+    func_800A5870(&pos, *(s16*)(obj + 0x1E), &normal);
+    *(s16*)(obj + 0x60) = pos.vy;
+    if (obj[0x36] == 0) {
+        *(s32*)(*(u8**)(obj + 4) + 0x60) = pos.vy;
+    }
+}
 #endif
 /* func_800B0060.s */
 extern void func_8003852C(u32 p);

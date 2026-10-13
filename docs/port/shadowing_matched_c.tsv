@@ -238,6 +238,7 @@ func_800AF2C4	port arm in src/battle/main73.c	func_800AF2C4
 func_800AF400	port arm in src/battle/main73.c	func_800AF400
 func_800AF438	port arm in src/battle/main73.c	func_800AF438
 func_800AF518	port arm in src/battle/main73.c	func_800AF518
+func_800AFF9C	lifted port arm (battle_lift.h) in src/battle/main73.c	func_800AFF9C
 func_800B0060	generated logging stub (matched C not linked)	func_800B0060
 func_800B00F4	port arm in src/battle/main74.c	func_800B00F4
 func_800B0164	port arm in src/battle/main74.c	func_800B0164
