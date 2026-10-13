@@ -48,7 +48,37 @@ void func_8007C9D4(u8** pp, u8 idx) {
     }
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/mainc25_q1", func_8007CB20);
+extern u8 D_800D32A1__rows[][8] asm("D_800D32A1");
+
+/* func_8007CB20.s, byte-exact: clear u16 slot (*pp)[1] of row idx of
+ * D_800D3420, collect the actors i in 3..10 that pass
+ * func_8007A628(i, (*pp)[2]) with their D_800D32A1 byte (8-byte rows) set,
+ * and store func_80089C08 of a random one (func_8001BD40(0, n - 1)) in the
+ * slot.  The func_8007D344 form (mainasm_D854).  D_800D32A1 is read
+ * through a [][8] row view: indexed flat (i * 8), the symbol joins the
+ * strength-reduced offset (1 insn short). */
+void func_8007CB20(u8** pp, u8 idx) {
+    u8 list[8];
+    s32 i = 3;
+    s32 n = 0;
+    u16* row;
+    u16* dst;
+    u16 v;
+
+    row = (u16*)(D_800D3420 + ((u32)idx << 6));
+    row[(*pp)[1]] = 0;
+    for (; i < 11; i++) {
+        if ((u8)func_8007A628((u8)i, (*pp)[2]) != 0 && D_800D32A1__rows[i][0] != 0) {
+            list[n] = i;
+            n++;
+        }
+    }
+    if (n != 0) {
+        v = func_80089C08(list[func_8001BD40(0, n - 1)]);
+        dst = (u16*)(D_800D3420 + ((u32)idx << 6));
+        dst[(*pp)[1]] = v;
+    }
+}
 
 extern u32 func_8007A628(u32 a0, u32 a1);
 extern u8 D_800C3EB4[];
