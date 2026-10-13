@@ -307,9 +307,9 @@ extern void func_800BC404(u32);
 extern void func_800BCD98(u32);
 extern void func_800716D8(void);
 #if BATTLE_PART(3)
-/* Not yet byte-matching: the matching build assembles retail bytes for
- * this function from its own asm segment (see config/battle.yaml).  The
- * body below is kept for the port and the differential harnesses. */
+/* Port body of func_80084B40.  The retail build compiles its byte-exact C
+ * in src/battle/mainasm_15050.c; this body is kept for the port and the
+ * differential harnesses. */
 #ifdef XENO_PC_PORT
 #include "target_ui_impl.inc"
 #endif /* XENO_PC_PORT */
