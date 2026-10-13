@@ -377,6 +377,11 @@ paths = [
     # (func_8007E154, func_8007E1D0, func_8007E234, func_8007E334,
     # func_8007E674) compiles to the same bytes under 2.6.3.
     "src/battle/main28.",
+    # main26 (2026-10-13): func_8007D1DC matches only under 2.6.x (2.6.0 and
+    # 2.6.3; 2.7.2: 2 insns short with a different register allocation; the
+    # CDK cc1: 7 short); main26's func_8007D30C compiles to the same bytes
+    # under 2.6.3.
+    "src/battle/main26.",
 ]
 
 [[build_preset]]
