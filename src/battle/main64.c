@@ -32,7 +32,8 @@ extern u8* D_800D2D6C;
  * copies into retail's shared tail, and modes 0 and 15 keep separate
  * blocks.  One decrement after the switch lets it merge those two blocks
  * (six instructions short).  -= 1 gives retail's `addiu 0xFF` under gcc
- * 2.6.x (the BattleGcc263 preset), as in main57's func_8009AFD8. */
+ * 2.6.x (main64's BattleGcc263Div preset is 2.6.3), as in main57's
+ * func_8009AFD8. */
 void func_8009E788(void) {
     u32 id;
 
@@ -412,7 +413,104 @@ u32 func_8009EF3C(BattlePartNode* node, s32 scale) {
     return count;
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/main64", func_8009F1C4);
+/* func_8009F1C4.s, byte-exact: func_8009EF3C's rebuild for the other model
+ * kind (func_800AAA20 picks it when obj+0x37 is set).  The header is built
+ * the same way.  Each later node first takes +5 = 1 and +4 = 1 from a
+ * parent whose flag is 1.  With +5 set it rebuilds its local rotation,
+ * multiplies it by diag(+0x4C/+0x4E/+0x50) and, with a parent, by
+ * diag(0x1000000 / the parent's scales) (scratchpad matrix, MulMatrix0);
+ * with +4 set it composes its world matrix as func_8009EF3C does.  +5 and
+ * +4 are cleared on every node after the header at the end.  Returns the
+ * node count.  The signed divisions carry aspsx's divide checks (the
+ * BattleGcc263Div preset); the loop's scratchpad pointer is set at the top
+ * of the +5 block, so it stays in a register across the calls. */
+u32 func_8009F1C4(BattlePartNode* node, s32 scale) {
+    BattlePartNode* set = node;
+    MATRIX* sm = (MATRIX*)0x1F800000;
+    u32 count = set->index;
+    u32 i;
+
+    set->world.t[0] = set->unk5C;
+    set->world.t[1] = set->unk60;
+    set->world.t[2] = set->unk64;
+    if (set->unk6) {
+        RotMatrixYXZ((SVECTOR*)&set->unk54, &set->world);
+    } else {
+        RotMatrix((SVECTOR*)&set->unk54, &set->world);
+    }
+    sm->m[0][0] = (scale * (s16)node->unk4C) >> 12;
+    sm->m[0][1] = 0;
+    sm->m[0][2] = 0;
+    sm->m[1][0] = 0;
+    sm->m[1][1] = (scale * (s16)node->unk4E) >> 12;
+    sm->m[1][2] = 0;
+    sm->m[2][0] = 0;
+    sm->m[2][1] = 0;
+    sm->m[2][2] = (scale * (s16)node->unk50) >> 12;
+    MulMatrix0(&node->world, sm, &node->local);
+    node->local.t[0] = node->world.t[0];
+    node->local.t[1] = node->world.t[1];
+    node->local.t[2] = node->world.t[2];
+    for (i = 1; i < count; i++) {
+        node++;
+        if (node->parent != NULL) {
+            if (node->parent->unk5 == 1) {
+                node->unk5 = 1;
+            }
+            if (node->parent->unk4 == 1) {
+                node->unk4 = 1;
+            }
+        }
+        if (node->unk5) {
+            MATRIX* m = (MATRIX*)0x1F800000;
+
+            if (node->unk6) {
+                RotMatrixYXZ((SVECTOR*)&node->unk54, &node->local);
+            } else {
+                RotMatrix((SVECTOR*)&node->unk54, &node->local);
+            }
+            m->m[0][0] = node->unk4C;
+            m->m[0][1] = 0;
+            m->m[0][2] = 0;
+            m->m[1][0] = 0;
+            m->m[1][1] = node->unk4E;
+            m->m[1][2] = 0;
+            m->m[2][0] = 0;
+            m->m[2][1] = 0;
+            m->m[2][2] = node->unk50;
+            MulMatrix0(&node->local, m, &node->local);
+            if (node->parent != NULL) {
+                m->m[0][0] = 0x1000000 / (s16)node->parent->unk4C;
+                m->m[0][1] = 0;
+                m->m[0][2] = 0;
+                m->m[1][0] = 0;
+                m->m[1][1] = 0x1000000 / (s16)node->parent->unk4E;
+                m->m[1][2] = 0;
+                m->m[2][0] = 0;
+                m->m[2][1] = 0;
+                m->m[2][2] = 0x1000000 / (s16)node->parent->unk50;
+                MulMatrix0(m, &node->local, &node->local);
+            }
+        }
+        if (node->unk4) {
+            node->local.t[0] = node->unk5C;
+            node->local.t[1] = node->unk60;
+            node->local.t[2] = node->unk64;
+            if (node->parent != NULL) {
+                CompMatrix(&node->parent->world, &node->local, &node->world);
+            } else {
+                node->world = node->local;
+            }
+        }
+    }
+    for (i = 1; i < count; i++) {
+        set++;
+        set->unk5 = 0;
+        set->unk4 = 0;
+    }
+    return count;
+}
+
 #endif
 
 
