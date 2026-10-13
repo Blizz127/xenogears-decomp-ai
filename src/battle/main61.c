@@ -26,7 +26,55 @@ u16 func_8009D948(void) {
     return a0;
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/main61", func_8009DA04);
+extern u16 func_80097610(void);
+extern u8* D_800D2DC8;
+extern u8* D_800C34B0;
+extern u8 D_800C3E50;
+
+/* func_8009DA04.s, byte-exact: defence value from func_80097610.  When
+ * D_800C3DFC+0xA bit 8 is set: scale the D_800D2DC8+0x72 term by
+ * (100 - D_800D2DC8[0x99]) / 100 (signed) when both are nonzero, add it for
+ * a +0x15A bit 7 actor D_800C3E50, and add half again when D_800D2DC8+0x80
+ * or +0x82 has bit 5; otherwise scale the value itself by that factor.
+ * gcc 2.6.x code.  Codegen: the call result and the +0x72 term are u16
+ * (masked at each use, as retail does); the two D_800D2DC8 reads of the
+ * first branch go through their own block-local pointers; the actor record
+ * sum adds D_800C34B0 loaded into a local first and goes through its own
+ * pointer p (base first, as in main56's func_8009AB38; indexing the sum
+ * directly comes out offset first). */
+u16 func_8009DA04(void) {
+    u16 a1 = func_80097610();
+    u8 a2;
+
+    if (*(u16*)(D_800C3DFC + 0xA) & 0x100) {
+        u8* d = D_800D2DC8;
+        u8* base;
+        u8* d2;
+        u8* p;
+        u16 a0;
+
+        a2 = d[0x99];
+        a0 = *(u16*)(d + 0x72);
+        if (a2 != 0 && a0 != 0) {
+            a0 = a0 * (100 - a2) / 100;
+        }
+        base = D_800C34B0;
+        p = base + D_800C3E50 * 0x170;
+        if (p[0x15A] & 0x80) {
+            a1 += a0;
+        }
+        d2 = D_800D2DC8;
+        if ((*(u16*)(d2 + 0x80) | *(u16*)(d2 + 0x82)) & 0x20) {
+            a1 += a1 >> 1;
+        }
+    } else {
+        a2 = D_800D2DC8[0x99];
+        if (a2 != 0) {
+            a1 = a1 * (100 - a2) / 100;
+        }
+    }
+    return a1;
+}
 extern u8* D_800D2DC8;
 
 /* Scale a0 by the target's resistance byte (D_800D2DC8 + 0x88 + index of
@@ -75,9 +123,10 @@ void func_8009E268(void) {
 }
 
 
-/* ---- Port bodies (fo/bat3).  Not byte-matching: the matching build keeps
- * the retail bytes from the INCLUDE_ASM block above; these are compiled only
- * for the port and the differential harness. ---- */
+/* ---- Port bodies (fo/bat3).  The retail build compiles the byte-exact C
+ * above for func_8009DA04; func_8009D3A0 and func_8009DBFC still assemble
+ * from their INCLUDE_ASM sites.  These are compiled only for the port and
+ * the differential harness. ---- */
 #ifndef XENO_PC_PORT
 extern u8* D_800C34B0;
 #endif
