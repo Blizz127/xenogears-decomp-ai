@@ -393,6 +393,12 @@ paths = [
     # The TU's func_8007D5B0 and func_8007D610 compile to the same bytes
     # under 2.6.3.
     "src/battle/mainasm_D854.",
+    # main24 (2026-10-13): func_8007C040 and func_8007C33C match only under
+    # 2.6.x (2.6.3 and 2.6.0; 2.7.2: 2 insns short); func_8007BD5C and the
+    # TU's other C (func_8007BC84, func_8007BCE8, func_8007C4A0,
+    # func_8007C580, func_8007C678, func_8007C75C) compile to the same bytes
+    # under 2.6.3.
+    "src/battle/main24.",
 ]
 
 [[build_preset]]

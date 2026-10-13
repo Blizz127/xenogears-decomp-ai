@@ -3,7 +3,10 @@
 
 #ifndef XENO_PC_PORT
 extern u8 D_800D3430[];
-extern u8 func_8001BD40(u8 min, u8 max);
+/* Declared u32 as in main26/main28/mainasm_D854: func_8007BD5C keeps the
+ * result unmasked and masks it at each use (declared u8, it is masked once
+ * at the call). */
+extern u32 func_8001BD40(u32 lo, u8 hi);
 
 void func_8007BC84(u8 **pp, s32 idx) {
     u8 v = func_8001BD40(0, (*pp)[2]);
@@ -31,11 +34,98 @@ void func_8007BCE8(u8** pp, s32 idx) {
     row[(*pp)[1]] = v;
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/main24", func_8007BD5C);
+extern u8 D_800D32A1[][8];
+extern u8 D_800C3EB4[][28];
+extern u32 func_8007A628(u32 a0, u32 a1);
+extern u32 func_80089C08(u8 idx);
+
+/* func_8007BD5C.s, byte-exact: battle-script op on p = *ppBoard.  Clear
+ * halfword p[1] of row `index` of D_800D3420, then pick slots
+ * r = func_8001BD40(0, 2) not tried yet: when func_8007A628(r, p[2])
+ * accepts r and its D_800D32A1 byte is clear, store func_80089C08(r) in
+ * that halfword and return; otherwise mark r tried, until all three are.
+ * The func_8007D478 form (mainasm_D854). */
+void func_8007BD5C(u8** ppBoard, u8 index) {
+    u8 tried[3];
+    u16* row;
+    u16* dst;
+    u16 v;
+    u32 r;
+
+    row = (u16*)(D_800D3420 + ((u32)index << 6));
+    tried[0] = tried[1] = tried[2] = 0;
+    row[(*ppBoard)[1]] = 0;
+    while (!(tried[0] & tried[1] & tried[2])) {
+        r = func_8001BD40(0, 2);
+        if (tried[(u8)r] == 0) {
+            if ((u8)func_8007A628((u8)r, (*ppBoard)[2]) != 0 && D_800D32A1[(u8)r][0] == 0) {
+                v = func_80089C08(r);
+                dst = (u16*)(D_800D3420 + ((u32)index << 6));
+                dst[(*ppBoard)[1]] = v;
+                return;
+            }
+            tried[(u8)r] = 1;
+        }
+    }
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main24", func_8007BEA8);
-INCLUDE_ASM("asm/battle/nonmatchings/main24", func_8007C040);
+/* func_8007C040.s / func_8007C33C.s, byte-exact: battle-script ops on
+ * p = *ppBoard.  Clear halfword p[1] of row `index` of D_800D3420, collect
+ * the slots i in 3..10 that func_8007A628(i, p[2]) accepts, whose
+ * D_800D32A1 byte is clear and whose group (byte 0 of the 28-byte
+ * D_800C3EB4 row) is the same as (func_8007C040) or differs from
+ * (func_8007C33C) the group of slot index + 3, and store func_80089C08 of
+ * a random one (func_8001BD40(0, count - 1)) in that halfword.  gcc 2.6.x
+ * code (main24 is BattleGcc263); the func_8007D344 form. */
+void func_8007C040(u8** ppBoard, u8 index) {
+    u8 list[8];
+    s32 i = 3;
+    s32 n = 0;
+    u16* row;
+    u16* dst;
+    u16 v;
+
+    row = (u16*)(D_800D3420 + ((u32)index << 6));
+    row[(*ppBoard)[1]] = 0;
+    for (; i < 11; i++) {
+        if ((u8)func_8007A628((u8)i, (*ppBoard)[2]) != 0
+            && D_800C3EB4[index + 3][0] == D_800C3EB4[i][0]
+            && D_800D32A1[i][0] == 0) {
+            list[n] = i;
+            n++;
+        }
+    }
+    if (n != 0) {
+        v = func_80089C08(list[(u8)func_8001BD40(0, n - 1)]);
+        dst = (u16*)(D_800D3420 + ((u32)index << 6));
+        dst[(*ppBoard)[1]] = v;
+    }
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main24", func_8007C1A4);
-INCLUDE_ASM("asm/battle/nonmatchings/main24", func_8007C33C);
+void func_8007C33C(u8** ppBoard, u8 index) {
+    u8 list[8];
+    s32 i = 3;
+    s32 n = 0;
+    u16* row;
+    u16* dst;
+    u16 v;
+
+    row = (u16*)(D_800D3420 + ((u32)index << 6));
+    row[(*ppBoard)[1]] = 0;
+    for (; i < 11; i++) {
+        if ((u8)func_8007A628((u8)i, (*ppBoard)[2]) != 0
+            && D_800C3EB4[index + 3][0] != D_800C3EB4[i][0]
+            && D_800D32A1[i][0] == 0) {
+            list[n] = i;
+            n++;
+        }
+    }
+    if (n != 0) {
+        v = func_80089C08(list[(u8)func_8001BD40(0, n - 1)]);
+        dst = (u16*)(D_800D3420 + ((u32)index << 6));
+        dst[(*ppBoard)[1]] = v;
+    }
+}
 #endif
 
 
