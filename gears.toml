@@ -351,6 +351,12 @@ paths = [
     # match; 2.7.2: +1 insn; the CDK cc1 loads the table address into a
     # register).  The TU had no other C.
     "src/battle/mainc25_q1.",
+    # main57 (2026-10-13): func_8009AFD8's `g_GameState[...] -= 1` gives
+    # retail's `addiu 0xFF` only under 2.6.x (2.6.0 and 2.6.3; 2.7.2 and
+    # the CDK cc1 give `addiu -1`).  `+= 0xFF` also matches under 2.7.2,
+    # but it only forces the immediate.  func_8009B098 compiles to the
+    # same bytes under 2.7.2 and 2.6.x.
+    "src/battle/main57.",
 ]
 
 [[build_preset]]
