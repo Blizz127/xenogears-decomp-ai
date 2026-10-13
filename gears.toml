@@ -363,6 +363,12 @@ paths = [
     # no 2.7.2 spelling reproduces (main35_p4's func_80085084 onward is
     # 2.7.2).  func_80084DE4 is still asm.
     "src/battle/mainasm_15238.",
+    # main28 (2026-10-13): func_8007E438 and func_8007E554 keep their loop
+    # counter decrement in the first branch's delay slot only under 2.6.x
+    # (2.6.0 and 2.6.3; 2.7.2: +1 insn each).  main28's other C
+    # (func_8007E154, func_8007E1D0, func_8007E234, func_8007E334,
+    # func_8007E674) compiles to the same bytes under 2.6.3.
+    "src/battle/main28.",
 ]
 
 [[build_preset]]

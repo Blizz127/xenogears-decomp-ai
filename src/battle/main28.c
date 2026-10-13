@@ -96,9 +96,84 @@ void func_8007E234(u8** ppBoard, u8 index) {
     row = (u16*)(D_800D3420 + ((u32)index << 6));
     row[(*ppBoard)[1]] = flags >> 1;
 }
-INCLUDE_ASM("asm/battle/nonmatchings/main28", func_8007E334);
-INCLUDE_ASM("asm/battle/nonmatchings/main28", func_8007E438);
-INCLUDE_ASM("asm/battle/nonmatchings/main28", func_8007E554);
+/* func_8007E334.s, byte-exact: func_8007E234 for the enemies.  Members
+ * 10 down to 3 give bits 10..3 of the mask (shifted per member, stored
+ * << 2). */
+void func_8007E334(u8** ppBoard, u8 index) {
+    u16 flags = 0;
+    s32 i;
+    u16* row;
+
+    for (i = 10; i >= 3; i--) {
+        if ((u8)func_8007A744(i) != 0) {
+            switch ((*ppBoard)[2]) {
+            case 1:
+                if (D_800D32A1[i][0] != 0) {
+                    flags |= 1;
+                }
+                break;
+            case 2:
+                if (D_800D32A1[i][0] == 0) {
+                    flags |= 1;
+                }
+                break;
+            default:
+                flags |= 1;
+                break;
+            }
+        }
+        flags <<= 1;
+    }
+    row = (u16*)(D_800D3420 + ((u32)index << 6));
+    row[(*ppBoard)[1]] = flags << 2;
+}
+extern u8 D_800C3EB4[][28];
+extern u32 func_80079E7C(u16 value);
+
+/* func_8007E438.s, byte-exact: battle-script op building a party mask into
+ * halfword p[1] of row `index` of D_800D3420 (p = *ppBoard): for members
+ * 2, 1, 0 that func_8007A744 accepts, the bit is set when the member is in
+ * the same group (row byte 0 of D_800C3EB4) as character
+ * func_80079E7C(halfword p[2] of the row).  gcc 2.6.x code (main28 is
+ * BattleGcc263): under 2.7.2 the counter decrement leaves the first
+ * branch's delay slot.  `i` is initialised before `row`, and the store
+ * goes through its own row pointer. */
+void func_8007E438(u8** ppBoard, u8 index) {
+    u16 flags = 0;
+    s32 i = 2;
+    u16* row = (u16*)(D_800D3420 + ((u32)index << 6));
+    u16* dst;
+
+    for (; i >= 0; i--) {
+        if ((u8)func_8007A744(i) != 0) {
+            if (D_800C3EB4[(u8)func_80079E7C(row[(*ppBoard)[2]])][0] == D_800C3EB4[i][0]) {
+                flags |= 1;
+            }
+        }
+        flags <<= 1;
+    }
+    dst = (u16*)(D_800D3420 + ((u32)index << 6));
+    dst[(*ppBoard)[1]] = flags >> 1;
+}
+/* func_8007E554.s, byte-exact: func_8007E438 for the enemies (members 10
+ * down to 3, stored << 2). */
+void func_8007E554(u8** ppBoard, u8 index) {
+    u16 flags = 0;
+    s32 i = 10;
+    u16* row = (u16*)(D_800D3420 + ((u32)index << 6));
+    u16* dst;
+
+    for (; i >= 3; i--) {
+        if ((u8)func_8007A744(i) != 0) {
+            if (D_800C3EB4[(u8)func_80079E7C(row[(*ppBoard)[2]])][0] == D_800C3EB4[i][0]) {
+                flags |= 1;
+            }
+        }
+        flags <<= 1;
+    }
+    dst = (u16*)(D_800D3420 + ((u32)index << 6));
+    dst[(*ppBoard)[1]] = flags << 2;
+}
 #endif
 
 
