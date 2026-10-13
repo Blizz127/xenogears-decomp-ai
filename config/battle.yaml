@@ -236,7 +236,9 @@ segments:
       - [0x3F910, c, mainasm_3F910]
       - [0x3F948, c, main73_p2]
       - [0x40604, c, main74]
-      - [0x419DC, c, main75]
+      # matched C: 800B14CC (non-CDK: 2.7.2 and 2.6.3 give the same code; Default; main75's func_800B15D8 is CDK code)
+      - [0x419DC, c, mainasm_419DC]
+      - [0x41AE8, c, main75]
       - [0x41BB4, c, mainc76]
       - [0x41C30, c, main77]
       - [0x43868, c, mainc78]

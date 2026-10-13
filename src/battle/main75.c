@@ -1,9 +1,6 @@
 #include "common.h"
 
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/main75", func_800B14CC);
-#endif
 typedef struct { u32 w[7]; } BattleOtRecord;
 #ifndef XENO_PC_PORT
 extern BattleOtRecord D_800C3BD0;
