@@ -272,6 +272,14 @@ paths = [
     "src/battle/mainasm_B190.",
     "src/battle/main125_q1.",
     "src/battle/main75.",
+    # main106 (2026-10-13): func_800B8DA4 and func_800B8EBC encode their
+    # small constants as `addiu $r,$zero,K` and keep %hi parts in
+    # s-registers across calls (the CDK forms; found by a li-flavour scan of
+    # the remaining asm against each TU's preset).  Both match here and not
+    # under Default or BattleLiteral (2.7.2 leaving li to the assembler:
+    # 308 vs 280 and 368 vs 356 bytes); func_800B9020 compiles to the same
+    # bytes.
+    "src/battle/main106.",
     "src/battle_command_file1/after_controller_cdk.",
 ]
 
