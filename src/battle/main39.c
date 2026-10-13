@@ -34,7 +34,26 @@ void func_80087A38(s32 arg0) {
 INCLUDE_ASM("asm/battle/nonmatchings/main39", func_80087AF0);
 INCLUDE_ASM("asm/battle/nonmatchings/main39", func_80087EDC);
 INCLUDE_ASM("asm/battle/nonmatchings/main39", func_800881B8);
-INCLUDE_ASM("asm/battle/nonmatchings/main39", func_800883AC);
+extern u8 D_800C3EB4__rows[][28] asm("D_800C3EB4");
+extern u8 D_800D301C__groups[][4] asm("D_800D301C");
+extern u8 D_800D32A1__2[][8] asm("D_800D32A1");
+extern u32 func_80089C48(u8 index);
+
+/* func_800883AC.s, byte-exact: remove combatant `index` from its group
+ * (see the slot-bookkeeping note below): the group record (row byte 0 +
+ * bank) loses one occupant and the func_80089C48(row byte 1) slot bit.
+ * The tables are 2D views (28-byte rows, 4-byte groups, 8-byte D_800D32A1
+ * entries), which keep every access as symbol + index; flat byte offsets
+ * let CSE share a row pointer (size 212 vs 228). */
+void func_800883AC(u8 index) {
+    u8 bank = (index >= 3) ? 8 : 0;
+
+    if (D_800D32A1__2[index][0] != 0) {
+        bank |= 0x10;
+    }
+    D_800D301C__groups[D_800C3EB4__rows[index][0] + bank][0]--;
+    D_800D301C__groups[D_800C3EB4__rows[index][0] + bank][1] &= func_80089C48(D_800C3EB4__rows[index][1]);
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main39", func_80088490);
 #endif
 
