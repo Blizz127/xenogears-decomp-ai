@@ -12,6 +12,8 @@ extern s32 D_800C3E24;
 extern struct BattleCommandContext * D_800C3EAC;
 extern u8 D_800D2C34;
 void func_8008189C(s32 arg0);
+extern u8 D_800D3014, D_800C3E29;
+extern void func_8008AA74(u32);
 #endif
 
 #ifndef XENO_PC_PORT
@@ -51,9 +53,101 @@ INCLUDE_ASM("asm/battle/nonmatchings/main35_p2", func_800826CC);
 INCLUDE_ASM("asm/battle/nonmatchings/main35_p2", func_80082820);
 INCLUDE_ASM("asm/battle/nonmatchings/main35_p2", func_800829F4);
 INCLUDE_ASM("asm/battle/nonmatchings/main35_p2", func_80082BB0);
-INCLUDE_ASM("asm/battle/nonmatchings/main35_p2", func_80082D4C);
-extern u8 D_800D3014;
-extern void func_8008AA74(u32);
+extern void func_8009AA44(u32);
+extern volatile u16 D_800CCDC4[][184];
+extern u16 D_800CCDC6[][184];
+extern u16 D_800D2C32;
+
+/* func_80082D4C.s, byte-exact WITH A VOLATILE VIEW (see below): a
+ * command-ring step on D_800D3014 (the func_8008115C family).  Events
+ * 4/6/7: func_8009AA44(actor), add D_800D2C32 to the actor's u16 at
+ * D_800CCDC4 (0x170 stride), clamp it to the u16 at D_800CCDC6, then set
+ * context +0x2EB + actor to 1, +0x2EA to 0 and +0x2DE to 1.  Events 0, 1
+ * and 2 make the reject call func_8008AA74(0x4F) when the actor row's
+ * +0x2E/+0x34/+0x2C halfword is set and otherwise move to state
+ * 0x10/0x11/0x17.  Event 3 follows func_8008115C's case 3 with +0x28/+0x24
+ * and states 0x13/0x18.  The switch table is this object's .rodata
+ * (jtbl_80070150, placed by config/battle.yaml).
+ * Retail re-reads the sum from memory before the clamp; with a plain u16
+ * array CSE forwards the stored value instead (548 vs 560 bytes), and
+ * every non-volatile spelling tried keeps that or reorders the loads.
+ * D_800CCDC4 is therefore declared volatile here -- a construct, not a
+ * natural match; count it apart and revisit.  Each event keeps its own
+ * row local: one shared local stays live across event 3's branches and
+ * moves every row into $a0. */
+void func_80082D4C(u32 arg0) {
+    u32 actor;
+    switch (D_800D3014) {
+    case 4:
+    case 6:
+    case 7:
+        actor = arg0 & 0xFF;
+        func_8009AA44(actor);
+        D_800CCDC4[actor][0] += D_800D2C32;
+        if (D_800CCDC4[actor][0] > D_800CCDC6[actor][0]) {
+            D_800CCDC4[actor][0] = D_800CCDC6[actor][0];
+        }
+        *((u8 *)D_800C3EAC + actor + 0x2EB) = 1;
+        ((u8 *)D_800C3EAC)[0x2EA] = 0;
+        ((u8 *)D_800C3EAC)[0x2DE] = 1;
+        return;
+    case 0:
+        {
+            u8 *row = (u8 *)D_800C3EAC + (arg0 & 0xFF) * 64;
+
+            if (*(u16 *)(row + 0x2E)) {
+                arg0 = 0x4F;
+                goto reject;
+            }
+        }
+        ((u8 *)D_800C3EAC)[0x2DD] = 0x10;
+        return;
+    case 1:
+        {
+            u8 *row = (u8 *)D_800C3EAC + (arg0 & 0xFF) * 64;
+
+            if (*(u16 *)(row + 0x34)) {
+                arg0 = 0x4F;
+                goto reject;
+            }
+        }
+        ((u8 *)D_800C3EAC)[0x2DD] = 0x11;
+        return;
+    case 3: {
+        u8 *row = (u8 *)D_800C3EAC + (arg0 & 0xFF) * 64;
+
+        if (!*(u16 *)(row + 0x28)) {
+            ((u8 *)D_800C3EAC)[0x2DD] = 0x13;
+            return;
+        }
+        if (((u8 *)D_800C3EAC)[0x2F6] && D_800C3E29 == 3) {
+            if (*(u16 *)(row + 0x24)) func_8008AA74(0x4F);
+            else ((u8 *)D_800C3EAC)[0x2DD] = 0x18;
+            ((u8 *)D_800C3EAC)[0x2F6] = 0;
+            return;
+        }
+        arg0 = 0x4F;
+        ((u8 *)D_800C3EAC)[0x2F6] = 1;
+        goto reject;
+    }
+    case 2:
+        {
+            u8 *row = (u8 *)D_800C3EAC + (arg0 & 0xFF) * 64;
+
+            if (*(u16 *)(row + 0x2C)) {
+                arg0 = 0x4F;
+                goto reject;
+            }
+        }
+        ((u8 *)D_800C3EAC)[0x2DD] = 0x17;
+        return;
+    default:
+        return;
+    }
+reject:
+    func_8008AA74(arg0);
+}
+
 extern void func_8007FD38(u8);
 extern u8 func_8008B478(u32);
 extern void func_8008ADD0(u32);
