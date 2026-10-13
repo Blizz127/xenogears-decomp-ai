@@ -2,7 +2,36 @@
 
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/mainc84", func_800B572C);
+extern u32 WorkListsAddTasks(u32 a0, u32 a1, void* a2, void* a3, void* a4);
+extern void func_800B5588(void);
+extern void func_800B56E4(u8* p);
+extern void func_800B50D4(u8* actor, u8* dst);
+
+/* func_800B572C.s, byte-exact: start the 0xB8-byte task for `actor` and its
+ * `slot` entry (WorkListsAddTasks(0xB8, actor +0x6C, func_800B5588,
+ * func_800B56E4, 0)): task +0x38 = actor, +0x3C = the actor's u16 +0x34,
+ * +0x40 = its s8 state +0xAF, +0x4C = slot, +0x44 = actor +0x3C >> 5, +0x48 =
+ * slot[0] (4 when 0); then func_800B50D4(actor, task + 0x78) and
+ * func_800B50D4(actor, task + 0x50).  Caller: func_800B3F04 (mainc83).  The
+ * +0x48 default is a store in each branch, which retail merges into one sw;
+ * a ternary or a local changes the code (4/46, 21/46). */
+void func_800B572C(u8* actor, u8* slot) {
+    u8* task;
+
+    task = (u8*)WorkListsAddTasks(0xB8, *(u32*)(actor + 0x6C), func_800B5588, func_800B56E4, 0);
+    *(u8**)(task + 0x38) = actor;
+    *(u32*)(task + 0x3C) = *(u16*)(actor + 0x34);
+    *(s32*)(task + 0x40) = *(s8*)(actor + 0xAF);
+    *(u8**)(task + 0x4C) = slot;
+    *(u32*)(task + 0x44) = actor[0x3C] >> 5;
+    if (slot[0] != 0) {
+        *(u32*)(task + 0x48) = slot[0];
+    } else {
+        *(u32*)(task + 0x48) = 4;
+    }
+    func_800B50D4(actor, task + 0x78);
+    func_800B50D4(actor, task + 0x50);
+}
 #include "psyq/libgte.h"
 
 u32 func_800B57E4(u8* s) {
