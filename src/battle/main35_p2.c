@@ -52,7 +52,70 @@ INCLUDE_ASM("asm/battle/nonmatchings/main35_p2", func_80082820);
 INCLUDE_ASM("asm/battle/nonmatchings/main35_p2", func_800829F4);
 INCLUDE_ASM("asm/battle/nonmatchings/main35_p2", func_80082BB0);
 INCLUDE_ASM("asm/battle/nonmatchings/main35_p2", func_80082D4C);
-INCLUDE_ASM("asm/battle/nonmatchings/main35_p2", func_80082F7C);
+extern u8 D_800D3014;
+extern void func_8008AA74(u32);
+extern void func_8007FD38(u8);
+extern u8 func_8008B478(u32);
+extern void func_8008ADD0(u32);
+
+/* func_80082F7C.s, byte-exact: a command-ring step on D_800D3014 (the
+ * main35_p1 func_8008115C family).  Events 4/6/7: func_8007FD38(actor), then
+ * func_8008ADD0(actor) if func_8008B478(actor) accepts, else state 0x13;
+ * events 0, 1 and 3 make the reject call func_8008AA74(0x4F) when the actor
+ * row's +0x2E/+0x34/+0x24 halfword is set and otherwise move to state
+ * 0x10/0x11/0x18;
+ * event 2 moves to state 0x12.  The switch table is this object's .rodata
+ * (jtbl_80070170, placed by config/battle.yaml).  Each test goes through a
+ * `row` local: indexing the context directly puts the row offset first in
+ * the address add. */
+void func_80082F7C(u32 arg0) {
+    u32 actor;
+    u8 *row;
+    switch (D_800D3014) {
+    case 4:
+    case 6:
+    case 7:
+        actor = arg0 & 0xFF;
+        func_8007FD38(actor);
+        if (func_8008B478(actor)) {
+            func_8008ADD0(actor);
+            return;
+        }
+        ((u8 *)D_800C3EAC)[0x2DD] = 0x13;
+        return;
+    case 0:
+        row = (u8 *)D_800C3EAC + (arg0 & 0xFF) * 64;
+        if (*(u16 *)(row + 0x2E)) {
+            arg0 = 0x4F;
+            goto reject;
+        }
+        ((u8 *)D_800C3EAC)[0x2DD] = 0x10;
+        return;
+    case 1:
+        row = (u8 *)D_800C3EAC + (arg0 & 0xFF) * 64;
+        if (*(u16 *)(row + 0x34)) {
+            arg0 = 0x4F;
+            goto reject;
+        }
+        ((u8 *)D_800C3EAC)[0x2DD] = 0x11;
+        return;
+    case 2:
+        ((u8 *)D_800C3EAC)[0x2DD] = 0x12;
+        return;
+    case 3:
+        row = (u8 *)D_800C3EAC + (arg0 & 0xFF) * 64;
+        if (*(u16 *)(row + 0x24)) {
+            arg0 = 0x4F;
+            goto reject;
+        }
+        ((u8 *)D_800C3EAC)[0x2DD] = 0x18;
+        return;
+    default:
+        return;
+    }
+reject:
+    func_8008AA74(arg0);
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main35_p2", func_800830A8);
 INCLUDE_ASM("asm/battle/nonmatchings/main35_p2", func_80083340);
 INCLUDE_ASM("asm/battle/nonmatchings/main35_p2", func_80083580);
