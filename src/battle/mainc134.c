@@ -41,7 +41,71 @@ void func_800BFDA8(u8* sprite, u32 index) {
 
 INCLUDE_ASM("asm/battle/nonmatchings/mainc134", func_800BFE48);
 INCLUDE_ASM("asm/battle/nonmatchings/mainc134", func_800C0314);
-INCLUDE_ASM("asm/battle/nonmatchings/mainc134", func_800C0564);
+extern u8 D_800C3EB0[];
+extern u16 D_800C37D4[];
+extern u32 func_8009A0DC(u32 index);
+extern void func_800BE790(void);
+
+/* func_800C0564.s, byte-exact: wait (func_800BE790 frames) until no party
+ * slot is still settling.  Per pass, over the 11 slots (record pointers at
+ * D_800C3EB0+0x8C8C, 28-byte rows at D_800C3EB0): an inactive slot (row
+ * +8 set) is busy while its record +0x64 is nonzero; an active slot
+ * (func_8009A0DC != 8) whose record state +0xAF is outside the idle set
+ * {0,1,5,7,14,15,20,21,22,24} (jtbl_80070BB0, this object's .rodata) and
+ * whose row +7 is clear is busy while the state is neither the
+ * D_800C37D4 target for its func_8009A0DC slot nor its +0xB0 fallback.
+ * busy is per pass, the row is base + i * 28 and the record pointer is
+ * read through the same per-pass base (decomp-permuter pointed to the
+ * base local); these give retail's loop registers. */
+void func_800C0564(void) {
+    s32 i;
+
+    for (;;) {
+        u8* base = D_800C3EB0;
+        u8 busy = 0;
+
+        for (i = 0; i != 11; i++) {
+            u8* rec = *(u8**)(base + 0x8C8C + i * 4);
+            u8* row = base + i * 28;
+
+            if (rec != NULL) {
+                if (row[8] != 0) {
+                    if (*(s32*)(rec + 0x64) != 0) {
+                        busy = 1;
+                    }
+                } else if (func_8009A0DC(i) != 8) {
+                    switch ((s8)rec[0xAF]) {
+                    case 0:
+                    case 1:
+                    case 5:
+                    case 7:
+                    case 14:
+                    case 15:
+                    case 20:
+                    case 21:
+                    case 22:
+                    case 24:
+                        break;
+                    default:
+                        if (row[7] == 0) {
+                            s8 state = rec[0xAF];
+
+                            if (state != D_800C37D4[func_8009A0DC(i)] &&
+                                (s8)rec[0xAF] != (s8)rec[0xB0]) {
+                                busy = 1;
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+        if (busy == 0) {
+            break;
+        }
+        func_800BE790();
+    }
+}
 #include "psyq/libgte.h"
 
 /* distance between two word vectors (x, y, z) */
