@@ -9,15 +9,17 @@ extern u8* D_800C3DFC;
  * bit 13 for a +0x15A bit 7 actor, +0x88 bit 10 otherwise), mark its
  * command slots with 1: the 0x690-stride table at +0x2228 for a +0x15A
  * bit 7 actor, else the 0x5F0-stride table at +0x1058 (the port arm's
- * bat3_actor_flag and bat3_stamp_slots, inline).  Codegen: the second
- * +0x15A test reads through its own pointer p2; each table pointer is
- * built in place, offset first (`q = (u8*)(idx * 0x690 + 0x2228);
- * q += base`; func_8009AEFC's one-expression `(u8*)(off + base)` form
- * gets the operand order but not the registers); the two tables use
- * separate pointers (one shared pointer swaps $v0/$v1 in the else
- * block). */
+ * bat3_actor_flag and bat3_stamp_slots, inline).  Codegen: each record
+ * pointer adds the offset to D_800C34B0 loaded into a local first (`base`,
+ * and a block-local `base2` for the second +0x15A test through p2); gcc
+ * 2.6.x then adds the base first, as retail does, where
+ * `D_800C34B0 + idx * 0x170` comes out offset first.  Each table pointer
+ * is built in place, offset first (`q = (u8*)(idx * 0x690 + 0x2228);
+ * q += (u32)D_800C34B0;`); the two tables use separate pointers (one
+ * shared pointer swaps $v0/$v1 in the else block). */
 void func_8009AB38(u8 idx) {
-    u8* p = D_800C34B0 + idx * 0x170;
+    u8* base = D_800C34B0;
+    u8* p = base + idx * 0x170;
     u32 flag;
     u8* q;
     u8* r;
@@ -29,7 +31,9 @@ void func_8009AB38(u8 idx) {
         flag = *(u16*)(p + 0x88) & 0x400;
     }
     if (flag != 0) {
-        p2 = D_800C34B0 + idx * 0x170;
+        u8* base2 = D_800C34B0;
+
+        p2 = base2 + idx * 0x170;
         if (p2[0x15A] & 0x80) {
             q = (u8*)(idx * 0x690 + 0x2228);
             q += (u32)D_800C34B0;
@@ -59,8 +63,9 @@ void func_8009AB38(u8 idx) {
 /* func_8009AC48.s, byte-exact: unless `check` is set and D_800C3DFC+0xA
  * bit 8 is clear, consume actor idx's ready flag: stamp its command slots
  * with 0x2000 as func_8009AB38 does, then clear the flag bit through p2.
- * First draft from func_8009AB38. */
+ * Same form as func_8009AB38. */
 void func_8009AC48(u8 idx, u8 check) {
+    u8* base;
     u8* p;
     u32 flag;
     u8* q;
@@ -70,14 +75,17 @@ void func_8009AC48(u8 idx, u8 check) {
     if (check != 0 && !(*(u16*)(D_800C3DFC + 0xA) & 0x100)) {
         return;
     }
-    p = D_800C34B0 + idx * 0x170;
+    base = D_800C34B0;
+    p = base + idx * 0x170;
     if (p[0x15A] & 0x80) {
         flag = *(u16*)(p + 0x124) & 0x2000;
     } else {
         flag = *(u16*)(p + 0x88) & 0x400;
     }
     if (flag != 0) {
-        p2 = D_800C34B0 + idx * 0x170;
+        u8* base2 = D_800C34B0;
+
+        p2 = base2 + idx * 0x170;
         if (p2[0x15A] & 0x80) {
             q = (u8*)(idx * 0x690 + 0x2228);
             q += (u32)D_800C34B0;
@@ -106,7 +114,46 @@ void func_8009AC48(u8 idx, u8 check) {
         }
     }
 }
-INCLUDE_ASM("asm/battle/nonmatchings/main56", func_8009ADA0);
+/* func_8009ADA0.s, byte-exact: return 0 for a +0x7C bit 15 actor;
+ * otherwise fill out[0..2]: out[0] = +0x4E / 20 when +0x7C bit 11,
+ * out[1] = +0x52 / 20 when +0x80 bit 9 or +0x120 bit 9, out[2] = 0, then
+ * +0xDE / 50 when +0x120 bit 7, plus another +0xDE / 50 when +0x124 bit 15;
+ * return 1 if any of these applied.  `out` walks (retail's addiu), and the
+ * record pointer adds the offset first.  gcc 2.6.x code: 2.7.2 puts each
+ * magic-multiply quotient through a scratch register (mfhi $a3). */
+u32 func_8009ADA0(u8 idx, u32* out) {
+    u8* p = (u8*)(idx * 0x170 + (u32)D_800C34B0);
+    u16 f = *(u16*)(p + 0x7C);
+    u32 r = 0;
+
+    if (f & 0x8000) {
+        return 0;
+    }
+    if (f & 0x800) {
+        r = 1;
+        *out = (u16)(*(u16*)(p + 0x4E) / 20);
+    }
+    out++;
+    if (*(u16*)(p + 0x80) & 0x200) {
+        r = 1;
+        *out = (u16)(*(u16*)(p + 0x52) / 20);
+    }
+    if (*(u16*)(p + 0x120) & 0x200) {
+        r = 1;
+        *out = (u16)(*(u16*)(p + 0x52) / 20);
+    }
+    out++;
+    *out = 0;
+    if (*(u16*)(p + 0x120) & 0x80) {
+        r = 1;
+        *out = (u16)(*(u16*)(p + 0xDE) / 50);
+    }
+    if (*(u16*)(p + 0x124) & 0x8000) {
+        r = 1;
+        *out = (u16)(*(u16*)(p + 0xDE) / 50) + *out;
+    }
+    return r;
+}
 #endif
 
 
@@ -152,9 +199,8 @@ void func_8009AEFC(u8 index) {
 
 
 /* ---- Port bodies (fo/bat3).  The retail build compiles the byte-exact C
- * above for func_8009AB38 and func_8009AC48; func_8009ADA0 still assembles
- * from its INCLUDE_ASM site.  The bodies below are kept for the port and
- * the differential harnesses. ---- */
+ * above for func_8009AB38, func_8009AC48 and func_8009ADA0.  The bodies
+ * below are kept for the port and the differential harnesses. ---- */
 #ifndef XENO_PC_PORT
 extern u8* D_800C3DFC;
 #endif

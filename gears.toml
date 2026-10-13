@@ -399,6 +399,12 @@ paths = [
     # func_8007C580, func_8007C678, func_8007C75C) compile to the same bytes
     # under 2.6.3.
     "src/battle/main24.",
+    # main56 (2026-10-14): func_8009ADA0 matches only under 2.6.x (2.7.2
+    # puts each magic-multiply quotient through a scratch register: 356 vs
+    # 348 bytes); func_8009AB38, func_8009AC48 and func_8009AEFC compile to
+    # the same bytes under 2.6.3 and 2.7.2.  Neighbours main54, main55,
+    # main57 and main58 are BattleGcc263 too.
+    "src/battle/main56.",
 ]
 
 [[build_preset]]
