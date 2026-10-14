@@ -2,7 +2,153 @@
 
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/main77", func_800B1720);
+extern void SetShadeTex(void* p, s32 tge);
+extern void SetSemiTrans(void* p, s32 abe);
+
+#define B1720_TSB_FIX() \
+    if (abr != 0) { \
+        *(u16*)(p + 0xA) = (*(u16*)(p + 0xA) & 0xFF9F) | tp; \
+    }
+/* POLY_FT3 / POLY_FT4 / POLY_GT3 / POLY_GT4 uv, clut and tpage */
+#define B1720_FT3_UV() \
+    *(u16*)(prim + 0x16) = *(u16*)(p + 0xA); \
+    *(u16*)(prim + 0xE) = *(u16*)(p + 6); \
+    prim[0xC] = p[4]; prim[0xD] = p[5]; \
+    prim[0x14] = p[8]; prim[0x15] = p[9]; \
+    prim[0x1C] = p[0xC]; prim[0x1D] = p[0xD];
+#define B1720_FT4_UV() \
+    *(u16*)(prim + 0x16) = *(u16*)(p + 0xA); \
+    *(u16*)(prim + 0xE) = *(u16*)(p + 6); \
+    prim[0xC] = p[4]; prim[0xD] = p[5]; \
+    prim[0x14] = p[8]; prim[0x15] = p[9]; \
+    prim[0x1C] = p[0xC]; prim[0x1D] = p[0xD]; \
+    prim[0x24] = p[0x10]; prim[0x25] = p[0x11];
+#define B1720_GT3_UV() \
+    *(u16*)(prim + 0x1A) = *(u16*)(p + 0xA); \
+    *(u16*)(prim + 0xE) = *(u16*)(p + 6); \
+    prim[0xC] = p[4]; prim[0xD] = p[5]; \
+    prim[0x18] = p[8]; prim[0x19] = p[9]; \
+    prim[0x24] = p[0xC]; prim[0x25] = p[0xD];
+#define B1720_GT4_UV() \
+    *(u16*)(prim + 0x1A) = *(u16*)(p + 0xA); \
+    *(u16*)(prim + 0xE) = *(u16*)(p + 6); \
+    prim[0xC] = p[4]; prim[0xD] = p[5]; \
+    prim[0x18] = p[8]; prim[0x19] = p[9]; \
+    prim[0x24] = p[0xC]; prim[0x25] = p[0xD]; \
+    prim[0x30] = p[0x10]; prim[0x31] = p[0x11];
+
+/* func_800B1720.s, byte-exact: convert the TMD-style primitive list of
+ * `tmd` (count at +0x14, packets at tmd + the +0x10 offset) into GPU
+ * packets at `prim`.  Per packet: tag length (+3) = the packet's olen
+ * (byte 0), code (+7) = its mode (byte 3), SetShadeTex(prim, tge) and, when
+ * `abr` is set, SetSemiTrans.  The type (mode & 0x1C, +0x100 when flag bit 0
+ * is clear = unlit) picks the copy: flat F3/F4 colour, gouraud G3/G4
+ * colours, textured FT3/FT4/GT3/GT4 colours (0x80 grey when unlit) plus uv,
+ * clut and tpage -- for the textured types, when `abr` is set, the SOURCE
+ * packet's tpage (+0xA) is first rewritten in place with abr - 1 as its
+ * blend bits (0x60), so the caller's model data changes; other types copy
+ * nothing.  Then prim advances by (olen + 1) words
+ * and the packet by (ilen (byte 1) + 1) words.  Codegen: the case bodies
+ * are in retail's order (gouraud first, each unlit textured type before its
+ * lit twin) so cross-jumping shares the uv tails as retail does; the type
+ * code is built in two statements and tp is an int. */
+void func_800B1720(u8* tmd, u8* prim, s32 abr, s32 tge) {
+    s32 count;
+    u8* p;
+    s32 tp;
+    s32 i;
+    s32 t;
+
+    count = *(s32*)(tmd + 0x14);
+    p = (u8*)(*(s32*)(tmd + 0x10) + (s32)tmd);
+    if (abr != 0) {
+        tp = (abr - 1) & 3;
+        tp <<= 5;
+    }
+    for (i = 0; i != count; i++) {
+        prim[3] = p[0];
+        prim[7] = p[3];
+        SetShadeTex(prim, (u8)tge);
+        if (abr != 0) {
+            SetSemiTrans(prim, abr != 0);
+        }
+        t = p[3] & 0x1C;
+        t |= ((p[2] ^ 1) & 1) << 8;
+        switch (t) {
+        case 0x10:
+        case 0x110:
+            prim[4] = p[4]; prim[5] = p[5]; prim[6] = p[6];
+            prim[0xC] = p[8]; prim[0xD] = p[9]; prim[0xE] = p[0xA];
+            prim[0x14] = p[0xC]; prim[0x15] = p[0xD]; prim[0x16] = p[0xE];
+            break;
+        case 0x18:
+        case 0x118:
+            prim[4] = p[4]; prim[5] = p[5]; prim[6] = p[6];
+            prim[0xC] = p[8]; prim[0xD] = p[9]; prim[0xE] = p[0xA];
+            prim[0x14] = p[0xC]; prim[0x15] = p[0xD]; prim[0x16] = p[0xE];
+            prim[0x1C] = p[0x10]; prim[0x1D] = p[0x11]; prim[0x1E] = p[0x12];
+            break;
+        case 0x00:
+        case 0x08:
+        case 0x100:
+        case 0x108:
+            prim[4] = p[4]; prim[5] = p[5]; prim[6] = p[6];
+            break;
+        case 0x104:
+            B1720_TSB_FIX();
+            prim[4] = 0x80; prim[5] = 0x80; prim[6] = 0x80;
+            B1720_FT3_UV();
+            break;
+        case 0x04:
+            B1720_TSB_FIX();
+            prim[4] = p[0x10]; prim[5] = p[0x11]; prim[6] = p[0x12];
+            B1720_FT3_UV();
+            break;
+        case 0x114:
+            B1720_TSB_FIX();
+            prim[4] = 0x80; prim[5] = 0x80; prim[6] = 0x80;
+            prim[0x10] = 0x80; prim[0x11] = 0x80; prim[0x12] = 0x80;
+            prim[0x1C] = 0x80; prim[0x1D] = 0x80; prim[0x1E] = 0x80;
+            B1720_GT3_UV();
+            break;
+        case 0x14:
+            B1720_TSB_FIX();
+            prim[4] = p[0x10]; prim[5] = p[0x11]; prim[6] = p[0x12];
+            prim[0x10] = p[0x14]; prim[0x11] = p[0x15]; prim[0x12] = p[0x16];
+            prim[0x1C] = p[0x18]; prim[0x1D] = p[0x19]; prim[0x1E] = p[0x1A];
+            B1720_GT3_UV();
+            break;
+        case 0x10C:
+            B1720_TSB_FIX();
+            prim[4] = 0x80; prim[5] = 0x80; prim[6] = 0x80;
+            B1720_FT4_UV();
+            break;
+        case 0x0C:
+            B1720_TSB_FIX();
+            prim[4] = p[0x14]; prim[5] = p[0x15]; prim[6] = p[0x16];
+            B1720_FT4_UV();
+            break;
+        case 0x11C:
+            B1720_TSB_FIX();
+            prim[4] = 0x80; prim[5] = 0x80; prim[6] = 0x80;
+            prim[0x10] = 0x80; prim[0x11] = 0x80; prim[0x12] = 0x80;
+            prim[0x1C] = 0x80; prim[0x1D] = 0x80; prim[0x1E] = 0x80;
+            prim[0x28] = 0x80; prim[0x29] = 0x80; prim[0x2A] = 0x80;
+            B1720_GT4_UV();
+            break;
+        case 0x1C:
+            B1720_TSB_FIX();
+            prim[4] = p[0x14]; prim[5] = p[0x15]; prim[6] = p[0x16];
+            prim[0x10] = p[0x18]; prim[0x11] = p[0x19]; prim[0x12] = p[0x1A];
+            prim[0x1C] = p[0x1C]; prim[0x1D] = p[0x1D]; prim[0x1E] = p[0x1E];
+            prim[0x28] = p[0x20]; prim[0x29] = p[0x21]; prim[0x2A] = p[0x22];
+            B1720_GT4_UV();
+            break;
+        }
+        prim += (p[0] + 1) * 4;
+        p += (p[1] + 1) * 4;
+    }
+}
 #include "psyq/libgte.h"
 
 typedef struct {
