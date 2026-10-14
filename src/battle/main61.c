@@ -2,7 +2,135 @@
 
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/main61", func_8009D3A0);
+extern u8* D_800C3DFC;
+extern u8* D_800C3E34;
+extern u8* D_800D2D6C;
+extern u8* D_800C3E00;
+extern u8* D_800D2DC8;
+extern u8* D_800C34B0;
+extern u8 D_800C3E50;
+extern u8 g_GameState[];
+extern int rand(void);
+
+/* func_8009D3A0.s, byte-exact: hit/miss roll for the current action
+ * (D_800C3DFC) by the attacker (D_800D2D6C) against the target
+ * (D_800C3E34).  Returns 1 (hit), 2 or 3 (miss) from their status flags,
+ * the hit value (D_800C3E00 +0x5E, plus the attacker's signed +0x9F unless
+ * its g_GameState +0x22B6 byte is set), the evade value (target +0x5F plus
+ * half of D_800D2DC8's signed +0x9F), the actor record's +0x15A bits and
+ * rand() % 100 (the main61.c port arm below does the same). */
+u32 func_8009D3A0(void) {
+    u16 flags;
+    s16 hit;
+    s16 evade;
+    s8 d;
+    u8 v;
+    s16 diff;
+    s16 bonus;
+    s16 crit;
+    u16 st;
+    u32 off;
+
+    crit = 0;
+    bonus = 0;
+    if ((*(u16*)(D_800C3DFC + 0xA) & 0x200) && (*(u16*)(D_800C3E34 + 0x34) & 8)) {
+        return 3;
+    }
+    flags = *(u16*)(D_800C3DFC + 0xA);
+    if (flags & 0x1000) {
+        return 3;
+    }
+    if ((*(u16*)(D_800C3E34 + 0x84) | *(u16*)(D_800C3E34 + 0x86)) & 0x100) {
+        return 3;
+    }
+    if (*(u16*)(D_800C3E34 + 0x7C) & 0x2000) {
+        return 1;
+    }
+    if (*(u16*)(D_800C3E34 + 0x80) & 0x1000) {
+        return 1;
+    }
+    if (flags & 0x8000) {
+        return 1;
+    }
+    evade = D_800C3E34[0x5F];
+    v = g_GameState[0x22B6 + D_800D2D6C[4]];
+    hit = D_800C3E00[0x5E];
+    if (v == 0) {
+        hit += (s8)D_800D2D6C[0x9F];
+    }
+    d = D_800D2DC8[0x9F];
+    if (d != 0) {
+        evade += d / 2;
+    }
+    if (D_800C3E00[0x56] == 4) {
+        if ((D_800C3DFC[0x10] & 0x80) && v == 0) {
+            return 3;
+        }
+        if ((D_800C3DFC[0x10] & 0x20) && g_GameState[0x22B6 + D_800D2D6C[7]] == 0) {
+            return 3;
+        }
+    }
+    if ((*(u16*)(D_800D2D6C + 0x80) | *(u16*)(D_800D2D6C + 0x82)) & 0x800) {
+        hit += hit / 2;
+    }
+    if (*(u16*)(D_800D2D6C + 0x7C) & 0x10) {
+        crit = 0x3C;
+    }
+    if (*(u16*)(D_800C3DFC + 0xA) & 0x1000) {
+        return 3;
+    }
+    off = D_800C3E50 * 0x170;
+    if ((D_800C34B0 + off)[0x15A] & 0x80) {
+        if ((*(u16*)(D_800D2DC8 + 0x80) | *(u16*)(D_800D2DC8 + 0x82)) & 0x400) {
+            evade += evade / 2;
+        }
+        if (*(u16*)(D_800D2DC8 + 0x7C) & 0x10) {
+            bonus = 0x1E;
+        }
+        if (*(u16*)(D_800D2DC8 + 0x7C) & 0xC00) {
+            return 1;
+        }
+    } else {
+        hit /= 2;
+        if (*(u16*)(D_800C3E34 + 0x7C) & 0x2000) {
+            return 1;
+        }
+        if (*(u16*)(D_800C3E34 + 0x80) & 0x1000) {
+            return 1;
+        }
+        if ((*(u16*)(D_800C3E34 + 0x84) | *(u16*)(D_800C3E34 + 0x86)) & 0x800) {
+            evade += evade / 2;
+        }
+    }
+    off = D_800C3E50 * 0x170;
+    if ((D_800C34B0 + off)[0x15A] & 1) {
+        if (rand() % 100 < 0x5F) {
+            return 2;
+        }
+        return 1;
+    }
+    diff = hit + (s8)D_800C3DFC[0x15] - evade;
+    st = *(u16*)(D_800C3E34 + 0x84) | *(u16*)(D_800C3E34 + 0x86);
+    if (st & 0x20) {
+        if ((s16)(rand() % 100 - diff) >= 0x32) {
+            return 3;
+        }
+        return 1;
+    }
+    if (st & 0x40) {
+        if ((s16)(rand() % 100 - diff) >= 0x32) {
+            return 2;
+        }
+        return 1;
+    }
+    if ((s16)(rand() % 100 - diff) >= (s16)(0x55 - crit + bonus)) {
+        return 3;
+    }
+    if ((s16)(rand() % 100 - diff) >= (s16)(0x55 - crit + bonus)) {
+        return 2;
+    }
+    return 1;
+}
 extern u8* D_800C3DFC;
 extern u8* D_800D2D6C;
 extern u16 func_80096FBC(void);
@@ -124,9 +252,9 @@ void func_8009E268(void) {
 
 
 /* ---- Port bodies (fo/bat3).  The retail build compiles the byte-exact C
- * above for func_8009DA04; func_8009D3A0 and func_8009DBFC still assemble
- * from their INCLUDE_ASM sites.  These are compiled only for the port and
- * the differential harness. ---- */
+ * above for func_8009D3A0 and func_8009DA04; func_8009DBFC still
+ * assembles from its INCLUDE_ASM site.  These are compiled only for the
+ * port and the differential harness. ---- */
 #ifndef XENO_PC_PORT
 extern u8* D_800C34B0;
 #endif
