@@ -833,7 +833,72 @@ void func_8009209C(void) {
     (*(u8**)(D_800C3EA4 + 0xA230))[0x669] = 1;
     D_800D2D28[0xB7] = 3;
 }
-INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80092298);
+extern void SetPolyG4(void* p);
+extern void SetPolyF4(void* p);
+extern u8 D_800C33B4[];
+extern s32 D_800C33C4[];
+extern s32 D_800C3404[];
+
+
+/* func_80092298.s, byte-exact: in the record pointed to by the word at
+ * D_800C3EA4 + 0xA230 set up the two POLY_G4 at +0x5F0 (0x24 apart; colours
+ * (0xFF, 0, 0), (0xFF, 0, 0), (0, 0, 0), (0, 0, 0), all vertices 0) and the
+ * two POLY_F4 at +0x638 (0x18 apart; black, vertices 0), then add one
+ * func_80076A10 sprite (D_800C33B4[j], D_800C3EA4 + 0x1E68 + count * 0x50,
+ * D_800C33C4[j], D_800C3404[j]) for each of the 16 ids bytes that is not
+ * 0xFF, counting them at D_800D2D28 + 0xFC, then +0xA6 = D_800CCB34 and
+ * +0x9D = 1.  a is unused.  Codegen: the third loop has its own counter j
+ * (reusing i swaps s0 and s1). */
+void func_80092298(u8 a, u8* ids) {
+    s32 i;
+    s32 j;
+
+    for (i = 0; i < 2; i++) {
+        SetPolyG4(*(u8**)(D_800C3EA4 + 0xA230) + 0x5F0 + i * 0x24);
+        (*(u8**)(D_800C3EA4 + 0xA230) + i * 0x24)[0x5F4] = 0xFF;
+        (*(u8**)(D_800C3EA4 + 0xA230) + i * 0x24)[0x5F5] = 0;
+        (*(u8**)(D_800C3EA4 + 0xA230) + i * 0x24)[0x5F6] = 0;
+        (*(u8**)(D_800C3EA4 + 0xA230) + i * 0x24)[0x5FC] = 0xFF;
+        (*(u8**)(D_800C3EA4 + 0xA230) + i * 0x24)[0x5FD] = 0;
+        (*(u8**)(D_800C3EA4 + 0xA230) + i * 0x24)[0x5FE] = 0;
+        (*(u8**)(D_800C3EA4 + 0xA230) + i * 0x24)[0x604] = 0;
+        (*(u8**)(D_800C3EA4 + 0xA230) + i * 0x24)[0x605] = 0;
+        (*(u8**)(D_800C3EA4 + 0xA230) + i * 0x24)[0x606] = 0;
+        (*(u8**)(D_800C3EA4 + 0xA230) + i * 0x24)[0x60C] = 0;
+        (*(u8**)(D_800C3EA4 + 0xA230) + i * 0x24)[0x60D] = 0;
+        (*(u8**)(D_800C3EA4 + 0xA230) + i * 0x24)[0x60E] = 0;
+        *(s16*)(*(u8**)(D_800C3EA4 + 0xA230) + i * 0x24 + 0x5F8) = 0;
+        *(s16*)(*(u8**)(D_800C3EA4 + 0xA230) + i * 0x24 + 0x5FA) = 0;
+        *(s16*)(*(u8**)(D_800C3EA4 + 0xA230) + i * 0x24 + 0x600) = 0;
+        *(s16*)(*(u8**)(D_800C3EA4 + 0xA230) + i * 0x24 + 0x602) = 0;
+        *(s16*)(*(u8**)(D_800C3EA4 + 0xA230) + i * 0x24 + 0x608) = 0;
+        *(s16*)(*(u8**)(D_800C3EA4 + 0xA230) + i * 0x24 + 0x60A) = 0;
+        *(s16*)(*(u8**)(D_800C3EA4 + 0xA230) + i * 0x24 + 0x610) = 0;
+        *(s16*)(*(u8**)(D_800C3EA4 + 0xA230) + i * 0x24 + 0x612) = 0;
+    }
+    for (i = 0; i < 2; i++) {
+        SetPolyF4(*(u8**)(D_800C3EA4 + 0xA230) + 0x638 + i * 0x18);
+        (*(u8**)(D_800C3EA4 + 0xA230) + i * 0x18)[0x63C] = 0;
+        (*(u8**)(D_800C3EA4 + 0xA230) + i * 0x18)[0x63D] = 0;
+        (*(u8**)(D_800C3EA4 + 0xA230) + i * 0x18)[0x63E] = 0;
+        *(s16*)(*(u8**)(D_800C3EA4 + 0xA230) + i * 0x18 + 0x640) = 0;
+        *(s16*)(*(u8**)(D_800C3EA4 + 0xA230) + i * 0x18 + 0x642) = 0;
+        *(s16*)(*(u8**)(D_800C3EA4 + 0xA230) + i * 0x18 + 0x644) = 0;
+        *(s16*)(*(u8**)(D_800C3EA4 + 0xA230) + i * 0x18 + 0x646) = 0;
+        *(s16*)(*(u8**)(D_800C3EA4 + 0xA230) + i * 0x18 + 0x648) = 0;
+        *(s16*)(*(u8**)(D_800C3EA4 + 0xA230) + i * 0x18 + 0x64A) = 0;
+        *(s16*)(*(u8**)(D_800C3EA4 + 0xA230) + i * 0x18 + 0x64C) = 0;
+        *(s16*)(*(u8**)(D_800C3EA4 + 0xA230) + i * 0x18 + 0x64E) = 0;
+    }
+    *(s32*)(D_800D2D28 + 0xFC) = 0;
+    for (j = 0; j < 16; j++) {
+        if (ids[j] != 0xFF) {
+            *(s32*)(D_800D2D28 + 0xFC) = func_80076A10(D_800C33B4[j], D_800C3EA4 + 0x1E68 + *(s32*)(D_800D2D28 + 0xFC) * 0x50, D_800C33C4[j], D_800C3404[j]) + *(s32*)(D_800D2D28 + 0xFC);
+        }
+    }
+    D_800D2D28[0xA6] = D_800CCB34;
+    D_800D2D28[0x9D] = 1;
+}
 extern void func_80077610(void);
 extern void func_80076EA4(void);
 extern void* func_80033784(s32 table, s32 id);
