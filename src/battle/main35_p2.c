@@ -281,7 +281,50 @@ void func_8008189C(s32 arg0) {
 }
 #endif
 
-INCLUDE_ASM("asm/battle/nonmatchings/main35_p2", func_800819A4);
+extern u8 D_800D2D24[];
+extern u8 D_800C400B[];
+extern u8 D_800C402F[];
+extern u8 D_800C4022[];
+extern u8 D_800C3FFE[];
+extern void func_8007FCE8(void);
+extern void func_8007FDEC(void);
+extern void func_80077980(void);
+extern void func_8009413C(u8 idx, u8 flag);
+
+/* func_800819A4.s, byte-exact: once per command (context +0x2E9 latch):
+ * func_800BCD98(0); the actor row's +0x3C target = context +0x2E8; run
+ * func_8007FCE8, func_8007FDEC and func_80077980; func_800BC404 of the
+ * actor's and the target's func_80089C08 masks.  Unless D_800D2D24[actor]
+ * is 4, queue command 0xFD in the +0x2DA row (D_800C400B = actor,
+ * D_800C4022 = 0, D_800C3FFE = the target's mask) and advance +0x2DA.
+ * Then func_8009413C(actor, 0).
+ * Codegen: retail keeps the D_800C3EAC load across the halfword row
+ * stores, written as array elements here; the byte stores reload it, and
+ * so does a *(u16 *)(D_800C4022 + ...) store (452 vs 436 bytes).
+ * Matches under gcc 2.7.2 and 2.6.x. */
+void func_800819A4(u8 actor) {
+    u16 mask;
+
+    if (((u8 *)D_800C3EAC)[0x2E9] == 0) {
+        ((u8 *)D_800C3EAC)[0x2E9] = 1;
+        func_800BCD98(0);
+        ((u8 *)D_800C3EAC + (actor << 6))[0x3C] = ((u8 *)D_800C3EAC)[0x2E8];
+        func_8007FCE8();
+        func_8007FDEC();
+        func_80077980();
+        mask = func_80089C08(actor);
+        func_800BC404((mask | func_80089C08(((u8 *)D_800C3EAC + (actor << 6))[0x3C])) & 0xFFFF);
+        if (D_800D2D24[actor] != 4) {
+            D_800C400B[((u8 *)D_800C3EAC)[0x2DA] * 0x48] = actor;
+            D_800C402F[((u8 *)D_800C3EAC)[0x2DA] * 0x48] = 0xFD;
+            ((u16 *)D_800C4022)[((u8 *)D_800C3EAC)[0x2DA] * 0x24] = 0;
+            ((u16 *)D_800C3FFE)[((u8 *)D_800C3EAC)[0x2DA] * 0x24] =
+                func_80089C08(((u8 *)D_800C3EAC + (actor << 6))[0x3C]);
+            ((u8 *)D_800C3EAC)[0x2DA]++;
+        }
+        func_8009413C(actor, 0);
+    }
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main35_p2", func_80081B58);
 extern u8 func_8008C4A8(u32);
 
