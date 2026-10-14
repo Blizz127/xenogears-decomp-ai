@@ -71,7 +71,62 @@ s32 func_800AAA20(u8* obj, s32 id, s32 steps, s32 a3, s32 a4) {
     return flags;
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/main72_p2", func_800AAB34);
+#include "psyq/libgte.h"
+#include "battle/gte_inline.h"
+extern u32 D_800D3368[];
+
+/* Attach actor to the record in slot +0x5C of D_800D3368 (its owner); with
+ * no record there, detach it (+0x5C = 0xFF).  Otherwise copy the owner's
+ * +0x34 unless +0x4A has 0x10, and while it is set:
+ * - with +0x5D set, MulMatrix2 the actor model's +0xC and +0x2C matrices by
+ *   the owner model's part matrix (part 0 at +0x2C, times part +0x5E's
+ *   (0x7C bytes each) into the scratchpad when +0x5E is nonzero);
+ * - load the owner model's +0xC matrix (CompMatrix'd with part +0x5E's into
+ *   the scratchpad when nonzero) as the GTE rotation and translation,
+ *   transform the actor's +0x6A/+0x6C/+0x6E offset and store the result
+ *   at the actor model's +0x20 and +0x5C. */
+void func_800AAB34(u8* actor) {
+    MATRIX* m;
+    SVECTOR v;
+
+    m = (MATRIX*)0x1F800000;
+    if (D_800D3368[actor[0x5C]] != 0) {
+        if (!(*(u16*)(actor + 0x4A) & 0x10)) {
+            actor[0x34] = ((u8*)D_800D3368[actor[0x5C]])[0x34];
+        }
+        if (actor[0x34] == 0) {
+            return;
+        }
+        if (actor[0x5D] != 0) {
+            if (*(s16*)(actor + 0x5E) != 0) {
+                MulMatrix0((MATRIX*)(*(u8**)(D_800D3368[actor[0x5C]] + 4) + 0x2C),
+                           (MATRIX*)(*(s16*)(actor + 0x5E) * 0x7C + *(s32*)(D_800D3368[actor[0x5C]] + 4) + 0x2C),
+                           (MATRIX*)0x1F800000);
+            } else {
+                m = (MATRIX*)(*(u8**)(D_800D3368[actor[0x5C]] + 4) + 0x2C);
+            }
+            MulMatrix2(m, (MATRIX*)(*(u8**)(actor + 4) + 0xC));
+            MulMatrix2(m, (MATRIX*)(*(u8**)(actor + 4) + 0x2C));
+        }
+        if (*(s16*)(actor + 0x5E) != 0) {
+            CompMatrix((MATRIX*)(*(u8**)(D_800D3368[actor[0x5C]] + 4) + 0xC),
+                       (MATRIX*)(*(s16*)(actor + 0x5E) * 0x7C + *(s32*)(D_800D3368[actor[0x5C]] + 4) + 0x2C), m);
+        } else {
+            m = (MATRIX*)(*(u8**)(D_800D3368[actor[0x5C]] + 4) + 0xC);
+        }
+        SetRotMatrix(m);
+        SetTransMatrix(m);
+        v.vx = *(s16*)(actor + 0x6A);
+        v.vy = *(s16*)(actor + 0x6C);
+        v.vz = *(s16*)(actor + 0x6E);
+        BATTLE_GTE_LDV0(&v);
+        BATTLE_GTE_RTV0TR();
+        BATTLE_GTE_STLVNL(*(u8**)(actor + 4) + 0x20);
+        BATTLE_GTE_STLVNL(*(u8**)(actor + 4) + 0x5C);
+    } else {
+        actor[0x5C] = 0xFF;
+    }
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main72_p2", func_800AAD54);
 extern u8* func_800A2330(u8* pool);
 
