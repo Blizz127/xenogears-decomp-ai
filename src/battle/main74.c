@@ -339,7 +339,71 @@ s16 func_800B0B14(s32 id) {
     }
     return p[1];
 }
-INCLUDE_ASM("asm/battle/nonmatchings/main74", func_800B0D70);
+extern u8* D_800D3368[];
+extern s32 func_800AA600(s32 slot);
+extern s32 func_800AA650(s32 slot);
+
+/* func_800B0D70.s, byte-exact: find the actor whose circle holds pos.  For
+ * each i < 11 with a D_800D3368 entry whose +0x34 is set: reach =
+ * func_800AA650(i) + 0x80; skip unless the actor's +0x60 height minus
+ * func_800AA600(i) is below pos[1] and reach beats the best so far.  The
+ * circle's centre is the actor's +0x5C/+0x64 position minus dir / 6, and
+ * pos must lie within reach of it (len = |pos - centre| + 1).  The best
+ * actor's rim point (centre + offset * reach / len) goes to pos[0] /
+ * pos[2]; returns its index + 1, or 0 when none qualifies.  Codegen:
+ * reach is declared first (retail's spill-slot order), the best-reach
+ * comparison is written reach-first, and the func_800AA600 result has its
+ * own local.  Matches under gcc 2.6.x with the TU's expand-div preset. */
+s32 func_800B0D70(s16* dir, s16* pos) {
+    s16 reach;
+    s16 best = -1;
+    s16 bestReach;
+    s16 bestX;
+    s16 bestZ;
+    s32 i;
+    s32 y;
+    u8* body;
+    s16 cx;
+    s16 cz;
+    s16 ox;
+    s16 oz;
+    s32 r;
+    s32 len;
+
+    for (i = 0; i < 11; i++) {
+        reach = func_800AA650(i) + 0x80;
+        if (D_800D3368[i] == NULL || D_800D3368[i][0x34] == 0) {
+            continue;
+        }
+        y = pos[1];
+        r = func_800AA600(i);
+        body = *(u8**)(D_800D3368[i] + 4);
+        if (*(s32*)(body + 0x60) - r >= y) {
+            continue;
+        }
+        if (best >= 0 && reach <= bestReach) {
+            continue;
+        }
+        cx = *(u16*)(body + 0x5C) - dir[0] / 6;
+        ox = pos[0] - cx;
+        cz = *(u16*)(body + 0x64) - dir[2] / 6;
+        oz = pos[2] - cz;
+        len = SquareRoot0(ox * ox + oz * oz) + 1;
+        if (len >= reach) {
+            continue;
+        }
+        best = i;
+        bestReach = reach;
+        bestX = cx + ox * reach / len;
+        bestZ = cz + oz * reach / len;
+    }
+    if (best >= 0) {
+        pos[0] = bestX;
+        pos[2] = bestZ;
+        return best + 1;
+    }
+    return 0;
+}
 extern s32 func_800B0D70(s16* d, s16* b);
 
 /* func_800B0FF4.s, byte-exact: d = (a - b).xz scaled to 512 / (|d| + 1),
@@ -356,7 +420,6 @@ s32 func_800B0FF4(s16* a, s16* b) {
     d[2] = (d[2] << 9) / len;
     return func_800B0D70(d, b);
 }
-extern u8* D_800D3368[];
 extern s32 SquareRoot0(s32 a);
 extern s32 ratan2(s32 y, s32 x);
 extern s32 rcos(s32 a);
