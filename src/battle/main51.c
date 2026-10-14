@@ -560,7 +560,123 @@ void func_8009209C(void) {
     D_800D2D28[0xB7] = 3;
 }
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80092298);
-INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80092784);
+extern void func_80077610(void);
+extern void func_80076EA4(void);
+extern void* func_80033784(s32 table, s32 id);
+extern void* func_800338D8(s32 id);
+extern void func_80092298(u8 a, u8* ids);
+extern u8* D_800D2DB0;
+/* Image pointer as an aggregate element, as in main6.c. */
+typedef struct {
+    void* data;
+} BattleImageRef;
+extern BattleImageRef D_800C3E5C[];
+
+/* func_80092784.s, byte-exact: after func_80077610 and func_80076EA4, clear
+ * a fresh 0x39-wide buffer (D_800D2DB0) and upload it at (0x3C0, 0, 0x3C,
+ * 0xD).  For each slot i of 8: allocate a 0x1B-high buffer, upload the
+ * shared buffer at (i % 2 * 30 + 0x380, i / 2 * 16 + 0x100, 0x1B, 0x10),
+ * render the slot's name (string ids[i] of table D_800D2D24[a] through
+ * func_80033784, skipped for id 0xFF; slot 7 renders func_800338D8(10)) and
+ * upload it 30 wide, add a 0x1B x 0x10 strip at x 0x3C0 for even i, then
+ * upload the two digits of vals[i] (D_800C3E5C images; the tens only when
+ * non-zero, the ones only for a valid id; slot 7 uploads the blank buffer
+ * for both) at (i % 2 * 16 + 0x3C0 / 0x3C2, i / 2 * 16 + 0x102).  Finally
+ * func_80092298(a, ids), free the buffers and run func_8009209C.
+ * Codegen: the buffers are BattleImageRef elements (main6.c's
+ * func_80076EA4 idiom; a plain pointer array becomes a pointer walk), the
+ * tens image is chosen before its upload call, each ones-digit path has its
+ * own upload call (gcc merges them), and the name width 0x1E is a local `w`
+ * (retail loads it into t0 at each use; the literal goes to v0). */
+void func_80092784(u8 a, u8* ids, u8* vals) {
+    s16 r0[4];
+    s16 r1[4];
+    s16 r2[4];
+    s16 r3[4];
+    s16 r4[4];
+    s16 r5[4];
+    BattleImageRef bufs[8];
+    s32 i;
+    u8* img;
+    s32 w = 0x1E;
+
+    func_80077610();
+    func_80076EA4();
+    D_800D2DB0 = func_8008AC00(0x39);
+    bzero(D_800D2DB0, 0x618);
+    r5[0] = 0x3C0;
+    r5[2] = 0x3C;
+    r5[1] = 0;
+    r5[3] = 0xD;
+    func_800769E8(r5, D_800D2DB0);
+    for (i = 0; i < 8; i++) {
+        bufs[i].data = func_8008AC00(0x1B);
+        bzero(bufs[i].data, 0x30C);
+        r3[0] = i % 2 * 30 + 0x380;
+        r3[1] = i / 2 * 16 + 0x100;
+        r3[2] = 0x1B;
+        r3[3] = 0x10;
+        func_800769E8(r3, D_800D2DB0);
+        if (i != 7) {
+            if (ids[i] != 0xFF) {
+                SystemRenderStringEntry(func_80033784(D_800D2D24[a], ids[i]), bufs[i].data, 0x1B, 0);
+                r0[0] = i % 2 * 30 + 0x380;
+                r0[1] = i / 2 * 16 + 0x102;
+                r0[2] = w;
+                r0[3] = 0xD;
+                func_800769E8(r0, bufs[i].data);
+            }
+        } else {
+            SystemRenderStringEntry(func_800338D8(10), bufs[i].data, 0x1B, 0);
+            r0[0] = 0x39E;
+            r0[1] = 0x132;
+            r0[2] = w;
+            r0[3] = 0xD;
+            func_800769E8(r0, bufs[i].data);
+        }
+        if (!(i & 1)) {
+            r4[0] = 0x3C0;
+            r4[1] = i / 2 * 16 + 0x100;
+            r4[2] = 0x1B;
+            r4[3] = 0x10;
+            func_800769E8(r4, D_800D2DB0);
+        }
+        r1[0] = i % 2 * 16 + 0x3C0;
+        r1[1] = i / 2 * 16 + 0x102;
+        r1[2] = 6;
+        r1[3] = 0xD;
+        if (i != 7) {
+            if ((u8)(vals[i] / 10) != 0) {
+                img = D_800C3E5C[(u8)(vals[i] / 10)].data;
+            } else {
+                img = D_800D2DB0;
+            }
+            func_800769E8(r1, img);
+            r2[0] = i % 2 * 16 + 0x3C2;
+            r2[1] = i / 2 * 16 + 0x102;
+            r2[2] = 6;
+            r2[3] = 0xD;
+            if (ids[i] != 0xFF) {
+                func_800769E8(r2, D_800C3E5C[(u8)(vals[i] % 10)].data);
+            } else {
+                func_800769E8(r2, D_800D2DB0);
+            }
+        } else {
+            func_800769E8(r1, D_800D2DB0);
+            r2[0] = 0x3D2;
+            r2[1] = 0x132;
+            r2[2] = 6;
+            r2[3] = 0xD;
+            func_800769E8(r2, D_800D2DB0);
+        }
+    }
+    func_80092298(a, ids);
+    for (i = 0; i < 8; i++) {
+        HeapFree(bufs[i].data);
+    }
+    HeapFree(D_800D2DB0);
+    func_8009209C();
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80092B74);
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_800930AC);
 
@@ -982,7 +1098,93 @@ void func_800968C0(void) {
 
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80096AB8);
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80096FBC);
-INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80097610);
+extern u8* D_800D2DC8;
+
+/* func_80097610.s, byte-exact: a stat value for the acting actor
+ * (D_800C3E50, record D_800C3E34) picked by D_800C3DFC's mode byte +0x1B:
+ * 0 = c + b, 1 = a, 2 = c.  For a +0x15A bit-7 actor c is D_800D2DC8's
+ * halfword +0x70 and b = 0; otherwise c and b are D_800C3E34 bytes +0x2D
+ * and +0x59, b times 3 / 2 when D_800C3DFC halfword +0xA bit 8 is clear and
+ * D_800C3E34 halfword +0x84 | +0x86 has bit 8.  a is byte +0x5C, times 3 / 2
+ * when +0xA bit 8 is set and +0x88 | +0x8A has bit 14.  For a non-bit-7
+ * actor, with n = party actors 0..2 whose halfword +0x7C has bit 15 and
+ * n != 0: D_800C3E34 halfword +0x32 bit 2 (with +0xA bit 8 clear) scales the
+ * value by (4 - n) / 4, and bit 1 (likewise) and bit 0 each by (n + 2) / 2.
+ * Returns it as s16.  The mode switch has no default: for a mode byte > 2
+ * the value is never set (retail returns the caller's a3; undefined in a
+ * native build).  Codegen: the first three bit-7 tests read Battle's
+ * actors[] (with named pointer locals there gcc does not thread the second
+ * test's set-bit branch straight to b = 0 as retail does); the last test's
+ * base local also serves the party loop (base-first sums); a's 3 / 2 is
+ * spelled `a += a * 2; a >>= 1` (retail adds a first, `a * 3` adds the
+ * shifted copy first). */
+s16 func_80097610(void) {
+    u16 a;
+    u16 b;
+    u16 c;
+    u16 v;
+    u8 n;
+    u8 i;
+
+    if (((Battle*)D_800C34B0)->actors[D_800C3E50].flags & 0x80) {
+        c = *(u16*)(D_800D2DC8 + 0x70);
+    } else {
+        b = D_800C3E34[0x59];
+        c = D_800C3E34[0x2D];
+    }
+    a = D_800C3E34[0x5C];
+    if (*(u16*)((u8*)D_800C3DFC + 0xA) & 0x100) {
+        if ((*(u16*)(D_800C3E34 + 0x88) | *(u16*)(D_800C3E34 + 0x8A)) & 0x4000) {
+            a += a * 2;
+            a >>= 1;
+        }
+    } else {
+        if (!(((Battle*)D_800C34B0)->actors[D_800C3E50].flags & 0x80)) {
+            if ((*(u16*)(D_800C3E34 + 0x84) | *(u16*)(D_800C3E34 + 0x86)) & 0x100) {
+                b = b * 3 >> 1;
+            }
+        }
+    }
+    if (((Battle*)D_800C34B0)->actors[D_800C3E50].flags & 0x80) {
+        b = 0;
+    }
+    switch (((u8*)D_800C3DFC)[0x1B]) {
+    case 0:
+        v = c + b;
+        break;
+    case 1:
+        v = a;
+        break;
+    case 2:
+        v = c;
+        break;
+    }
+    {
+        u8* base4 = D_800C34B0;
+        u8* p4 = base4 + D_800C3E50 * 0x170;
+
+        if (!(p4[0x15A] & 0x80)) {
+            n = 0;
+            for (i = 0; i < 3; i++) {
+                u8* q = base4 + i * 0x170;
+
+                if (*(u16*)(q + 0x7C) & 0x8000) {
+                    n++;
+                }
+            }
+            if ((*(u16*)(D_800C3E34 + 0x32) & 4) && n != 0 && !(*(u16*)((u8*)D_800C3DFC + 0xA) & 0x100)) {
+                v = v * (4 - n) / 4;
+            }
+            if ((*(u16*)(D_800C3E34 + 0x32) & 2) && n != 0 && !(*(u16*)((u8*)D_800C3DFC + 0xA) & 0x100)) {
+                v = v * (n + 2) >> 1;
+            }
+            if ((*(u16*)(D_800C3E34 + 0x32) & 1) && n != 0) {
+                v = v * (n + 2) >> 1;
+            }
+        }
+    }
+    return v;
+}
 #endif
 
 
