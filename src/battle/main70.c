@@ -49,7 +49,82 @@ void func_800A6444(s32 i, s32 kind, s32 factor, s32 r, s32 g, s32 b) {
 }
 
 INCLUDE_ASM("asm/battle/nonmatchings/main70", func_800A64E4);
-INCLUDE_ASM("asm/battle/nonmatchings/main70", func_800A6884);
+/* func_800A6884.s, byte-exact: run CLUT fade slot i over one colour word
+ * (dst bytes r, g, b) and copy the result to out[0..2].  The slot's signed
+ * r/g/b * 8 is the base; when the slot is active its kind adds the colour
+ * (0), half of it (1), a quarter (2), the average of the three channels
+ * to each (3), or clears the base (4).  Each channel then moves toward
+ * the colour by factor / 32 and is clamped to 0..0xFF.  The kind switch
+ * is a jump table (jtbl_80070554, placed by the main70 .rodata split in
+ * config/battle.yaml).  Matches under gcc 2.6.x. */
+void func_800A6884(u8* out, s32 i, u32* dst) {
+    u8* c = (u8*)dst;
+    s32 r;
+    s32 g;
+    s32 b;
+    s32 avg;
+
+    r = D_800C3AAC[i].r * 8;
+    g = D_800C3AAC[i].g * 8;
+    b = D_800C3AAC[i].b * 8;
+    if (D_800C3AAC[i].active != 0) {
+        switch (D_800C3AAC[i].kind) {
+        case 0:
+            r += c[0];
+            g += c[1];
+            b += c[2];
+            break;
+        case 1:
+            r += c[0] >> 1;
+            g += c[1] >> 1;
+            b += c[2] >> 1;
+            break;
+        case 2:
+            r += c[0] >> 2;
+            g += c[1] >> 2;
+            b += c[2] >> 2;
+            break;
+        case 3:
+            avg = (c[0] + c[1] + c[2]) / 3;
+            r += avg;
+            g += avg;
+            b += avg;
+            break;
+        case 4:
+            r = 0;
+            g = 0;
+            b = 0;
+            break;
+        }
+    }
+    r += (c[0] - r) * D_800C3AAC[i].factor / 32;
+    g += (c[1] - g) * D_800C3AAC[i].factor / 32;
+    b += (c[2] - b) * D_800C3AAC[i].factor / 32;
+    if (r >= 0x100) {
+        c[0] = 0xFF;
+    } else if (r < 0) {
+        c[0] = 0;
+    } else {
+        c[0] = r;
+    }
+    if (g >= 0x100) {
+        c[1] = 0xFF;
+    } else if (g < 0) {
+        c[1] = 0;
+    } else {
+        c[1] = g;
+    }
+    if (b >= 0x100) {
+        c[2] = 0xFF;
+    } else if (b < 0) {
+        c[2] = 0;
+    } else {
+        c[2] = b;
+    }
+    out[0] = c[0];
+    out[1] = c[1];
+    out[2] = c[2];
+}
 
 typedef struct {
     u8 data[0x88];
