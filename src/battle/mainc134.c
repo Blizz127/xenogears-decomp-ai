@@ -60,20 +60,21 @@ typedef struct {
     u16 unkE;
     u16 unk10;
     u8 unk12[0xA];
-} BFE48Row;
+} C134Row;
 
 /* The record's 4-bit slot: bits 30-31 of +0xA8 and 0-1 of +0xAC (low part
  * first). */
-#define BFE48_SLOT(p) \
+#define C134_SLOT(p) \
     ({ u32 lo_ = *(u32*)((p) + 0xA8) >> 30; ((*(u32*)((p) + 0xAC) & 3) << 2) | lo_; })
 
 /* |a - b|, with the second difference spelled out as retail computes it. */
-#define BFE48_ABSD(a, b) ({ s32 d_ = (a) - (b); if (d_ < 0) d_ = (b) - (a); d_; })
+#define C134_ABSD(a, b) ({ s32 d_ = (a) - (b); if (d_ < 0) d_ = (b) - (a); d_; })
 
 /* Record pointer of party slot i.  An inline helper on purpose (as
- * B853C_Actor in mainc102.c): its copies keep the last loop big enough that
- * loop optimisation leaves the D_800C37D4 address in the loop, as retail. */
-static inline u8* BFE48_Rec(s32 i) {
+ * B853C_Actor in mainc102.c): its copies keep func_800BFE48's last loop big
+ * enough that loop optimisation leaves the D_800C37D4 address in the loop, as
+ * retail. */
+static inline u8* C134_Rec(s32 i) {
     u8* base = D_800C3EB0;
 
     return *(u8**)((u8*)(i * 4 + base) + 0x8C8C);
@@ -96,7 +97,7 @@ static inline u8* BFE48_Rec(s32 i) {
  * 5..12 give retail's jump tables; loop 2 indexes the rows afresh after the
  * record lookup, which gives retail's induction-variable order there. */
 void func_800BFE48(void) {
-    BFE48Row* row;
+    C134Row* row;
     u8* rec;
     u8* model;
     s32 i;
@@ -108,12 +109,12 @@ void func_800BFE48(void) {
     u32 bits;
 
     {
-        BFE48Row* rows = (BFE48Row*)D_800C3EB0;
+        C134Row* rows = (C134Row*)D_800C3EB0;
 
         for (i = 0; i != 11; i++) {
             row = &rows[i];
             if (row->unk8 == 0) {
-                rec = BFE48_Rec(i);
+                rec = C134_Rec(i);
                 if (rec != NULL && func_8009A0DC(i) != 8) {
                     switch ((s8)rec[0xAF]) {
                     case 5:
@@ -125,7 +126,7 @@ void func_800BFE48(void) {
 
                         if (state != D_800C37D4[func_8009A0DC(i)]) {
                             func_800245D8(rec, 0x10);
-                            D_800D2E54 &= ~(1 << BFE48_SLOT(rec));
+                            D_800D2E54 &= ~(1 << C134_SLOT(rec));
                         }
                         break;
                     }
@@ -136,14 +137,14 @@ void func_800BFE48(void) {
     }
     func_800C0564();
     {
-        BFE48Row* rows = (BFE48Row*)D_800C3EB0;
+        C134Row* rows = (C134Row*)D_800C3EB0;
 
         for (i = 0; i != 11; i++) {
             if (rows[i].unk8 == 0) {
-                rec = BFE48_Rec(i);
+                rec = C134_Rec(i);
                 if (rec != NULL && func_8009A0DC(i) != 8 && (s8)rec[0xAF] != 0x15) {
-                    if (BFE48_ABSD(*(s16*)(rec + 2), rows[i].unkE) >= 9 ||
-                        BFE48_ABSD(*(s16*)(rec + 0xA), rows[i].unk10) >= 9) {
+                    if (C134_ABSD(*(s16*)(rec + 2), rows[i].unkE) >= 9 ||
+                        C134_ABSD(*(s16*)(rec + 0xA), rows[i].unk10) >= 9) {
                         *(u32*)(rec + 0xAC) |= 0x40;
                         *(u16*)(rec + 0xA0) = rows[i].unkE;
                         *(u16*)(rec + 0xA4) = rows[i].unk10;
@@ -156,19 +157,19 @@ void func_800BFE48(void) {
     }
     func_800C0564();
     for (i = 0; i != 11; i++) {
-        u8* p = BFE48_Rec(i);
+        u8* p = C134_Rec(i);
 
         if (p != NULL) {
             *(u32*)(p + 0xAC) &= ~0x40;
         }
     }
     {
-        BFE48Row* rows = (BFE48Row*)D_800C3EB0;
+        C134Row* rows = (C134Row*)D_800C3EB0;
 
         for (i = 0; i != 11; i++) {
             row = &rows[i];
             if (row->unk8 == 0) {
-                rec = BFE48_Rec(i);
+                rec = C134_Rec(i);
                 if (rec != NULL) {
                     if ((s8)rec[0xAF] != 0x15) {
                         func_800BAEB8(i);
@@ -177,7 +178,7 @@ void func_800BFE48(void) {
                     if (func_8009A0DC(i) != 8) {
                         target = D_800C37D4[func_8009A0DC(i)];
                         if (row->unk8 == 0 &&
-                            (target != 0x15 || ((D_800C3608 >> BFE48_SLOT(rec)) & 1))) {
+                            (target != 0x15 || ((D_800C3608 >> C134_SLOT(rec)) & 1))) {
                             if (target == 1) {
                                 target = (s8)rec[0xB0];
                             }
@@ -246,8 +247,74 @@ void func_800BFE48(void) {
         }
     }
 }
-INCLUDE_ASM("asm/battle/nonmatchings/mainc134", func_800C0314);
+extern u32 D_800C3E1C[];
+extern u8* D_800D3368[];
+extern u32 func_800BEEB4(u32 mask, u32* out, u32 value);
+extern void func_800BEE2C(u32 a0, u32 a1, u32 a2);
+extern void func_800BF9EC(void);
 extern void func_800BE790(void);
+extern void func_800B136C(void);
+
+/* Collect the slots newly set in D_800C3EB0+0xA38 versus D_800D2E54
+ * (func_800BEEB4, tagging them with D_800C3E1C).  Walking the list from the
+ * end: drop (zero) those masked in D_800C3608; for the rest clear +0x9E,
+ * then for an inactive slot (row +8) flag the D_800D3368 entry (+0x38) and
+ * run func_800BEE2C(slot, slot, 0x15), else set state 0x15 through
+ * func_800245D8 unless already there; count it and mark the slot in
+ * D_800D2E54.  Then, while any collected live record (+0x48) still has
+ * +0x9E set, run func_800BF9EC and wait a frame (func_800BE790) -- each only
+ * when something was counted.  func_800B136C if an inactive slot was handled.
+ * Returns the count.  The do/while (any) with `any && count` guards keeps
+ * retail's second count test (as a plain loop CSE drops it). */
+u32 func_800C0314(void) {
+    u32 list[12];
+    s32 count = 0;
+    u8 flag = 0;
+    s32 i;
+    u8 any;
+    u8* base = D_800C3EB0;
+    u8* rec;
+
+    i = func_800BEEB4(*(u16*)(base + 0xA38) & (*(u16*)(base + 0xA38) ^ D_800D2E54), list,
+                      D_800C3E1C[0]);
+    if (i != 0) {
+        for (i--; i >= 0; i--) {
+            rec = (u8*)list[i];
+            if ((D_800C3608 >> C134_SLOT(rec)) & 1) {
+                list[i] = 0;
+                continue;
+            }
+            *(s16*)(rec + 0x9E) = 0;
+            if (((C134Row*)D_800C3EB0)[C134_SLOT(rec)].unk8 != 0) {
+                flag = 1;
+                D_800D3368[C134_SLOT(rec)][0x38] = 1;
+                func_800BEE2C(C134_SLOT(rec), C134_SLOT(rec), 0x15);
+            } else if (*(s8*)(rec + 0xAF) != 0x15) {
+                func_800245D8(rec, 0x15);
+            }
+            count++;
+            D_800D2E54 |= 1 << C134_SLOT(rec);
+        }
+    }
+    do {
+        any = 0;
+        for (i = 0; i != count; i++) {
+            if (list[i] != 0 && *(u32*)(list[i] + 0x48) != 0 && *(s16*)(list[i] + 0x9E) != 0) {
+                any = 1;
+            }
+        }
+        if (any && count != 0) {
+            func_800BF9EC();
+        }
+        if (any && count != 0) {
+            func_800BE790();
+        }
+    } while (any);
+    if (flag) {
+        func_800B136C();
+    }
+    return count;
+}
 
 /* func_800C0564.s, byte-exact: wait (func_800BE790 frames) until no party
  * slot is still settling.  Per pass, over the 11 slots (record pointers at
