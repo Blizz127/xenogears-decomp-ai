@@ -48,5 +48,81 @@ u32 func_80084750(u32 arg0) {
     }
     return D_800C3E90[0];
 }
-INCLUDE_ASM("asm/battle/nonmatchings/mainasm_14C60", func_80084854);
+extern u16 D_800C3EBE__rows[][14] asm("D_800C3EBE");
+extern u16 D_800C3EC0__rows[][14] asm("D_800C3EC0");
+
+/* func_80084854.s, byte-exact: the actor that cursor direction `dir` moves
+ * to from `actor`.  Among the D_800C3E90 slots (0xFF = empty, `actor`
+ * skipped), keep those whose ratan2 angle from `actor` (D_800C3EC0 z,
+ * D_800C3EBE x halfwords of the 28-byte records) falls in dir's quarter
+ * turn: 0 [-0x200, 0x200), 1 [-0x600, -0x200), 3 [0x200, 0x600), 2 the
+ * rest ([-0x800, -0x600) or [0x600, 0x800]); return the nearest by
+ * squared distance (`actor` itself when none qualifies).  Codegen: the records go through asm-label row
+ * views; each squared term is computed in both arms of its sign test,
+ * which reloads the slot byte after each join as retail does.  Matches
+ * under gcc 2.6.x (2.7.2: diff 7/138); the port body is in main35.c. */
+u8 func_80084854(u8 actor, u8 dir) {
+    s32 best = 0xFFFFFF;
+    u8 result = actor;
+    s32 i;
+    s32 found;
+    s32 angle;
+    s32 dz;
+    s32 dx;
+    s32 dist;
+
+    for (i = 0; i < 11; i++) {
+        if (D_800C3E90[i] != 0xFF && D_800C3E90[i] != actor) {
+            found = 0;
+            angle = ratan2(D_800C3EC0__rows[D_800C3E90[i]][0] - D_800C3EC0__rows[actor][0],
+                           D_800C3EBE__rows[D_800C3E90[i]][0] - D_800C3EBE__rows[actor][0]);
+            switch (dir) {
+            case 0:
+                if ((u16)(angle + 0x200) < 0x400) {
+                    found = 1;
+                }
+                break;
+            case 1:
+                if ((u16)(angle + 0x600) < 0x400) {
+                    found = 1;
+                }
+                break;
+            case 2:
+                if ((u16)(angle + 0x800) < 0x200) {
+                    found = 1;
+                }
+                if ((u16)(angle - 0x600) < 0x201) {
+                    found = 1;
+                }
+                break;
+            case 3:
+                if ((u16)(angle - 0x200) < 0x400) {
+                    found = 1;
+                }
+                break;
+            }
+            if (found) {
+                dz = D_800C3EC0__rows[D_800C3E90[i]][0] - D_800C3EC0__rows[actor][0];
+                if (dz < 0) {
+                    dist = (D_800C3EC0__rows[actor][0] - D_800C3EC0__rows[D_800C3E90[i]][0]) *
+                           (D_800C3EC0__rows[actor][0] - D_800C3EC0__rows[D_800C3E90[i]][0]);
+                } else {
+                    dist = dz * dz;
+                }
+                dx = D_800C3EBE__rows[D_800C3E90[i]][0] - D_800C3EBE__rows[actor][0];
+                if (dx < 0) {
+                    dist += (D_800C3EBE__rows[actor][0] - D_800C3EBE__rows[D_800C3E90[i]][0]) *
+                            (D_800C3EBE__rows[actor][0] - D_800C3EBE__rows[D_800C3E90[i]][0]);
+                } else {
+                    dist += dx * dx;
+                }
+                if (dist < best) {
+                    best = dist;
+                    result = D_800C3E90[i];
+                }
+            }
+        }
+    }
+    return result;
+}
 #endif

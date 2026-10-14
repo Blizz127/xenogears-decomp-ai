@@ -226,9 +226,9 @@ extern long ratan2(long, long);
 #endif
 #if BATTLE_PART(3)
 /* Retail84854: eleven slots, angular sector, then signed wrapped distance. */
-/* Not yet byte-matching: the matching build assembles retail bytes for
- * this function from its own asm segment (see config/battle.yaml).  The
- * body below is kept for the port and the differential harnesses. */
+/* The byte-matching C is in src/battle/mainasm_14C60.c (its own asm
+ * segment, see config/battle.yaml).  The body below is the port arm, kept
+ * for the port and the differential harnesses. */
 #ifdef XENO_PC_PORT
 u32 func_80084854(u32 arg0, u32 arg1) {
     s32 best = 0xFFFFFF;
