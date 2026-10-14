@@ -168,7 +168,62 @@ void func_800AFC68(u8* task) {
     *(s32*)(task + 0x40) = out.vz << 16;
     a->next(task);
 }
-INCLUDE_ASM("asm/battle/nonmatchings/main73_p2", func_800AFD98);
+/* func_800AFD98.s, byte-exact: set (flags & 0x20: add to) one of node's
+ * three xyz triples chosen by flags & 7 (0: halfwords +0x54, 1: words
+ * +0x5C, else halfwords +0x4C), mark +4 / +5, and with flags bit 7 recurse
+ * into the entries of the (ctx + 4) table (0x7C bytes each, count at +0xA)
+ * whose first word is node.  The port arm is the XENO_PC_PORT body in
+ * main73.c.  Codegen: the entry pointer starts at the table and is
+ * advanced at the top of the loop body, as retail keeps the table pointer
+ * in that register.  Matches only under gcc 2.6.x (2.7.2: 512 vs 516
+ * bytes). */
+void func_800AFD98(u8* ctx, u8* node, u8 flags, s16 x, s16 y, s16 z) {
+    s32 i;
+    u8* e;
+
+    if ((flags & 7) == 0) {
+        if (flags & 0x20) {
+            *(u16*)(node + 0x54) += x;
+            *(u16*)(node + 0x56) += y;
+            *(u16*)(node + 0x58) += z;
+        } else {
+            *(u16*)(node + 0x54) = x;
+            *(u16*)(node + 0x56) = y;
+            *(u16*)(node + 0x58) = z;
+        }
+    } else if ((flags & 7) == 1) {
+        if (flags & 0x20) {
+            *(s32*)(node + 0x5C) += x;
+            *(s32*)(node + 0x60) += y;
+            *(s32*)(node + 0x64) += z;
+        } else {
+            *(s32*)(node + 0x5C) = x;
+            *(s32*)(node + 0x60) = y;
+            *(s32*)(node + 0x64) = z;
+        }
+    } else {
+        if (flags & 0x20) {
+            *(u16*)(node + 0x4C) += x;
+            *(u16*)(node + 0x4E) += y;
+            *(u16*)(node + 0x50) += z;
+        } else {
+            *(u16*)(node + 0x4C) = x;
+            *(u16*)(node + 0x4E) = y;
+            *(u16*)(node + 0x50) = z;
+        }
+    }
+    node[4] = 1;
+    node[5] = 1;
+    if (flags & 0x80) {
+        e = *(u8**)(ctx + 4);
+        for (i = 1; i < *(u16*)(*(u8**)(ctx + 4) + 0xA); i++) {
+            e += 0x7C;
+            if (*(u8**)e == node) {
+                func_800AFD98(ctx, e, flags, x, y, z);
+            }
+        }
+    }
+}
 extern s32 func_800A5914(SVECTOR* pos, s32 tri, s32 tries);
 extern s32 func_800A579C(SVECTOR* pos);
 extern s32 func_800A5870(SVECTOR* pos, s32 tri, VECTOR* normal);
