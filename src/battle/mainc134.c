@@ -169,7 +169,60 @@ void func_800C0828(SVECTOR* from, SVECTOR* to, SVECTOR* out) {
 }
 
 INCLUDE_ASM("asm/battle/nonmatchings/mainc134", func_800C08CC);
-INCLUDE_ASM("asm/battle/nonmatchings/mainc134", func_800C0D18);
+#include "battle/gte_inline.h"
+/* Weights: four 4.12 words per (set, point), eight points per set. */
+extern s32* D_800C3A68;
+
+/* Point b (0..7) of weight set a (func_800C08CC passes sets 0..4): the four
+ * control points at v, each scaled by its D_800C3A68 weight (words
+ * (a * 8 + b) * 4 to + 3) through GPF sf=1, summed into out and divided
+ * by 4. */
+void func_800C0D18(s32 a, s32 b, SVECTOR* v, VECTOR* out) {
+    VECTOR t;
+    s32 i;
+
+    i = (a * 8 + b) * 4;
+    BATTLE_GTE_LDDP(D_800C3A68[i]);
+    t.vx = v[0].vx;
+    t.vy = v[0].vy;
+    t.vz = v[0].vz;
+    BATTLE_GTE_LDLVL(&t);
+    BATTLE_GTE_GPF12();
+    BATTLE_GTE_STLVL(out);
+    BATTLE_GTE_LDDP(D_800C3A68[i + 1]);
+    t.vx = v[1].vx;
+    t.vy = v[1].vy;
+    t.vz = v[1].vz;
+    BATTLE_GTE_LDLVL(&t);
+    BATTLE_GTE_GPF12();
+    BATTLE_GTE_STLVL(&t);
+    out->vx += t.vx;
+    out->vy += t.vy;
+    out->vz += t.vz;
+    BATTLE_GTE_LDDP(D_800C3A68[i + 2]);
+    t.vx = v[2].vx;
+    t.vy = v[2].vy;
+    t.vz = v[2].vz;
+    BATTLE_GTE_LDLVL(&t);
+    BATTLE_GTE_GPF12();
+    BATTLE_GTE_STLVL(&t);
+    out->vx += t.vx;
+    out->vy += t.vy;
+    out->vz += t.vz;
+    BATTLE_GTE_LDDP(D_800C3A68[i + 3]);
+    t.vx = v[3].vx;
+    t.vy = v[3].vy;
+    t.vz = v[3].vz;
+    BATTLE_GTE_LDLVL(&t);
+    BATTLE_GTE_GPF12();
+    BATTLE_GTE_STLVL(&t);
+    out->vx += t.vx;
+    out->vy += t.vy;
+    out->vz += t.vz;
+    out->vx >>= 2;
+    out->vy >>= 2;
+    out->vz >>= 2;
+}
 #endif
 
 

@@ -236,9 +236,9 @@ build_variables = {
     maspsx_flags = "--dont-expand-li --use-comm-section --run-assembler"
 }
 paths = [
-    # Every battle/mainc* TU except mainc122 (BattleCdkG0 below); gears
-    # takes whichever matching key its HashMap yields first, so no TU may
-    # match keys of two presets.
+    # Every battle/mainc* TU except mainc122, mainc124 and mainc134
+    # (BattleCdkG0 below); gears takes whichever matching key its HashMap
+    # yields first, so no TU may match keys of two presets.
     "battle/mainc10",
     "battle/mainc11",
     "battle/mainc120.",
@@ -246,7 +246,9 @@ paths = [
     "battle/mainc126.",
     "battle/mainc127.",
     "battle/mainc129.",
-    "battle/mainc13",
+    "battle/mainc130.",
+    "battle/mainc131.",
+    "battle/mainc132.",
     "battle/mainc15.",
     "battle/mainc18_",
     # "battle/mainc2" minus mainc25_q1 (BattleGcc263 below, 2026-10-12).
@@ -303,12 +305,23 @@ name = "BattleCdkG0"
 # (its scalar D_800C3610 view gets a split %hi in $s0 and keeps scalar alias
 # rules; CDK -G8: each reload is a $at macro, +2 insns; 2.7.2, 2.6.3 and
 # 2.6.0 at -G8 or -G0: 41 insns, far off); func_800BEDE8 matches either way.
+# mainc134 (2026-10-14): func_800C0D18 reloads its scalar D_800C3A68 table
+# pointer through one split %hi in $t0, and its last two reloads move
+# ahead of stores through `out` (scalar alias rules); it matches only here
+# (CDK -G8: a %hi per reload, 612 vs 600 bytes; 2.7.2, 2.6.3 and 2.6.0 at
+# -G8 or -G0: 616; an incomplete-array view gets the split %hi but keeps
+# the reloads behind the stores, 620).  The TU's other bodies stay
+# byte-exact (full relink).
 build_variables = {
     gcc = "gcc-2.7.2-cdk-psx",
     maspsx_flags = "--dont-expand-li --use-comm-section --run-assembler",
     gp_flag = "-G0"
 }
-paths = [ "src/battle/mainc122.", "src/battle/mainc124." ]
+paths = [
+    "src/battle/mainc122.",
+    "src/battle/mainc124.",
+    "src/battle/mainc134.",
+]
 
 [[build_preset]]
 name = "XenoGraphicsLibrary"
