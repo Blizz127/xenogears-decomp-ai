@@ -39,11 +39,214 @@ void func_800BFDA8(u8* sprite, u32 index) {
     *(u32*)(child + 0xB0) = flags | 0x100;
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/mainc134", func_800BFE48);
-INCLUDE_ASM("asm/battle/nonmatchings/mainc134", func_800C0314);
 extern u8 D_800C3EB0[];
 extern u16 D_800C37D4[];
+extern u16 D_800D2E54;
+extern u16 D_800C3608;
 extern u32 func_8009A0DC(u32 index);
+extern u32 func_8009A1AC(u32 index);
+extern void func_800245D8(void* sprite, s32 anim);
+extern void func_800BAEB8(s32 slot);
+extern void func_800BFD88(u8* sprite, u32 index);
+extern u32 func_800C0314(void);
+void func_800C0564(void);
+
+/* The 28-byte party rows at D_800C3EB0 (record pointers at +0x8C8C). */
+typedef struct {
+    u8 unk0[7];
+    u8 unk7;
+    u8 unk8;
+    u8 unk9[5];
+    u16 unkE;
+    u16 unk10;
+    u8 unk12[0xA];
+} BFE48Row;
+
+/* The record's 4-bit slot: bits 30-31 of +0xA8 and 0-1 of +0xAC (low part
+ * first). */
+#define BFE48_SLOT(p) \
+    ({ u32 lo_ = *(u32*)((p) + 0xA8) >> 30; ((*(u32*)((p) + 0xAC) & 3) << 2) | lo_; })
+
+/* |a - b|, with the second difference spelled out as retail computes it. */
+#define BFE48_ABSD(a, b) ({ s32 d_ = (a) - (b); if (d_ < 0) d_ = (b) - (a); d_; })
+
+/* Record pointer of party slot i.  An inline helper on purpose (as
+ * B853C_Actor in mainc102.c): its copies keep the last loop big enough that
+ * loop optimisation leaves the D_800C37D4 address in the loop, as retail. */
+static inline u8* BFE48_Rec(s32 i) {
+    u8* base = D_800C3EB0;
+
+    return *(u8**)((u8*)(i * 4 + base) + 0x8C8C);
+}
+
+/* Battle-start party pose pass over the 11 slots (row +8 set = inactive).
+ * (1) Active slots (func_8009A0DC != 8) whose state +0xAF is 5, 7, 14, 15 or
+ * 21 and differs from their D_800C37D4 target go to animation 0x10 and leave
+ * D_800D2E54.  func_800C0564.  (2) Active slots not in state 0x15 that are 9
+ * or more away on x (+2) or z (+0xA) from their row's +0xE/+0x10 home get
+ * +0xAC bit 0x40, the home at +0xA0/+0xA4 (+0xA2 = 0) and animation 3.
+ * func_800C0564.  (3) Clear bit 0x40 on every record.  (4) Per slot with a
+ * record and a clear row +8: func_800BAEB8 unless in state 0x15,
+ * func_800C0314, then for an active slot whose row +8 is still clear restore
+ * the D_800C37D4 target (1 = the record's +0xB0 fallback; target 0x15 only
+ * when the slot's D_800C3608 bit is set) unless row +7 is set or the state
+ * already matches; then diff func_8009A1AC's flags against the record's
+ * +0x7C->+0xC (which takes the new flags) and spawn (func_800BFDA8) or remove
+ * (func_800BFD88) child effects 9..11 for flag bits 13..15.  The empty cases
+ * 5..12 give retail's jump tables; loop 2 indexes the rows afresh after the
+ * record lookup, which gives retail's induction-variable order there. */
+void func_800BFE48(void) {
+    BFE48Row* row;
+    u8* rec;
+    u8* model;
+    s32 i;
+    s32 j;
+    s32 target;
+    u32 flags;
+    u32 old;
+    u32 removed;
+    u32 bits;
+
+    {
+        BFE48Row* rows = (BFE48Row*)D_800C3EB0;
+
+        for (i = 0; i != 11; i++) {
+            row = &rows[i];
+            if (row->unk8 == 0) {
+                rec = BFE48_Rec(i);
+                if (rec != NULL && func_8009A0DC(i) != 8) {
+                    switch ((s8)rec[0xAF]) {
+                    case 5:
+                    case 7:
+                    case 14:
+                    case 15:
+                    case 21: {
+                        s8 state = rec[0xAF];
+
+                        if (state != D_800C37D4[func_8009A0DC(i)]) {
+                            func_800245D8(rec, 0x10);
+                            D_800D2E54 &= ~(1 << BFE48_SLOT(rec));
+                        }
+                        break;
+                    }
+                    }
+                }
+            }
+        }
+    }
+    func_800C0564();
+    {
+        BFE48Row* rows = (BFE48Row*)D_800C3EB0;
+
+        for (i = 0; i != 11; i++) {
+            if (rows[i].unk8 == 0) {
+                rec = BFE48_Rec(i);
+                if (rec != NULL && func_8009A0DC(i) != 8 && (s8)rec[0xAF] != 0x15) {
+                    if (BFE48_ABSD(*(s16*)(rec + 2), rows[i].unkE) >= 9 ||
+                        BFE48_ABSD(*(s16*)(rec + 0xA), rows[i].unk10) >= 9) {
+                        *(u32*)(rec + 0xAC) |= 0x40;
+                        *(u16*)(rec + 0xA0) = rows[i].unkE;
+                        *(u16*)(rec + 0xA4) = rows[i].unk10;
+                        *(u16*)(rec + 0xA2) = 0;
+                        func_800245D8(rec, 3);
+                    }
+                }
+            }
+        }
+    }
+    func_800C0564();
+    for (i = 0; i != 11; i++) {
+        u8* p = BFE48_Rec(i);
+
+        if (p != NULL) {
+            *(u32*)(p + 0xAC) &= ~0x40;
+        }
+    }
+    {
+        BFE48Row* rows = (BFE48Row*)D_800C3EB0;
+
+        for (i = 0; i != 11; i++) {
+            row = &rows[i];
+            if (row->unk8 == 0) {
+                rec = BFE48_Rec(i);
+                if (rec != NULL) {
+                    if ((s8)rec[0xAF] != 0x15) {
+                        func_800BAEB8(i);
+                    }
+                    func_800C0314();
+                    if (func_8009A0DC(i) != 8) {
+                        target = D_800C37D4[func_8009A0DC(i)];
+                        if (row->unk8 == 0 &&
+                            (target != 0x15 || ((D_800C3608 >> BFE48_SLOT(rec)) & 1))) {
+                            if (target == 1) {
+                                target = (s8)rec[0xB0];
+                            }
+                            if (row->unk7 == 0 && (s8)rec[0xAF] != target) {
+                                func_800245D8(rec, target);
+                            }
+                        }
+                    }
+                    flags = func_8009A1AC(i);
+                    model = *(u8**)(rec + 0x7C);
+                    old = *(u16*)(model + 0xC);
+                    *(u16*)(model + 0xC) = flags;
+                    removed = old & ~flags;
+                    bits = flags & ~old;
+                    for (j = 0; j != 16; j++, bits = (bits & 0xFFFF) >> 1) {
+                        if (bits & 1) {
+                            switch (j) {
+                            case 5:
+                            case 6:
+                            case 7:
+                            case 8:
+                            case 9:
+                            case 10:
+                            case 11:
+                            case 12:
+                                break;
+                            case 13:
+                                func_800BFDA8(rec, 9);
+                                break;
+                            case 14:
+                                func_800BFDA8(rec, 10);
+                                break;
+                            case 15:
+                                func_800BFDA8(rec, 11);
+                                break;
+                            }
+                        }
+                    }
+                    bits = removed;
+                    for (j = 0; j != 16; j++, bits = (bits & 0xFFFF) >> 1) {
+                        if (bits & 1) {
+                            switch (j) {
+                            case 5:
+                            case 6:
+                            case 7:
+                            case 8:
+                            case 9:
+                            case 10:
+                            case 11:
+                            case 12:
+                                break;
+                            case 13:
+                                func_800BFD88(rec, 9);
+                                break;
+                            case 14:
+                                func_800BFD88(rec, 10);
+                                break;
+                            case 15:
+                                func_800BFD88(rec, 11);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+INCLUDE_ASM("asm/battle/nonmatchings/mainc134", func_800C0314);
 extern void func_800BE790(void);
 
 /* func_800C0564.s, byte-exact: wait (func_800BE790 frames) until no party
@@ -360,7 +563,10 @@ extern void func_8001E148(u32 v);
 extern void func_800C08CC(u32 a0, void* a1, void* a2);
 #endif
 extern void func_800B51B0(void);
+#ifdef XENO_PC_PORT
+/* retail: declared above func_800BFE48 as (void* sprite, s32 anim) */
 extern void func_800245D8(void* pSpriteData, s16 animIndex);
+#endif
 #ifndef XENO_PC_PORT
 extern u8 D_800C3EB0[];
 #endif

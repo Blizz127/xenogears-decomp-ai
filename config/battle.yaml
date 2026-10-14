@@ -92,8 +92,7 @@ segments:
       - [0xF38, .rodata, mainc108]   # jtbl_80070A28 (func_800B9284)
       - [0xF58, rodata]
       - [0xFEC, .rodata, mainc118]  # jtbl_80070ADC (func_800BD3AC)
-      - [0x1018, rodata]
-      - [0x10C0, .rodata, mainc134]  # jtbl_80070BB0 (func_800C0564)
+      - [0x1018, .rodata, mainc134]  # jtbl_80070B08/B50/B80 (func_800BFE48) + jtbl_80070BB0 (func_800C0564)
       - [0x1124, .rodata, main135]   # jtbl_80070C14 + jtbl_80070E04 (func_800C11CC)
       - [0x133C, c, mainasm_133C]
       # The retail overlay interleaves still-assembly functions with C runs.
