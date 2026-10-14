@@ -321,6 +321,7 @@ func_800BCEAC	port arm in src/battle/mainc118.c	func_800BCEAC
 func_800BCFAC	port arm in src/battle/mainc118.c	func_800BCFAC
 func_800BD024	port arm in src/battle/mainc118.c	func_800BD024
 func_800BD2E4	port arm in src/battle/mainc118.c	func_800BD2E4
+func_800BD3AC	port arm in src/battle/mainc118.c	func_800BD3AC
 func_800BD7A0	port arm in src/battle/mainc118.c	func_800BD7A0
 func_800BD810	port arm in src/battle/mainc118.c	func_800BD810
 func_800BD974	port arm in src/battle/mainc118.c	func_800BD974

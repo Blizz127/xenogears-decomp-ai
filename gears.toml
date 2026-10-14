@@ -236,14 +236,21 @@ build_variables = {
     maspsx_flags = "--dont-expand-li --use-comm-section --run-assembler"
 }
 paths = [
-    # Every battle/mainc* TU except mainc100, mainc122, mainc124 and
-    # mainc134 (BattleCdkG0 below); gears takes whichever matching key its
-    # HashMap yields first, so no TU may match keys of two presets.
+    # Every battle/mainc* TU except mainc100, mainc118, mainc122, mainc124
+    # and mainc134 (BattleCdkG0 below); gears takes whichever matching key
+    # its HashMap yields first, so no TU may match keys of two presets.
     "battle/mainc102.",
     "battle/mainc104.",
     "battle/mainc107.",
     "battle/mainc108.",
-    "battle/mainc11",
+    "battle/mainc112.",
+    "battle/mainc113.",
+    "battle/mainc114.",
+    "battle/mainc114_p1.",
+    "battle/mainc114_p2.",
+    "battle/mainc115.",
+    "battle/mainc116.",
+    "battle/mainc117.",
     "battle/mainc120.",
     "battle/mainc123.",
     "battle/mainc126.",
@@ -323,6 +330,13 @@ name = "BattleCdkG0"
 # -G0.  It matches only here (CDK -G8: 624 vs 608 bytes; 2.7.2, 2.6.3
 # and 2.6.0 at -G8 or -G0: 648); the TU's other bodies stay byte-exact
 # (full relink).
+# mainc118 (2026-10-14): func_800BD3AC loads the target's words and the
+# font pointer (D_800D2F5C) above stores to the new popup task and the
+# chain head (D_800C3750), which needs scalar globals against struct-field
+# accesses; the scalars split their %hi only at -G0.  It matches only
+# here (CDK -G8: 1020 vs 1012 bytes; 2.7.2, 2.6.3 and 2.6.0 at -G8 or
+# -G0: 81/253, 1024, 1024); the TU's other bodies stay byte-exact (full
+# relink).
 build_variables = {
     gcc = "gcc-2.7.2-cdk-psx",
     maspsx_flags = "--dont-expand-li --use-comm-section --run-assembler",
@@ -333,6 +347,7 @@ paths = [
     "src/battle/mainc124.",
     "src/battle/mainc134.",
     "src/battle/mainc100.",
+    "src/battle/mainc118.",
 ]
 
 [[build_preset]]

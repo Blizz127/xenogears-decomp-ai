@@ -199,7 +199,165 @@ void func_800BD2E4(void) {
         i++;
     } while (i != 11);
 }
-INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BD3AC);
+extern s32 D_800C3610;
+/* Scalars (split %hi at -G0): the target loads and the font load are
+ * scheduled above the struct-field stores into the task, as in retail. */
+extern u8* D_800C3750;
+typedef struct {
+    s32 x0;
+    s32 x4;
+    s32 x8;
+    u8 pad[0xA0];
+    u32 xAC;
+} BD3ACTarget;
+typedef struct {
+    u8 unk0[0x38];
+    u8* next;
+    u8 unk3C[4];
+    s16 x40;
+    s16 x42;
+    s16 x44;
+    u8 unk46[2];
+    s32 x48;
+    s32 x4C;
+    s32 x50;
+    u8 unk54[4];
+    s32 x58;
+    s32 x5C;
+    s32 x60;
+    u8 unk64[0x14];
+    u8* owner;
+    u8 x7C;
+    u8 unk7D[3];
+    u8 r;
+    u8 g;
+    u8 b;
+    u8 flags;
+    u8 unk84[4];
+    s32 x88;
+    s32 count;
+    u8 glyphs[1][0x18];
+} BD3ACTask;
+extern u8 D_800C4929[];
+extern s16 D_800C3752[];
+extern u8* D_800D2F5C;
+extern void func_800BDE58(void);
+extern u32 WorkListsAddTasks(u32 a0, u32 a1, void* a2, void* a3, void* a4);
+extern void TimerWorkListSetTaskCallback(void* pTask, void* callback);
+extern void func_800BE6E8(s32 value, u8* out, s32 digits, u32 lead, u32 bias);
+extern s32 func_80026DCC(u8* pTable, s32 index, u8* pPrimBuffer, s16 ofsX, s16 ofsY);
+void func_800BD7A0(u8* task);
+void func_800BDA1C(u8* task);
+void func_800BDB08(u8* task);
+void func_800BDC78(u8* a0);
+
+/* func_800BD3AC.s, byte-exact: spawn a popup over `target`.  Popups already
+ * attached to it (the D_800C3750 chain, +0x78) are retired through their
+ * +0xC callback; a 0x1B0-byte task pair is linked at the chain head, copies
+ * the target's +0/+4/+8 words and +0xAC bit 2, and `kind` (retail's
+ * jtbl_80070ADC: 1..11) picks the glyphs and colour: 1 adds glyph 0x80,
+ * 3 glyph 0x80 in magenta, 10 glyph 0x7F, 11 glyph 0x91 in blue, 2 is
+ * green, 5 red, 4 a lone 0x7C glyph with the func_800BDB08 callback, 6..9
+ * plain.  Kinds other than 4 append the decimal digits of `value`
+ * (func_800BE6E8) as glyphs 0x72 + n of the D_800D2F5C font.  The
+ * mainc118.c port arm below numbers the kinds differently (its case 1 is
+ * retail's kind 4, and so on). */
+void func_800BD3AC(u8* target, u32 value, u32 kind) {
+    u8* p;
+    BD3ACTask* t;
+    u8* head;
+    u8 digits[0x38];
+    s32 x;
+    s32 i;
+
+    if (D_800C3610 == 0) {
+        return;
+    }
+    func_800BDE58();
+    p = D_800C3750;
+    D_800C4929[0] = 0;
+    while (p != NULL) {
+        if (*(u8**)(p + 0x78) == target) {
+            (*(void (**)(u8*))(p + 0xC))(p);
+        }
+        p = *(u8**)(p + 0x38);
+    }
+    t = (BD3ACTask*)WorkListsAddTasks(0x1B0, 0, func_800BDC78, func_800BDA1C, func_800BD7A0);
+    head = D_800C3750;
+    t->owner = target;
+    t->x88 = 8;
+    t->next = head;
+    t->x48 = ((BD3ACTarget*)target)->x0;
+    D_800C3750 = (u8*)t;
+    t->x4C = ((BD3ACTarget*)target)->x4;
+    t->x50 = ((BD3ACTarget*)target)->x8;
+    t->x58 = 0x2000;
+    t->x5C = 0x2000;
+    t->x60 = 0x2000;
+    t->flags = 0x2D;
+    t->x40 = 0;
+    t->x42 = 0;
+    t->x44 = 0;
+    t->r = 0x80;
+    t->g = 0x80;
+    t->b = 0x80;
+    t->x7C = (((BD3ACTarget*)target)->xAC >> 2) & 1;
+    t->count = 0;
+    if (kind != 4) {
+        func_800BE6E8(value, digits, 5, 0, 0);
+        x = D_800C3752[digits[0]];
+    }
+    switch (kind) {
+    case 4:
+        t->x88 = 0x40;
+        t->count = func_80026DCC(D_800D2F5C, 0x7C, t->glyphs[0], -0x14, -0x10);
+        t->flags = (t->flags & 0xFE) | 2;
+        TimerWorkListSetTaskCallback(t, func_800BDB08);
+        break;
+    case 5:
+        t->r = 0x80;
+        t->g = 0;
+        t->b = 0;
+        t->flags &= 0xFE;
+        break;
+    case 10:
+        t->count += func_80026DCC(D_800D2F5C, 0x7F, t->glyphs[t->count], x, 0);
+        break;
+    case 11:
+        t->count += func_80026DCC(D_800D2F5C, 0x91, t->glyphs[t->count], x, 0);
+        t->b = 0x80;
+        t->r = 0;
+        t->g = 0;
+        t->flags &= 0xFE;
+        break;
+    case 1:
+        t->count += func_80026DCC(D_800D2F5C, 0x80, t->glyphs[t->count], x, -0x10);
+        x += 0x20;
+        break;
+    case 3:
+        t->count += func_80026DCC(D_800D2F5C, 0x80, t->glyphs[t->count], x, -0x10);
+        t->r = 0x80;
+        t->b = 0x80;
+        x += 0x20;
+        t->g = 0;
+        t->flags &= 0xFE;
+        break;
+    case 2:
+        t->r = 0;
+        t->g = 0x80;
+        t->b = 0;
+        t->flags &= 0xFE;
+        break;
+    }
+    if (kind != 4 && digits[0] != 0) {
+        i = 0;
+        do {
+            t->count += func_80026DCC(D_800D2F5C, digits[i + 1] + 0x72, t->glyphs[t->count], x, -0x10);
+            i++;
+            x += 10;
+        } while (i != digits[0]);
+    }
+}
 /* The chain head is read through an array view so its load and store
  * split into lui + %lo (retail keeps the %hi in a2); the task pointer is
  * compared through a local copy, which keeps the incoming a0 for the
