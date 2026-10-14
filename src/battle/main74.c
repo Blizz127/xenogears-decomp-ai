@@ -280,9 +280,66 @@ s32 func_800B0AB4(void *arg0) {
     return var_v0;
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/main74", func_800B0B14);
-INCLUDE_ASM("asm/battle/nonmatchings/main74", func_800B0D70);
 extern s32 SquareRoot0(s32 a);
+extern s16 D_800C3542;
+extern s16 D_800C3544;
+extern s16 D_800C3546;
+extern s32 func_800A5914(s16* pos, s32 tri, s32 tries);
+extern s32 func_800A579C(s16* pos);
+extern s32 func_800A5870(s16* pos, s32 tri, s32* out);
+
+/* func_800B0B14.s, byte-exact: probe the walk mesh 512 units from
+ * D_800D3354 toward D_800D335C (d = D_800D335C - D_800D3354 with d.y / 4,
+ * p = D_800D3354 + d * 512 / (|d| + 1)).  When func_800B0AB4 accepts p
+ * (tested as an s16, as retail does) and `id` differs from the cached
+ * D_800C3546: cache id and find p's triangle into D_800C3542, first with
+ * func_800A5914 from the cached triangle (5 tries), else with
+ * func_800A579C's full search.  With a triangle, func_800A5870(p,
+ * D_800C3542, out) runs and D_800C3544 caches p.y; otherwise p.y takes
+ * the cached D_800C3544.  Returns p.y.  Matches under gcc 2.6.x with the
+ * TU's expand-div preset. */
+s16 func_800B0B14(s32 id) {
+    s32 out[4];
+    s16 p[4];
+    s16 dx;
+    s32 dy;
+    s16 dz;
+    s32 len;
+    s32 x;
+    s32 y;
+    s32 z;
+    s16 tri;
+
+    dx = D_800D335C[0] - D_800D3354[0];
+    dy = (D_800D335C[1] - D_800D3354[1]) / 4;
+    dz = D_800D335C[2] - D_800D3354[2];
+    len = SquareRoot0(dx * dx + dy * dy + dz * dz) + 1;
+    x = (dx << 9) / len;
+    y = (dy << 9) / len;
+    z = (dz << 9) / len;
+    tri = -1;
+    p[0] = D_800D3354[0] + x;
+    p[1] = D_800D3354[1] + y;
+    p[2] = D_800D3354[2] + z;
+    if ((s16)func_800B0AB4(p) != 0 && id != D_800C3546) {
+        D_800C3546 = id;
+        tri = func_800A5914(p, D_800C3542, 5);
+        if (tri < 0) {
+            tri = func_800A579C(p);
+        }
+        if (tri >= 0) {
+            D_800C3542 = tri;
+        }
+    }
+    if (tri >= 0) {
+        func_800A5870(p, D_800C3542, out);
+        D_800C3544 = p[1];
+    } else {
+        p[1] = D_800C3544;
+    }
+    return p[1];
+}
+INCLUDE_ASM("asm/battle/nonmatchings/main74", func_800B0D70);
 extern s32 func_800B0D70(s16* d, s16* b);
 
 /* func_800B0FF4.s, byte-exact: d = (a - b).xz scaled to 512 / (|d| + 1),
