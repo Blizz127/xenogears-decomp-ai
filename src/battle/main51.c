@@ -1488,8 +1488,172 @@ void func_80095BAC(void) {
 }
 #endif
 
-INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80095D4C);
-INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80096018);
+extern u8 D_800C3E04;
+
+/* func_80095D4C.s, byte-exact: rate check (D_800C3DFC mode +0x18: 0 =
+ * D_800C3E00 byte +0x60, 1 = own byte +0x1C; unset for other modes, as in
+ * retail); on a miss (rate < rand() % 100) actor D_800C3E50's +0x5FA0
+ * outcome byte is 6.  Otherwise D_800C3DFC +0x1A picks a halfword (0/2 =
+ * D_800C3E00 +0x4E/+0x52, 1/3 = D_800C3E34 +0x4E/+0x52), scaled to
+ * amt = val * byte +0x11 / 20; mode 5 takes D_800C3E34 +0x4C - 1 instead
+ * (the scaled value of the unset val is discarded, as in retail).  Modes
+ * 0, 1 and 5 set outcomes D_800C3E04 = 2 / D_800C3E50 = 0; modes 2 and 3
+ * set outcome 6 on D_800C3E50 when D_800C3E34 +0x88 | +0x8A has bit 0x200,
+ * else 3 / 1; both write amt to the two actors' +0x5F6C result words.
+ * The switch is a jump table (jtbl_80070388, placed by the main51 .rodata
+ * split in config/battle.yaml).  Codegen: the result words go through
+ * Battle's f5F6C array.  In-struct stores do not force reloads of
+ * D_800C34B0 or D_800C3E50, so both addresses are formed before the two
+ * stores as in retail (the raw *(s32*) form reloads between them), and amt
+ * is stored directly (an s32 copy moves it from $a2 to $a1). */
+void func_80095D4C(void) {
+    u8 rate;
+    u16 val;
+    u16 amt;
+
+    switch (((u8*)D_800C3DFC)[0x18]) {
+    case 0:
+        rate = ((u8*)D_800C3E00)[0x60];
+        break;
+    case 1:
+        rate = ((u8*)D_800C3DFC)[0x1C];
+        break;
+    }
+    if (rate < rand() % 100) {
+        ((Battle*)D_800C34B0)->f5FA0[D_800C3E50] = 6;
+        return;
+    }
+    switch (((u8*)D_800C3DFC)[0x1A]) {
+    case 0:
+        val = *(u16*)((u8*)D_800C3E00 + 0x4E);
+        break;
+    case 1:
+        val = *(u16*)(D_800C3E34 + 0x4E);
+        break;
+    case 2:
+        val = *(u16*)((u8*)D_800C3E00 + 0x52);
+        break;
+    case 3:
+        val = *(u16*)(D_800C3E34 + 0x52);
+        break;
+    }
+    amt = val * ((u8*)D_800C3DFC)[0x11] / 20;
+    if (((u8*)D_800C3DFC)[0x1A] == 5) {
+        amt = *(u16*)(D_800C3E34 + 0x4C) - 1;
+    }
+    switch (((u8*)D_800C3DFC)[0x1A]) {
+    case 0:
+    case 1:
+    case 5:
+        ((Battle*)D_800C34B0)->f5FA0[D_800C3E04] = 2;
+        ((Battle*)D_800C34B0)->f5FA0[D_800C3E50] = 0;
+        ((Battle*)D_800C34B0)->f5F6C[D_800C3E04] = amt;
+        ((Battle*)D_800C34B0)->f5F6C[D_800C3E50] = amt;
+        break;
+    case 2:
+    case 3:
+        if ((*(u16*)(D_800C3E34 + 0x88) | *(u16*)(D_800C3E34 + 0x8A)) & 0x200) {
+            ((Battle*)D_800C34B0)->f5FA0[D_800C3E50] = 6;
+            break;
+        }
+        ((Battle*)D_800C34B0)->f5FA0[D_800C3E04] = 3;
+        ((Battle*)D_800C34B0)->f5FA0[D_800C3E50] = 1;
+        ((Battle*)D_800C34B0)->f5F6C[D_800C3E04] = amt;
+        ((Battle*)D_800C34B0)->f5F6C[D_800C3E50] = amt;
+        break;
+    }
+}
+
+extern u8* D_800D2DC8;
+extern u8* D_800D2D6C;
+extern u8 D_800CCE42[];
+
+
+/* func_80096018.s, byte-exact: rate check as in func_80095D4C (D_800C3DFC
+ * mode +0x18: 0 = D_800C3E00 byte +0x60, 1 = own byte +0x1C; unset for
+ * other modes, as in retail); on a miss (rate < rand() % 100) the acting
+ * actor's +0x5FA0 outcome byte is 6, else 0 and D_800C3DFC +0x1A picks the
+ * result word at +0x5F6C (0x170-record actor D_800C3E50): 0 = D_800D2DC8
+ * word +0x60 (bit-7 actor, unsigned) or D_800C3E34 halfword +0x4C, divided
+ * by +0x11; 1 = the same value - 1; 2 = +0x64 - +0x60 of D_800D2D6C (actor
+ * D_800C3E04 bit 7) or +0x4E - +0x4C of D_800C3E00; 3 = D_800C3E34 +0x50
+ * * 10; 4 = 1; 5 = D_800C3E34 +0x4C; 6 = outcome 0 and D_800D2DC8 word +0x64
+ * (D_800CCE42 bit 7) or D_800C3E34 halfword +0x4E, clamped in place to 9999;
+ * 7 = outcome 6 for a bit-7 actor, else bit 0 of D_800C3E34 +0x7C and +0x80.
+ * The switch is a jump table (jtbl_800703A0, placed by the main51 .rodata
+ * split in config/battle.yaml).  Codegen: outcome bytes and actor flags
+ * through Battle (base-first), result words by index arithmetic. */
+void func_80096018(void) {
+    u8 rate;
+
+    switch (((u8*)D_800C3DFC)[0x18]) {
+    case 0:
+        rate = ((u8*)D_800C3E00)[0x60];
+        break;
+    case 1:
+        rate = ((u8*)D_800C3DFC)[0x1C];
+        break;
+    }
+    if (rate < rand() % 100) {
+        ((Battle*)D_800C34B0)->f5FA0[D_800C3E50] = 6;
+        return;
+    }
+    ((Battle*)D_800C34B0)->f5FA0[D_800C3E50] = 0;
+    switch (((u8*)D_800C3DFC)[0x1A]) {
+    case 0:
+        if (((Battle*)D_800C34B0)->actors[D_800C3E50].flags & 0x80) {
+            *(s32*)((u8*)D_800C34B0 + D_800C3E50 * 4 + 0x5F6C) = *(u32*)(D_800D2DC8 + 0x60) / ((u8*)D_800C3DFC)[0x11];
+        } else {
+            *(s32*)((u8*)D_800C34B0 + D_800C3E50 * 4 + 0x5F6C) = *(u16*)(D_800C3E34 + 0x4C) / ((u8*)D_800C3DFC)[0x11];
+        }
+        break;
+    case 1:
+        if (((Battle*)D_800C34B0)->actors[D_800C3E50].flags & 0x80) {
+            *(s32*)((u8*)D_800C34B0 + D_800C3E50 * 4 + 0x5F6C) = *(s32*)(D_800D2DC8 + 0x60) - 1;
+        } else {
+            *(s32*)((u8*)D_800C34B0 + D_800C3E50 * 4 + 0x5F6C) = *(u16*)(D_800C3E34 + 0x4C) - 1;
+        }
+        break;
+    case 2:
+        if (((Battle*)D_800C34B0)->actors[D_800C3E04].flags & 0x80) {
+            *(s32*)((u8*)D_800C34B0 + D_800C3E50 * 4 + 0x5F6C) = *(s32*)(D_800D2D6C + 0x64) - *(s32*)(D_800D2D6C + 0x60);
+        } else {
+            *(s32*)((u8*)D_800C34B0 + D_800C3E50 * 4 + 0x5F6C) = *(u16*)((u8*)D_800C3E00 + 0x4E) - *(u16*)((u8*)D_800C3E00 + 0x4C);
+        }
+        break;
+    case 3:
+        *(s32*)((u8*)D_800C34B0 + D_800C3E50 * 4 + 0x5F6C) = *(u16*)(D_800C3E34 + 0x50) * 10;
+        break;
+    case 4:
+        *(s32*)((u8*)D_800C34B0 + D_800C3E50 * 4 + 0x5F6C) = 1;
+        break;
+    case 5:
+        *(s32*)((u8*)D_800C34B0 + D_800C3E50 * 4 + 0x5F6C) = *(u16*)(D_800C3E34 + 0x4C);
+        break;
+    case 6:
+        ((Battle*)D_800C34B0)->f5FA0[D_800C3E50] = 0;
+        if (D_800CCE42[D_800C3E50 * 0x170] & 0x80) {
+            *(s32*)((u8*)D_800C34B0 + D_800C3E50 * 4 + 0x5F6C) = *(s32*)(D_800D2DC8 + 0x64);
+            if (*(u32*)(D_800D2DC8 + 0x64) >= 10000) {
+                *(s32*)(D_800D2DC8 + 0x64) = 9999;
+            }
+        } else {
+            *(s32*)((u8*)D_800C34B0 + D_800C3E50 * 4 + 0x5F6C) = *(u16*)(D_800C3E34 + 0x4E);
+            if (*(u16*)(D_800C3E34 + 0x4E) >= 10000) {
+                *(u16*)(D_800C3E34 + 0x4E) = 9999;
+            }
+        }
+        break;
+    case 7:
+        if (((Battle*)D_800C34B0)->actors[D_800C3E50].flags & 0x80) {
+            ((Battle*)D_800C34B0)->f5FA0[D_800C3E50] = 6;
+        } else {
+            *(u16*)(D_800C3E34 + 0x7C) |= 1;
+            *(u16*)(D_800C3E34 + 0x80) |= 1;
+        }
+        break;
+    }
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80096494);
 
 #ifndef XENO_PC_PORT
