@@ -323,7 +323,161 @@ void func_80090E7C(u8 a) {
     func_80076A10(0x71, (s32)(*(u8**)(D_800C3EA4 + 0xA230) + 0x5A0), 0x118, 0xD1);
     (*(u8**)(D_800C3EA4 + 0xA230))[0x66C] = D_800CCB34;
 }
-INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80091064);
+/* Image pointer as an aggregate element, as in main6.c. */
+typedef struct {
+    void* data;
+} BattleImageRef;
+extern void func_80077610(void);
+extern void func_80076EA4(void);
+extern void func_8008FC1C(s32 x, s32 y, s32 w, s32 h, u8 n);
+extern void* func_80033908(s32 index);
+extern void* func_800339FC(s32 index);
+extern void func_800716D8(void);
+extern u16 func_80089C6C(u16 bits, u8 b);
+/* 32-byte per-character records at g_GameState + 0x16C0 (index =
+ * D_800D2D24 byte, as in func_80091D38: +0x16C2 / +0x16C6 halfwords);
+ * names by offset. */
+typedef struct {
+    u16 unk0;
+    u16 unk2;
+    u16 unk4;
+    u16 unk6;
+    u8 pad8[0x18];
+} GameStateChr20;
+typedef struct {
+    u8 pad[0x16C0];
+    GameStateChr20 chr[11];
+} GameState16C0;
+extern GameState16C0 g_GameState__v asm("g_GameState");
+extern u8 D_800D2D24[];
+extern u8 D_800D32A1[];
+extern u8 D_800CCD3E__rows[][0x170] asm("D_800CCD3E");
+extern u8 D_800CCD88__rows[][0x170] asm("D_800CCD88");
+extern u8* D_800D2DB0;
+extern BattleImageRef D_800C3E5C[];
+extern u8 D_800CDD40__b[][38][40] asm("D_800CDD40");
+extern u8 D_800CEF10__b[][42][40] asm("D_800CEF10");
+
+
+/* func_80091064.s, byte-exact: func_80092784's 16-slot form for actor a.
+ * After func_80077610, func_80076EA4 and func_8008FC1C(0x20, 0x30, 0x98,
+ * 0x38, 0xC) it uploads the blank buffer D_800D2DB0 at (0x3C0, 0, 0x3C, 0xD),
+ * then for i 0..15 sets flags[i] / vals[i] from func_80089C6C(the
+ * character record's +0x16C2 halfword, i) and byte +0x13 of entry i + 0x16
+ * of actor a's D_800CDD40 row (D_800D32A1 byte of a clear) or from
+ * +0x16C6 and entry i + 0x15 of its D_800CEF10 row.  Each slot then gets a
+ * name (func_80033908(D_800CCD3E byte * 16 + i) or func_800339FC(D_800CCD88
+ * byte * 16 + i), only for a set flag) and the two digits of vals[i] as in
+ * func_80092784.  Then func_80090E7C(a), the buffers are freed,
+ * func_800716D8() runs, the CLUT halfwords +0x14E and +0x176 of the record
+ * pointed to by the word at D_800C3EA4 + 0xA230 become g_SystemPalette1,
+ * its +0x669 = 1 and D_800D2D28[0xB7] = 1.  Codegen: record and row views
+ * keep the symbol in each address (pointer arithmetic hoists it out of the
+ * loops), and each name source has its own SystemRenderStringEntry call
+ * (gcc merges them). */
+void func_80091064(u8 a) {
+    s16 r0[4];
+    s16 r1[4];
+    s16 r2[4];
+    s16 r3[4];
+    s16 r4[4];
+    s16 r5[4];
+    BattleImageRef bufs[16];
+    u8 flags[16];
+    u8 vals[16];
+    s32 i;
+    u8* img;
+
+    func_80077610();
+    func_80076EA4();
+    func_8008FC1C(0x20, 0x30, 0x98, 0x38, 0xC);
+    D_800D2DB0 = func_8008AC00(0x39);
+    bzero(D_800D2DB0, 0x618);
+    r5[0] = 0x3C0;
+    r5[2] = 0x3C;
+    r5[1] = 0;
+    r5[3] = 0xD;
+    func_800769E8(r5, D_800D2DB0);
+    if (D_800D32A1[a * 8] == 0) {
+        for (i = 0; i < 16; i++) {
+            if (func_80089C6C(g_GameState__v.chr[D_800D2D24[a]].unk2, i) != 0) {
+                flags[i] = 1;
+                vals[i] = D_800CDD40__b[a][i + 0x16][0x13];
+            } else {
+                flags[i] = 0;
+                vals[i] = 0;
+            }
+        }
+    } else {
+        for (i = 0; i < 16; i++) {
+            if (func_80089C6C(g_GameState__v.chr[D_800D2D24[a]].unk6, i) != 0) {
+                flags[i] = 1;
+                vals[i] = D_800CEF10__b[a][i + 0x15][0x13];
+            } else {
+                flags[i] = 0;
+                vals[i] = 0;
+            }
+        }
+    }
+    for (i = 0; i < 16; i++) {
+        bufs[i].data = func_8008AC00(0x1B);
+        bzero(bufs[i].data, 0x30C);
+        r3[0] = i % 2 * 30 + 0x380;
+        r3[1] = i / 2 * 16 + 0x100;
+        r3[2] = 0x1B;
+        r3[3] = 0x10;
+        func_800769E8(r3, D_800D2DB0);
+        if (flags[i] != 0) {
+            if (D_800D32A1[a * 8] == 0) {
+                SystemRenderStringEntry(func_80033908(D_800CCD3E__rows[a][0] * 16 + i), bufs[i].data, 0x1B, 0);
+            } else {
+                SystemRenderStringEntry(func_800339FC(D_800CCD88__rows[a][0] * 16 + i), bufs[i].data, 0x1B, 0);
+            }
+            r0[0] = i % 2 * 30 + 0x380;
+            r0[1] = i / 2 * 16 + 0x102;
+            r0[2] = 0x1E;
+            r0[3] = 0xD;
+            func_800769E8(r0, bufs[i].data);
+        }
+        if (!(i & 1)) {
+            r4[0] = 0x3C0;
+            r4[1] = i / 2 * 16 + 0x100;
+            r4[2] = 0x1B;
+            r4[3] = 0x10;
+            func_800769E8(r4, D_800D2DB0);
+        }
+        r1[0] = i % 2 * 16 + 0x3C0;
+        r1[1] = i / 2 * 16 + 0x102;
+        r1[2] = 6;
+        r1[3] = 0xD;
+        if ((u8)(vals[i] / 10) != 0) {
+            img = D_800C3E5C[(u8)(vals[i] / 10)].data;
+        } else {
+            img = D_800D2DB0;
+        }
+        func_800769E8(r1, img);
+        r2[0] = i % 2 * 16 + 0x3C2;
+        r2[1] = i / 2 * 16 + 0x102;
+        r2[2] = 6;
+        r2[3] = 0xD;
+        if (flags[i] != 0) {
+            img = D_800C3E5C[(u8)(vals[i] % 10)].data;
+        } else {
+            img = D_800D2DB0;
+        }
+        func_800769E8(r2, img);
+    }
+    func_80090E7C(a);
+    for (i = 0; i < 16; i++) {
+        HeapFree(bufs[i].data);
+    }
+    HeapFree(D_800D2DB0);
+    func_800716D8();
+    *(u16*)(*(u8**)(D_800C3EA4 + 0xA230) + 0x14E) = g_SystemPalette1;
+    *(u16*)(*(u8**)(D_800C3EA4 + 0xA230) + 0x176) = g_SystemPalette1;
+    (*(u8**)(D_800C3EA4 + 0xA230))[0x669] = 1;
+    D_800D2D28[0xB7] = 1;
+}
 /* func_80091604.s, byte-exact: func_8009023C's 8-row twin.  The running
  * count at D_800D2D28 +0xF8 starts at 0; each of 8 rows adds
  * func_80076A10(0x66, D_800C3EA4 + 0xBA8 + count * 0x50, 0x20, y + 0x38 +
@@ -566,10 +720,6 @@ extern void* func_80033784(s32 table, s32 id);
 extern void* func_800338D8(s32 id);
 extern void func_80092298(u8 a, u8* ids);
 extern u8* D_800D2DB0;
-/* Image pointer as an aggregate element, as in main6.c. */
-typedef struct {
-    void* data;
-} BattleImageRef;
 extern BattleImageRef D_800C3E5C[];
 
 /* func_80092784.s, byte-exact: after func_80077610 and func_80076EA4, clear
