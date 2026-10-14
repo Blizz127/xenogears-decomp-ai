@@ -21,7 +21,70 @@ void func_80079948(u8** pp) {
 }
 
 INCLUDE_ASM("asm/battle/nonmatchings/main13", func_800799C8);
-INCLUDE_ASM("asm/battle/nonmatchings/main13", func_80079AB0);
+extern u16 D_800CCD64__h[][184] asm("D_800CCD64");
+extern u16 D_800CCD1C__h[][184] asm("D_800CCD1C");
+extern u8 D_800D2E5C[];
+extern u8 D_800C3D18[];
+extern u8 D_800D3408[];
+extern u8 func_8007F8C0(u8** pp, u8 e);
+extern u8 func_8007EF6C(u8** pp, u8 e, u8 state);
+extern void func_800793F0(u8 actor);
+
+/* func_80079AB0.s, byte-exact: run enemy `actor`'s AI script (e = actor
+ * - 3).  Unless its D_800CCD64 halfword (0x170-byte records) has bit
+ * 0x8000 without bit 0x800 of its D_800CCD1C halfword: D_800D2E5C[0] = 0;
+ * when the enemy's D_800C3D18 byte is set, the script pointer comes from
+ * its 64-byte D_800D3408 record, the 0x100-byte D_800D2E5C buffer is
+ * cleared, and opcodes run until 0xFD or 0xFF: opcodes >= 0x80 go to
+ * func_8007F8C0 (and func_80079948 skips on when it returns 0), others
+ * to func_8007EF6C (which returns the next state; opcode 0x62 marks the
+ * result).  A set D_800D2E5C[0] then calls func_800793F0(actor).
+ * Returns 1 when opcode 0x62 ran.
+ * Codegen: the guard wraps the body (`!A || B`), which keeps e & 0xFF in
+ * one register across it; the clear loop is a pointer loop with an end
+ * pointer taken from it before it moves (retail reuses the `la` register
+ * as the pointer); opcodes >= 0x80 are tested first, as in retail's block
+ * order.  Matches under gcc 2.7.2 (main13's preset) and 2.6.x. */
+u8 func_80079AB0(u8 actor) {
+    u8 e;
+    u8 ended;
+    u8 state;
+    u8* pc;
+    u8* p;
+    u8* end;
+
+    ended = 0;
+    e = actor - 3;
+    state = 0;
+    if (!(D_800CCD64__h[e + 3][0] & 0x8000) || (D_800CCD1C__h[e + 3][0] & 0x800)) {
+        D_800D2E5C[0] = 0;
+        if (D_800C3D18[e * 4] != 0) {
+            pc = *(u8**)(D_800D3408 + (e << 6));
+            p = D_800D2E5C;
+            end = p + 0x100;
+            *p = 0;
+            while (++p < end) {
+                *p = 0;
+            }
+            while (*pc != 0xFD && *pc != 0xFF) {
+                if (*pc >= 0x80) {
+                    if (func_8007F8C0(&pc, e) == 0) {
+                        func_80079948(&pc);
+                    }
+                } else {
+                    if (*pc == 0x62) {
+                        ended = 1;
+                    }
+                    state = func_8007EF6C(&pc, e, state);
+                }
+            }
+        }
+        if (D_800D2E5C[0] != 0) {
+            func_800793F0(e + 3);
+        }
+    }
+    return ended;
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main13", func_80079C24);
 #endif
 
