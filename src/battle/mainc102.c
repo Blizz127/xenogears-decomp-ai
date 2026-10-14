@@ -2,7 +2,6 @@
 
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/mainc102", func_800B838C);
 extern u8 D_800C3EB0[];
 extern u32 D_800D39C8[];
 extern s32 D_800595AC[];
@@ -22,6 +21,74 @@ extern void ArchiveReadFileToBuffer(s32 file, void* buf, s32 a2, s32 a3);
 extern s32 SoundLoadWdsFile(void* buf, s32 a1);
 extern s16 func_8003BDFC(s32 a0);
 extern void HeapFree(u32 p);
+extern void func_8003852C(u32 p);
+
+typedef struct {
+    u16 index;
+    u16 unk2;
+    void* buf;
+} BattleFileEntry;
+typedef struct {
+    u16 file;
+    s16 sound;
+} BattleSoundBank;
+extern BattleSoundBank D_800C35DC[];
+extern void func_80029AFC(BattleFileEntry* list, s32 a1, s32 a2);
+extern void SoundAddSedsEntry(void* seds);
+extern void SoundFreeWdsEntry(s32 wds);
+extern void func_80039E60(s32 id);
+extern s32 func_8003A5D0(s32 id);
+
+/* func_800B838C.s, byte-exact: play sound bank `bank`.  Load archive 0x2C
+ * file D_800C35DC[bank].file (the SEDS) and, as the WDS, that file + 1 +
+ * sub (bank 8 ignores sub) through a func_80029AFC list; register them
+ * (SoundAddSedsEntry, SoundLoadWdsFile) and wait until func_8003BDFC(0)
+ * is 0; start sound (SEDS +0x14 halfword << 16) + D_800C35DC[bank].sound
+ * + sub with func_80039E60 and wait while func_8003A5D0 returns nonzero;
+ * then release the SEDS (func_8003852C), the WDS entry and both buffers.
+ * Codegen: the list has four entries (retail's frame), three used; the
+ * WDS index is written as file + 1, then += sub (a single expression
+ * folds the 1 into sub).  Matches under the CDK compiler only. */
+void func_800B838C(s32 bank, s32 sub) {
+    BattleFileEntry list[4];
+    u8* seds;
+    void* wdsBuf;
+    s32 wds;
+    s32 id;
+
+    func_800C0F70();
+    func_800B8354();
+    ArchiveSetIndex(0x2C, 1);
+    list[0].index = D_800C35DC[bank].file;
+    seds = HeapAlloc(ArchiveDecodeAlignedSize(list[0].index), 0);
+    list[0].buf = seds;
+    if (bank == 8) {
+        list[1].index = D_800C35DC[8].file + 1;
+    } else {
+        list[1].index = D_800C35DC[bank].file + 1;
+        list[1].index += sub;
+    }
+    wdsBuf = HeapAlloc(ArchiveDecodeAlignedSize(list[1].index), 0);
+    list[1].buf = wdsBuf;
+    list[2].buf = NULL;
+    list[2].index = 0;
+    func_80029AFC(list, 0, 0);
+    func_800B8354();
+    SoundAddSedsEntry(seds);
+    wds = SoundLoadWdsFile(wdsBuf, 0);
+    while (func_8003BDFC(0) != 0) {
+        func_800BE790();
+    }
+    id = D_800C35DC[bank].sound + sub + (*(u16*)(seds + 0x14) << 16);
+    func_80039E60(id);
+    while (func_8003A5D0(id) != 0) {
+        func_800BE790();
+    }
+    func_8003852C((u32)seds);
+    SoundFreeWdsEntry(wds);
+    HeapFree((u32)wdsBuf);
+    HeapFree((u32)seds);
+}
 
 /* Entry i of the pointer table at D_800C3EB0 + 0x8C8C.  An inline helper on
  * purpose: its copies make retail's loops big enough that loop optimisation
@@ -153,7 +220,6 @@ extern void DrawSync(u32 v);
 extern void func_800BADD4(u32 i);
 extern void GfxFreeWorkBuffers(void);
 extern void WorkListsFreeAllEntries(void);
-extern void func_8003852C(u32 p);
 extern void HeapFree(u32 p);
 extern void func_800A9F94(void);
 extern void func_800A4820(void);
