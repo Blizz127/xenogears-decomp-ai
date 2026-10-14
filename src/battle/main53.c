@@ -481,7 +481,122 @@ s32 func_80099498(void) {
     return result;
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/main53", func_800995A0);
+extern u8 D_800C3E04;
+extern u8* D_800C3E34;
+extern u8 D_800CCCE8[];
+extern u8 D_800CCD72[];
+extern u8 D_800CCE44[];
+
+/* func_800995A0.s, byte-exact under gcc 2.6.3 (BattleGcc263).  Store an
+ * actor's value for a (menu, button) pair into byte +0x15C + slot of its
+ * 0x170-byte D_800CCCE8 record (D_800CCE44 row).  The value doubles when the
+ * current actor's (D_800C3E04) +0x8A word has 0x2000.  Slots: menu 0
+ * 0x2000/0x1000 -> 0/1; menu 2 0x1000/0x800 -> 2/3; menu 5 0x8000/0x4000 ->
+ * 4/5; menu 7 0x8000/0x4000/0x1000 -> 9/0xA/0xB; menu 9 0x1000..0x8000 ->
+ * 0xC, 0x100..0x800 -> 0xD; any other pair (slot 0xF) stores nothing.  For
+ * menus 5/7/9 the D_800C3E34 +0x88 | +0x8A word doubles the value (0x5) and
+ * halves it (0xA), and the actor record's +0x32 bit 0x40 doubles it again.
+ * Codegen: each switch lists its cases in slot order (retail's inline and
+ * out-of-line bodies; menu 0's 0x2000 case becomes a store-flag); slot = 0xF
+ * comes after the first test; the row pointer is a local (la + add, then
+ * + slot). */
+void func_800995A0(u8 actor, u8 menu, u16 button, u8 value) {
+    u8 slot;
+    u8* rec;
+    u16 dir;
+    u8* row;
+
+    if (*(u16*)(D_800CCD72 + D_800C3E04 * 368) & 0x2000) {
+        value *= 2;
+    }
+    slot = 0xF;
+    rec = D_800CCCE8 + actor * 368;
+    if (menu == 0) {
+        switch (button) {
+        case 0x2000:
+            slot = 0;
+            break;
+        case 0x1000:
+            slot = 1;
+            break;
+        }
+    }
+    if (menu == 2) {
+        switch (button) {
+        case 0x1000:
+            slot = 2;
+            break;
+        case 0x800:
+            slot = 3;
+            break;
+        }
+    }
+    if (menu == 5) {
+        switch (button) {
+        case 0x8000:
+            slot = 4;
+            break;
+        case 0x4000:
+            slot = 5;
+            break;
+        }
+    }
+    if (menu == 7) {
+        switch (button) {
+        case 0x8000:
+            slot = 9;
+            break;
+        case 0x4000:
+            slot = 0xA;
+            break;
+        case 0x1000:
+            slot = 0xB;
+            break;
+        }
+    }
+    if (menu == 9) {
+        switch (button) {
+        case 0x8000:
+        case 0x4000:
+        case 0x2000:
+        case 0x1000:
+            slot = 0xC;
+            break;
+        case 0x800:
+        case 0x400:
+        case 0x200:
+        case 0x100:
+            slot = 0xD;
+            break;
+        }
+    }
+    if (slot != 0xF) {
+        switch (menu) {
+        case 5:
+        case 7:
+        case 9:
+            dir = *(u16*)(D_800C3E34 + 0x88) | *(u16*)(D_800C3E34 + 0x8A);
+            if (dir & 5) {
+                value *= 2;
+            }
+            if (dir & 0xA) {
+                value /= 2;
+            }
+            break;
+        }
+        if (*(u16*)(rec + 0x32) & 0x40) {
+            switch (menu) {
+            case 5:
+            case 7:
+            case 9:
+                value *= 2;
+                break;
+            }
+        }
+        row = D_800CCE44 + actor * 368;
+        row[slot] = value;
+    }
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main53", func_80099890);
 
 #ifndef XENO_PC_PORT
