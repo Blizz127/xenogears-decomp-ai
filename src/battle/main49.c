@@ -69,7 +69,110 @@ u8 func_8008CDE4(u8 actor, u8 slot) {
     }
     return ret;
 }
-INCLUDE_ASM("asm/battle/nonmatchings/main49", func_8008CFB8);
+extern u8 D_800D3014;
+extern u8* D_800C3EAC;
+extern u8 D_800CCD88__rows[][0x170] asm("D_800CCD88");
+extern void func_8008F8F4(u8 index, u16 x, u16 y, u16 w, u16 h, u8 animate, u8 refresh);
+extern void func_800930AC(u8 a, u8* ids, u16* vals);
+extern void func_80077698(void);
+extern void func_800939CC(u8 a, u8 b);
+extern void func_80090B90(s32 x, s32 y, s32* frame, u8* timer);
+extern void func_800716D8(void);
+extern void func_8007765C(void);
+extern void func_80077980(void);
+extern void func_8008FA60(u8 index);
+
+/* func_8008CFB8.s, byte-exact: party actor `actor`'s skill menu.  Four
+ * entries: an entry the actor can use (func_80089C6C of the
+ * g_GameState + 0x16DA + D_800D2D24[actor] * 32 halfword, none of its
+ * mask bits in the actor's D_800CCD62 halfword) shows id = the actor's
+ * D_800CCD88 byte * 4 + slot and its D_800CEF34 cost (entry slot + 0x25);
+ * others stay 0xFF / 0.  D_800D2D28 +0xCB = 0, three windows
+ * (func_8008F8F4), func_800930AC(actor, ids, costs), func_80077698.
+ * Then until a choice: func_800939CC(actor, sel) whenever sel changes,
+ * the cursor (func_80090B90(0x8C, sel * 16 + 0x58)), a frame
+ * (func_800716D8), and the D_800D3014 event: 5 cancels (0), 4 commits
+ * through func_8008CDE4 (1, D_800C3EAC +0x2E6 = sel + 0x10), 1 / 3 move
+ * the cursor within 0..3.  Finally func_8008CCCC(result), func_8007765C,
+ * func_80077980 and func_8008FA60(0..2); returns the result.
+ * Codegen: the case bodies are in retail's block order (5, 4, 1, 3; the
+ * sorted 1, 3, 4, 5 order also swaps the sel and actor registers); the
+ * tables go through the asm-label row views of func_8008CDE4. */
+u8 func_8008CFB8(u8 actor) {
+    u8 ids[4];
+    u16 costs[4];
+    u16 masks[4];
+    s32 frame;
+    u8 timer;
+    s32 last;
+    s32 sel;
+    s32 i;
+    u8 state;
+
+    sel = 0;
+    last = 0xFF;
+    state = 2;
+    masks[0] = D_800C324E;
+    masks[1] = D_800C3250;
+    masks[2] = D_800C3252;
+    masks[3] = D_800C323A;
+    frame = 4;
+    timer = 0;
+    for (i = 0; i < 4; i++) {
+        ids[i] = 0xFF;
+        costs[i] = 0;
+    }
+    for (i = 0; i < 4; i++) {
+        if (func_80089C6C(*(u16*)(g_GameState + 0x16DA + D_800D2D24[actor] * 32), i)) {
+            if (!(D_800CCD62__rows[actor][0] & masks[i])) {
+                ids[i] = D_800CCD88__rows[actor][0] * 4 + i;
+                costs[i] = D_800CEF34__rows[actor][i + 0x25][0];
+            }
+        }
+    }
+    D_800D2D28[0xCB] = 0;
+    func_8008F8F4(0, 0x74, 0xA0, 0xAC, 0x38, 0, 1);
+    func_8008F8F4(1, 0x84, 0x4C, 0x9C, 0x50, 0, 1);
+    func_8008F8F4(2, 0x1C, 0xA0, 0x50, 0x18, 0, 1);
+    func_800930AC(actor, ids, costs);
+    func_80077698();
+    while (state == 2) {
+        if (sel != last) {
+            func_800939CC(actor, sel);
+            last = sel;
+        }
+        func_80090B90(0x8C, sel * 16 + 0x58, &frame, &timer);
+        func_800716D8();
+        switch (D_800D3014) {
+        case 5:
+            state = 0;
+            break;
+        case 4:
+            if (func_8008CDE4(actor, sel)) {
+                state = 1;
+                D_800C3EAC[0x2E6] = sel + 0x10;
+            }
+            break;
+        case 1:
+            if (++sel >= 4) {
+                sel = 3;
+            }
+            break;
+        case 3:
+            if (--sel < 0) {
+                sel = 0;
+            }
+            break;
+        }
+    }
+    func_8008CCCC(state);
+    func_8007765C();
+    func_80077980();
+    func_8008FA60(0);
+    func_8008FA60(1);
+    func_8008FA60(2);
+    return state;
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main49", func_8008D328);
 INCLUDE_ASM("asm/battle/nonmatchings/main49", func_8008D598);
 extern u32 D_800D2E38[];
