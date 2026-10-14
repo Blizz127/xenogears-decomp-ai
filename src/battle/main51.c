@@ -23,7 +23,131 @@ void func_80095B44(void);
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/main51", func_8008FE18);
+/* Image pointer as an aggregate element, as in main6.c. */
+typedef struct {
+    void* data;
+} BattleImageRef;
+extern void func_80077610(void);
+extern void func_80076EA4(void);
+extern void func_8008FC1C(s32 x, s32 y, s32 w, s32 h, u8 n);
+extern void func_800716D8(void);
+extern void* GetItemName(s32 index);
+extern u8* D_800D2DB0;
+extern BattleImageRef D_800C3E5C[];
+extern u8 D_800D2CB0[];
+extern u8 D_800D2CC0[];
+extern u8 D_800D2CE0[];
+extern s32 D_800C3EA4;
+extern u8* D_800D2D28;
+
+
+/* func_8008FE18.s, byte-exact: for init != 0 first run func_80077610,
+ * func_80076EA4 and func_8008FC1C(0x20, 0x5C, 0xCC, 0x60, 0xE).  Upload a
+ * blank 0x39-wide buffer (D_800D2DB0) at (0x3C0, 0, 0x3C, 0xD) and copy the
+ * 0x30 ids of D_800D2CE0 and values of D_800D2CB0.  For slot i of 32 render
+ * the item names ids[i] (flag 0) and ids[i + 0x10] (flag 1) into one
+ * 0x1B-high buffer uploaded at (i % 2 * 30 + 0x380, i / 2 * 13 + 0x100, 0x1E,
+ * 0xD), and the two digits of vals[i] and of vals[i + 0x10] (D_800C3E5C
+ * images, 6 x 0xD) at x i % 2 * 16 + 0x3C0 / 0x3C2 and + 0x3C4 / 0x3C6: a
+ * tens digit only when non-zero (the second one tests D_800D2CC0[i], the
+ * global, not the copy), a ones digit only for a non-zero id.  Then free the
+ * buffers, run func_800716D8() and set +0x669 of the record pointed to by the
+ * word at D_800C3EA4 + 0xA230 to 1 and D_800D2D28[0xB7] to 2.  a and b are
+ * unused.  Codegen: the unused rect r6 keeps retail's unused 8-byte frame
+ * slot before vals. */
+void func_8008FE18(u8 a, u8 b, u8 init) {
+    BattleImageRef bufs[32];
+    s16 r0[4];
+    s16 r1[4];
+    s16 r2[4];
+    s16 r3[4];
+    s16 r4[4];
+    s16 r5[4];
+    s16 r6[4];
+    u8 vals[48];
+    u8 ids[48];
+    s32 i;
+    u8* img;
+
+    if (init) {
+        func_80077610();
+        func_80076EA4();
+        func_8008FC1C(0x20, 0x5C, 0xCC, 0x60, 0xE);
+    }
+    D_800D2DB0 = func_8008AC00(0x39);
+    bzero(D_800D2DB0, 0x618);
+    r5[0] = 0x3C0;
+    r5[2] = 0x3C;
+    r5[1] = 0;
+    r5[3] = 0xD;
+    func_800769E8(r5, D_800D2DB0);
+    for (i = 0; i < 0x30; i++) {
+        ids[i] = D_800D2CE0[i];
+        vals[i] = D_800D2CB0[i];
+    }
+    for (i = 0; i < 0x20; i++) {
+        bufs[i].data = func_8008AC00(0x1B);
+        bzero(bufs[i].data, 0x30C);
+        r0[0] = i % 2 * 30 + 0x380;
+        r0[1] = i / 2 * 13 + 0x100;
+        r0[2] = 0x1E;
+        r0[3] = 0xD;
+        r1[0] = i % 2 * 16 + 0x3C0;
+        r1[1] = i / 2 * 13 + 0x100;
+        r1[2] = 6;
+        r1[3] = 0xD;
+        r2[0] = i % 2 * 16 + 0x3C2;
+        r2[1] = i / 2 * 13 + 0x100;
+        r2[2] = 6;
+        r2[3] = 0xD;
+        r3[0] = i % 2 * 16 + 0x3C4;
+        r3[1] = i / 2 * 13 + 0x100;
+        r3[2] = 6;
+        r3[3] = 0xD;
+        r4[0] = i % 2 * 16 + 0x3C6;
+        r4[1] = i / 2 * 13 + 0x100;
+        r4[2] = 6;
+        r4[3] = 0xD;
+        if (ids[i] != 0) {
+            SystemRenderStringEntry(GetItemName(ids[i]), bufs[i].data, 0x1B, 0);
+        }
+        if (ids[i + 0x10] != 0) {
+            SystemRenderStringEntry(GetItemName(ids[i + 0x10]), bufs[i].data, 0x1B, 1);
+        }
+        func_800769E8(r0, bufs[i].data);
+        if ((u8)(vals[i] / 10) != 0) {
+            img = D_800C3E5C[(u8)(vals[i] / 10)].data;
+        } else {
+            img = D_800D2DB0;
+        }
+        func_800769E8(r1, img);
+        if (ids[i] != 0) {
+            img = D_800C3E5C[(u8)(vals[i] % 10)].data;
+        } else {
+            img = D_800D2DB0;
+        }
+        func_800769E8(r2, img);
+        if ((u8)(D_800D2CC0[i] / 10) != 0) {
+            img = D_800C3E5C[(u8)(vals[i + 0x10] / 10)].data;
+        } else {
+            img = D_800D2DB0;
+        }
+        func_800769E8(r3, img);
+        if (ids[i + 0x10] != 0) {
+            img = D_800C3E5C[(u8)(vals[i + 0x10] % 10)].data;
+        } else {
+            img = D_800D2DB0;
+        }
+        func_800769E8(r4, img);
+    }
+    for (i = 0; i < 0x20; i++) {
+        HeapFree(bufs[i].data);
+    }
+    HeapFree(D_800D2DB0);
+    func_800716D8();
+    (*(u8**)(D_800C3EA4 + 0xA230))[0x669] = 1;
+    D_800D2D28[0xB7] = 2;
+}
 extern s32 func_80076A10(s32, s32, s16, s16);
 extern s32 D_800C3EA4;
 extern u8 D_800CCB34;
@@ -323,10 +447,6 @@ void func_80090E7C(u8 a) {
     func_80076A10(0x71, (s32)(*(u8**)(D_800C3EA4 + 0xA230) + 0x5A0), 0x118, 0xD1);
     (*(u8**)(D_800C3EA4 + 0xA230))[0x66C] = D_800CCB34;
 }
-/* Image pointer as an aggregate element, as in main6.c. */
-typedef struct {
-    void* data;
-} BattleImageRef;
 extern void func_80077610(void);
 extern void func_80076EA4(void);
 extern void func_8008FC1C(s32 x, s32 y, s32 w, s32 h, u8 n);
