@@ -286,13 +286,53 @@ void func_80072938(void* prims, s32 start, s32 end, u8 mode) {
     }
 }
 #endif
-INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80072A9C);
 extern void* D_800C3EA4;
 extern u16 D_800C3254[];
 extern u8 D_800D3280;
 extern u8 D_800D2D88[];
 extern u16 D_800C3076[];
 extern s32 func_80076A10(s32 index, u8* polys, s16 x, s16 y);
+extern u8 D_800C3E08[];
+extern u8 D_800D2D54[];
+extern u16 D_800C3068[];
+
+/* func_80072A9C.s, byte-exact: draw slot `slot`'s three-part label, the
+ * sibling of func_80072DA8 (same prims, count and x formula).  Glyphs
+ * D_800C3E08[0..2] that are not 0xFF go at x index i, glyph 0x71 at x
+ * index 3, then the D_800D2D54[4..6] glyphs that are not 0xFF at x
+ * indexes 4 upward (one per drawn glyph).  Each func_80076A10 call adds
+ * its sprite count to the slot's D_800D2D28 +0xE0 word; with `flag`,
+ * func_80072938 then colours the prims from the old count to the new
+ * one.  x = D_800C3068[slot * 24 + index] + D_800C3254[D_800D3280 * 3 +
+ * slot], y = 0x10.  Matches under gcc 2.6.x. */
+void func_80072A9C(s32 slot, u8 flag) {
+    s32 start;
+    s32 i;
+    s32 k;
+
+    start = *(s32*)((u8*)D_800D2D28 + slot * 4 + 0xE0);
+    for (i = 0; i < 3; i++) {
+        if (D_800C3E08[i] != 0xFF) {
+            *(s32*)((u8*)D_800D2D28 + slot * 4 + 0xE0) += func_80076A10(D_800C3E08[i] + 0x67,
+                (u8*)D_800C3EA4 + (slot * 0xC80 + 0x3A88) + *(s32*)((u8*)D_800D2D28 + slot * 4 + 0xE0) * 80,
+                D_800C3068[slot * 24 + i] + D_800C3254[D_800D3280 * 3 + slot], 0x10);
+        }
+    }
+    *(s32*)((u8*)D_800D2D28 + slot * 4 + 0xE0) += func_80076A10(0x71,
+        (u8*)D_800C3EA4 + (slot * 0xC80 + 0x3A88) + *(s32*)((u8*)D_800D2D28 + slot * 4 + 0xE0) * 80,
+        D_800C3068[slot * 24 + 3] + D_800C3254[D_800D3280 * 3 + slot], 0x10);
+    for (i = 4, k = 4; i < 7; i++) {
+        if (D_800D2D54[i] != 0xFF) {
+            *(s32*)((u8*)D_800D2D28 + slot * 4 + 0xE0) += func_80076A10(D_800D2D54[i] + 0x67,
+                (u8*)D_800C3EA4 + (slot * 0xC80 + 0x3A88) + *(s32*)((u8*)D_800D2D28 + slot * 4 + 0xE0) * 80,
+                D_800C3068[slot * 24 + k] + D_800C3254[D_800D3280 * 3 + slot], 0x10);
+            k++;
+        }
+    }
+    if (flag) {
+        func_80072938((u8*)D_800C3EA4 + (slot * 0xC80 + 0x3A88), start, *(s32*)((u8*)D_800D2D28 + slot * 4 + 0xE0), flag);
+    }
+}
 
 /* func_80072DA8.s, byte-exact: draw the five-glyph label of slot `slot`.
  * For each D_800D2D88 glyph that is not 0xFF, func_80076A10(glyph + 0x67,
