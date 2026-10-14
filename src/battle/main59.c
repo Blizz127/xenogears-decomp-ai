@@ -20,7 +20,6 @@ void func_8009C134(void) {
         }
     }
 }
-INCLUDE_ASM("asm/battle/nonmatchings/main59", func_8009C198);
 extern u8* D_800C34B0;
 extern u8* D_800C3E00;
 extern u8 D_800C3E04;
@@ -29,13 +28,93 @@ extern u8* D_800C3E34;
 extern u8* D_800C3D3C;
 extern u8 D_800D2C34;
 extern u8* D_800D2DC8;
+extern u8* D_800C3DFC;
+extern u8* D_800D2D6C;
+extern u8 D_800D2DC4;
+extern u32 D_800C3D60;
+extern u32 D_800C34DC[];
 extern s32 rand(void);
+extern void func_80096824(void);
+extern void func_8009AC48();
+extern u32 func_8009DBFC(u32 a0);
+extern void func_8009E788(void);
+void func_8009CA90(void);
+void func_8009C4B4(void);
+void func_8009CB68(u8 index);
+void func_8009C9C4(void);
 
 /* The D_800C34B0 block's outcome bytes, as main51's Battle struct. */
 typedef struct {
     u8 pad[0x5FA0];
     u8 f5FA0[8];
 } BattleOutcomes;
+
+/* func_8009C198.s, byte-exact: per-turn driver (the main59.c port arm
+ * below does the same).  D_800C3DFC points at the active command record
+ * (party actors: +0x2228 + D_800C34B0 +0x5FC1 * 0x690 + +0x5FC2 * 0x28;
+ * others: +0x35D8 + +0x5FC2 * 0x28); func_8009AC48(D_800C3E04) gets
+ * whatever is in $a1, as in retail; D_800D2DC4 = 0 and D_800C3D3C =
+ * actor +0x5FC1's 0x170-byte record + 0x148; func_80096824 for +0xA bit
+ * 0x100 with D_800C3E00 +0x56 == 1; command 1 with D_800C3E00 +0xA0 5 or
+ * 0xD copies D_800D2D6C +0x1A to command +0x22.  Then for each actor
+ * 0..10 (D_800C3E50) in the +0x5FAC mask: publish D_800C3E34,
+ * D_800D2DC8 (+0xA4) and D_800C3D60 (+0x148), func_8009CA90, the
+ * D_800C34DC[command +0x16] handler, func_8009DBFC(1 / 0) for outcome 0
+ * and +0xA bits 0x800 / 0x4000, +0x5FB0 = command +2, func_8009C4B4,
+ * func_8009CB68(actor).  Finally func_8009E788 for +0x56 == 4 and
+ * func_8009C9C4.
+ * Codegen: func_800941A4's forms (parenthesised record offsets, array
+ * form flag reads, `bit = 1` at the loop start, BattleOutcomes view);
+ * func_8009AC48 is declared without a prototype because retail passes
+ * only $a0; the slot byte is held in a u32, as the arm does (a u8 adds
+ * an andi). */
+void func_8009C198(void) {
+    u32 bit;
+    u32 slot;
+    u16 f;
+
+    if (D_800C3E04 < 3) {
+        D_800C3DFC = D_800C34B0 + (D_800C34B0[0x5FC1] * 0x690 + 0x2228) + D_800C34B0[0x5FC2] * 0x28;
+    } else {
+        D_800C3DFC = D_800C34B0 + (D_800C34B0[0x5FC2] * 0x28 + 0x35D8);
+    }
+    func_8009AC48(D_800C3E04);
+    slot = D_800C34B0[0x5FC1];
+    D_800D2DC4 = 0;
+    D_800C3D3C = D_800C34B0 + slot * 0x170 + 0x148;
+    if ((((u16*)D_800C3DFC)[5] & 0x100) && D_800C3E00[0x56] == 1) {
+        func_80096824();
+    }
+    if ((D_800C3E00[0xA0] == 5 || D_800C3E00[0xA0] == 0xD) && D_800C34B0[0x5FC2] == 1) {
+        D_800C3DFC[0x22] = D_800D2D6C[0x1A];
+    }
+    bit = 1;
+    for (D_800C3E50 = 0; D_800C3E50 < 11; D_800C3E50++, bit <<= 1) {
+        if (bit & *(u16*)(D_800C34B0 + 0x5FAC)) {
+            D_800C3E34 = D_800C34B0 + D_800C3E50 * 0x170;
+            D_800D2DC8 = D_800C3E34 + 0xA4;
+            D_800C3D60 = (u32)(D_800C3E34 + 0x148);
+            func_8009CA90();
+            ((void (*)(void))D_800C34DC[D_800C3DFC[0x16]])();
+            if (((BattleOutcomes*)D_800C34B0)->f5FA0[D_800C3E50] == 0) {
+                f = ((u16*)D_800C3DFC)[5];
+                if (f & 0x800) {
+                    func_8009DBFC(1);
+                } else if (f & 0x4000) {
+                    func_8009DBFC(0);
+                }
+            }
+            *(u16*)(D_800C34B0 + 0x5FB0) = *(u16*)(D_800C3DFC + 2);
+            func_8009C4B4();
+            func_8009CB68(D_800C3E50);
+        }
+    }
+    if (D_800C3E00[0x56] == 4) {
+        func_8009E788();
+    }
+    func_8009C9C4();
+}
+
 
 /* func_8009C4B4.s, byte-exact: per-slot bookkeeping after an action (the
  * main59.c port arm below does the same).  For a party actor
@@ -236,9 +315,10 @@ void func_8009CB68(u8 index) {
 }
 
 
-/* ---- Port bodies (fo/bat3).  Not byte-matching: the matching build keeps
- * the retail bytes from the INCLUDE_ASM block above; these are compiled only
- * for the port and the differential harness. ---- */
+/* ---- Port bodies (fo/bat3).  Not byte-matching: the matching build
+ * compiles func_8009C134, func_8009C198 and func_8009C4B4 from the
+ * byte-exact C above; these are compiled only for the port and the
+ * differential harness. ---- */
 #ifndef XENO_PC_PORT
 extern u8* D_800C3E00;
 #endif
