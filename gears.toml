@@ -414,6 +414,10 @@ paths = [
     # 384 vs 392 bytes); func_8008C360 and func_8008C3F0 compile to the
     # same bytes under 2.6.3 and 2.7.2.
     "src/battle/main47.",
+    # main48 (2026-10-14): func_8008C4A8 matches only under 2.6.x (its u8
+    # `+0x2DC - 1` is addiu 0xFF; 2.7.2: 880 vs 884 bytes); func_8008CCCC
+    # and func_8008CD28 compile to the same bytes under 2.6.3 and 2.7.2.
+    "src/battle/main48.",
 ]
 
 [[build_preset]]
