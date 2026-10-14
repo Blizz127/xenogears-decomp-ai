@@ -78,7 +78,8 @@ segments:
       - [0x880, .rodata, main51]     # jtbl_80070370 (func_80094EE4) .. jtbl_800703A0 (func_80096018)
       - [0x8D0, rodata]
       - [0x938, .rodata, main57]     # jtbl_80070428 (func_8009AFD8)
-      - [0x988, rodata]
+      - [0x988, .rodata, main58]     # jtbl_80070478 (func_8009B684)
+      - [0x9B0, rodata]
       - [0x9DC, .rodata, main64]     # jtbl_800704CC (func_8009E788)
       - [0xA24, rodata]
       - [0xA64, .rodata, main70]     # jtbl_80070554 (func_800A6884)

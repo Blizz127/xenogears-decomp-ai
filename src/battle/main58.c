@@ -113,7 +113,132 @@ void func_8009B1E4(void) {
     *(u8*)(g_GameState + 0x1817) = 0x7;
 }
 INCLUDE_ASM("asm/battle/nonmatchings/main58", func_8009B46C);
-INCLUDE_ASM("asm/battle/nonmatchings/main58", func_8009B684);
+/* func_8009B684.s, byte-exact: map (menu, mask bit) to the D_800C34B0
+ * +0x5FC7 command code for menus 0, 2, 5, 7 and 9, the twin of main64's
+ * func_8009E868; unknown pairs store nothing.  Each case stores its code
+ * itself, in retail's block order.  The menu switch is a jump table
+ * (jtbl_80070478, placed by the main58 .rodata split in
+ * config/battle.yaml).  Matches under gcc 2.6.x and 2.7.2; the port arm
+ * is below. */
+void func_8009B684(u8 menu, u16 mask) {
+    switch (menu) {
+    case 0:
+        switch (mask) {
+        case 0x2000:
+            D_800C34B0[0x5FC7] = 0x1;
+            break;
+        case 0x1000:
+            D_800C34B0[0x5FC7] = 0x2;
+            break;
+        case 0x800:
+            D_800C34B0[0x5FC7] = 0x3;
+            break;
+        case 0x400:
+            D_800C34B0[0x5FC7] = 0x4;
+            break;
+        case 0x200:
+            D_800C34B0[0x5FC7] = 0x5;
+            break;
+        case 0x1:
+            D_800C34B0[0x5FC7] = 0x8;
+            break;
+        }
+        break;
+    case 2:
+        switch (mask) {
+        case 0x2000:
+            D_800C34B0[0x5FC7] = 0x9;
+            break;
+        case 0x1000:
+            D_800C34B0[0x5FC7] = 0xA;
+            break;
+        case 0x800:
+            D_800C34B0[0x5FC7] = 0xB;
+            break;
+        case 0x400:
+            D_800C34B0[0x5FC7] = 0xC;
+            break;
+        case 0x1:
+            D_800C34B0[0x5FC7] = 0xD;
+            break;
+        case 0x20:
+            D_800C34B0[0x5FC7] = 0x7;
+            break;
+        }
+        break;
+    case 5:
+        switch (mask) {
+        case 0x8000:
+            D_800C34B0[0x5FC7] = 0xE;
+            break;
+        case 0x4000:
+            D_800C34B0[0x5FC7] = 0xF;
+            break;
+        case 0x2000:
+            D_800C34B0[0x5FC7] = 0x10;
+            break;
+        case 0x1000:
+            D_800C34B0[0x5FC7] = 0x11;
+            break;
+        case 0x800:
+            D_800C34B0[0x5FC7] = 0x12;
+            break;
+        case 0x1800:
+            D_800C34B0[0x5FC7] = 0x13;
+            break;
+        }
+        break;
+    case 7:
+        switch (mask) {
+        case 0x8000:
+            D_800C34B0[0x5FC7] = 0x15;
+            break;
+        case 0x4000:
+            D_800C34B0[0x5FC7] = 0x16;
+            break;
+        case 0x1000:
+            D_800C34B0[0x5FC7] = 0x18;
+            break;
+        case 0x8:
+        case 0x2:
+            D_800C34B0[0x5FC7] = 0x19;
+            break;
+        case 0x1:
+        case 0x4:
+            D_800C34B0[0x5FC7] = 0x1A;
+            break;
+        }
+        break;
+    case 9:
+        switch (mask) {
+        case 0x8000:
+            D_800C34B0[0x5FC7] = 0x1B;
+            break;
+        case 0x4000:
+            D_800C34B0[0x5FC7] = 0x1C;
+            break;
+        case 0x2000:
+            D_800C34B0[0x5FC7] = 0x1D;
+            break;
+        case 0x1000:
+            D_800C34B0[0x5FC7] = 0x1E;
+            break;
+        case 0x400:
+            D_800C34B0[0x5FC7] = 0x1F;
+            break;
+        case 0x800:
+            D_800C34B0[0x5FC7] = 0x20;
+            break;
+        case 0x100:
+            D_800C34B0[0x5FC7] = 0x21;
+            break;
+        case 0x200:
+            D_800C34B0[0x5FC7] = 0x22;
+            break;
+        }
+        break;
+    }
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main58", func_8009BAC4);
 #include "battle/c34b0.h"
 extern u8* D_800C34B0;
