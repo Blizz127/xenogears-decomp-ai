@@ -58,7 +58,60 @@ void func_8007FEC4(void) {
 }
 #ifndef XENO_PC_PORT
 
-INCLUDE_ASM("asm/battle/nonmatchings/main33", func_8007FF14);
+extern u8* D_800C3EAC;
+extern u8 D_800D2C0C[];
+extern u8 D_800D2D24[];
+extern void func_8009A2D4(u8 idx);
+extern void func_80089AF8(u8 idx);
+extern void func_800898F0(u8 index);
+extern s32 func_800716D8(void);
+
+/* func_8007FF14.s, byte-exact: func_8009A2D4(actor), then write the low
+ * byte of each of the three D_800D2C0C halfwords (slots k = 2..4, the
+ * byte at (k - 2) * 2) as up to three digit glyphs (0x83 + digit) into
+ * bytes k * 4 + 8 .. of the actor's 64-byte D_800C3EAC row: the slot is
+ * first filled with 0xFF and leading zeros are skipped (the last digit is
+ * always written).  Then func_8007FEC4(), and unless D_800D2D24[actor] is
+ * 7, func_80089AF8(actor) and func_800898F0(actor), each followed by
+ * func_800716D8(), and D_800D2D28 +0xAD and +0xC7 = 1.  Matches under gcc
+ * 2.6.x (first draft). */
+void func_8007FF14(u8 actor) {
+    s32 k;
+    s32 j;
+    u8 v;
+    u8 d;
+
+    func_8009A2D4(actor);
+    for (k = 2; k < 5; k++) {
+        v = D_800D2C0C[(k - 2) * 2];
+        (D_800C3EAC + (actor << 6))[k * 4 + 8] = 0xFF;
+        (D_800C3EAC + (actor << 6))[k * 4 + 9] = 0xFF;
+        (D_800C3EAC + (actor << 6))[k * 4 + 10] = 0xFF;
+        j = 0;
+        d = v / 100;
+        if (d != 0) {
+            v -= d * 100;
+            j = 1;
+            (D_800C3EAC + (actor << 6))[k * 4 + 8] = d + 0x83;
+        }
+        d = v / 10;
+        if (d != 0 || j != 0) {
+            v -= d * 10;
+            (D_800C3EAC + (actor << 6))[k * 4 + j + 8] = d + 0x83;
+            j++;
+        }
+        (D_800C3EAC + (actor << 6))[k * 4 + j + 8] = v + 0x83;
+    }
+    func_8007FEC4();
+    if (D_800D2D24[actor] != 7) {
+        func_80089AF8(actor);
+        func_800716D8();
+        func_800898F0(actor);
+        func_800716D8();
+        D_800D2D28[0xAD] = 1;
+        D_800D2D28[0xC7] = 1;
+    }
+}
 #endif
 
 
