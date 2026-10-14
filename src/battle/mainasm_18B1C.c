@@ -17,8 +17,8 @@ extern s32 D_800C3A84;
 extern s32 D_800C3A88;
 extern s32 D_800C3A8C;
 extern s32 D_800C3A90;
-extern s8 D_800C3A94;
-extern s8 D_800C3A98;
+extern u8 D_800C3A94;
+extern u8 D_800C3A98;
 extern s32 D_800C3A9C;
 #endif
 extern s32 func_8001BD40(s32, s32);
@@ -65,5 +65,46 @@ void func_8008887C(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/mainasm_18B1C", func_80088990);
+/* func_80088990.s, byte-exact: step the D_800C2080 / D_800C2084 position
+ * D_800C3A9C times (by D_800C3A8C / D_800C3A90, down when the D_800C3A94 /
+ * D_800C3A98 flag is set, else up), then set D_800C207C when the position
+ * (/ 256, plus D_800C3A7C / D_800C3A80) has passed the D_800C3A84 /
+ * D_800C3A88 target in the stepping direction: the x axis when D_800C3A8C
+ * is 0x100, else the y axis.  The port arm is the
+ * XENO_PC_PORT body in main40.c.  loop.c hoists the step globals as in
+ * retail; the two flags are u8 (retail reads them with lbu).  First draft;
+ * matches under gcc 2.7.2 (main40 already declares the flags u8). */
+void func_80088990(void) {
+    s32 i;
+
+    for (i = 0; i < D_800C3A9C; i++) {
+        if (D_800C3A94 != 0) {
+            D_800C2080 -= D_800C3A8C;
+        } else {
+            D_800C2080 += D_800C3A8C;
+        }
+        if (D_800C3A98 != 0) {
+            D_800C2084 -= D_800C3A90;
+        } else {
+            D_800C2084 += D_800C3A90;
+        }
+    }
+    if (D_800C3A8C == 0x100) {
+        if (D_800C3A94 != 0) {
+            if (D_800C2080 / 256 + D_800C3A7C < D_800C3A84) {
+                D_800C207C = 1;
+            }
+        } else if (D_800C3A84 < D_800C2080 / 256 + D_800C3A7C) {
+            D_800C207C = 1;
+        }
+    } else {
+        if (D_800C3A98 != 0) {
+            if (D_800C2084 / 256 + D_800C3A80 < D_800C3A88) {
+                D_800C207C = 1;
+            }
+        } else if (D_800C3A88 < D_800C2084 / 256 + D_800C3A80) {
+            D_800C207C = 1;
+        }
+    }
+}
 #endif
