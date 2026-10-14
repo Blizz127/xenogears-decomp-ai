@@ -597,7 +597,147 @@ void func_800995A0(u8 actor, u8 menu, u16 button, u8 value) {
         row[slot] = value;
     }
 }
-INCLUDE_ASM("asm/battle/nonmatchings/main53", func_80099890);
+typedef struct {
+    s32 unk0[0x1E];
+    u16 unk78;
+    u16 unk7A;
+    u16 unk7C;
+    u16 unk7E;
+    u16 unk80;
+    u16 unk82;
+    u16 unk84;
+    u16 unk86;
+    u16 unk88;
+    u16 unk8A;
+    u16 unk8C;
+    u16 unk8E;
+    u8 unk90[0x14];
+    u8 unkA4[0xB6];
+    u8 unk15A;
+    u8 unk15B;
+    u8 unk15C[0x14];
+} M53Actor;
+
+extern M53Actor D_800CCCE8__a[] asm("D_800CCCE8");
+
+/* func_80099890.s, byte-exact under gcc 2.6.3 (BattleGcc263).  Count down an
+ * actor's status timers (bytes +0x15C + k of its 0x170-byte D_800CCCE8
+ * record): when the record's +0x15A has 0x80, hand the +0xA4 block, the
+ * record and the timers to func_80099CF0 and return 0.  Otherwise each
+ * active status (+0x7C 0x1000; +0x80 0x1000 / 0x800; +0x84 bits
+ * 0x8000..0x800 and +0x88 bits 0x8000 / 0x4000 / 0x1000 unless the same bit is
+ * set in +0x86 / +0x8A; +0x8C 0xF000 / 0xF00 unless set in +0x8E) decrements
+ * its timer and, when it reaches 0, clears the status bit (+0x80 0x800 also
+ * clears +0x7A 0x20) and ORs its result bit (0x4000 down to 4) into the
+ * returned mask.  Codegen: with the record view 4-byte aligned (the s32
+ * padding) each "bit set and not blocked" pair of u16 tests compiles to one
+ * word compare, as in retail (u8 padding keeps the tests separate); timers
+ * count down by + 0xFF as in func_80099CF0. */
+u16 func_80099890(u8 actor) {
+    M53Actor* rec = &D_800CCCE8__a[actor];
+    u8* stats = D_800CCCE8__a[actor].unkA4;
+    u8* timers = D_800CCCE8__a[actor].unk15C;
+    u16 result;
+
+    if (D_800CCCE8__a[actor].unk15A & 0x80) {
+        func_80099CF0(stats, rec, timers);
+        return 0;
+    }
+    result = 0;
+    if (rec->unk7C & 0x1000) {
+        timers[1] += 0xFF;
+        if (timers[1] == 0) {
+            result |= 0x4000;
+            rec->unk7C &= 0xEFFF;
+        }
+    }
+    if (rec->unk80 & 0x1000) {
+        timers[2] += 0xFF;
+        if (timers[2] == 0) {
+            result |= 0x2000;
+            rec->unk80 &= 0xEFFF;
+        }
+    }
+    if (rec->unk80 & 0x800) {
+        timers[3] += 0xFF;
+        if (timers[3] == 0) {
+            result |= 0x1000;
+            rec->unk80 &= 0xF7FF;
+            rec->unk7A &= 0xFFDF;
+        }
+    }
+    if ((rec->unk84 & 0x8000) && !(rec->unk86 & 0x8000)) {
+        timers[4] += 0xFF;
+        if (timers[4] == 0) {
+            result |= 0x800;
+            rec->unk84 &= 0x7FFF;
+        }
+    }
+    if ((rec->unk84 & 0x4000) && !(rec->unk86 & 0x4000)) {
+        timers[5] += 0xFF;
+        if (timers[5] == 0) {
+            result |= 0x400;
+            rec->unk84 &= 0xBFFF;
+        }
+    }
+    if ((rec->unk84 & 0x2000) && !(rec->unk86 & 0x2000)) {
+        timers[6] += 0xFF;
+        if (timers[6] == 0) {
+            result |= 0x200;
+            rec->unk84 &= 0xDFFF;
+        }
+    }
+    if ((rec->unk84 & 0x1000) && !(rec->unk86 & 0x1000)) {
+        timers[7] += 0xFF;
+        if (timers[7] == 0) {
+            result |= 0x100;
+            rec->unk84 &= 0xEFFF;
+        }
+    }
+    if ((rec->unk84 & 0x800) && !(rec->unk86 & 0x800)) {
+        timers[8] += 0xFF;
+        if (timers[8] == 0) {
+            result |= 0x80;
+            rec->unk84 &= 0xF7FF;
+        }
+    }
+    if ((rec->unk88 & 0x8000) && !(rec->unk8A & 0x8000)) {
+        timers[9] += 0xFF;
+        if (timers[9] == 0) {
+            result |= 0x40;
+            rec->unk88 &= 0x7FFF;
+        }
+    }
+    if ((rec->unk88 & 0x4000) && !(rec->unk8A & 0x4000)) {
+        timers[0xA] += 0xFF;
+        if (timers[0xA] == 0) {
+            result |= 0x20;
+            rec->unk88 &= 0xBFFF;
+        }
+    }
+    if ((rec->unk88 & 0x1000) && !(rec->unk8A & 0x1000)) {
+        timers[0xB] += 0xFF;
+        if (timers[0xB] == 0) {
+            result |= 0x10;
+            rec->unk88 &= 0xEFFF;
+        }
+    }
+    if ((rec->unk8C & 0xF000) && !(rec->unk8E & 0xF000)) {
+        timers[0xC] += 0xFF;
+        if (timers[0xC] == 0) {
+            result |= 8;
+            rec->unk8C &= 0x0FFF;
+        }
+    }
+    if ((rec->unk8C & 0xF00) && !(rec->unk8E & 0xF00)) {
+        timers[0xD] += 0xFF;
+        if (timers[0xD] == 0) {
+            result |= 4;
+            rec->unk8C &= 0xF0FF;
+        }
+    }
+    return result;
+}
 
 #ifndef XENO_PC_PORT
 void func_80099CF0(void *arg0, void *arg1, void *arg2) {
