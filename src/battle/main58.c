@@ -50,7 +50,86 @@ void func_8009BD94(void) {
     prod = D_800C3DFC[0x11] * *(u32*)(D_800D2DC8 + 0x64);
     ((u32*)(D_800C34B0 + 0x5F6C))[D_800C3E50] = prod / 20;
 }
-INCLUDE_ASM("asm/battle/nonmatchings/main58", func_8009BE0C);
+extern u8 D_800CCCE8[];
+extern u8 D_800CCE42__rows[][0x170] asm("D_800CCE42");
+extern u8 g_GameState[];
+extern u8 D_800D2D24[];
+
+/* func_8009BE0C.s, byte-exact WITH A CONSTRUCT: copy the live battle stats
+ * of the first three actors (0x170-byte D_800CCCE8 records) back into their
+ * g_GameState records (0xA4 stride from +0x26C: the character by +0x56, the
+ * Gear by +0xA0, which follows the 11 character records), skipping slots
+ * whose D_800D2D24 byte is 0x7F.  Character 7 with D_800CCE42 bit 7 first
+ * takes HP = (+0xA4 block +0x60 + 1) / 50, at least 1.  HP +0x4C and MP
+ * +0x50 are copied and clamped to +0x4E / +0x52, the seven +0x90 halfwords
+ * and +0x3A copied, HP set to 1 when +0x7C has 0xC000; for Gear ids 0..6
+ * and 8..16 the block's +0x60 / +0x38 are copied and clamped to +0x64 /
+ * +0x3A, and +0x60 becomes +0x64 / 10 with block +0x7C bit 0x8000.  The
+ * port arm is the XENO_PC_PORT body below.
+ * Construct (counted separately; cause unknown): retail has an empty
+ * 8-byte stack frame (no saves, no stack accesses).  The unused 8-byte
+ * local `unused` reproduces it; without it the function is exactly 2
+ * instructions short (572 vs 580 bytes) and otherwise identical.
+ * Codegen otherwise natural: `off + (D_800CCCE8 + 0xA4)` as in
+ * func_8009C050, the Gear base hoisted as g_GameState + 0x26C + 0x70C, the
+ * clamps tested as `cur > max`.  Matches under gcc 2.6.x. */
+void func_8009BE0C(void) {
+    u8 i;
+    u32 off;
+    s32 unused[2];
+    u8 j;
+    u8* rec;
+    u8* stats;
+    u8* gs;
+    u8* gm;
+
+    for (i = 0; i < 3; i++) {
+        if (D_800D2D24[i] != 0x7F) {
+            off = i * 0x170;
+            rec = off + D_800CCCE8;
+            stats = off + (D_800CCCE8 + 0xA4);
+            gs = g_GameState + 0x26C + rec[0x56] * 0xA4;
+            gm = g_GameState + 0x26C + 0x70C + rec[0xA0] * 0xA4;
+            if (rec[0x56] == 7 && (D_800CCE42__rows[i][0] & 0x80)) {
+                *(u16*)(rec + 0x4C) = (*(u32*)(stats + 0x60) + 1) / 50;
+                if (*(u16*)(rec + 0x4C) == 0) {
+                    *(u16*)(rec + 0x4C) = 1;
+                }
+            }
+            *(u16*)(gs + 0x4C) = *(u16*)(rec + 0x4C);
+            *(u16*)(gs + 0x50) = *(u16*)(rec + 0x50);
+            if (*(u16*)(gs + 0x4C) > *(u16*)(gs + 0x4E)) {
+                *(u16*)(gs + 0x4C) = *(u16*)(gs + 0x4E);
+            }
+            if (*(u16*)(gs + 0x50) > *(u16*)(gs + 0x52)) {
+                *(u16*)(gs + 0x50) = *(u16*)(gs + 0x52);
+            }
+            for (j = 0; j < 7; j++) {
+                *(u16*)(gs + 0x90 + j * 2) = *(u16*)(rec + 0x90 + j * 2);
+            }
+            *(u16*)(gs + 0x3A) = *(u16*)(rec + 0x3A);
+            if (*(u16*)(rec + 0x7C) & 0xC000) {
+                *(u16*)(gs + 0x4C) = 1;
+            }
+            switch (rec[0xA0]) {
+            case 0 ... 6:
+            case 8 ... 16:
+                *(u32*)(gm + 0x60) = *(u32*)(stats + 0x60);
+                *(u16*)(gm + 0x38) = *(u16*)(stats + 0x38);
+                if (*(u32*)(gm + 0x60) > *(u32*)(gm + 0x64)) {
+                    *(u32*)(gm + 0x60) = *(u32*)(gm + 0x64);
+                }
+                if (*(u16*)(gm + 0x38) > *(u16*)(gm + 0x3A)) {
+                    *(u16*)(gm + 0x38) = *(u16*)(gm + 0x3A);
+                }
+                if (*(u16*)(stats + 0x7C) & 0x8000) {
+                    *(u32*)(gm + 0x60) = *(u32*)(gm + 0x64) / 10;
+                }
+                break;
+            }
+        }
+    }
+}
 #endif
 #ifndef XENO_PC_PORT
 extern u8 D_800CCCE8[];
