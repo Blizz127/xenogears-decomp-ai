@@ -431,6 +431,11 @@ paths = [
     # diff 5/206); func_8008B224, func_8008BC40 and func_8008BC98 compile
     # to the same bytes under 2.6.3 and 2.7.2.
     "src/battle/main46.",
+    # main38_p2 (2026-10-14): func_80086028 matches only under 2.6.x (2.7.2:
+    # diff 8/106, the base-pointer add operand order and one scheduling
+    # slot); func_80086B88 and main38.c's part-2 func_800879A8 compile to
+    # the same bytes under 2.6.3 and 2.7.2.
+    "src/battle/main38_p2.",
 ]
 
 [[build_preset]]
