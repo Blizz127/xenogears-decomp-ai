@@ -68,7 +68,176 @@ u8 func_8008B224(u8 actor, u8 col, u8 row) {
     }
     return ret;
 }
-INCLUDE_ASM("asm/battle/nonmatchings/main46", func_8008B478);
+extern u8 D_800D3014;
+extern s32 D_800D3288;
+extern u8 D_800D39D4;
+extern void func_8008F8F4(u8 index, u16 x, u16 y, u16 w, u16 h, u8 animate, u8 refresh);
+extern void func_80090B90(s32 x, s32 y, s32* frame, u8* timer);
+extern void func_800716D8(void);
+extern void func_80077698(void);
+extern void func_8007765C(void);
+extern void func_80077980(void);
+extern void func_8008FA60(u8 index);
+extern void func_80091064(u8 a);
+extern void func_80091604(s32 y);
+extern void func_80091D38(u8 a, u8 b, u8 c);
+extern void func_80091EC4(s32 y);
+extern u8* D_800C3EAC;
+
+/* func_8008B478.s, byte-exact: party actor `actor`'s costed-entry grid
+ * menu: 16 entries in two columns, 12 visible cells; `col` is the visible
+ * cell (0-11, screen column col % 2), `row` the first visible row, the
+ * entry row * 2 + col.  D_800D3288 (scroll) and
+ * D_800D39D4 (pending scroll) = 0, D_800D2D28 +0xCB = 0, four windows
+ * (func_8008F8F4), func_80091064(actor), func_80077698.  Then until a
+ * choice: func_80091D38(actor, col, row) when the cursor cell changes,
+ * func_80091604 / func_80091EC4 when the scroll changes, the cursor
+ * (func_80090B90 at column x 0x2A / 0xAE, y (col / 2) * 16 + 0x38), a
+ * frame (func_800716D8) and the D_800D3014 event: 5 cancels (0), 4 commits
+ * through func_8008B224 (1, D_800C3EAC +0x2E6 = row * 2 + col), 0 / 2 step
+ * the cursor right / left and 1 / 3 down / up within 16 entries, asking for
+ * a scroll (D_800D39D4 1-4) at the edge of the 12 visible cells; a pending
+ * scroll finishes once D_800D3288 passes the next row (row and col adjust,
+ * D_800D3288 snaps to the row).  Finally func_8008B108(result),
+ * func_8007765C, func_80077980 and func_8008FA60(0..3); returns the result.
+ * Codegen: the column x is spelled as two terms (`col % 2 * 0x80 +
+ * col % 2 * 4`): a single `* 0x84` synthesises ((v << 5) + v) << 2, retail
+ * has (v << 7) + (v << 2).  func_80091EC4 is called with the whole
+ * D_800D3288 word (retail does not mask it; main51 defines it (u8)). */
+u8 func_8008B478(u8 actor) {
+    s32 frame;
+    u8 timer;
+    u8 col;
+    u8 row;
+    u8 lastCol;
+    u8 lastRow;
+    s32 lastY;
+    u8 state;
+    s32 y;
+
+    col = 0;
+    row = 0;
+    lastCol = 0xFF;
+    lastRow = 0xFF;
+    lastY = 0xFFFF;
+    state = 2;
+    frame = 4;
+    timer = 0;
+    D_800D3288 = 0;
+    D_800D39D4 = 0;
+    D_800D2D28[0xCB] = 0;
+    func_8008F8F4(0, 0x1C, 0xA0, 0xAC, 0x38, 0, 1);
+    func_8008F8F4(1, 0x20, 0x2C, 0x118, 0x70, 0, 1);
+    func_8008F8F4(2, 0xD0, 0xA4, 0x50, 0x18, 0, 1);
+    func_8008F8F4(3, 0xE6, 0xC0, 0x4C, 0x18, 0, 1);
+    func_80091064(actor);
+    func_80077698();
+    while (state == 2) {
+        if (col != lastCol || row != lastRow) {
+            func_80091D38(actor, col, row);
+            lastCol = col;
+            lastRow = row;
+        }
+        if (D_800D3288 != lastY) {
+            func_80091604(D_800D3288);
+            func_80091EC4(D_800D3288);
+            lastY = D_800D3288;
+        }
+        func_80090B90(col % 2 * 0x80 + col % 2 * 4 + 0x2A, col / 2 * 0x10 + 0x38, &frame, &timer);
+        func_800716D8();
+        switch (D_800D3014) {
+        case 5:
+            state = 0;
+            break;
+        case 4:
+            if (func_8008B224(actor, col, row)) {
+                state = 1;
+                D_800C3EAC[0x2E6] = col + row * 2;
+            }
+            break;
+        case 0:
+            if (row * 2 + col != 0xF) {
+                if (col + 1 == 0xC) {
+                    D_800D39D4 = 1;
+                } else {
+                    col++;
+                }
+            }
+            break;
+        case 2:
+            if (row * 2 + col > 0) {
+                if (col == 0 && row != 0) {
+                    D_800D39D4 = 2;
+                } else {
+                    col--;
+                }
+            }
+            break;
+        case 1:
+            if (row * 2 + col < 0xE) {
+                if (col + 2 >= 0xC) {
+                    D_800D39D4 = 3;
+                } else {
+                    col += 2;
+                }
+            }
+            break;
+        case 3:
+            if (row * 2 + col >= 2) {
+                if (col < 2 && row != 0) {
+                    D_800D39D4 = 4;
+                } else {
+                    col -= 2;
+                }
+            }
+            break;
+        }
+        switch (D_800D39D4) {
+        case 1:
+            y = (row + 1) * 0x10;
+            if (D_800D3288 >= y) {
+                row++;
+                col--;
+                D_800D3288 = y;
+                D_800D39D4 = 0;
+            }
+            break;
+        case 2:
+            y = (row - 1) * 0x10;
+            if (D_800D3288 < y) {
+                row--;
+                col++;
+                D_800D3288 = y;
+                D_800D39D4 = 0;
+            }
+            break;
+        case 3:
+            y = (row + 1) * 0x10;
+            if (D_800D3288 >= y) {
+                row++;
+                D_800D3288 = y;
+                D_800D39D4 = 0;
+            }
+            break;
+        case 4:
+            y = (row - 1) * 0x10;
+            if (D_800D3288 < y) {
+                row--;
+                D_800D3288 = y;
+                D_800D39D4 = 0;
+            }
+            break;
+        }
+    }
+    func_8008B108(state);
+    func_8007765C();
+    func_80077980();
+    func_8008FA60(0);
+    func_8008FA60(1);
+    func_8008FA60(2);
+    func_8008FA60(3);
+    return state;
+}
 extern u8* D_800C3EAC;
 extern u8* D_800D2D28;
 extern u8 D_800D366C;
