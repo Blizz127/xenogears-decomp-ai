@@ -2129,7 +2129,162 @@ void func_800968C0(void) {
 #endif
 
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80096AB8);
-INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80096FBC);
+extern u8 D_800CCE2A[];
+extern void func_8009B46C(u16* p);
+
+/* func_80096FBC.s, byte-exact: attack value of actor D_800C3E04 for
+ * command D_800C3DFC.  An actor whose D_800C34B0 record +0x15A has bit 7
+ * takes three bytes from D_800D2D6C (+0x12 + i * 8) and power = +0x3C *
+ * +0x3F (plus 2 * +0x3C with +0x80 | +0x82 bit 0x1000); any other takes
+ * four bytes from D_800C3E00 (+4 + i * 8) and power = +0x58.  Command
+ * +0x10 bits 0x80 / 0x40 / 0x20 / 0x10 / 8 add bytes 0..4 to the sum
+ * (byte 4 is never filled, nor byte 3 in the first case, as in retail);
+ * attacker +0x8C | +0x8E bit 0 adds half the sum.  For +0xA bit 0x100
+ * the D_800C3E00 byte +0x5B is scaled by k / 4 (k = 4, 5 with +0x88 |
+ * +0x8A bit 0x8000, one less with +0x80 bit 0x400) and doubled with
+ * +0x88 | +0x8A bit 0x2000; otherwise, unless +0x15A has bit 7, power is
+ * scaled by k / 4 (k = 4, 5 with +0x84 | +0x86 bit 0x2000, one less with
+ * +0x7C bit 0x200, plus 10 - +0x4C / (+0x4E / 10) with bit 0x400).  +0xA
+ * bit 0x20 drops the power.  +0x1A picks the result: 0 = sum + power,
+ * 1 = the scaled +0x5B byte, 2 = that byte (bit 0x100) or sum + power
+ * (the sum cut to 6/10 when +0x56 == 4) times +0x11 / 20; other types
+ * leave it unset, as in retail.  For party actors (< 3) it is then
+ * adjusted: func_8009B46C for +0x56 == 7; +1/4 for target D_800C3E34
+ * +0x38 bit 0x20 and again for bits 0x60 (with +0x56 == 4 or command
+ * +0x22 bit 0x20); * D_800CCE2A / 4 for +0x56 == 8 with D_800CCE42 bit 7
+ * clear and bit 0x100; +1/5 for +0x56 == 10; +1/4 twice for +0x22 bit
+ * 0x10 with target +0x38 bit 0x10.
+ * Codegen: the table loops address each row through its own pointer from
+ * a block-local base (gcc 2.6.x then adds the base first, as in
+ * func_8009DA04); `k += 10 - ...` keeps retail's (k + 10) - q, where
+ * `k = k + 10 - ...` folds the constant into the quotient; record fields
+ * are read in array form, as in func_800941A4. */
+s16 func_80096FBC(void) {
+    u8 w[5];
+    u16 res;
+    u8 i;
+    u16 pow;
+    u16 sum;
+    u16 ether;
+    u8 attr;
+    u8 k;
+    u16 f;
+
+    if (((Battle*)D_800C34B0)->actors[D_800C3E04].flags & 0x80) {
+        for (i = 0; i < 3; i++) {
+            u8* base = D_800D2D6C;
+            u8* p = base + i * 8;
+
+            w[i] = p[0x12];
+        }
+        pow = D_800D2D6C[0x3C] * D_800D2D6C[0x3F];
+        if ((((u16*)D_800D2D6C)[0x40] | ((u16*)D_800D2D6C)[0x41]) & 0x1000) {
+            pow += D_800D2D6C[0x3C] * 2;
+        }
+    } else {
+        for (i = 0; i < 4; i++) {
+            u8* base = D_800C3E00;
+            u8* p = base + i * 8;
+
+            w[i] = p[4];
+        }
+        pow = ((u8*)D_800C3E00)[0x58];
+    }
+    attr = ((u8*)D_800C3DFC)[0x10];
+    ether = ((u8*)D_800C3E00)[0x5B];
+    sum = 0;
+    if (attr & 0x80) {
+        sum = w[0];
+    }
+    if (attr & 0x40) {
+        sum += w[1];
+    }
+    if (attr & 0x20) {
+        sum += w[2];
+    }
+    if (attr & 0x10) {
+        sum += w[3];
+    }
+    if (attr & 8) {
+        sum += w[4];
+    }
+    if ((((u16*)D_800C3E00)[0x46] | ((u16*)D_800C3E00)[0x47]) & 1) {
+        sum += sum >> 1;
+    }
+    if (((u16*)D_800C3DFC)[5] & 0x100) {
+        k = 4;
+        if ((((u16*)D_800C3E00)[0x44] | ((u16*)D_800C3E00)[0x45]) & 0x8000) {
+            k = 5;
+        }
+        if (((u16*)D_800C3E00)[0x40] & 0x400) {
+            k--;
+        }
+        ether = ether * k / 4;
+        if ((((u16*)D_800C3E00)[0x44] | ((u16*)D_800C3E00)[0x45]) & 0x2000) {
+            ether *= 2;
+        }
+    } else if (!(((Battle*)D_800C34B0)->actors[D_800C3E04].flags & 0x80)) {
+        f = ((u16*)D_800C3E00)[0x42] | ((u16*)D_800C3E00)[0x43];
+        k = 4;
+        if (f & 0x2000) {
+            k = 5;
+        }
+        if (((u16*)D_800C3E00)[0x3E] & 0x200) {
+            k--;
+        }
+        if (f & 0x400) {
+            k += 10 - ((u16*)D_800C3E00)[0x26] / (u16)(((u16*)D_800C3E00)[0x27] / 10);
+        }
+        pow = pow * k / 4;
+    }
+    if (((u16*)D_800C3DFC)[5] & 0x20) {
+        pow = 0;
+    }
+    switch (((u8*)D_800C3DFC)[0x1A]) {
+    case 0:
+        res = sum + pow;
+        break;
+    case 1:
+        res = ether;
+        break;
+    case 2:
+        if (((u8*)D_800C3E00)[0x56] == 4) {
+            sum = sum * 6 / 10;
+        }
+        if (((u16*)D_800C3DFC)[5] & 0x100) {
+            res = ether * ((u8*)D_800C3DFC)[0x11] / 20;
+        } else {
+            res = (sum + pow) * ((u8*)D_800C3DFC)[0x11] / 20;
+        }
+        break;
+    }
+    if (D_800C3E04 < 3) {
+        if (((u8*)D_800C3E00)[0x56] == 7) {
+            func_8009B46C(&res);
+        }
+        if (((u8*)D_800C3E00)[0x56] == 4 || (((u8*)D_800C3DFC)[0x22] & 0x20)) {
+            if (((u16*)D_800C3E34)[0x1C] & 0x20) {
+                res += res >> 2;
+            }
+            if ((((u32*)D_800C3E34)[0xE] & 0x60) == 0x60) {
+                res += res >> 2;
+            }
+        }
+        if (((u8*)D_800C3E00)[0x56] == 8 && !(D_800CCE42[D_800C3E04 * 0x170] & 0x80) && (((u16*)D_800C3DFC)[5] & 0x100)) {
+            res = res * D_800CCE2A[D_800C3E04 * 0x170] / 4;
+        }
+        if (((u8*)D_800C3E00)[0x56] == 10) {
+            res += res / 5;
+        }
+        if ((((u8*)D_800C3DFC)[0x22] & 0x10) && (((u16*)D_800C3E34)[0x1C] & 0x10)) {
+            res += res >> 2;
+            if (((u16*)D_800C3E34)[0x1C] & 0x10) {
+                res += res >> 2;
+            }
+        }
+    }
+    return res;
+}
 extern u8* D_800D2DC8;
 
 /* func_80097610.s, byte-exact: a stat value for the acting actor
