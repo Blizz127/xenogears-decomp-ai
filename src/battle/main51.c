@@ -948,7 +948,117 @@ void func_80092784(u8 a, u8* ids, u8* vals) {
     func_8009209C();
 }
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80092B74);
-INCLUDE_ASM("asm/battle/nonmatchings/main51", func_800930AC);
+extern void* func_80033A8C(s32 index);
+
+
+/* func_800930AC.s, byte-exact: four rows for actor a.  Upload the blank
+ * 0x39-wide buffer D_800D2DB0 at (0x3C0, 0, 0x3C, 0xD); for row i allocate
+ * a 0x1B-high buffer, upload blank strips at (0x380, i * 16 + 0x100, 0x1B,
+ * 0x10) and (0x3C0, ...), the name func_80033A8C(D_800CCD88 byte * 4 + i)
+ * at (0x380, i * 16 + 0x102, 0x1E, 0xD) when ids[i] != 0xFF, and vals[i] as
+ * four digits (6 x 0xD): thousands, hundreds and tens at x 0x3C0 + 2k with
+ * leading zeros blank, each printed digit's value subtracted from vals[i]
+ * (the caller's array is modified), and the ones at 0x3C6 (blank for id
+ * 0xFF).  Then free the buffers, set the first sprite's CLUT (+0xE at
+ * D_800CCB34 * 40 of the record pointed to by the word at D_800C3EA4 +
+ * 0xA230) to g_SystemPalette1, set up func_80076CE8 sprites at +0 (0x94,
+ * 0x54, 0, 0, 0x60, 0x40) and +0xA0 (0xFC, 0x54, 0, 0, 0x20, 0x40), store
+ * D_800CCB34 at +0x668, +0x669 = 1 and D_800D2D28[0xB7] = 4.  Codegen:
+ * `started` is cleared right before the digit loop (cleared before the name
+ * it lands in s6 and the row counter in s5); CLUT store as in
+ * func_8009093C. */
+void func_800930AC(u8 a, u8* ids, u16* vals) {
+    s16 r0[4];
+    s16 r1[4];
+    s16 r2[4];
+    s16 r3[4];
+    s16 r4[4];
+    s16 r5[4];
+    BattleImageRef bufs[4];
+    u16 div[3];
+    s32 i;
+    s32 k;
+    u8 started;
+    u8 d;
+
+    div[0] = 1000;
+    div[1] = 100;
+    div[2] = 10;
+    func_80077610();
+    func_80076EA4();
+    D_800D2DB0 = func_8008AC00(0x39);
+    bzero(D_800D2DB0, 0x618);
+    r5[0] = 0x3C0;
+    r5[2] = 0x3C;
+    r5[1] = 0;
+    r5[3] = 0xD;
+    func_800769E8(r5, D_800D2DB0);
+    for (i = 0; i < 4; i++) {
+        bufs[i].data = func_8008AC00(0x1B);
+        bzero(bufs[i].data, 0x30C);
+        r3[0] = 0x380;
+        r3[1] = i * 16 + 0x100;
+        r3[2] = 0x1B;
+        r3[3] = 0x10;
+        func_800769E8(r3, D_800D2DB0);
+        if (ids[i] != 0xFF) {
+            SystemRenderStringEntry(func_80033A8C(D_800CCD88__rows[a][0] * 4 + i), bufs[i].data, 0x1B, 0);
+            r0[0] = 0x380;
+            r0[1] = i * 16 + 0x102;
+            r0[2] = 0x1E;
+            r0[3] = 0xD;
+            func_800769E8(r0, bufs[i].data);
+        }
+        r4[0] = 0x3C0;
+        r4[1] = i * 16 + 0x100;
+        r4[2] = 0x1B;
+        r4[3] = 0x10;
+        func_800769E8(r4, D_800D2DB0);
+        started = 0;
+        for (k = 0; k < 3; k++) {
+            r2[0] = k * 2 + 0x3C0;
+            r2[1] = i * 16 + 0x102;
+            r2[2] = 6;
+            r2[3] = 0xD;
+            d = vals[i] / div[k];
+            if (d != 0 || started != 0) {
+                func_800769E8(r2, D_800C3E5C[d].data);
+                started = 1;
+                vals[i] -= d * div[k];
+            } else {
+                func_800769E8(r2, D_800D2DB0);
+            }
+        }
+        r1[0] = 0x3C6;
+        r1[1] = i * 16 + 0x102;
+        r1[2] = 6;
+        r1[3] = 0xD;
+        if (ids[i] != 0xFF) {
+            func_800769E8(r1, D_800C3E5C[(u16)(vals[i] % 10)].data);
+        } else {
+            func_800769E8(r1, D_800D2DB0);
+        }
+    }
+    for (i = 0; i < 4; i++) {
+        HeapFree(bufs[i].data);
+    }
+    HeapFree(D_800D2DB0);
+    {
+        s32 base = D_800C3EA4;
+        u16 pal = g_SystemPalette1;
+
+        {
+            u8* rec = *(u8**)(base + 0xA230);
+            u8* p = rec + D_800CCB34__w[0] * 40;
+            *(u16*)(p + 0xE) = pal;
+        }
+        func_80076CE8(*(u8**)(base + 0xA230) + D_800CCB34__w[0] * 40, 0x94, 0x54, 0, 0, 0x60, 0x40);
+    }
+    func_80076CE8(*(u8**)(D_800C3EA4 + 0xA230) + 0xA0 + D_800CCB34__w[0] * 40, 0xFC, 0x54, 0, 0, 0x20, 0x40);
+    (*(u8**)(D_800C3EA4 + 0xA230))[0x668] = *(u8*)D_800CCB34__w;
+    (*(u8**)(D_800C3EA4 + 0xA230))[0x669] = 1;
+    D_800D2D28[0xB7] = 4;
+}
 
 /* func_80093578.s, byte-exact: set up the func_80076CE8 sprite at +0x140 +
  * D_800CCB34 * 40 (0x7C, 0xA4, 0, (u8)(b * 16), 0x60, 0x10), then
