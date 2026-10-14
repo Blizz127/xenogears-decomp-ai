@@ -168,7 +168,126 @@ void func_800C0828(SVECTOR* from, SVECTOR* to, SVECTOR* out) {
     out->vx = 0;
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/mainc134", func_800C08CC);
+extern s32 D_800D2FCC;
+void func_800C0D18(s32 a, s32 b, SVECTOR* v, VECTOR* out);
+
+/* Draw a curve through the n control points at p as line segments through
+ * draw(from, to): two points give one line; three or four first repeat the
+ * last point up to five.  Each span of four points (p + k) gives eight
+ * points from func_800C0D18 with weight set 0 (first span), 1 (second, when
+ * n >= 6), 2 (middle spans), 3 (second-to-last, when n >= 7) or 4 (last),
+ * alternating between a and b, and the curve ends with a line to p[n - 1].
+ * D_800D2FCC is cleared first. */
+void func_800C08CC(s32 n, SVECTOR* p, void (*draw)(VECTOR* from, VECTOR* to)) {
+    VECTOR a;
+    VECTOR b;
+    SVECTOR unused; /* never used: retail's frame keeps its 8 bytes */
+    s32 i;
+    s32 k;
+
+    D_800D2FCC = 0;
+    if (n < 5) {
+        if (n < 3) {
+            if (n < 2) {
+                return;
+            }
+            a.vx = p[0].vx;
+            a.vy = p[0].vy;
+            a.vz = p[0].vz;
+            b.vx = p[1].vx;
+            b.vy = p[1].vy;
+            b.vz = p[1].vz;
+            draw(&a, &b);
+            return;
+        }
+        switch (n) {
+        case 3:
+            p[3].vx = p[2].vx;
+            p[3].vy = p[2].vy;
+            p[3].vz = p[2].vz;
+            p[4].vx = p[2].vx;
+            p[4].vy = p[2].vy;
+            p[4].vz = p[2].vz;
+            break;
+        case 4:
+            p[4].vx = p[3].vx;
+            p[4].vy = p[3].vy;
+            p[4].vz = p[3].vz;
+            break;
+        }
+        n = 5;
+    }
+    k = 0;
+    func_800C0D18(0, 0, &p[k], &a);
+    for (i = 1; i != 8; i++) {
+        if (i & 1) {
+            func_800C0D18(0, i, &p[k], &b);
+            draw(&a, &b);
+        } else {
+            func_800C0D18(0, i, &p[k], &a);
+            draw(&b, &a);
+        }
+    }
+    if (n >= 6) {
+        k = 1;
+        func_800C0D18(1, 0, &p[k], &a);
+        draw(&b, &a);
+        for (i = 1; i != 8; i++) {
+            if (i & 1) {
+                func_800C0D18(1, i, &p[k], &b);
+                draw(&a, &b);
+            } else {
+                func_800C0D18(1, i, &p[k], &a);
+                draw(&b, &a);
+            }
+        }
+    }
+    for (k = 2; k < n - 5; k++) {
+        func_800C0D18(2, 0, &p[k], &a);
+        draw(&b, &a);
+        for (i = 1; i != 8; i++) {
+            if (i & 1) {
+                func_800C0D18(2, i, &p[k], &b);
+                draw(&a, &b);
+            } else {
+                func_800C0D18(2, i, &p[k], &a);
+                draw(&b, &a);
+            }
+        }
+    }
+    if (n >= 7) {
+        k = n - 5;
+        func_800C0D18(3, 0, &p[k], &a);
+        draw(&b, &a);
+        for (i = 1; i != 8; i++) {
+            if (i & 1) {
+                func_800C0D18(3, i, &p[k], &b);
+                draw(&a, &b);
+            } else {
+                func_800C0D18(3, i, &p[k], &a);
+                draw(&b, &a);
+            }
+        }
+    }
+    k = n - 4;
+    func_800C0D18(4, 0, &p[k], &a);
+    draw(&b, &a);
+    for (i = 1; i != 8; i++) {
+        if (i & 1) {
+            func_800C0D18(4, i, &p[k], &b);
+            draw(&a, &b);
+        } else {
+            func_800C0D18(4, i, &p[k], &a);
+            draw(&b, &a);
+        }
+    }
+    if (n >= 5) {
+        a.vx = p[n - 1].vx;
+        a.vy = p[n - 1].vy;
+        a.vz = p[n - 1].vz;
+        draw(&b, &a);
+    }
+}
 #include "battle/gte_inline.h"
 /* Weights: four 4.12 words per (set, point), eight points per set. */
 extern s32* D_800C3A68;
@@ -236,7 +355,10 @@ extern void func_800B5CC0(void);
 extern void func_800BDC14(void);
 extern void func_800BDF1C(void);
 extern void func_8001E148(u32 v);
+#ifdef XENO_PC_PORT
+/* retail: defined above as (s32 n, SVECTOR* p, void (*draw)(VECTOR*, VECTOR*)) */
 extern void func_800C08CC(u32 a0, void* a1, void* a2);
+#endif
 extern void func_800B51B0(void);
 extern void func_800245D8(void* pSpriteData, s16 animIndex);
 #ifndef XENO_PC_PORT
