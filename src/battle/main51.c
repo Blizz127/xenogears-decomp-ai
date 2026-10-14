@@ -1260,10 +1260,6 @@ void func_8009413C(u8 idx, u8 flag) {
     }
 }
 
-#ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/main51", func_800941A4);
-INCLUDE_ASM("asm/battle/nonmatchings/main51", func_800946F4);
-#endif
 typedef struct { u8 pad[0x15A]; u8 flags; u8 pad2[0x170 - 0x15B]; } Actor170;
 typedef struct {
     Actor170 actors[0x42];
@@ -1274,6 +1270,115 @@ typedef struct {
     u8 pad2[0x5FA0 - 0x5F8C];
     u8 f5FA0[8];
 } Battle;
+
+#ifndef XENO_PC_PORT
+INCLUDE_ASM("asm/battle/nonmatchings/main51", func_800941A4);
+extern u8 D_800C3E04;
+extern u8* D_800C3E34;
+extern u16 D_800C3AA4[];
+extern s32 D_800D2C54[];
+extern u16 D_800CCD68__rows[][0xB8] asm("D_800CCD68");
+
+/* func_800946F4.s, byte-exact: post-roll adjustments for actor D_800C3E50
+ * (outcome byte +0x5FA0, result word +0x5F6C) against D_800C3E34.
+ * When the outcome is 0:
+ * - result word == D_800C3E34 +0x4C and D_800C3E04 < 3: the D_800C3E00
+ *   +0x3A counter goes up by one, capped at 65000;
+ * - clear bit 0x1000 of D_800C3E34 +0x80; a set bit 0x2000 is cleared
+ *   when rand() % 100 < 70;
+ * - D_800C3DFC +0xA bit 0x100: outcome 2 when D_800C3E34 +0x36 has
+ *   0x4000, or 0x2000 with a zero low nibble in D_800C3DFC +0x22;
+ * - D_800C3E34 +0x32 bit 0x80: rand() % 100 below 60 (80 when +0x56 is 0)
+ *   halves the result word, otherwise half of it is added (unsigned);
+ * - +0x32 bit 0x20: actor D_800C3E04 gets outcome 0 and D_800C3E50's
+ *   result word;
+ * - D_800C3E04 < 3 and != D_800C3E50: a set bit 2 in +0x7C of actor
+ *   D_800C3E50's 0x170 record is cleared and +0x7A set from
+ *   D_800C3AA4[D_800C3E50];
+ * - +0x56 == 3 and D_800D2C54[D_800C3E50] >= +0x4C (unsigned): clear bit
+ *   0x20 in the D_800CCD68 halfword of records 3..10.
+ * Then, for any outcome: +0x36 bit 0x8000 turns outcomes 0/5 into 2 and
+ * 2 into 0; +0x86 bit 0x80 doubles an outcome-2 result word; +0x8A bit
+ * 0x200 zeroes an outcome-1 result word.
+ * Codegen: ++/-- on the counter (retail compares the incremented value
+ * without a reload); a block-local base pointer for the record address
+ * (gcc 2.6.x then adds the base first, as in main56); the record loop
+ * through a D_800CCD68 row view, which keeps the symbol in each address
+ * (a u8 array plus offset hoists an `la`). */
+void func_800946F4(void) {
+    s32 thr;
+    u8* p;
+    u8 i;
+
+    if (((Battle*)D_800C34B0)->f5FA0[D_800C3E50] == 0) {
+        if (((Battle*)D_800C34B0)->f5F6C[D_800C3E50] == *(u16*)(D_800C3E34 + 0x4C) && D_800C3E04 < 3) {
+            if (++*(u16*)((u8*)D_800C3E00 + 0x3A) > 65000) {
+                --*(u16*)((u8*)D_800C3E00 + 0x3A);
+            }
+        }
+        *(u16*)(D_800C3E34 + 0x80) &= 0xEFFF;
+        if (*(u16*)(D_800C3E34 + 0x80) & 0x2000) {
+            if (rand() % 100 < 70) {
+                *(u16*)(D_800C3E34 + 0x80) &= 0xDFFF;
+            }
+        }
+        if (*(u16*)((u8*)D_800C3DFC + 0xA) & 0x100) {
+            if (*(u16*)(D_800C3E34 + 0x36) & 0x4000) {
+                ((Battle*)D_800C34B0)->f5FA0[D_800C3E50] = 2;
+            }
+            if ((*(u16*)(D_800C3E34 + 0x36) & 0x2000) && !(((u8*)D_800C3DFC)[0x22] & 0xF)) {
+                ((Battle*)D_800C34B0)->f5FA0[D_800C3E50] = 2;
+            }
+        }
+        if (*(u16*)(D_800C3E34 + 0x32) & 0x80) {
+            thr = 60;
+            if (D_800C3E34[0x56] == 0) {
+                thr = 80;
+            }
+            if (rand() % 100 < thr) {
+                *(u32*)((u8*)D_800C34B0 + D_800C3E50 * 4 + 0x5F6C) >>= 1;
+            } else {
+                *(u32*)((u8*)D_800C34B0 + D_800C3E50 * 4 + 0x5F6C) += *(u32*)((u8*)D_800C34B0 + D_800C3E50 * 4 + 0x5F6C) >> 1;
+            }
+        }
+        if (*(u16*)(D_800C3E34 + 0x32) & 0x20) {
+            ((Battle*)D_800C34B0)->f5FA0[D_800C3E04] = 0;
+            ((Battle*)D_800C34B0)->f5F6C[D_800C3E04] = ((Battle*)D_800C34B0)->f5F6C[D_800C3E50];
+        }
+        if (D_800C3E04 < 3 && D_800C3E04 != D_800C3E50) {
+            u8* base = D_800C34B0;
+
+            p = base + D_800C3E50 * 0x170;
+            if (*(u16*)(p + 0x7C) & 2) {
+                *(u16*)(p + 0x7C) &= 0xFFFD;
+                *(u16*)(p + 0x7A) = D_800C3AA4[D_800C3E50];
+            }
+        }
+        if (D_800C3E34[0x56] == 3 && (u32)D_800D2C54[D_800C3E50] >= *(u16*)(D_800C3E34 + 0x4C)) {
+            for (i = 3; i < 11; i++) {
+                D_800CCD68__rows[i][0] &= 0xFFDF;
+            }
+        }
+    }
+    if (*(u16*)(D_800C3E34 + 0x36) & 0x8000) {
+        switch (((Battle*)D_800C34B0)->f5FA0[D_800C3E50]) {
+        case 0:
+        case 5:
+            ((Battle*)D_800C34B0)->f5FA0[D_800C3E50] = 2;
+            break;
+        case 2:
+            ((Battle*)D_800C34B0)->f5FA0[D_800C3E50] = 0;
+            break;
+        }
+    }
+    if ((*(u16*)(D_800C3E34 + 0x86) & 0x80) && ((Battle*)D_800C34B0)->f5FA0[D_800C3E50] == 2) {
+        ((Battle*)D_800C34B0)->f5F6C[D_800C3E50] *= 2;
+    }
+    if ((*(u16*)(D_800C3E34 + 0x8A) & 0x200) && ((Battle*)D_800C34B0)->f5FA0[D_800C3E50] == 1) {
+        ((Battle*)D_800C34B0)->f5F6C[D_800C3E50] = 0;
+    }
+}
+#endif
 void func_80094C78(void) {
     u8 i;
     Battle* b = D_800C34B0;
