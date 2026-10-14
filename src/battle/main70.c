@@ -17,7 +17,6 @@ s32 func_800AA514(s16 arg0, s16 arg1, s32 arg2);
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/main70", func_800A5EB4);
 typedef struct {
     u8 active;
     u8 kind;
@@ -28,25 +27,6 @@ typedef struct {
 } BattleClutFade;
 extern u8 D_800D3611[];
 extern BattleClutFade D_800C3AAC[];
-
-/* func_800A6444.s: set CLUT fade slot i (< 4): with kind >= 0, raise the
- * D_800D3611 request flag and store active = 1, kind, factor and the r/g/b
- * steps; a negative kind clears the slot's active flag. */
-void func_800A6444(s32 i, s32 kind, s32 factor, s32 r, s32 g, s32 b) {
-    if (i < 4) {
-        if (kind >= 0) {
-            D_800D3611[0] = 1;
-            D_800C3AAC[i].active = 1;
-            D_800C3AAC[i].kind = kind;
-            D_800C3AAC[i].factor = factor;
-            D_800C3AAC[i].r = r;
-            D_800C3AAC[i].g = g;
-            D_800C3AAC[i].b = b;
-        } else {
-            D_800C3AAC[i].active = 0;
-        }
-    }
-}
 
 /* POLY_G4 / POLY_F4 layouts (this TU does not include libgpu.h). */
 typedef struct {
@@ -84,10 +64,139 @@ typedef struct {
     u8 data[0x88];
 } BattleBlock88;
 extern BattleBlock88* D_800C3AC4;
+extern BattleBlock88* D_800C3AC8;
 extern s32 D_800C3EA0;
 extern s32 D_800C3D50;
 extern u8* D_800D2D40;
 extern u8* D_800D2D48;
+extern u8* D_800D33E4;
+extern u8 D_800D3600[];
+extern s32 D_800D360C;
+extern s16 D_800D2D30;
+extern s16 D_800D2D34;
+/* Unsized arrays, as noted above func_800A6AE8. */
+extern s16 D_800D2D2C[];
+extern s16 D_800C3EA8[];
+/* K&R-defined in main68.c (19 promoted arguments). */
+extern u8* func_800A3640();
+
+/* func_800A5EB4.s, byte-exact: start the battle CLUT fade.  Clear the
+ * four D_800C3AAC slots; point word 0 of each 0x30-byte record of
+ * D_800D33E4's +0x118 table (count at +0x10E) whose +0x1A is set at the
+ * D_800D3600 effect-image record; build that record with func_800A3640
+ * (type 1, flags 0x601, D_800D2D30/D_800D2D34 as both the a and the out
+ * x/y, D_800D2D2C x D_800C3EA8 as the size); clear D_800D360C and
+ * allocate the 0x88-byte D_800C3AC4/D_800C3AC8 blocks.  Then save the
+ * current prim colours into D_800C3AC4 in func_800A64E4's walk
+ * (func_800A64E4 restores them).  The slot clear counts up; loop.c
+ * reverses it into retail's countdown with no counter.  CONSTRUCT: as in
+ * func_800A64E4, the first colour loop's strip test reads D_800C3D50
+ * through a volatile view.  Retail loads D_800C3D50 again after that
+ * test; a plain read is 3 insns short.  Adoption can drop the volatile.
+ * Matches under gcc 2.6.x. */
+void func_800A5EB4(void) {
+    s32 i;
+    u8* rec;
+    u8* out;
+    s32 j;
+
+    for (i = 0; i < 4; i++) {
+        D_800C3AAC[i].active = 0;
+    }
+    rec = *(u8**)(D_800D33E4 + 0x118);
+    for (j = 0; j < D_800D33E4[0x10E]; j++) {
+        if (*(u16*)(rec + 0x1A) != 0) {
+            *(u8**)rec = D_800D3600;
+        }
+        rec += 0x30;
+    }
+    func_800A3640(D_800D3600, 0, 1, 0x601, 0, D_800D2D30, D_800D2D34, 0, 0, 0, 0, D_800D2D30, D_800D2D34,
+                  D_800D2D2C[0], D_800C3EA8[0], 0, 0, 0, 0);
+    D_800D360C = 0;
+    D_800C3AC4 = HeapAlloc(0x88, 1);
+    D_800C3AC8 = HeapAlloc(0x88, 1);
+    out = D_800C3AC4->data;
+    for (j = 0; j < 4; j++) {
+        if (D_800C3EA0 != 0) {
+            out[0] = ((BattleGroundPrims*)D_800C3EA0)->g4[j].r0;
+            out[1] = ((BattleGroundPrims*)D_800C3EA0)->g4[j].g0;
+            out[2] = ((BattleGroundPrims*)D_800C3EA0)->g4[j].b0;
+            out += 4;
+            out[0] = ((BattleGroundPrims*)D_800C3EA0)->g4[j].r1;
+            out[1] = ((BattleGroundPrims*)D_800C3EA0)->g4[j].g1;
+            out[2] = ((BattleGroundPrims*)D_800C3EA0)->g4[j].b1;
+            out += 4;
+            out[0] = ((BattleGroundPrims*)D_800C3EA0)->g4[j].r2;
+            out[1] = ((BattleGroundPrims*)D_800C3EA0)->g4[j].g2;
+            out[2] = ((BattleGroundPrims*)D_800C3EA0)->g4[j].b2;
+            out += 4;
+            out[0] = ((BattleGroundPrims*)D_800C3EA0)->g4[j].r3;
+            out[1] = ((BattleGroundPrims*)D_800C3EA0)->g4[j].g3;
+            out[2] = ((BattleGroundPrims*)D_800C3EA0)->g4[j].b3;
+            out += 4;
+            out[0] = ((BattleGroundPrims*)D_800C3EA0)->f4[j].r0;
+            out[1] = ((BattleGroundPrims*)D_800C3EA0)->f4[j].g0;
+            out[2] = ((BattleGroundPrims*)D_800C3EA0)->f4[j].b0;
+            out += 4;
+        } else {
+            out += 0x14;
+        }
+        if (*(volatile s32*)&D_800C3D50 != 0) {
+            out[0] = ((BattleStripPrims*)D_800C3D50)->f4[j].r0;
+            out[1] = ((BattleStripPrims*)D_800C3D50)->f4[j].g0;
+            out[2] = ((BattleStripPrims*)D_800C3D50)->f4[j].b0;
+        }
+        out += 4;
+    }
+    for (j = 0; j < 2; j++) {
+        if (D_800C3D50 != 0) {
+            out[0] = ((BattleStripPrims*)D_800C3D50)->g4[j].r0;
+            out[1] = ((BattleStripPrims*)D_800C3D50)->g4[j].g0;
+            out[2] = ((BattleStripPrims*)D_800C3D50)->g4[j].b0;
+            out += 4;
+            out[0] = ((BattleStripPrims*)D_800C3D50)->g4[j].r1;
+            out[1] = ((BattleStripPrims*)D_800C3D50)->g4[j].g1;
+            out[2] = ((BattleStripPrims*)D_800C3D50)->g4[j].b1;
+            out += 4;
+            out[0] = ((BattleStripPrims*)D_800C3D50)->g4[j].r2;
+            out[1] = ((BattleStripPrims*)D_800C3D50)->g4[j].g2;
+            out[2] = ((BattleStripPrims*)D_800C3D50)->g4[j].b2;
+            out += 4;
+            out[0] = ((BattleStripPrims*)D_800C3D50)->g4[j].r3;
+            out[1] = ((BattleStripPrims*)D_800C3D50)->g4[j].g3;
+            out[2] = ((BattleStripPrims*)D_800C3D50)->g4[j].b3;
+            out += 4;
+        } else {
+            out += 0x10;
+        }
+    }
+    out[0] = D_800D2D40[0];
+    out[1] = D_800D2D40[1];
+    out[2] = D_800D2D40[2];
+    out += 4;
+    out[0] = D_800D2D48[0];
+    out[1] = D_800D2D48[1];
+    out[2] = D_800D2D48[2];
+}
+
+/* func_800A6444.s: set CLUT fade slot i (< 4): with kind >= 0, raise the
+ * D_800D3611 request flag and store active = 1, kind, factor and the r/g/b
+ * steps; a negative kind clears the slot's active flag. */
+void func_800A6444(s32 i, s32 kind, s32 factor, s32 r, s32 g, s32 b) {
+    if (i < 4) {
+        if (kind >= 0) {
+            D_800D3611[0] = 1;
+            D_800C3AAC[i].active = 1;
+            D_800C3AAC[i].kind = kind;
+            D_800C3AAC[i].factor = factor;
+            D_800C3AAC[i].r = r;
+            D_800C3AAC[i].g = g;
+            D_800C3AAC[i].b = b;
+        } else {
+            D_800C3AAC[i].active = 0;
+        }
+    }
+}
 
 /* func_800A64E4.s, byte-exact: restore the prim colours that
  * func_800A6AE8 fades, from the unfaded copy in the D_800C3AC4 block
@@ -253,16 +362,14 @@ typedef struct {
 } BattleRect;
 
 /* Unsized arrays: retail splits these addresses into %hi/%lo pseudos, and
- * the extra insns give retail's argument-load schedule; the scalars below
- * are small-data loads, like D_800C3AC4, D_800C3EA0, D_800C3D50 and
- * D_800D2D40/D_800D2D48, declared above func_800A64E4. */
+ * the extra insns give retail's argument-load schedule (D_800D2D2C and
+ * D_800C3EA8 are declared above func_800A5EB4); the scalars below are
+ * small-data loads, like D_800C3AC4/D_800C3AC8, D_800C3EA0, D_800C3D50
+ * and D_800D2D40/D_800D2D48 declared there. */
 extern u8 D_800D3611[];
 extern u16 D_800D361A[];
-extern s16 D_800D2D2C[];
-extern s16 D_800C3EA8[];
 extern u16* D_800D3604[];
 extern u16* D_800D3608[];
-extern BattleBlock88* D_800C3AC8;
 extern BattleClutFade D_800C3AAC[];
 extern BattleRect D_800D3628;
 extern void* memcpy(void* dst, const void* src, u32 n);
@@ -345,7 +452,6 @@ void func_800A6AE8(void) {
     }
     LoadImage(&D_800D3628, D_800D3608[0]);
 }
-extern u8* D_800D33E4;
 extern BattleRect D_800D3628__a[] asm("D_800D3628");
 extern void DrawSync(s32 mode);
 extern void func_800A429C(void* p);
