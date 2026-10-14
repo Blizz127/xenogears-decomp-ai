@@ -577,7 +577,39 @@ void func_800A48EC(u8* models, u8* hdr, MATRIX* view, void* unused3, u32 unused4
     D_80050100 = saved;
 }
 #undef M68_PART
-INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A4B3C);
+extern u8 D_800D2FC8[];
+extern u8 D_800D2FD0[];
+
+/* func_800A4B3C.s, byte-exact: push pos (+0 x, +4 z) out of the first
+ * circle of the D_800D2FD0 table (D_800D2FC8 entries of x, z, radius
+ * halfwords, relative to base) that it lies inside: with d =
+ * SquareRoot0(dx * dx + dz * dz) + 1 < radius, pos becomes the centre +
+ * (dx, dz) * radius / d.  Returns 1 when moved.  The port arm is the
+ * XENO_PC_PORT body below.  Codegen: the table is walked with a
+ * post-incremented u16 pointer and the result goes through `ret`
+ * (retail spills it around SquareRoot0).  Matches under gcc 2.6.x. */
+u32 func_800A4B3C(u8* base, u8* pos) {
+    u16* t = *(u16**)D_800D2FD0;
+    s32 i;
+    u32 ret = 0;
+
+    for (i = 0; i < *(s16*)D_800D2FC8; i++) {
+        s32 cx = *t++ - *(u16*)(base + 0);
+        s32 dx = *(s16*)(pos + 0) - (s16)cx;
+        s32 cz = *t++ - *(u16*)(base + 4);
+        s32 dz = *(s16*)(pos + 4) - (s16)cz;
+        s16 r = *t++;
+        s32 d = SquareRoot0(dx * dx + dz * dz) + 1;
+
+        if (d < r) {
+            *(s16*)(pos + 0) = cx + dx * r / d;
+            *(s16*)(pos + 4) = cz + dz * r / d;
+            ret = 1;
+            break;
+        }
+    }
+    return ret;
+}
 s32 func_800AA650(s32);
 void func_800B10EC(s32, s32, s32, s32);
 extern u8 D_800D2FC8[];
