@@ -427,6 +427,10 @@ paths = [
     # 636 vs 644 bytes); the other C in main12 compiles to the same bytes
     # under 2.6.3 and 2.7.2.
     "src/battle/main12.",
+    # main46 (2026-10-14): func_8008B908 matches only under 2.6.x (2.7.2:
+    # diff 5/206); func_8008B224, func_8008BC40 and func_8008BC98 compile
+    # to the same bytes under 2.6.3 and 2.7.2.
+    "src/battle/main46.",
 ]
 
 [[build_preset]]

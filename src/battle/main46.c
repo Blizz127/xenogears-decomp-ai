@@ -69,7 +69,106 @@ u8 func_8008B224(u8 actor, u8 col, u8 row) {
     return ret;
 }
 INCLUDE_ASM("asm/battle/nonmatchings/main46", func_8008B478);
-INCLUDE_ASM("asm/battle/nonmatchings/main46", func_8008B908);
+extern u8* D_800C3EAC;
+extern u8* D_800D2D28;
+extern u8 D_800D366C;
+extern u16 D_800C3D64;
+extern u8 D_800C3E2C;
+extern u8 D_800C3D00;
+extern u8 D_800D3670;
+extern u8 D_800C2050;
+extern u16 D_800D2C98;
+extern u16 D_800D2C94;
+extern u8 D_800D2204[];
+extern u8 D_800C402F__rows[][0x48] asm("D_800C402F");
+extern u8 D_800C400B__rows[][0x48] asm("D_800C400B");
+extern u16 D_800C4022__rows[][0x24] asm("D_800C4022");
+extern u16 D_800C3FFE__rows[][0x24] asm("D_800C3FFE");
+typedef struct {
+    u16 flags;
+    u8 pad[0x10];
+    u8 counts[0x30];
+    u8 items[0x30];
+} BattleItemBlock;
+extern BattleItemBlock D_800D2C9E__s asm("D_800D2C9E");
+extern void func_800BCD98(u32 v);
+extern u32 func_80089C08(u32 v);
+extern s32 func_80080AE4(u8 target);
+extern void func_800B89FC(u32 a, u32 b, u32 c, u32 d);
+extern void func_8008AC88(u16 mask, u8 v);
+extern void func_80085388(void);
+extern void func_80085C48(u32 a0, u32 a1, u32 a2);
+extern void func_80085C88(u8 index);
+extern u16 func_80089C9C(s32 mask, u8 idx);
+extern void func_80079840(u8 a, u8 e);
+extern void func_80080B64(u8 v);
+extern void func_800716D8(void);
+
+/* func_8008B908.s, byte-exact: queue actor `actor`'s selected item, the
+ * func_8008ADD0 pattern.  D_800D366C = 0, func_800BCD98(0), all 32
+ * command rows get D_800C402F = 0xFF; func_800B89FC(1, actor, the actor
+ * row's +0x3C, func_80080AE4(actor)); the item's D_800D2204 halfword
+ * (16-byte entries, D_800C3EAC +0x2E6) low three bits pick the target
+ * mask (D_800C3D64, else func_80089C08 of D_800C3E2C);
+ * func_8008AC88(mask, actor), func_80085388, func_80085C48(actor, mask,
+ * item).  Unless D_800D2C9E has bit 0x8000, the item's count at
+ * D_800D2C9E +0x12 [D_800C3D00 * 2 + D_800D3670] drops by one and its
+ * +0x42 entry is cleared at 0.  func_80085C88(row) runs with D_800C2050
+ * set; the command row gets D_800C402F = 0xF5, D_800C4022 = D_800D2C98,
+ * D_800C400B = actor, D_800C3FFE = D_800D2C94; func_80079840(actor, k)
+ * for each selected enemy; the cursor advances; func_80080B64(actor);
+ * wait for +0x2DB; finally D_800D2D28 +0x7C + i = 1 for each party slot
+ * i the mask selects.
+ * Codegen: D_800D2C9E is a small struct (BattleItemBlock) because retail
+ * addresses the count and item tables from its one `la`; the party-flag
+ * row is `(D_800D2D28 + i)[0x7C]`, base first.  Matches only under gcc
+ * 2.6.x. */
+void func_8008B908(u8 actor) {
+    s32 i;
+    u16 mask;
+
+    D_800D366C = 0;
+    func_800BCD98(0);
+    for (i = 0; i < 32; i++) {
+        D_800C402F__rows[i][0] = 0xFF;
+    }
+    func_800B89FC(1, actor, (D_800C3EAC + (actor << 6))[0x3C], func_80080AE4(actor));
+    if (*(u16*)(D_800D2204 + D_800C3EAC[0x2E6] * 16) & 7) {
+        mask = D_800C3D64;
+    } else {
+        mask = func_80089C08(D_800C3E2C);
+    }
+    func_8008AC88(mask, actor);
+    func_80085388();
+    func_80085C48(actor, mask, D_800C3EAC[0x2E6]);
+    if (!(D_800D2C9E__s.flags & 0x8000)) {
+        if (--D_800D2C9E__s.counts[D_800C3D00 * 2 + D_800D3670] == 0) {
+            D_800D2C9E__s.items[D_800C3D00 * 2 + D_800D3670] = 0;
+        }
+    }
+    D_800C2050 = 1;
+    func_80085C88(D_800C3EAC[0x2DA]);
+    D_800C2050 = 0;
+    D_800C402F__rows[D_800C3EAC[0x2DA]][0] = 0xF5;
+    D_800C4022__rows[D_800C3EAC[0x2DA]][0] = D_800D2C98;
+    D_800C400B__rows[D_800C3EAC[0x2DA]][0] = actor;
+    D_800C3FFE__rows[D_800C3EAC[0x2DA]][0] = D_800D2C94;
+    for (i = 3; i < 11; i++) {
+        if (func_80089C9C(D_800D2C94, i)) {
+            func_80079840(actor, i);
+        }
+    }
+    D_800C3EAC[0x2DA]++;
+    func_80080B64(actor);
+    while (D_800C3EAC[0x2DB] == 0) {
+        func_800716D8();
+    }
+    for (i = 0; i < 3; i++) {
+        if (func_80089C9C(mask, i)) {
+            (D_800D2D28 + i)[0x7C] = 1;
+        }
+    }
+}
 #endif
 
 
