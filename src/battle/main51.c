@@ -44,8 +44,101 @@ void func_8009023C(s32 arg0) {
     *(s8 *)((s8*)(D_800D2D28) + 0x9C) = 1;
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80090310);
-INCLUDE_ASM("asm/battle/nonmatchings/main51", func_800904A0);
+extern void func_80076C78(u8* p, s32 x, s32 y, s32 a3, s32 a4, s32 n);
+extern u16 g_SystemPalette1;
+extern u16 g_SystemPalette2;
+extern s32 D_800CCB34__w[] asm("D_800CCB34");
+
+/* func_80090310.s, byte-exact: with k = b * 2 + a, for k > 16 (then
+ * k -= 16, and the second sprite's fourth argument gains 0x10) set the CLUT
+ * halfword +0x14E (sprite +0x140) at D_800CCB34 * 40 of the record pointed
+ * to by the word at D_800C3EA4 + 0xA230 to g_SystemPalette2, otherwise to
+ * g_SystemPalette1; then set up the func_80076C78 sprites at +0x140 (0x18,
+ * 0x33, (u8)(k % 2 * 120), (u8)(k / 2 * 13), 0x60) and +0x190 (0x84, 0x33,
+ * (u8)(k % 2 << 6 | off), (u8)(k / 2 * 13), 0x10).  CLUT store as in
+ * func_8009093C (block-local `rec`, written in each branch). */
+void func_80090310(u8 a, u8 b) {
+    s32 k = b * 2 + a;
+    s32 off = 0;
+    s32 q;
+    s32 r;
+
+    if (k > 16) {
+        k -= 16;
+        {
+            s32 base = D_800C3EA4;
+            u16 pal = g_SystemPalette2;
+            {
+                u8* rec = *(u8**)(base + 0xA230);
+                u8* p = rec + D_800CCB34__w[0] * 40;
+                *(u16*)(p + 0x14E) = pal;
+            }
+        }
+        off = 0x10;
+    } else {
+        {
+            s32 base = D_800C3EA4;
+            u16 pal = g_SystemPalette1;
+            {
+                u8* rec = *(u8**)(base + 0xA230);
+                u8* p = rec + D_800CCB34__w[0] * 40;
+                *(u16*)(p + 0x14E) = pal;
+            }
+        }
+    }
+    q = k / 2;
+    r = k - q * 2;
+    func_80076C78(*(u8**)(D_800C3EA4 + 0xA230) + 0x140 + D_800CCB34__w[0] * 40, 0x18, 0x33, (u8)(r * 120), (u8)(q * 13), 0x60);
+    func_80076C78(*(u8**)(D_800C3EA4 + 0xA230) + 0x190 + D_800CCB34__w[0] * 40, 0x84, 0x33, (u8)((r << 6) | off), (u8)(q * 13), 0x10);
+}
+
+extern u8 D_800D2CE0[];
+extern u8 D_800D2204[];
+extern u8 D_800D2F68[][4];
+
+/* func_800904A0.s, byte-exact: func_8009187C's sprite pair for the halfword
+ * v of 16-byte entry D_800D2CE0[b * 2 + a] of D_800D2204, at +0x320 (0xA8,
+ * 0x33) and +0x370 (0xD0, 0x33).  Its switch has no default: for
+ * v & 0xF > 2 retail indexes D_800D2F68 with whatever the caller left in the
+ * saved register, and the C reads the unset u8 `j`; that read is undefined
+ * in a native build, which must define the case or show it unreachable. */
+void func_800904A0(u8 a, u8 b) {
+    u16 v;
+    s32 i;
+    u8 j;
+
+    v = *(u16*)(D_800D2204 + D_800D2CE0[b * 2 + a] * 16);
+    if (v & 0x4000) {
+        i = 9;
+    } else if (v & 0x1000) {
+        i = 7;
+    } else {
+        i = 8;
+    }
+    switch (v & 0xF) {
+    case 0:
+        j = 0xC;
+        break;
+    case 1:
+        j = 0xD;
+        break;
+    case 2:
+        j = 0x15;
+        break;
+    }
+    func_80076C78(*(u8**)(D_800C3EA4 + 0xA230) + 0x320 + D_800CCB34__w[0] * 40, 0xA8, 0x33, D_800D2F68[i][2], D_800D2F68[i][3], D_800D2F68[i][0]);
+    {
+        u8* rec = *(u8**)(D_800C3EA4 + 0xA230);
+        u8* p = rec + D_800CCB34__w[0] * 40;
+        *(u16*)(p + 0x32E) = D_800D2F68[i][1] ? g_SystemPalette2 : g_SystemPalette1;
+    }
+    func_80076C78(*(u8**)(D_800C3EA4 + 0xA230) + 0x370 + D_800CCB34__w[0] * 40, 0xD0, 0x33, D_800D2F68[j][2], D_800D2F68[j][3], D_800D2F68[j][0]);
+    {
+        u8* rec = *(u8**)(D_800C3EA4 + 0xA230);
+        u8* p = rec + D_800CCB34__w[0] * 40;
+        *(u16*)(p + 0x37E) = D_800D2F68[j][1] ? g_SystemPalette2 : g_SystemPalette1;
+    }
+}
 extern u8 D_800D2CE0[];
 extern u8* func_8008AC00(s32 size);
 extern void bzero(void* p, s32 n);
@@ -470,7 +563,52 @@ INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80092298);
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80092784);
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80092B74);
 INCLUDE_ASM("asm/battle/nonmatchings/main51", func_800930AC);
-INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80093578);
+
+/* func_80093578.s, byte-exact: set up the func_80076CE8 sprite at +0x140 +
+ * D_800CCB34 * 40 (0x7C, 0xA4, 0, (u8)(b * 16), 0x60, 0x10), then
+ * func_8009187C's sprite pair for entry b + 0x25 of actor a's D_800CEF10 row
+ * at +0x320 (0x24, 0xA6) and +0x370 (0x48, 0xA6). */
+void func_80093578(u8 a, u8 b) {
+    u16 v;
+    s32 i;
+    s32 j;
+
+    func_80076CE8(*(u8**)(D_800C3EA4 + 0xA230) + 0x140 + D_800CCB34__w[0] * 40, 0x7C, 0xA4, 0, (u8)(b * 16), 0x60, 0x10);
+    v = D_800CEF10__rows[a][b + 0x25][0];
+    if (v & 0x4000) {
+        i = 9;
+    } else if (v & 0x1000) {
+        i = 7;
+    } else {
+        i = 8;
+    }
+    switch (v & 0xF) {
+    case 0:
+        j = 0xC;
+        break;
+    case 1:
+        j = 0xD;
+        break;
+    case 2:
+        j = 0x15;
+        break;
+    default:
+        j = 0xC;
+        break;
+    }
+    func_80076C78(*(u8**)(D_800C3EA4 + 0xA230) + 0x320 + D_800CCB34__w[0] * 40, 0x24, 0xA6, D_800D2F68[i][2], D_800D2F68[i][3], D_800D2F68[i][0]);
+    {
+        u8* rec = *(u8**)(D_800C3EA4 + 0xA230);
+        u8* p = rec + D_800CCB34__w[0] * 40;
+        *(u16*)(p + 0x32E) = D_800D2F68[i][1] ? g_SystemPalette2 : g_SystemPalette1;
+    }
+    func_80076C78(*(u8**)(D_800C3EA4 + 0xA230) + 0x370 + D_800CCB34__w[0] * 40, 0x48, 0xA6, D_800D2F68[j][2], D_800D2F68[j][3], D_800D2F68[j][0]);
+    {
+        u8* rec = *(u8**)(D_800C3EA4 + 0xA230);
+        u8* p = rec + D_800CCB34__w[0] * 40;
+        *(u16*)(p + 0x37E) = D_800D2F68[j][1] ? g_SystemPalette2 : g_SystemPalette1;
+    }
+}
 extern u8 D_800CCD88[];
 extern s32 D_800C3DE8;
 extern s32 D_800CCB34__w[] asm("D_800CCB34");
@@ -706,7 +844,33 @@ void func_800957D8(void) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/main51", func_800958D8);
+/* func_800958D8.s, byte-exact: when rand() % 100 is at most byte +0x1C of
+ * D_800C3DFC and its byte +0x1D is 0x6E, clear each halfword +0x84 ... +0x8E
+ * of D_800C3E34 whose bit (0x8000 down to 0x400) is set in D_800C3DFC's
+ * halfword +0x1E, and set byte +0x5FC7 of D_800C34B0 to 0x3A. */
+void func_800958D8(void) {
+    if (rand() % 100 <= *(u8*)((s8*)D_800C3DFC + 0x1C) && *(u8*)((s8*)D_800C3DFC + 0x1D) == 0x6E) {
+        if (*(u16*)((s8*)D_800C3DFC + 0x1E) & 0x8000) {
+            *(s16*)((s8*)D_800C3E34 + 0x84) = 0;
+        }
+        if (*(u16*)((s8*)D_800C3DFC + 0x1E) & 0x4000) {
+            *(s16*)((s8*)D_800C3E34 + 0x86) = 0;
+        }
+        if (*(u16*)((s8*)D_800C3DFC + 0x1E) & 0x2000) {
+            *(s16*)((s8*)D_800C3E34 + 0x88) = 0;
+        }
+        if (*(u16*)((s8*)D_800C3DFC + 0x1E) & 0x1000) {
+            *(s16*)((s8*)D_800C3E34 + 0x8A) = 0;
+        }
+        if (*(u16*)((s8*)D_800C3DFC + 0x1E) & 0x800) {
+            *(s16*)((s8*)D_800C3E34 + 0x8C) = 0;
+        }
+        if (*(u16*)((s8*)D_800C3DFC + 0x1E) & 0x400) {
+            *(s16*)((s8*)D_800C3E34 + 0x8E) = 0;
+        }
+        ((u8*)D_800C34B0)[0x5FC7] = 0x3A;
+    }
+}
 void func_80095A78(void) {
     u8* act = D_800C3DFC;
     s8 r = func_80097964(act[0x1C], act[0x1D], *(u16*)(act + 0x1E));
