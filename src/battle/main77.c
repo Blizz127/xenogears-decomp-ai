@@ -203,7 +203,123 @@ void func_800B1F0C(void* ot) {
     }
 }
 INCLUDE_ASM("asm/battle/nonmatchings/main77", func_800B1F6C);
-INCLUDE_ASM("asm/battle/nonmatchings/main77", func_800B2AEC);
+extern u8 func_80021AD8(u8 c, s32 scale);
+
+#define B2AEC_RGB(o, b0, b1, b2) \
+    prim[(o)] = func_80021AD8((b0), r); \
+    prim[(o) + 1] = func_80021AD8((b1), g); \
+    prim[(o) + 2] = func_80021AD8((b2), b);
+#define B2AEC_COPY(o) \
+    prim2[(o)] = prim[(o)]; prim2[(o) + 1] = prim[(o) + 1]; prim2[(o) + 2] = prim[(o) + 2];
+
+/* func_800B2AEC.s, byte-exact: re-tint two GPU packet buffers that follow
+ * `tmd` packet for packet (the same walk as func_800B1720; the animation
+ * script handler func_8001FBE4 passes the model's +0x34 list and its
+ * +0x2C/+0x30 buffers): for each lit type (flat F3/F4,
+ * gouraud G3/G4, textured FT3/FT4/GT3/GT4, and the unlit textured types
+ * from 0x80 grey) every colour channel becomes func_80021AD8(source
+ * channel, r / g / b) in `prim` and is mirrored into the second buffer
+ * `prim2`; other types are skipped.  Both buffers advance by the packet's
+ * (olen + 1) words, the source by (ilen + 1) words.  Codegen: the case
+ * bodies are in retail's order, as func_800B1720's. */
+void func_800B2AEC(u8* tmd, u8* prim, u8* prim2, s32 r, s32 g, s32 b) {
+    s32 count;
+    u8* p;
+    s32 i;
+    s32 t;
+    s32 n;
+
+    count = *(s32*)(tmd + 0x14);
+    p = (u8*)(*(s32*)(tmd + 0x10) + (s32)tmd);
+    for (i = 0; i != count; i++) {
+        t = p[3] & 0x1C;
+        t |= ((p[2] ^ 1) & 1) << 8;
+        switch (t) {
+        case 0x00:
+            B2AEC_RGB(4, p[4], p[5], p[6]);
+            B2AEC_COPY(4);
+            break;
+        case 0x10:
+            B2AEC_RGB(4, p[4], p[5], p[6]);
+            B2AEC_RGB(0xC, p[8], p[9], p[0xA]);
+            B2AEC_RGB(0x14, p[0xC], p[0xD], p[0xE]);
+            B2AEC_COPY(4);
+            B2AEC_COPY(0xC);
+            B2AEC_COPY(0x14);
+            break;
+        case 0x18:
+            B2AEC_RGB(4, p[4], p[5], p[6]);
+            B2AEC_RGB(0xC, p[8], p[9], p[0xA]);
+            B2AEC_RGB(0x14, p[0xC], p[0xD], p[0xE]);
+            B2AEC_RGB(0x1C, p[0x10], p[0x11], p[0x12]);
+            B2AEC_COPY(4);
+            B2AEC_COPY(0xC);
+            B2AEC_COPY(0x14);
+            B2AEC_COPY(0x1C);
+            break;
+        case 0x08:
+            B2AEC_RGB(4, p[4], p[5], p[6]);
+            B2AEC_COPY(4);
+            break;
+        case 0x104:
+            B2AEC_RGB(4, 0x80, 0x80, 0x80);
+            B2AEC_COPY(4);
+            break;
+        case 0x04:
+            B2AEC_RGB(4, p[0x10], p[0x11], p[0x12]);
+            B2AEC_COPY(4);
+            break;
+        case 0x114:
+            B2AEC_RGB(4, 0x80, 0x80, 0x80);
+            B2AEC_RGB(0x10, 0x80, 0x80, 0x80);
+            B2AEC_RGB(0x1C, 0x80, 0x80, 0x80);
+            B2AEC_COPY(4);
+            B2AEC_COPY(0x10);
+            B2AEC_COPY(0x1C);
+            break;
+        case 0x14:
+            B2AEC_RGB(4, p[0x10], p[0x11], p[0x12]);
+            B2AEC_RGB(0x10, p[0x14], p[0x15], p[0x16]);
+            B2AEC_RGB(0x1C, p[0x18], p[0x19], p[0x1A]);
+            B2AEC_COPY(4);
+            B2AEC_COPY(0x10);
+            B2AEC_COPY(0x1C);
+            break;
+        case 0x10C:
+            B2AEC_RGB(4, 0x80, 0x80, 0x80);
+            B2AEC_COPY(4);
+            break;
+        case 0x0C:
+            B2AEC_RGB(4, p[0x14], p[0x15], p[0x16]);
+            B2AEC_COPY(4);
+            break;
+        case 0x11C:
+            B2AEC_RGB(4, 0x80, 0x80, 0x80);
+            B2AEC_RGB(0x10, 0x80, 0x80, 0x80);
+            B2AEC_RGB(0x1C, 0x80, 0x80, 0x80);
+            B2AEC_RGB(0x28, 0x80, 0x80, 0x80);
+            B2AEC_COPY(4);
+            B2AEC_COPY(0x10);
+            B2AEC_COPY(0x1C);
+            B2AEC_COPY(0x28);
+            break;
+        case 0x1C:
+            B2AEC_RGB(4, p[0x14], p[0x15], p[0x16]);
+            B2AEC_RGB(0x10, p[0x18], p[0x19], p[0x1A]);
+            B2AEC_RGB(0x1C, p[0x1C], p[0x1D], p[0x1E]);
+            B2AEC_RGB(0x28, p[0x20], p[0x21], p[0x22]);
+            B2AEC_COPY(4);
+            B2AEC_COPY(0x10);
+            B2AEC_COPY(0x1C);
+            B2AEC_COPY(0x28);
+            break;
+        }
+        n = (p[0] + 1) * 4;
+        prim += n;
+        prim2 += n;
+        p += (p[1] + 1) * 4;
+    }
+}
 #endif
 
 

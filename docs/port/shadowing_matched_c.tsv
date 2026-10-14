@@ -273,6 +273,7 @@ func_800B15D8	port arm in src/battle/main75.c	func_800B15D8
 func_800B168C	port arm in src/battle/main.c	func_800B168C
 func_800B16A4	port arm in src/battle/main.c	func_800B16A4
 func_800B1EA0	port arm in src/battle/main77.c	func_800B1EA0
+func_800B2AEC	pc_port body func_800B2AEC (pc_port/src/game_overrides.c)	func_800B2AEC
 func_800B3348	port arm in src/battle/main.c	func_800B3348
 func_800B3350	port arm in src/battle/main.c	func_800B3350
 func_800B3B6C	port arm spanning the body in src/battle/mainl81.c	func_800B3B6C
