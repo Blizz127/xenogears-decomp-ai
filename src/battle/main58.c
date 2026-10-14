@@ -29,7 +29,89 @@ void func_8009B104(u32 idx, u8* a1) {
         *(u32*)(rec + 0x108) = *(u16*)(a1 + 0x4E) * 50;
     }
 }
-INCLUDE_ASM("asm/battle/nonmatchings/main58", func_8009B1E4);
+extern u8 g_GameState[];
+
+/* func_8009B1E4.s, byte-exact: reset the g_GameState battle tables: ids
+ * 1..47 into +0x2026[i] with 0x63 at +0x1F90[i], then the fixed
+ * per-character mask fields.  The statements go in record order (the
+ * 0x20-byte records from +0x16C0; within each, the +0x1A halfword before
+ * the +0x17 byte); the scheduler reorders the stores into retail's final
+ * order, which the port arm below lists.  Matches under gcc 2.7.2 and
+ * 2.6.3. */
+void func_8009B1E4(void) {
+    u8 i;
+
+    for (i = 1; i < 0x30; i++) {
+        g_GameState[0x2026 + i] = i;
+        g_GameState[0x1F90 + i] = 0x63;
+    }
+    *(u16*)(g_GameState + 0x16C0) = 0xFFF8;
+    *(u16*)(g_GameState + 0x16C2) = 0xFF00;
+    *(u16*)(g_GameState + 0x16C4) = 0xFFFF;
+    *(u16*)(g_GameState + 0x16C6) = 0xFE00;
+    *(u16*)(g_GameState + 0x16DA) = 0xF000;
+    *(u8*)(g_GameState + 0x16D7) = 0x7;
+    *(u16*)(g_GameState + 0x16E0) = 0xFFE0;
+    *(u16*)(g_GameState + 0x16E2) = 0xFFF0;
+    *(u16*)(g_GameState + 0x16E4) = 0xFFFF;
+    *(u16*)(g_GameState + 0x16E6) = 0xFFF0;
+    *(u16*)(g_GameState + 0x16FA) = 0xC000;
+    *(u8*)(g_GameState + 0x16F7) = 0x7;
+    *(u16*)(g_GameState + 0x1700) = 0xFFE0;
+    *(u16*)(g_GameState + 0x1702) = 0xFFE0;
+    *(u16*)(g_GameState + 0x1704) = 0xFFFF;
+    *(u16*)(g_GameState + 0x1706) = 0xFF00;
+    *(u16*)(g_GameState + 0x171A) = 0x8000;
+    *(u8*)(g_GameState + 0x1717) = 0x7;
+    *(u16*)(g_GameState + 0x1720) = 0xFFE0;
+    *(u16*)(g_GameState + 0x1722) = 0xFFC0;
+    *(u16*)(g_GameState + 0x1724) = 0xFFFF;
+    *(u16*)(g_GameState + 0x1726) = 0xFF00;
+    *(u16*)(g_GameState + 0x173A) = 0xF000;
+    *(u8*)(g_GameState + 0x1737) = 0x7;
+    *(u16*)(g_GameState + 0x1740) = 0xFFC0;
+    *(u16*)(g_GameState + 0x1742) = 0xFFC0;
+    *(u16*)(g_GameState + 0x1744) = 0xFFFF;
+    *(u16*)(g_GameState + 0x1746) = 0xFC00;
+    *(u16*)(g_GameState + 0x175A) = 0xE000;
+    *(u8*)(g_GameState + 0x1757) = 0x7;
+    *(u16*)(g_GameState + 0x1760) = 0xFFC0;
+    *(u16*)(g_GameState + 0x1762) = 0xF000;
+    *(u16*)(g_GameState + 0x1764) = 0xFFFF;
+    *(u16*)(g_GameState + 0x1766) = 0xF000;
+    *(u16*)(g_GameState + 0x177A) = 0x8000;
+    *(u8*)(g_GameState + 0x1777) = 0x7;
+    *(u16*)(g_GameState + 0x1780) = 0xFFC0;
+    *(u16*)(g_GameState + 0x1782) = 0xFF00;
+    *(u16*)(g_GameState + 0x1784) = 0xFFFF;
+    *(u16*)(g_GameState + 0x1786) = 0xFF00;
+    *(u16*)(g_GameState + 0x179A) = 0x8000;
+    *(u8*)(g_GameState + 0x1797) = 0x7;
+    *(u16*)(g_GameState + 0x17A0) = 0x0;
+    *(u16*)(g_GameState + 0x17A2) = 0xFF00;
+    *(u16*)(g_GameState + 0x17A4) = 0x0;
+    *(u16*)(g_GameState + 0x17A6) = 0xFF00;
+    *(u16*)(g_GameState + 0x17BA) = 0x0;
+    *(u8*)(g_GameState + 0x17B7) = 0x7;
+    *(u16*)(g_GameState + 0x17C0) = 0x0;
+    *(u16*)(g_GameState + 0x17C2) = 0xF800;
+    *(u16*)(g_GameState + 0x17C4) = 0xFFFF;
+    *(u16*)(g_GameState + 0x17C6) = 0x0;
+    *(u16*)(g_GameState + 0x17DA) = 0xE000;
+    *(u8*)(g_GameState + 0x17D7) = 0x7;
+    *(u16*)(g_GameState + 0x17E0) = 0xFFE0;
+    *(u16*)(g_GameState + 0x17E2) = 0xFFE0;
+    *(u16*)(g_GameState + 0x17E4) = 0xFFFF;
+    *(u16*)(g_GameState + 0x17E6) = 0xFFE0;
+    *(u16*)(g_GameState + 0x17FA) = 0x8000;
+    *(u8*)(g_GameState + 0x17F7) = 0x7;
+    *(u16*)(g_GameState + 0x1800) = 0xFFC0;
+    *(u16*)(g_GameState + 0x1802) = 0xFF00;
+    *(u16*)(g_GameState + 0x1804) = 0xFFFF;
+    *(u16*)(g_GameState + 0x1806) = 0xFF00;
+    *(u16*)(g_GameState + 0x181A) = 0xC000;
+    *(u8*)(g_GameState + 0x1817) = 0x7;
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main58", func_8009B46C);
 INCLUDE_ASM("asm/battle/nonmatchings/main58", func_8009B684);
 INCLUDE_ASM("asm/battle/nonmatchings/main58", func_8009BAC4);
