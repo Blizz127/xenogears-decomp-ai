@@ -442,6 +442,9 @@ paths = [
     # no divisions, so BattleGcc263Div (main73_p1's preset) is not needed.
     # Neighbour main73_p1 is 2.6.3 code too (BattleGcc263Div).
     "src/battle/main73_p2.",
+    # main35_p3_q1 (2026-10-14): func_80084548, its only C, matches only under
+    # 2.6.x (2.7.2: diff 6/130, the loop delay slots).  No divisions.
+    "src/battle/main35_p3_q1.",
 ]
 
 [[build_preset]]
