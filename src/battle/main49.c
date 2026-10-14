@@ -173,7 +173,46 @@ u8 func_8008CFB8(u8 actor) {
     func_8008FA60(2);
     return state;
 }
-INCLUDE_ASM("asm/battle/nonmatchings/main49", func_8008D328);
+extern u8* D_800C3EA4;
+extern void SetSemiTrans(void* p, s32 abe);
+extern void SetShadeTex(void* p, s32 tge);
+
+/* func_8008D328.s, byte-exact: fade out the two groups of POLY_FT4 prims at
+ * D_800C3EA4 + 0x641C + g * 0xFA0 (D_800D2D28 +0xD0 + g * 4 entries each,
+ * every other prim from the D_800D2D28 +0xA3 buffer): SetSemiTrans(1),
+ * SetShadeTex(0), tpage |= 0x20, and if its r0 byte is nonzero, r0, g0
+ * and b0 = r0 - D_800C3EAC +0x2E0 * 16.  When no prim was lit,
+ * D_800D2D28 +0xCB = 0.  Codegen: each access is spelled with retail's
+ * association (the prim pointer as base + (g * 0xFA0 + 0x641C) + i * 40,
+ * the tpage and r0 reads as base + (g * 0xFA0 + i * 40), the colour stores
+ * as (base + g * 0xFA0)[i * 40 + off]).  Matches under gcc 2.6.x. */
+void func_8008D328(void) {
+    u8 active;
+    s32 g;
+    s32 k;
+    u8 c;
+
+    active = 0;
+    for (g = 0; g < 2; g++) {
+        if (*(s32*)(D_800D2D28 + g * 4 + 0xD0) != 0) {
+            for (k = 0; k < *(s32*)(D_800D2D28 + g * 4 + 0xD0) * 2; k += 2) {
+                SetSemiTrans(D_800C3EA4 + (g * 0xFA0 + 0x641C) + (k + D_800D2D28[0xA3]) * 40, 1);
+                SetShadeTex(D_800C3EA4 + (g * 0xFA0 + 0x641C) + (k + D_800D2D28[0xA3]) * 40, 0);
+                *(u16*)(D_800C3EA4 + (g * 0xFA0 + (k + D_800D2D28[0xA3]) * 40) + 0x6432) |= 0x20;
+                c = (D_800C3EA4 + (g * 0xFA0 + (k + D_800D2D28[0xA3]) * 40))[0x6420];
+                if (c != 0) {
+                    active = 1;
+                    (D_800C3EA4 + g * 0xFA0)[(k + D_800D2D28[0xA3]) * 40 + 0x6420] = c - D_800C3EAC[0x2E0] * 16;
+                    (D_800C3EA4 + g * 0xFA0)[(k + D_800D2D28[0xA3]) * 40 + 0x6421] = c - D_800C3EAC[0x2E0] * 16;
+                    (D_800C3EA4 + g * 0xFA0)[(k + D_800D2D28[0xA3]) * 40 + 0x6422] = c - D_800C3EAC[0x2E0] * 16;
+                }
+            }
+        }
+    }
+    if (active == 0) {
+        D_800D2D28[0xCB] = 0;
+    }
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main49", func_8008D598);
 extern u32 D_800D2E38[];
 extern u8 D_800C3E4C;
