@@ -1,7 +1,79 @@
 #include "common.h"
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/main135", func_800C0FAC);
+/* func_80022224's by-value (x, y) pairs (texture page, CLUT). */
+typedef struct {
+    s16 x;
+    s16 y;
+} C0FACPair;
+extern void func_800C0F70(void);
+extern u8 D_800C3620[];
+extern u8 D_800C3622[];
+extern u32 D_800C3A6C[];
+extern s32 D_80010000;
+extern u8 D_8005A474[];
+extern void* SoundLoadWdsFile(void* pWdsFile, s32 mode);
+extern void SoundAddSedsEntry(u8* p);
+extern s16 func_8003BDFC(s32 a);
+extern void* HeapInsertAlloc(void* pMem, u32 allocSize);
+extern void func_80022224(void* pAnimPackage, void* pAnimPackageFile, C0FACPair tex, C0FACPair clut,
+                          u32 arg4);
+
+/* Register the sound data in battle file `base` (count *base - 3, entry
+ * offsets from +0x10, each relative to the file).  "seds" entries go to
+ * SoundAddSedsEntry (the last one is returned).  A "wds " entry runs
+ * func_800C0F70, clears D_800C3620 and D_800C3622, loads the bank into
+ * D_800C3A6C with SoundLoadWdsFile, waits while func_8003BDFC(0) is set
+ * (break 1 whenever D_80010000 is not -1) and, when it is the last entry,
+ * calls HeapInsertAlloc(base, entry offset).  Any other entry goes to
+ * func_80022224 with the D_8005A474 package, texture page (0x380, 0x100)
+ * and CLUT (0, 0x1F4).  `wds` takes D_800C3A6C's address before the calls,
+ * which keeps its %hi in a register across the loop, as retail does;
+ * `break 1024` is the aspsx encoding of retail's break 1 (as in
+ * controller2.c). */
+u8* func_800C0FAC(u8* base) {
+    u8* seds = NULL;
+    u8* file = base;
+    s32 n;
+    u8* e;
+    C0FACPair tex;
+    C0FACPair clut;
+    u32* wds;
+
+    n = *(s32*)file - 3;
+    for (file += 0x10; n > 0; n--, file += 4) {
+        e = (u8*)(*(u32*)file + (u32)base);
+        switch (*(u32*)e) {
+        case 0x73646573:
+            seds = e;
+            SoundAddSedsEntry(seds);
+            break;
+        case 0x20736477:
+            wds = D_800C3A6C;
+            func_800C0F70();
+            D_800C3620[0] = 0;
+            D_800C3622[0] = 0;
+            *wds = (u32)SoundLoadWdsFile(e, 0);
+            while (func_8003BDFC(0) != 0) {
+                if (D_80010000 != -1) {
+                    __asm__ volatile("break 1024");
+                }
+            }
+            if (n == 1) {
+                HeapInsertAlloc(base, *(u32*)file);
+            }
+            break;
+        default:
+            tex.x = 0x380;
+            tex.y = 0x100;
+            clut.x = 0;
+            clut.y = 0x1F4;
+            func_80022224(D_8005A474, e, tex, clut, 0);
+            break;
+        }
+    }
+    return seds;
+}
 extern void func_8003852C(void* p);
 
 /* func_800C1140.s: walk the offset table of `file` (count *file - 3, offsets
