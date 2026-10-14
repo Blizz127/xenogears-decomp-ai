@@ -250,7 +250,42 @@ void func_800728B8(void* prims, s32 count, s32 start) {
 }
 #endif
 
-INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80072938);
+#ifndef XENO_PC_PORT
+extern void SetShadeTex(void* p, s32 tge);
+
+
+/* func_80072938.s, byte-exact WITH A CONSTRUCT: for each primitive i from
+ * start to end - 1, SetShadeTex(prims + (i * 2 + D_800CCB34) * 0x28, 0)
+ * and set its colour bytes +4/+5/+6 to (0x80, 0, 0), or (0x80, 0x80, 0) for
+ * mode 1.  Construct (decomp-permuter result, not the original code): the
+ * last store sits in `if (end) ... else ...` with identical arms; the
+ * branch only adds the block boundary that gives retail's register
+ * allocation (without it the last block's registers differ: 348 vs 356).
+ * Counted apart from natural matches. */
+void func_80072938(void* prims, s32 start, s32 end, u8 mode) {
+    s32 i;
+    s32 k;
+
+    for (i = start; i < end; i++) {
+        k = i * 2;
+        SetShadeTex((u8*)prims + (k + D_800CCB34) * 0x28, 0);
+        if (mode != 1) {
+            ((u8*)prims + (k + D_800CCB34) * 0x28)[4] = 0x80;
+            ((u8*)prims + (k + D_800CCB34) * 0x28)[5] = 0;
+        } else {
+            ((u8*)prims + (k + D_800CCB34) * 0x28)[4] = 0x80;
+            ((u8*)prims + (k + D_800CCB34) * 0x28)[5] = 0x80;
+        }
+        /* CONSTRUCT (not the original code): the two identical arms only add
+         * the block boundary retail's register allocation implies. */
+        if (end) {
+            ((u8*)prims + (k + D_800CCB34) * 0x28)[6] = 0;
+        } else {
+            ((u8*)prims + (k + D_800CCB34) * 0x28)[6] = 0;
+        }
+    }
+}
+#endif
 INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80072A9C);
 INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80072DA8);
 INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80072F38);
