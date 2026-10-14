@@ -2,7 +2,24 @@
 
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/main59", func_8009C134);
+extern u8 D_800CCD3E__rows[][0x170] asm("D_800CCD3E");
+extern u16 D_800D2C94__a[] asm("D_800D2C94");
+
+/* func_8009C134.s, byte-exact: D_800D2C94 = 1 << i for each party slot i
+ * whose D_800CCD3E byte (0x170-byte records) is 3; the last match wins
+ * (the main59.c port arm below does the same).  Codegen: the record byte
+ * goes through an asm-label row view, which keeps the symbol in each
+ * address (a u8 array plus i * 0x170 lets loop.c hoist an `la`), and
+ * D_800D2C94 through an array view, whose `la` retail hoists. */
+void func_8009C134(void) {
+    u8 i;
+
+    for (i = 0; i < 3; i++) {
+        if (D_800CCD3E__rows[i][0] == 3) {
+            D_800D2C94__a[0] = 1 << i;
+        }
+    }
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main59", func_8009C198);
 extern u8* D_800C34B0;
 extern u8* D_800C3E00;
