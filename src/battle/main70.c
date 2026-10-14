@@ -48,7 +48,129 @@ void func_800A6444(s32 i, s32 kind, s32 factor, s32 r, s32 g, s32 b) {
     }
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/main70", func_800A64E4);
+/* POLY_G4 / POLY_F4 layouts (this TU does not include libgpu.h). */
+typedef struct {
+    u32 tag;
+    u8 r0, g0, b0, code;
+    s16 x0, y0;
+    u8 r1, g1, b1, pad1;
+    s16 x1, y1;
+    u8 r2, g2, b2, pad2;
+    s16 x2, y2;
+    u8 r3, g3, b3, pad3;
+    s16 x3, y3;
+} BattlePolyG4;
+typedef struct {
+    u32 tag;
+    u8 r0, g0, b0, code;
+    s16 x0, y0;
+    s16 x1, y1;
+    s16 x2, y2;
+    s16 x3, y3;
+} BattlePolyF4;
+/* The coloured prims of the ground-effect block (D_800C3EA0) and the strip
+ * block (D_800C3D50): four flat quads, then Gouraud quads. */
+typedef struct {
+    u8 unk0[0x16DC];
+    BattlePolyF4 f4[4];
+    BattlePolyG4 g4[4];
+} BattleGroundPrims;
+typedef struct {
+    u8 unk0[0x280];
+    BattlePolyF4 f4[4];
+    BattlePolyG4 g4[2];
+} BattleStripPrims;
+typedef struct {
+    u8 data[0x88];
+} BattleBlock88;
+extern BattleBlock88* D_800C3AC4;
+extern s32 D_800C3EA0;
+extern s32 D_800C3D50;
+extern u8* D_800D2D40;
+extern u8* D_800D2D48;
+
+/* func_800A64E4.s, byte-exact: restore the prim colours that
+ * func_800A6AE8 fades, from the unfaded copy in the D_800C3AC4 block
+ * (func_800A6F98 calls it before freeing the blocks).  Same walk as
+ * func_800A6AE8: for j < 4, the four G4 colours and the F4 colour of
+ * ground record j (five words, skipped when D_800C3EA0 is null), then the
+ * F4 colour of strip record j (when D_800C3D50 is set); then the four G4
+ * colours of strip records 0-1 and the D_800D2D40 / D_800D2D48 colours.
+ * Each word gives r, g, b; its fourth byte is unused.  Codegen: the
+ * prims go through the struct views above, which put the global first in
+ * each address add and let same-stride records share one induction
+ * variable.  CONSTRUCT: the first loop's strip test reads D_800C3D50
+ * through a volatile view.  Retail loads D_800C3D50 again after that
+ * test; with a plain read, CSE reuses the tested value (2 insns short).
+ * The read has no other effect, so adoption can drop the volatile.
+ * Matches under gcc 2.6.x. */
+void func_800A64E4(void) {
+    u8* in;
+    s32 j;
+
+    in = D_800C3AC4->data;
+    for (j = 0; j < 4; j++) {
+        if (D_800C3EA0 != 0) {
+            ((BattleGroundPrims*)D_800C3EA0)->g4[j].r0 = in[0];
+            ((BattleGroundPrims*)D_800C3EA0)->g4[j].g0 = in[1];
+            ((BattleGroundPrims*)D_800C3EA0)->g4[j].b0 = in[2];
+            in += 4;
+            ((BattleGroundPrims*)D_800C3EA0)->g4[j].r1 = in[0];
+            ((BattleGroundPrims*)D_800C3EA0)->g4[j].g1 = in[1];
+            ((BattleGroundPrims*)D_800C3EA0)->g4[j].b1 = in[2];
+            in += 4;
+            ((BattleGroundPrims*)D_800C3EA0)->g4[j].r2 = in[0];
+            ((BattleGroundPrims*)D_800C3EA0)->g4[j].g2 = in[1];
+            ((BattleGroundPrims*)D_800C3EA0)->g4[j].b2 = in[2];
+            in += 4;
+            ((BattleGroundPrims*)D_800C3EA0)->g4[j].r3 = in[0];
+            ((BattleGroundPrims*)D_800C3EA0)->g4[j].g3 = in[1];
+            ((BattleGroundPrims*)D_800C3EA0)->g4[j].b3 = in[2];
+            in += 4;
+            ((BattleGroundPrims*)D_800C3EA0)->f4[j].r0 = in[0];
+            ((BattleGroundPrims*)D_800C3EA0)->f4[j].g0 = in[1];
+            ((BattleGroundPrims*)D_800C3EA0)->f4[j].b0 = in[2];
+            in += 4;
+        } else {
+            in += 0x14;
+        }
+        if (*(volatile s32*)&D_800C3D50 != 0) {
+            ((BattleStripPrims*)D_800C3D50)->f4[j].r0 = in[0];
+            ((BattleStripPrims*)D_800C3D50)->f4[j].g0 = in[1];
+            ((BattleStripPrims*)D_800C3D50)->f4[j].b0 = in[2];
+        }
+        in += 4;
+    }
+    for (j = 0; j < 2; j++) {
+        if (D_800C3D50 != 0) {
+            ((BattleStripPrims*)D_800C3D50)->g4[j].r0 = in[0];
+            ((BattleStripPrims*)D_800C3D50)->g4[j].g0 = in[1];
+            ((BattleStripPrims*)D_800C3D50)->g4[j].b0 = in[2];
+            in += 4;
+            ((BattleStripPrims*)D_800C3D50)->g4[j].r1 = in[0];
+            ((BattleStripPrims*)D_800C3D50)->g4[j].g1 = in[1];
+            ((BattleStripPrims*)D_800C3D50)->g4[j].b1 = in[2];
+            in += 4;
+            ((BattleStripPrims*)D_800C3D50)->g4[j].r2 = in[0];
+            ((BattleStripPrims*)D_800C3D50)->g4[j].g2 = in[1];
+            ((BattleStripPrims*)D_800C3D50)->g4[j].b2 = in[2];
+            in += 4;
+            ((BattleStripPrims*)D_800C3D50)->g4[j].r3 = in[0];
+            ((BattleStripPrims*)D_800C3D50)->g4[j].g3 = in[1];
+            ((BattleStripPrims*)D_800C3D50)->g4[j].b3 = in[2];
+            in += 4;
+        } else {
+            in += 0x10;
+        }
+    }
+    D_800D2D40[0] = in[0];
+    D_800D2D40[1] = in[1];
+    D_800D2D40[2] = in[2];
+    in += 4;
+    D_800D2D48[0] = in[0];
+    D_800D2D48[1] = in[1];
+    D_800D2D48[2] = in[2];
+}
 /* func_800A6884.s, byte-exact: run CLUT fade slot i over one colour word
  * (dst bytes r, g, b) and copy the result to out[0..2].  The slot's signed
  * r/g/b * 8 is the base; when the slot is active its kind adds the colour
@@ -127,29 +249,21 @@ void func_800A6884(u8* out, s32 i, u32* dst) {
 }
 
 typedef struct {
-    u8 data[0x88];
-} BattleBlock88;
-
-typedef struct {
     s16 x, y, w, h;
 } BattleRect;
 
 /* Unsized arrays: retail splits these addresses into %hi/%lo pseudos, and
  * the extra insns give retail's argument-load schedule; the scalars below
- * are small-data loads. */
+ * are small-data loads, like D_800C3AC4, D_800C3EA0, D_800C3D50 and
+ * D_800D2D40/D_800D2D48, declared above func_800A64E4. */
 extern u8 D_800D3611[];
 extern u16 D_800D361A[];
 extern s16 D_800D2D2C[];
 extern s16 D_800C3EA8[];
 extern u16* D_800D3604[];
 extern u16* D_800D3608[];
-extern BattleBlock88* D_800C3AC4;
 extern BattleBlock88* D_800C3AC8;
 extern BattleClutFade D_800C3AAC[];
-extern s32 D_800C3EA0;
-extern s32 D_800C3D50;
-extern u8* D_800D2D40;
-extern u8* D_800D2D48;
 extern BattleRect D_800D3628;
 extern void* memcpy(void* dst, const void* src, u32 n);
 extern void func_80025D4C(s32 count, u16* a, u16* b, u16* c, s32 r, s32 g, s32 bl, s32 kind, s32 factor);
