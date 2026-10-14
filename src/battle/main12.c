@@ -7,7 +7,7 @@ extern u8 D_800D2E5D[];
 extern u8 D_800D2E60[];
 extern u8 D_800D2E61[];
 
-void func_8007916C(s32 a0, s32 a1) {
+void func_8007916C(u8 a0, u8 a1, u8 a2) {
     u32 s1 = a0 & 0xFF;
     u32 s0 = (a1 & 0xFF) << 3;
     u32 r;
@@ -21,7 +21,7 @@ extern void func_800785D4(u8, u8);
 extern u8* D_800C3EAC;
 extern u8 D_800C402F[];
 
-void func_800791FC(u8 a, u8 b) {
+void func_800791FC(u8 a, u8 b, u8 c) {
     func_8007893C(b, a);
     D_800C402F[D_800C3EAC[0x2DA] * 0x48] = 0xF4;
     func_800785D4(a, b);
@@ -33,7 +33,7 @@ extern u8 D_800C402F[];
 extern u16 D_800C3FFE[];
 extern u16 D_800D2E62[];
 
-void func_80079270(u8 a, u8 b) {
+void func_80079270(u8 a, u8 b, u8 c) {
     D_800C402F[D_800C3EAC[0x2DA] * 0x48] = 0xF6;
     D_800C3FFE[D_800C3EAC[0x2DA] * 0x24] = D_800D2E62[b * 4];
     func_800785D4(a, b);
@@ -79,7 +79,118 @@ void func_800792F8(u8 a, u8 b) {
     }
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/main12", func_800793F0);
+extern u8 D_800D2E5C__rows[][8] asm("D_800D2E5C");
+extern u16 D_800D2E62__rows[][4] asm("D_800D2E62");
+extern u8 D_800D2E60__rows[][8] asm("D_800D2E60");
+extern u16 func_80089C9C(s32 mask, u8 idx);
+extern void func_80085388(void);
+extern void func_80078998(u8 a, u8 b, u8 c);
+extern void func_80078B34(u8 a, u8 b, u8 c);
+extern void func_80078C9C(u8 a, u8 b, u8 c);
+extern void func_80078CEC(u8 a, u8 b, u8 c);
+extern void func_80078D48(u8 a, u8 b, u8 c);
+extern void func_80078D6C(u8 a, u8 b, u8 c);
+extern void func_80078E24(u8 a, u8 b, u8 c);
+extern void func_80079054(u8 a, u8 b, u8 c);
+extern void func_80079098(u8 a, u8 b, u8 c);
+extern void func_80079114(u8 a, u8 b, u8 c);
+extern void func_80078658(u8 a, u8 b);
+extern void func_800787E0(u8 a, u8 b);
+extern void func_8007887C(u8 a);
+
+/* func_800793F0.s, byte-exact: run actor `actor`'s queued AI commands.
+ * For each of the 32 eight-byte D_800D2E5C entries i (and past them while
+ * no terminator has been seen): `found` is the first actor 0..10 that
+ * func_80089C9C selects from the entry's D_800D2E62 halfword (0 if
+ * none); func_80085388(); then the entry's D_800D2E5C opcode picks the
+ * handler: 0 ends the run (cont = 0), 1-11, 13 and 15 call
+ * func_80078998 .. func_8007916C, func_800791FC, func_80079270 with
+ * (actor, i, found), 12 calls func_80078658(i, actor), 14 calls
+ * func_800787E0(the entry's D_800D2E60 byte, actor), 16 calls
+ * func_8007887C(actor), anything else func_800792F8(actor, i).
+ * The switch is a jump table (jtbl_8006FB38, placed by the main12
+ * .rodata split in config/battle.yaml).  Codegen: the entry tables go
+ * through asm-label row views (one 8-byte offset, as in retail); `k`, a
+ * copy of j, gives retail's loop-top copy (func_80078E24); `i` and `cont`
+ * are set in that order, as are `j` and `found`.  Matches only under gcc
+ * 2.6.x.  Every handler takes (actor, i, found) as retail passes them, so
+ * func_8007916C, func_800791FC and func_80079270 above take a third
+ * (unused) parameter, and func_8007916C takes u8 parameters (retail
+ * masks the arguments; its body already masked them). */
+void func_800793F0(u8 actor) {
+    s32 i;
+    s32 j;
+    s32 k;
+    u8 found;
+    u8 cont;
+
+    for (i = 0, cont = 1; i < 32 || cont; i++) {
+        for (j = 0, found = 0; j < 11; j++) {
+            k = j;
+            if (func_80089C9C(D_800D2E62__rows[i][0], k)) {
+                found = k;
+                break;
+            }
+        }
+        func_80085388();
+        switch (D_800D2E5C__rows[i][0]) {
+        case 0:
+            cont = 0;
+            break;
+        case 1:
+            func_80078998(actor, i, found);
+            break;
+        case 2:
+            func_80078B34(actor, i, found);
+            break;
+        case 3:
+            func_80078C9C(actor, i, found);
+            break;
+        case 4:
+            func_80078CEC(actor, i, found);
+            break;
+        case 5:
+            func_80078D48(actor, i, found);
+            break;
+        case 6:
+            func_80078D6C(actor, i, found);
+            break;
+        case 7:
+            func_80078E24(actor, i, found);
+            break;
+        case 8:
+            func_80079054(actor, i, found);
+            break;
+        case 9:
+            func_80079098(actor, i, found);
+            break;
+        case 10:
+            func_80079114(actor, i, found);
+            break;
+        case 11:
+            func_8007916C(actor, i, found);
+            break;
+        case 12:
+            func_80078658(i, actor);
+            break;
+        case 13:
+            func_800791FC(actor, i, found);
+            break;
+        case 14:
+            func_800787E0(D_800D2E60__rows[i][0], actor);
+            break;
+        case 15:
+            func_80079270(actor, i, found);
+            break;
+        case 16:
+            func_8007887C(actor);
+            break;
+        default:
+            func_800792F8(actor, i);
+            break;
+        }
+    }
+}
 extern u8 D_800D32A1[];
 extern u8 D_800D366C;
 extern u8 D_800C400B[];

@@ -67,6 +67,7 @@ segments:
       # object's .rodata and are placed at their retail table address (as field
       # does).  Tables belonging to bodies that are still retail assembly stay
       # in the assembled data, where `jlabel` exports their .L targets.
+      - [0x48, .rodata, main12]      # jtbl_8006FB38 (func_800793F0)
       - [0x8C, .rodata, main14]      # jtbl_8006FB7C + jtbl_8006FBDC
       - [0x14C, rodata]
       - [0x520, .rodata, main35_p1]  # jtbl_80070010 (func_8008115C)
