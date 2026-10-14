@@ -321,7 +321,47 @@ void func_80072DA8(s32 slot, u8 flag) {
     }
 }
 INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80072F38);
-INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80073380);
+extern u8 D_800C3CF9[];
+extern u8 D_800D32A0[];
+extern u16 D_800CCDC4__rows[][184] asm("D_800CCDC4");
+extern void func_8008AAA0(s16 value);
+
+/* func_80073380.s, byte-exact: draw slot `slot`'s four-digit value.
+ * func_8008AAA0 splits the value into the D_800C3CF4 digit bytes: the
+ * D_800D32A0 byte (8-byte rows) when the slot's D_800C3EA4 byte at
+ * +0x853D + slot * 0x1E4 is 1, else its D_800CCDC4 halfword.  Each digit
+ * of D_800C3CF9[0..3] that is not 0xFF is drawn with
+ * func_80076A10(digit + 0x83, the slot's prims at D_800C3EA4 + 0x6008 +
+ * slot * 0x140 + count * 80, x = slot * 96 + D_800C3254[D_800D3280 * 3 +
+ * slot] + 0x4A + i * 6, y = 0x25), adding to the slot's D_800D2D28 +0xEC
+ * count; finally D_800D2D28 +0x99 + slot = the low byte of D_800CCB34.
+ * Codegen: the +0x853D test goes through a row pointer from a
+ * block-local base (func_8009DA04), the value is converted once at the
+ * shared func_8008AAA0 call, and the prims offset is parenthesised, as in
+ * func_80072DA8. */
+void func_80073380(s32 slot) {
+    s32 i;
+    u16 v;
+    u8* base;
+    u8* p;
+
+    base = D_800C3EA4;
+    p = base + slot * 0x1E4;
+    if (p[0x853D] == 1) {
+        v = D_800D32A0[slot * 8];
+    } else {
+        v = D_800CCDC4__rows[slot][0];
+    }
+    func_8008AAA0(v);
+    for (i = 0; i < 4; i++) {
+        if (D_800C3CF9[i] != 0xFF) {
+            *(s32*)((u8*)D_800D2D28 + slot * 4 + 0xEC) += func_80076A10(D_800C3CF9[i] + 0x83,
+                (u8*)D_800C3EA4 + (slot * 0x140 + 0x6008) + *(s32*)((u8*)D_800D2D28 + slot * 4 + 0xEC) * 80,
+                slot * 96 + (D_800C3254[D_800D3280 * 3 + slot] + 0x4A) + i * 6, 0x25);
+        }
+    }
+    ((u8*)D_800D2D28 + slot)[0x99] = *(u8*)&D_800CCB34;
+}
 extern void* D_800C3EA4;
 typedef struct {
     u8 state;
