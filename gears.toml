@@ -410,6 +410,10 @@ paths = [
     # func_8008B108 and func_8008B168 compile to the same bytes under 2.6.3
     # and 2.7.2.  Neighbours main43 and main49 are BattleGcc263 too.
     "src/battle/main45.",
+    # main47 (2026-10-14): func_8008BD50 matches only under 2.6.x (2.7.2:
+    # 384 vs 392 bytes); func_8008C360 and func_8008C3F0 compile to the
+    # same bytes under 2.6.3 and 2.7.2.
+    "src/battle/main47.",
 ]
 
 [[build_preset]]
