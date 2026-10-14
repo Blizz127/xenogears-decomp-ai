@@ -284,6 +284,7 @@ func_800B62C8	port arm in src/battle/main87.c	func_800B62C8
 func_800B6464	port arm in src/battle/mainc89.c	func_800B6464
 func_800B6518	port arm in src/battle/main90.c	func_800B6518
 func_800B6808	port arm in src/battle/main90.c	func_800B6808
+func_800B8068	port arm in src/battle/mainc100.c	func_800B8068
 func_800B8354	generated logging stub (matched C not linked)	func_800B8354
 func_800B89F4	port arm in src/battle/main.c	func_800B89F4
 func_800B8D7C	generated logging stub (matched C not linked)	func_800B8D7C

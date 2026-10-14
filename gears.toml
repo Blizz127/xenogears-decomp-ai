@@ -236,10 +236,13 @@ build_variables = {
     maspsx_flags = "--dont-expand-li --use-comm-section --run-assembler"
 }
 paths = [
-    # Every battle/mainc* TU except mainc122, mainc124 and mainc134
-    # (BattleCdkG0 below); gears takes whichever matching key its HashMap
-    # yields first, so no TU may match keys of two presets.
-    "battle/mainc10",
+    # Every battle/mainc* TU except mainc100, mainc122, mainc124 and
+    # mainc134 (BattleCdkG0 below); gears takes whichever matching key its
+    # HashMap yields first, so no TU may match keys of two presets.
+    "battle/mainc102.",
+    "battle/mainc104.",
+    "battle/mainc107.",
+    "battle/mainc108.",
     "battle/mainc11",
     "battle/mainc120.",
     "battle/mainc123.",
@@ -312,6 +315,14 @@ name = "BattleCdkG0"
 # -G8 or -G0: 616; an incomplete-array view gets the split %hi but keeps
 # the reloads behind the stores, 620).  The TU's other bodies stay
 # byte-exact (full relink).
+# mainc100 (2026-10-14): func_800B7C34 clears an actor's slot bit in
+# D_800C3666 and then passes the slot to func_800BB080.  The store makes
+# CSE reload the actor words for the call, and retail schedules those
+# loads above the store, which needs a scalar D_800C3666 against
+# struct-field actor loads; the scalar's %hi is split (in $a1) only at
+# -G0.  It matches only here (CDK -G8: 624 vs 608 bytes; 2.7.2, 2.6.3
+# and 2.6.0 at -G8 or -G0: 648); the TU's other bodies stay byte-exact
+# (full relink).
 build_variables = {
     gcc = "gcc-2.7.2-cdk-psx",
     maspsx_flags = "--dont-expand-li --use-comm-section --run-assembler",
@@ -321,6 +332,7 @@ paths = [
     "src/battle/mainc122.",
     "src/battle/mainc124.",
     "src/battle/mainc134.",
+    "src/battle/mainc100.",
 ]
 
 [[build_preset]]
