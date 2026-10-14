@@ -360,7 +360,115 @@ void func_80072DA8(s32 slot, u8 flag) {
         func_80072938((u8*)D_800C3EA4 + (slot * 0xC80 + 0x3A88), start, *(s32*)((u8*)D_800D2D28 + slot * 4 + 0xE0), flag);
     }
 }
-INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80072F38);
+extern s16 D_800CCD34__r[][184] asm("D_800CCD34");
+extern s16 D_800CCD36__r[][184] asm("D_800CCD36");
+extern s32 D_800CCDEC__r[][92] asm("D_800CCDEC");
+extern s32 D_800CCDF0__r[][92] asm("D_800CCDF0");
+extern u16 D_800D3330;
+extern u16 D_800D2FE0;
+extern u16 D_800D2E58;
+extern u16 D_800D2D38;
+extern s32 D_800D333C;
+extern s32 D_800D3018;
+extern s32 D_800D3668;
+extern u8 D_800C3E08[];
+extern u8 D_800D2D58[];
+extern u8 D_800D2D88[];
+
+
+/* func_80072F38.s, byte-exact under gcc 2.6.3 (BattleGcc263).  Cache actor
+ * `actor`'s +0x4C/+0x4E halfwords and +0x104/+0x108 words in the HUD
+ * globals; grade the +0x104/+0x108 pair (mp != 0) or the +0x4C/+0x4E pair as
+ * 2 (current at most 1/8 of the maximum), 1 (at most 1/4) or 0; split the
+ * +0x4C and +0x4E copies into three decimal digits (D_800C3E08, D_800D2D58)
+ * and the +0x104 copy into five (D_800D2D88), in place; blank leading zeros
+ * with 0xFF (the last digit stays) and return the grade.  Codegen: one s16 /
+ * s32 local per digit, each byte store right after its digit (storing the
+ * digits at the end loses the in-place global updates, 1048 vs 1096). */
+s32 func_80072F38(s32 actor, u8 mp) {
+    s16 max = D_800CCD36__r[actor][0];
+    s16 cur = D_800CCD34__r[actor][0];
+    s32 val = D_800CCDEC__r[actor][0];
+    s32 cap = D_800CCDF0__r[actor][0];
+    s32 level;
+    s16 h0;
+    s16 h1;
+    s16 m0;
+    s16 m1;
+    s32 p0;
+    s32 p1;
+    s32 p2;
+    s32 p3;
+    s32 i;
+
+    D_800D3330 = max;
+    D_800D2FE0 = max;
+    D_800D2E58 = cur;
+    D_800D2D38 = cur;
+    D_800D333C = val;
+    D_800D3018 = val;
+    D_800D3668 = cap;
+    level = 0;
+    if (mp) {
+        if (cap / 8 >= val) {
+            level = 2;
+        } else if (cap / 4 >= val) {
+            level = 1;
+        }
+    } else {
+        if (max / 8 >= cur) {
+            level = 2;
+        } else if (max / 4 >= cur) {
+            level = 1;
+        }
+    }
+    h0 = (s16)D_800D2D38 / 100;
+    D_800D2D38 -= h0 * 100;
+    D_800C3E08[0] = h0;
+    h1 = (s16)D_800D2D38 / 10;
+    D_800D2D38 -= h1 * 10;
+    D_800C3E08[1] = h1;
+    D_800C3E08[2] = D_800D2D38;
+    m0 = (s16)D_800D2FE0 / 100;
+    D_800D2FE0 -= m0 * 100;
+    D_800D2D58[0] = m0;
+    m1 = (s16)D_800D2FE0 / 10;
+    D_800D2FE0 -= m1 * 10;
+    D_800D2D58[1] = m1;
+    D_800D2D58[2] = D_800D2FE0;
+    p0 = D_800D3018 / 10000;
+    D_800D3018 -= p0 * 10000;
+    D_800D2D88[0] = p0;
+    p1 = D_800D3018 / 1000;
+    D_800D3018 -= p1 * 1000;
+    D_800D2D88[1] = p1;
+    p2 = D_800D3018 / 100;
+    D_800D3018 -= p2 * 100;
+    D_800D2D88[2] = p2;
+    p3 = D_800D3018 / 10;
+    D_800D3018 -= p3 * 10;
+    D_800D2D88[3] = p3;
+    D_800D2D88[4] = D_800D3018;
+    for (i = 0; i < 2; i++) {
+        if (D_800C3E08[i] != 0) {
+            break;
+        }
+        D_800C3E08[i] = 0xFF;
+    }
+    for (i = 0; i < 2; i++) {
+        if (D_800D2D58[i] != 0) {
+            break;
+        }
+        D_800D2D58[i] = 0xFF;
+    }
+    for (i = 0; i < 4; i++) {
+        if (D_800D2D88[i] != 0) {
+            break;
+        }
+        D_800D2D88[i] = 0xFF;
+    }
+    return level;
+}
 extern u8 D_800C3CF9[];
 extern u8 D_800D32A0[];
 extern u16 D_800CCDC4__rows[][184] asm("D_800CCDC4");
