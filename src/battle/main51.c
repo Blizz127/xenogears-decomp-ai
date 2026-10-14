@@ -4,7 +4,7 @@ s32 rand();
 extern void *D_800C34B0;
 extern void * D_800C3DFC;
 extern void * D_800C3E00;
-extern s8 D_800D2DC4;
+extern u8 D_800D2DC4;
 void func_80096824(void);
 #endif
 
@@ -1584,7 +1584,180 @@ void func_80094D24(void) {
     }
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80094EE4);
+s32 func_80096AB8(void);
+s16 func_80096FBC(void);
+s16 func_80097610(void);
+void func_80096494(u16* atk, u16* def, u8* res);
+extern u8 D_800D2C88[];
+
+/* func_80094EE4.s, byte-exact: damage for target D_800C3E50 (outcome
+ * byte +0x5FA0, result word +0x5F6C).  A target immune to the command
+ * (D_800C3E34 +0x34 bit 0x4000 when command +0xA has bit 0x100, else bit
+ * 0x8000) only gets outcome 0.  Otherwise res = func_80096AB8() (the hit
+ * roll), atk = func_80096FBC() and def = func_80097610(); attacker
+ * D_800C3E00 +0x88 | +0x8A bits 8 / 2 / 4 / 1 change atk by +1/5, +1/10,
+ * -1/5, -1/10, and the target's bits 4 / 1 / 8 / 2 do the same to def.
+ * Command +0x22 bit 0x10 sets target +0x80 bit 0x40 (unless +0x82 has
+ * it) and, for attacker +0x8C | +0x8E bits 0x4000 / 0x1000, D_800C3E04's
+ * D_800D2C88 byte (3 / 2) and D_800D2C54 word ((u16)(+0x52 / 10) * 2 /
+ * (u16)(+0x4E / 10) * 2); +0x22 bit 0x20 sets target +0x80 bit 0x80
+ * (unless +0x82 has it).  Target +0x80 bit 0x40 takes a quarter off def
+ * and attacker +0x80 bit 0x80 a quarter off atk, clearing the bit; +0xA
+ * bit 0x400 makes the rate 20 instead of command +0x11.
+ * func_80096494(&atk, &def, &res) applies the element modifier.  Then
+ * dmg = 5 * atk - 4 * def (+0xA bit 0x100) or 4 * atk - 3 * def, only
+ * the atk term when def is 0; damage types 0 and 1 (+0x1A) scale it by
+ * rate / 20; dmg <= 0 becomes 0, below 10 gains rand() % 2, else
+ * rand() % (dmg / 10 + 2).  res 1: outcome 0 and at least 1 damage;
+ * 2: half damage, outcome 5; 3: no damage, outcome 4; 4: outcome 2;
+ * 5: outcome 7.  With D_800D2DC4 set, a +0xA bit 0x100 command divides a
+ * nonzero dmg by 3; the result is clamped to 0..9999.
+ * The switch on res is a jump table (jtbl_80070370, placed by the main51
+ * .rodata split in config/battle.yaml).  Codegen: record fields are read
+ * in array form (((u16*)D_800C3E00)[k]); as in-struct loads they may be
+ * scheduled before the stack stores of atk/def, as in retail.  The
+ * immunity mask goes through an if/else temp.  The type test is two
+ * nested ifs on an int: a switch tests the upper bound first and `&&`
+ * folds into one sltiu, while retail tests >= 0 first.  The switch takes
+ * res as (s8): retail sign-extends res - 1 (sll/sra 24), which a u8
+ * switch omits.  Case 1 writes the outcome in both arms (retail repeats
+ * the address computation and shares the store). */
+void func_80094EE4(void) {
+    u16 atk;
+    u16 def;
+    u8 res;
+    u8 rate;
+    s32 m;
+    s32 n;
+    s32 dmg;
+    s32 t;
+    s32 type;
+
+    rate = ((u8*)D_800C3DFC)[0x11];
+    if (((u16*)D_800C3DFC)[5] & 0x100) {
+        t = ((u16*)D_800C3E34)[0x1A] & 0x4000;
+    } else {
+        t = ((u16*)D_800C3E34)[0x1A] & 0x8000;
+    }
+    if (t) {
+        ((Battle*)D_800C34B0)->f5FA0[D_800C3E50] = 0;
+        return;
+    }
+    res = func_80096AB8();
+    atk = func_80096FBC();
+    def = func_80097610();
+    if ((((u16*)D_800C3E00)[0x44] | ((u16*)D_800C3E00)[0x45]) & 8) {
+        atk += atk / 5;
+    }
+    if ((((u16*)D_800C3E00)[0x44] | ((u16*)D_800C3E00)[0x45]) & 2) {
+        atk += atk / 10;
+    }
+    if ((((u16*)D_800C3E00)[0x44] | ((u16*)D_800C3E00)[0x45]) & 4) {
+        atk -= atk / 5;
+    }
+    if ((((u16*)D_800C3E00)[0x44] | ((u16*)D_800C3E00)[0x45]) & 1) {
+        atk -= atk / 10;
+    }
+    if ((((u16*)D_800C3E34)[0x44] | ((u16*)D_800C3E34)[0x45]) & 4) {
+        def += def / 5;
+    }
+    if ((((u16*)D_800C3E34)[0x44] | ((u16*)D_800C3E34)[0x45]) & 1) {
+        def += def / 10;
+    }
+    if ((((u16*)D_800C3E34)[0x44] | ((u16*)D_800C3E34)[0x45]) & 8) {
+        def -= def / 5;
+    }
+    if ((((u16*)D_800C3E34)[0x44] | ((u16*)D_800C3E34)[0x45]) & 2) {
+        def -= def / 10;
+    }
+    if (((u8*)D_800C3DFC)[0x22] & 0x10) {
+        if (!(((u16*)D_800C3E34)[0x41] & 0x40)) {
+            ((u16*)D_800C3E34)[0x40] |= 0x40;
+        }
+        if ((((u16*)D_800C3E00)[0x46] | ((u16*)D_800C3E00)[0x47]) & 0x4000) {
+            D_800D2C88[D_800C3E04] = 3;
+            D_800D2C54[D_800C3E04] = (u16)(((u16*)D_800C3E00)[0x29] / 10) * 2;
+        }
+        if ((((u16*)D_800C3E00)[0x46] | ((u16*)D_800C3E00)[0x47]) & 0x1000) {
+            D_800D2C88[D_800C3E04] = 2;
+            D_800D2C54[D_800C3E04] = (u16)(((u16*)D_800C3E00)[0x27] / 10) * 2;
+        }
+    }
+    if ((((u8*)D_800C3DFC)[0x22] & 0x20) && !(((u16*)D_800C3E34)[0x41] & 0x80)) {
+        ((u16*)D_800C3E34)[0x40] |= 0x80;
+    }
+    if (((u16*)D_800C3E34)[0x40] & 0x40) {
+        def -= def >> 2;
+        ((u16*)D_800C3E34)[0x40] &= 0xFFBF;
+    }
+    if (((u16*)D_800C3E00)[0x40] & 0x80) {
+        atk -= atk >> 2;
+        ((u16*)D_800C3E00)[0x40] &= 0xFF7F;
+    }
+    if (((u16*)D_800C3DFC)[5] & 0x400) {
+        rate = 20;
+    }
+    func_80096494(&atk, &def, &res);
+    if (((u16*)D_800C3DFC)[5] & 0x100) {
+        m = 5;
+        n = 4;
+    } else {
+        m = 4;
+        n = 3;
+    }
+    if (def != 0) {
+        dmg = m * atk - n * def;
+    } else {
+        dmg = m * atk;
+    }
+    type = ((u8*)D_800C3DFC)[0x1A];
+    if (type >= 0) {
+        if (type < 2) {
+            dmg = rate * dmg / 20;
+        }
+    }
+    if (dmg <= 0) {
+        dmg = 0;
+    } else if (dmg < 10) {
+        dmg += rand() % 2;
+    } else {
+        dmg += rand() % (dmg / 10 + 2);
+    }
+    switch ((s8)res) {
+    case 1:
+        if (dmg > 0) {
+            ((Battle*)D_800C34B0)->f5FA0[D_800C3E50] = 0;
+        } else {
+            dmg = 1;
+            ((Battle*)D_800C34B0)->f5FA0[D_800C3E50] = 0;
+        }
+        break;
+    case 2:
+        dmg /= 2;
+        ((Battle*)D_800C34B0)->f5FA0[D_800C3E50] = 5;
+        break;
+    case 3:
+        dmg = 0;
+        ((Battle*)D_800C34B0)->f5FA0[D_800C3E50] = 4;
+        break;
+    case 4:
+        ((Battle*)D_800C34B0)->f5FA0[D_800C3E50] = 2;
+        break;
+    case 5:
+        ((Battle*)D_800C34B0)->f5FA0[D_800C3E50] = 7;
+        break;
+    }
+    if (D_800D2DC4 != 0 && (((u16*)D_800C3DFC)[5] & 0x100) && dmg != 0) {
+        dmg /= 3;
+    }
+    if (dmg >= 10000) {
+        dmg = 9999;
+    }
+    if (dmg < 0) {
+        dmg = 0;
+    }
+    ((Battle*)D_800C34B0)->f5F6C[D_800C3E50] = dmg;
+}
 extern u8* D_800C3E34;
 extern u8 D_800CCE42[];
 
