@@ -499,7 +499,70 @@ void func_80073A58(void) {
     }
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80073B64);
+extern u8 D_800C3EB6__rows[][28] asm("D_800C3EB6");
+
+/* func_80073B64.s, byte-exact: add the battle HUD prims to the order
+ * table.
+ * - The D_800D2D28 +0x97 sprites from +0x98 (AddPrim, 16-byte stride at
+ *   D_800C3EA4 + 0x908).
+ * - Four func_800728B8(prims, count, start) strips at +0x2E08 + i * 0x320
+ *   (counts +0x74, starts +0x84).
+ * - Per active slot (+0xCC): the +0x853D-selected strip (kind 1 at
+ *   +0x835C, kind 2 at +0x83FC) and the +0x6008 strip (+0xEC count, +0x99
+ *   start).
+ * - The +0x9C8 strip when +0xAF is set, and the three +0x3A88 label
+ *   strips (+0xE0 counts, +0x93 starts).
+ * - Per slot whose D_800C3EB6 row is not 0x7F: the +0x818 strip (one
+ *   prim from +0x83), and for active slots the i * 0x1E0 strip and one
+ *   D_800CCB34-buffer prim at +0x740.
+ * Codegen: every offset is parenthesised and added to D_800C3EA4 last (as
+ * in func_80072DA8); the D_800D2D28 bytes are read as (base + i)[off];
+ * D_800C3EB6 goes through a row view; the +0x853D row pointer comes from
+ * a block-local base (as in func_80073380).  Matches under gcc 2.6.x. */
+void func_80073B64(void) {
+    s32 i;
+    u8* p;
+    u8* base;
+
+    for (i = 0; i < ((u8*)D_800D2D28)[0x97]; i++) {
+        AddPrim(D_800CCB04 + 4, (u8*)D_800C3EA4 + ((((u8*)D_800D2D28)[0x98] + i * 2) * 16 + 0x908));
+    }
+    for (i = 0; i < 4; i++) {
+        func_800728B8((u8*)D_800C3EA4 + (i * 0x320 + 0x2E08), ((u8*)D_800D2D28 + i)[0x74], ((u8*)D_800D2D28 + i)[0x84]);
+    }
+    for (i = 0; i < 3; i++) {
+        if (((u8*)D_800D2D28 + i)[0xCC] != 0) {
+            base = D_800C3EA4;
+            p = base + i * 0x1E4;
+            switch (p[0x853D]) {
+            case 1:
+                func_800728B8((u8*)D_800C3EA4 + (i * 0x1E4 + 0x835C), p[0x853E], p[0x853C]);
+                break;
+            case 2:
+                func_800728B8((u8*)D_800C3EA4 + (i * 0x1E4 + 0x835C) + 0xA0, p[0x853F], p[0x853C]);
+                break;
+            }
+            func_800728B8((u8*)D_800C3EA4 + (i * 0x140 + 0x6008), *(s32*)((u8*)D_800D2D28 + i * 4 + 0xEC),
+                          ((u8*)D_800D2D28 + i)[0x99]);
+        }
+    }
+    if (((u8*)D_800D2D28)[0xAF] != 0) {
+        func_800728B8((u8*)D_800C3EA4 + 0x9C8, ((u8*)D_800D2D28)[0x7B], ((u8*)D_800D2D28)[0xA4]);
+    }
+    for (i = 0; i < 3; i++) {
+        func_800728B8((u8*)D_800C3EA4 + (i * 0xC80 + 0x3A88), *(s32*)((u8*)D_800D2D28 + i * 4 + 0xE0),
+                      ((u8*)D_800D2D28 + i)[0x93]);
+    }
+    for (i = 0; i < 3; i++) {
+        if (D_800C3EB6__rows[i][0] != 0x7F) {
+            func_800728B8((u8*)D_800C3EA4 + (i * 0x50 + 0x818), 1, ((u8*)D_800D2D28)[0x83]);
+            if (((u8*)D_800D2D28 + i)[0xCC] != 0) {
+                func_800728B8((u8*)D_800C3EA4 + i * 0x1E0, ((u8*)D_800D2D28 + i)[0x78], ((u8*)D_800D2D28)[0xA2]);
+                AddPrim(D_800CCB04__a_s32[0] + 4, (u8*)D_800C3EA4 + ((i * 2 + D_800CCB04__a_s32[12]) * 36 + 0x740));
+            }
+        }
+    }
+}
 extern void *D_800C3EA4;
 
 void func_80073E88(void) {
