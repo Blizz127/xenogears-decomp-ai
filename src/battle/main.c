@@ -384,7 +384,66 @@ s32 func_800716D8(void) {
 }
 #endif
 
-INCLUDE_ASM("asm/battle/nonmatchings/main", func_8007171C);
+extern u8 D_800D2DCC[];
+extern u8 D_800D2DE4[];
+extern u16 D_800CCD64__rows[][184] asm("D_800CCD64");
+extern u16 D_800CCD68__rows[][184] asm("D_800CCD68");
+extern u16 D_800CCD6C__rows[][184] asm("D_800CCD6C");
+extern u16 D_800CCD6E__rows[][184] asm("D_800CCD6E");
+extern u8 D_800CCE44__rows[][368] asm("D_800CCE44");
+extern u16 D_800D2E06[];
+extern u16 D_800D2E1C[];
+
+/* func_8007171C.s, byte-exact: per-frame actor wait countdowns
+ * (func_800718BC below reloads an actor's D_800D2E06 count and clears its
+ * D_800D2DE4 flag).  While D_800D3298 is set, for each of the 11 actors
+ * i that is present (D_800D2DCC) and whose D_800D2DE4 flag is clear:
+ * step = 2 if either D_800CCD6C/D_800CCD6E halfword of its 0x170-byte
+ * record has bit 15, else 1.  With D_800CCD64 bit 12 the actor only
+ * ticks every other frame (D_800D2E1C toggles).  With bit 13 the
+ * D_800CCE44 byte counts down by step instead and, at 0, bit 13 is
+ * cleared; otherwise, unless bit 7 or the D_800CCD68 bit 12 is set, the
+ * D_800D2E06 count goes down by step and at <= 0 is zeroed and the
+ * actor's D_800D2DE4 flag set.
+ * Codegen: the records go through asm-label row views (retail keeps one
+ * 0x170 offset with the symbol in each address); both countdowns test
+ * the stored value.  Matches under gcc 2.6.x and 2.7.2. */
+void func_8007171C(void) {
+    s32 i;
+    u8 step;
+    u16 h;
+
+    if (D_800D3298 != 0) {
+        for (i = 0; i < 11; i++) {
+            if (D_800D2DCC[i] != 0 && D_800D2DE4[i] == 0) {
+                step = 1;
+                if ((D_800CCD6C__rows[i][0] | D_800CCD6E__rows[i][0]) & 0x8000) {
+                    step = 2;
+                }
+                if (D_800CCD64__rows[i][0] & 0x1000) {
+                    if ((D_800D2E1C[i] ^= 1) != 0) {
+                        continue;
+                    }
+                }
+                h = D_800CCD64__rows[i][0];
+                if (h & 0x2000) {
+                    if ((D_800CCE44__rows[i][0] -= step) <= 0) {
+                        D_800CCE44__rows[i][0] = 0;
+                        D_800CCD64__rows[i][0] &= ~0x2000;
+                    }
+                } else if (!(h & 0x80)) {
+                    if (!(D_800CCD68__rows[i][0] & 0x1000)) {
+                        D_800D2E06[i] -= step;
+                        if ((s16)D_800D2E06[i] <= 0) {
+                            D_800D2DE4[i] = 1;
+                            D_800D2E06[i] = 0;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 extern u8* D_800C3EAC;
 extern u8 D_800D2DE4[];
 extern u16 D_800D2E06[];
