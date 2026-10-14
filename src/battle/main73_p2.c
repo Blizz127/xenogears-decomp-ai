@@ -70,7 +70,128 @@ u32 func_800AF518(u8* obj, u8 code, u32* flag) {
     }
     return (*(u32**)(obj + 0x18))[code - 0x3F];
 }
-INCLUDE_ASM("asm/battle/nonmatchings/main73_p2", func_800AF678);
+extern u8* func_800A2330(u8* pool);
+
+/* Start a motion on node: take its +0x70/+0x74/+0x78 record (by flags & 7:
+ * 0 the +0x54 halfword triple, 1 the +0x5C word triple, else the +0x4C
+ * halfword triple), or a new one from the pool, and fill it as kind + 3:
+ * +1 = a6, +3 = a5, start (x, y, z) plus the node's current triple when
+ * flags has 0x20, target (x2, y2, z2) plus it when flags has 0x40 (stored
+ * as the delta from the start for kind 0), +0x12 = steps.  Kinds 0 and 1
+ * also set the triple to the start.  With flags bit 7, do the same for
+ * the entries of the (ctx + 4) table (0x7C bytes each, count at +0xA)
+ * whose first word is node, as func_800AFD98 does. */
+void func_800AF678(u8* ctx, u8* pool, u8* node, u8 flags, u8 kind, u8 a5, u8 a6, s16 x, s16 y, s16 z, s16 x2,
+                   s16 y2, s16 z2, s16 steps) {
+    u8* e;
+    u8* p;
+    u8 type;
+    u16 bx;
+    u16 by;
+    u16 bz;
+    u16 cx;
+    u16 cy;
+    u16 cz;
+    s32 i;
+
+    type = flags & 7;
+    if (type == 0) {
+        e = *(u8**)(node + 0x70);
+    } else if (type == 1) {
+        e = *(u8**)(node + 0x74);
+    } else {
+        e = *(u8**)(node + 0x78);
+    }
+    if (e != NULL || (e = func_800A2330(pool)) != NULL) {
+        e[0] = 1;
+        e[1] = a6;
+        e[2] = kind + 3;
+        e[3] = a5;
+        if (flags & 0x20) {
+            if (type == 0) {
+                bx = *(u16*)(node + 0x54);
+                by = *(u16*)(node + 0x56);
+                bz = *(u16*)(node + 0x58);
+            } else if (type == 1) {
+                bx = *(u16*)(node + 0x5C);
+                by = *(u16*)(node + 0x60);
+                bz = *(u16*)(node + 0x64);
+            } else {
+                bx = *(u16*)(node + 0x4C);
+                by = *(u16*)(node + 0x4E);
+                bz = *(u16*)(node + 0x50);
+            }
+        } else {
+            bx = 0;
+            by = 0;
+            bz = 0;
+        }
+        if (flags & 0x40) {
+            if (type == 0) {
+                cx = *(u16*)(node + 0x54);
+                cy = *(u16*)(node + 0x56);
+                cz = *(u16*)(node + 0x58);
+            } else if (type == 1) {
+                cx = *(u16*)(node + 0x5C);
+                cy = *(u16*)(node + 0x60);
+                cz = *(u16*)(node + 0x64);
+            } else {
+                cx = *(u16*)(node + 0x4C);
+                cy = *(u16*)(node + 0x4E);
+                cz = *(u16*)(node + 0x50);
+            }
+        } else {
+            cx = 0;
+            cy = 0;
+            cz = 0;
+        }
+        *(u16*)(e + 4) = x + bx;
+        *(u16*)(e + 6) = y + by;
+        *(u16*)(e + 8) = z + bz;
+        if (kind == 0) {
+            *(s16*)(e + 0xA) = x2 + cx - *(u16*)(e + 4);
+            *(s16*)(e + 0xC) = y2 + cy - *(u16*)(e + 6);
+            *(s16*)(e + 0xE) = z2 + cz - *(u16*)(e + 8);
+        } else {
+            *(s16*)(e + 0xA) = x2 + cx;
+            *(s16*)(e + 0xC) = y2 + cy;
+            *(s16*)(e + 0xE) = z2 + cz;
+        }
+        *(s16*)(e + 0x10) = 0;
+        *(u16*)(e + 0x12) = steps;
+        if (type == 0) {
+            if (kind < 2) {
+                *(u16*)(node + 0x54) = *(u16*)(e + 4);
+                *(u16*)(node + 0x56) = *(u16*)(e + 6);
+                *(u16*)(node + 0x58) = *(u16*)(e + 8);
+            }
+            *(u8**)(node + 0x70) = e;
+        } else if (type == 1) {
+            if (kind < 2) {
+                *(s32*)(node + 0x5C) = *(s16*)(e + 4);
+                *(s32*)(node + 0x60) = *(s16*)(e + 6);
+                *(s32*)(node + 0x64) = *(s16*)(e + 8);
+            }
+            *(u8**)(node + 0x74) = e;
+        } else {
+            if (kind < 2) {
+                *(u16*)(node + 0x4C) = *(u16*)(e + 4);
+                *(u16*)(node + 0x4E) = *(u16*)(e + 6);
+                *(u16*)(node + 0x50) = *(u16*)(e + 8);
+            }
+            *(u8**)(node + 0x78) = e;
+        }
+    }
+    if (flags & 0x80) {
+        p = *(u8**)(ctx + 4);
+        for (i = 1; i < *(u16*)(*(u8**)(ctx + 4) + 0xA); i++) {
+            p += 0x7C;
+            if (*(u8**)p == node) {
+                func_800AF678(ctx, pool, p, flags, kind, a5, a6, x, y, z, x2, y2, z2, steps);
+            }
+        }
+    }
+}
 void func_800AFA98(u8 *arg0, u8 *arg1, s32 arg2) {
     u8 *var_s0;
     s32 var_s1;
