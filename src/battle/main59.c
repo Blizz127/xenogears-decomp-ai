@@ -4,7 +4,115 @@
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/battle/nonmatchings/main59", func_8009C134);
 INCLUDE_ASM("asm/battle/nonmatchings/main59", func_8009C198);
-INCLUDE_ASM("asm/battle/nonmatchings/main59", func_8009C4B4);
+extern u8* D_800C34B0;
+extern u8* D_800C3E00;
+extern u8 D_800C3E04;
+extern u8 D_800C3E50;
+extern u8* D_800C3E34;
+extern u8* D_800C3D3C;
+extern u8 D_800D2C34;
+extern u8* D_800D2DC8;
+extern s32 rand(void);
+
+/* The D_800C34B0 block's outcome bytes, as main51's Battle struct. */
+typedef struct {
+    u8 pad[0x5FA0];
+    u8 f5FA0[8];
+} BattleOutcomes;
+
+/* func_8009C4B4.s, byte-exact: per-slot bookkeeping after an action (the
+ * main59.c port arm below does the same).  For a party actor
+ * (D_800C3E04 < 3) the D_800C34B0 +0x5FC2 command index drives:
+ * commands 0-2 bump the D_800C3D3C counter byte, capped at its second
+ * byte; 3-5 / 6-8 / 9-11 set it to D_800D2C34 - 1 / - 2 / - 3; 3-11 add
+ * index / 3 to D_800C3E00 +0x54, and 5 / 8 / 11 add 1 / 2 / 3 more.
+ * Then, for actor D_800C3E50: outcome 0 with D_800C3E34 +0x80 bit 0x2000
+ * clears that bit and D_800D2DC8 +0x7C bit 0x1000 on rand() % 100 < 80;
+ * outcome 10 with D_800D2DC8 +0x7E bit 0x80 zeroes the +0x5F6C result
+ * word; outcome 0 gets the +0x32 bit 0x80 halve/add-half roll (60, or 80
+ * when +0x56 is 0) and the +0x32 bit 0x20 copy to D_800C3E04, as in
+ * func_800946F4; +0x8A bit 0x200 zeroes an outcome-1 result word.
+ * Codegen: the outcome bytes go through a struct view (BattleOutcomes,
+ * main51's Battle layout), which loads D_800C34B0 before the index as
+ * retail does; the counter cap compares the incremented value held in
+ * `v`.  Matches only under gcc 2.6.x (D_800D2C34 - 1 is addiu 0xFF). */
+void func_8009C4B4(void) {
+    s32 lim;
+    u8 v;
+
+    if (D_800C3E04 < 3) {
+        if (D_800C34B0[0x5FC2] < 3) {
+            v = D_800C3D3C[0] + 1;
+            D_800C3D3C[0] = v;
+            if (D_800C3D3C[1] < v) {
+                D_800C3D3C[0]--;
+            }
+        }
+        if (D_800C34B0[0x5FC2] >= 3 && D_800C34B0[0x5FC2] < 6) {
+            D_800C3D3C[0] = D_800D2C34 - 1;
+        }
+        if (D_800C34B0[0x5FC2] >= 6 && D_800C34B0[0x5FC2] < 9) {
+            D_800C3D3C[0] = D_800D2C34 - 2;
+        }
+        if (D_800C34B0[0x5FC2] >= 9 && D_800C34B0[0x5FC2] < 12) {
+            D_800C3D3C[0] = D_800D2C34 - 3;
+        }
+        if (D_800C34B0[0x5FC2] >= 3 && D_800C34B0[0x5FC2] < 12) {
+            D_800C3E00[0x54] += D_800C34B0[0x5FC2] / 3;
+        }
+        if (D_800C34B0[0x5FC2] == 5) {
+            D_800C3E00[0x54] += 1;
+        }
+        if (D_800C34B0[0x5FC2] == 8) {
+            D_800C3E00[0x54] += 2;
+        }
+        if (D_800C34B0[0x5FC2] == 11) {
+            D_800C3E00[0x54] += 3;
+        }
+    }
+    if (((BattleOutcomes*)D_800C34B0)->f5FA0[D_800C3E50] == 0 && (*(u16*)(D_800C3E34 + 0x80) & 0x2000)) {
+        if (rand() % 100 < 80) {
+            u8* e = D_800C3E34;
+            u8* d = D_800D2DC8;
+
+            *(u16*)(e + 0x80) &= 0xDFFF;
+            *(u16*)(d + 0x7C) &= 0xEFFF;
+        }
+    }
+    {
+        u8* b = D_800C34B0;
+        u32 i = D_800C3E50;
+
+        if ((b + i)[0x5FA0] == 10 && (*(u16*)(D_800D2DC8 + 0x7E) & 0x80)) {
+            *(u32*)(b + i * 4 + 0x5F6C) = 0;
+        }
+    }
+    if (((BattleOutcomes*)D_800C34B0)->f5FA0[D_800C3E50] == 0) {
+        if (*(u16*)(D_800C3E34 + 0x32) & 0x80) {
+            lim = 60;
+            if (D_800C3E34[0x56] == 0) {
+                lim = 80;
+            }
+            if (rand() % 100 < lim) {
+                *(u32*)(D_800C34B0 + D_800C3E50 * 4 + 0x5F6C) >>= 1;
+            } else {
+                *(u32*)(D_800C34B0 + D_800C3E50 * 4 + 0x5F6C) += *(u32*)(D_800C34B0 + D_800C3E50 * 4 + 0x5F6C) >> 1;
+            }
+        }
+        if (*(u16*)(D_800C3E34 + 0x32) & 0x20) {
+            ((BattleOutcomes*)D_800C34B0)->f5FA0[D_800C3E04] = 0;
+            *(u32*)(D_800C34B0 + D_800C3E04 * 4 + 0x5F6C) = *(u32*)(D_800C34B0 + D_800C3E50 * 4 + 0x5F6C);
+        }
+    }
+    if (*(u16*)(D_800C3E34 + 0x8A) & 0x200) {
+        u8* b = D_800C34B0;
+        u32 i = D_800C3E50;
+
+        if ((b + i)[0x5FA0] == 1) {
+            *(u32*)(b + i * 4 + 0x5F6C) = 0;
+        }
+    }
+}
 extern u8* D_800C34B0;
 extern u8* D_800C3DFC;
 extern u8* D_800C3E00;
