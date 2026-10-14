@@ -2,7 +2,6 @@
 
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/mainc112", func_800BAF48);
 extern void func_800B14CC(u32 skip);
 extern u8 D_800C3EB0[];
 
@@ -13,6 +12,48 @@ typedef struct {
     u8* tasks[11];
     s32 flags[3];
 } BattleTaskTable;
+
+extern void func_800BC404(u32 v);
+extern void func_800B8D7C(void);
+extern void func_800245D8(void* object, s16 animation);
+extern void func_800BE790(void);
+extern void func_800BADD4(u32 i);
+extern void func_800BB760(u32 i);
+extern s32 g_NumTimerWorkListEntries[];
+extern s32 D_800C35D8[];
+
+/* Retire party slot `slot`: flush its command mask (func_800BC404), play
+ * animation 0x16 on its task and pump frames (func_800BE790) while the
+ * task's +0x9E is set and its +0xAF still reads 0x16, wait until the timer
+ * list is back to its entry count, release the slot (func_800BADD4,
+ * func_800BB760) and wait for D_800C35D8 to reach 0.
+ * The timer-list count is declared as an array: for a small-data scalar
+ * the CDK cc1 emits a `lw` macro, where retail splits %hi/%lo and keeps
+ * the %hi in s0 across the wait loop. */
+void func_800BAF48(u32 slot) {
+    u8* actor;
+    s32 count;
+
+    func_800BC404(1 << slot);
+    func_800BC404(0);
+    count = g_NumTimerWorkListEntries[0];
+    actor = ((BattleTaskTable*)D_800C3EB0)->tasks[slot];
+    func_800B8D7C();
+    func_800245D8(actor, 0x16);
+    while (*(s16*)(actor + 0x9E) != 0 && *(s8*)(actor + 0xAF) == 0x16) {
+        func_800BE790();
+    }
+    while (g_NumTimerWorkListEntries[0] != count) {
+        func_800BE790();
+    }
+    func_800BADD4(slot);
+    func_800BE790();
+    func_800BE790();
+    func_800BB760(slot);
+    while (D_800C35D8[0] != 0) {
+        func_800BE790();
+    }
+}
 
 /* Free every task in the table except `skip` whose +0x48 is clear (owner
  * +0x6C's +0xC callback), zeroing its slot and flag. */

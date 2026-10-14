@@ -289,6 +289,7 @@ func_800BAC50	port arm in src/battle/main111.c	func_800BAC50
 func_800BACBC	port arm in src/battle/main111.c	func_800BACBC
 func_800BADD4	port arm in src/battle/main111.c	func_800BADD4
 func_800BAF40	port arm in src/battle/main.c	func_800BAF40
+func_800BAF48	port arm in src/battle/mainc112.c	func_800BAF48
 func_800BB080	port arm in src/battle/mainc112.c	func_800BB080
 func_800BB13C	port arm in src/battle/mainc112.c	func_800BB13C
 func_800BB248	port arm in src/battle/mainc112.c	func_800BB248
