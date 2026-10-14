@@ -150,7 +150,68 @@ void func_800BD024(void *arg0) {
 }
 #endif
 
-INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BD098);
+/* The 0x68-byte highlight task (the Popup view above, seen from its
+ * initialiser; the +0x4C anim block covers Popup's spin). */
+typedef struct {
+    u8 pad0[0x14];
+    u32 flags;       /* +0x14 */
+    u8 pad18[0x20];
+    u8* sprite;      /* +0x38 */
+    u8 pad3C[0x10];
+    u8 anim[8];      /* +0x4C */
+    u32 height;      /* +0x54 */
+    u32 phase;       /* +0x58 */
+    u8* buf;         /* +0x5C */
+    u8* copy;        /* +0x60 */
+    u8* rec;         /* +0x64 */
+} BD098Task;
+
+extern u32 WorkListsAddTasks(u32 a0, u32 a1, void* a2, void* a3, void* a4);
+extern void func_80021B04(void* arg0, s16 arg1, s16 arg2, s16 arg3);
+extern u8* func_800B168C(u8* p, u32 i);
+extern u32 func_800B16A4(u8* data);
+extern void func_800B1720(u8* src, u8* dst, u32 a2, u32 a3);
+extern void memcpy(void* dst, void* src, s32 n);
+extern u8 D_8001C76C[];
+extern u8 D_800591AC;
+extern s32 D_80059464;
+
+/* func_800BD098.s: start the highlight task pair for the sprite owned by
+ * `owner` (owner +4): a 0x68-byte work-list task (func_800BCFAC /
+ * func_800BCEAC / func_800BD024) holding the sprite and its +0x36 height;
+ * undo one D_80059464 count when D_800591AC is set; clear the task's top
+ * flag bit; reset the +0x4C anim block; decode the D_8001C76C frame
+ * (func_800B168C(.., 0)) into a heap buffer twice its size, keep a pristine
+ * copy in the second half, clear the sprite's +0x2B bit 0, func_8001F6B0 and
+ * prime the task with one func_800BCFAC step.  memcpy is declared like
+ * main135's: an undeclared memcpy stays gcc's builtin (a bcopy libcall). */
+void func_800BD098(u8* owner) {
+    u8* sprite = *(u8**)(owner + 4);
+    BD098Task* t;
+    u32 size;
+    u8* buf;
+    u8* copy;
+
+    t = (BD098Task*)WorkListsAddTasks(0x68, (u32)owner, func_800BCFAC, func_800BCEAC, func_800BD024);
+    t->sprite = sprite;
+    t->height = *(u16*)(sprite + 0x36);
+    if (D_800591AC != 0) {
+        D_80059464--;
+    }
+    t->flags &= 0x7FFFFFFF;
+    func_80021B04(t->anim, 0, 0, 0);
+    size = func_800B16A4(func_800B168C(D_8001C76C, 0));
+    buf = HeapAlloc(size * 2, 0);
+    func_800B1720(func_800B168C(D_8001C76C, 0), buf, 0, 1);
+    copy = buf + size;
+    memcpy(copy, buf, size);
+    t->buf = buf;
+    t->copy = copy;
+    t->rec = func_800B168C(D_8001C76C, 0);
+    sprite[0x2B] &= 0xFE;
+    func_8001F6B0(sprite);
+    func_800BCFAC((u8*)t);
+}
 INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BD1FC);
 /* D_800C3EB0 seen as a union of two struct views: the per-record kind bytes
  * (0x48-byte records at +0x150) and the slot record pointers at +0x8C8C.
