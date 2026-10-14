@@ -2,7 +2,73 @@
 
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/main49", func_8008CDE4);
+extern u16 D_800C324E;
+extern u16 D_800C3250;
+extern u16 D_800C3252;
+extern u16 D_800C323A;
+extern u8 g_GameState[];
+extern u8 D_800D2D24[];
+extern u16 D_800CCD62__rows[][184] asm("D_800CCD62");
+extern u16 D_800CCDC4__rows[][184] asm("D_800CCDC4");
+extern u16 D_800CEF10__rows[][42][20] asm("D_800CEF10");
+extern u16 D_800CEF34__rows[][42][20] asm("D_800CEF34");
+extern u16 func_80089C6C(u16 bits, u8 b);
+extern u8* D_800D2D28;
+extern void func_8008CCCC(u8 flag);
+extern void func_8008CD28(u8 index);
+extern u8 func_80085084(u16 arg0, u8 arg1, u8 arg2);
+extern void func_8008AA74(u32 v);
+
+/* func_8008CDE4.s, byte-exact: use slot `slot` of party actor `actor`
+ * (the func_8008BD50 pattern for a costed entry).  The cost is the D_800CEF34
+ * halfword and the target word the D_800CEF10 halfword of entry
+ * slot + 0x25 in the actor's 42 x 40-byte table.  It needs the actor's
+ * D_800CCDC4 halfword (0x170-byte records) to cover the cost,
+ * func_80089C6C to accept the g_GameState + 0x16DA + D_800D2D24[actor] * 32
+ * halfword for the slot, and none of the slot's mask bits (D_800C324E,
+ * D_800C3250, D_800C3252, D_800C323A, as in func_800939CC) in the
+ * actor's D_800CCD62 halfword.  Then func_8008CCCC(1) and D_800D2D28
+ * +0xC6 = 1, and func_80085084(target, actor, 0): on commit the cost is
+ * paid and it returns 1, else +0xC6 is cleared and func_8008CD28(actor)
+ * runs.  When any check fails, func_8008AA74(0x4F).  Returns 0 unless the
+ * command was committed.
+ * Codegen: the record halfwords go through asm-label row views, which
+ * keep the symbol in each address; with a u8 array plus offset, CSE keeps
+ * the record pointer in an extra s-register across the calls. */
+u8 func_8008CDE4(u8 actor, u8 slot) {
+    u16 masks[4];
+    u16 cost;
+    u16 target;
+    u8 fail;
+    u8 ret;
+
+    ret = 0;
+    masks[0] = D_800C324E;
+    masks[1] = D_800C3250;
+    masks[2] = D_800C3252;
+    masks[3] = D_800C323A;
+    cost = D_800CEF34__rows[actor][slot + 0x25][0];
+    target = D_800CEF10__rows[actor][slot + 0x25][0];
+    fail = 1;
+    if (D_800CCDC4__rows[actor][0] >= cost
+        && func_80089C6C(*(u16*)(g_GameState + 0x16DA + D_800D2D24[actor] * 32), slot) != 0
+        && !(D_800CCD62__rows[actor][0] & masks[slot])) {
+        func_8008CCCC(1);
+        D_800D2D28[0xC6] = 1;
+        if (func_80085084(target, actor, 0)) {
+            D_800CCDC4__rows[actor][0] -= cost;
+            ret = 1;
+        } else {
+            D_800D2D28[0xC6] = 0;
+            func_8008CD28(actor);
+        }
+        fail = 0;
+    }
+    if (fail) {
+        func_8008AA74(0x4F);
+    }
+    return ret;
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main49", func_8008CFB8);
 INCLUDE_ASM("asm/battle/nonmatchings/main49", func_8008D328);
 INCLUDE_ASM("asm/battle/nonmatchings/main49", func_8008D598);
