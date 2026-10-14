@@ -1272,9 +1272,154 @@ typedef struct {
 } Battle;
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/main51", func_800941A4);
+extern void func_80097D08(void);
+extern void func_8009C198();
+extern void func_8009AB38(u8 idx);
+extern void func_8009AC48(u8 actor, s32 a1);
+extern void func_80099FB0(void);
+extern void func_8009AFD8(void);
+void func_80094C78(void);
+void func_800946F4(void);
+void func_800958D8(void);
+void func_80095A78(void);
+void func_800968C0(void);
+extern u8 D_800D2DB8;
+extern u8 D_800C34AE;
 extern u8 D_800C3E04;
 extern u8* D_800C3E34;
+extern u8* D_800D2DC8;
+extern u8* D_800D2D6C;
+extern u8* D_800C3D60;
+extern u16 D_800D2C94[];
+extern void (*D_800C348C[])(void);
+
+/* +4 of a 0x170-byte actor record: 8-byte rows indexed by command - 3. */
+typedef struct {
+    u8 pad[4];
+    u8 rows[3][8];
+} BattleActorRows4;
+
+/* func_800941A4.s, byte-exact: run the queued battle command.
+ * func_80097D08(); clear D_800D2DB8 (the result) and D_800C34AE; the
+ * acting actor D_800C3E04 = D_800C34B0 +0x5FC1, D_800C3E00 = its 0x170
+ * record, D_800D2D6C = record +0xA4.  An actor whose +0x15A has bit 7
+ * runs func_8009C198 and func_8009AB38 and returns.  Otherwise
+ * D_800C3DFC points at command D_800C34B0 +0x5FC2 (0x28-byte records:
+ * party actors < 3 at +0x1058 + actor * 0x5F0, others at +0x35D8) and
+ * func_8009AC48(actor, 1) runs.  A command with +0xA bit 0x10 runs
+ * func_8009C198, func_8009AB38 and func_80094C78 and returns.  Else
+ * D_800D2DC4 = 0; +0xA bit 0x100 with record +0x56 == 1 calls
+ * func_80096824; record +0x56 == 4 with command 4 or 5 copies byte 0 of
+ * the record's +4 row (command - 3) to command +0x22; record +0x80 bit
+ * 0x20 with D_800D2C94 & 7 set and D_800D2C94 < 7 sets D_800D2C94 to
+ * 1 << i for each party slot i whose D_800CCD3E byte is 3 (the last one
+ * wins).  Then for each actor 0..10 (D_800C3E50) whose bit is set in
+ * D_800C34B0 +0x5FAC: publish D_800C3E34 (record), D_800D2DC8 (+0xA4)
+ * and D_800C3D60 (+0x148); func_800968C0 for party actors; the handler
+ * D_800C348C[command +0x16]; func_800946F4; for outcome 0 one of
+ * func_80095B44 / func_80095A78 / func_800958D8 by +0xA bits 0x800 /
+ * 0x4000 / 4; D_800C34B0 +0x5FB0 = command +2 (+0xA bit 0) or the
+ * command index.  Afterwards func_80099FB0, func_8009AB38, func_8009AFD8
+ * when record +0x56 == 4 and D_800C34AE is clear; for a party actor with
+ * command < 7 the record's +0x90 halfword [command] grows by +0x55 +
+ * +0xA1 while below 65000; func_80094C78; return D_800D2DB8.  The two
+ * early exits return whatever the last callee left in $v0, as in retail
+ * (the one caller, func_80085CCC, ignores it).
+ * Codegen: the command flags are read as ((u16*)D_800C3DFC)[5]; with
+ * this array form the reload after the 0x10 test is scheduled before the
+ * D_800D2DC4 store, as in retail.  The record offsets are parenthesised
+ * (retail adds the constant to the scaled index before the base).  The
+ * +4 rows go through a struct member array (retail keeps
+ * (command - 3) * 8 unfolded).  D_800D2C94 is declared as an array
+ * (retail keeps its address in a register; the scalar differs in 26
+ * insns).  `bit = 1` sits at the loop start (reorg copies it into an
+ * earlier delay slot). */
+u8 func_800941A4(void) {
+    s32 bit;
+    u8 i;
+    u16 f;
+
+    func_80097D08();
+    D_800D2DB8 = 0;
+    D_800C34AE = 0;
+    D_800C3E04 = ((u8*)D_800C34B0)[0x5FC1];
+    D_800C3E00 = (u8*)D_800C34B0 + D_800C3E04 * 0x170;
+    D_800D2D6C = (u8*)D_800C3E00 + 0xA4;
+    if (((Battle*)D_800C34B0)->actors[((u8*)D_800C34B0)[0x5FC1]].flags & 0x80) {
+        func_8009C198();
+        func_8009AB38(D_800C3E04);
+        return;
+    }
+    if (D_800C3E04 < 3) {
+        D_800C3DFC = (u8*)D_800C34B0 + (D_800C3E04 * 0x5F0 + 0x1058) + ((u8*)D_800C34B0)[0x5FC2] * 0x28;
+    } else {
+        D_800C3DFC = (u8*)D_800C34B0 + (((u8*)D_800C34B0)[0x5FC2] * 0x28 + 0x35D8);
+    }
+    func_8009AC48(D_800C3E04, 1);
+    if (((u16*)D_800C3DFC)[5] & 0x10) {
+        func_8009C198();
+        func_8009AB38(D_800C3E04);
+        func_80094C78();
+        return;
+    }
+    D_800D2DC4 = 0;
+    if ((((u16*)D_800C3DFC)[5] & 0x100) && ((u8*)D_800C3E00)[0x56] == 1) {
+        func_80096824();
+    }
+    if (((u8*)D_800C3E00)[0x56] == 4 && (u8)(((u8*)D_800C34B0)[0x5FC2] - 4) < 2) {
+        ((u8*)D_800C3DFC)[0x22] = ((BattleActorRows4*)D_800C3E00)->rows[((u8*)D_800C34B0)[0x5FC2] - 3][0];
+    }
+    if ((*(u16*)((u8*)D_800C3E00 + 0x80) & 0x20) && (D_800D2C94[0] & 7) && D_800D2C94[0] < 7) {
+        for (i = 0; i < 3; i++) {
+            if (D_800CCD3E__rows[i][0] == 3) {
+                D_800D2C94[0] = 1 << i;
+            }
+        }
+    }
+    bit = 1;
+    for (D_800C3E50 = 0; D_800C3E50 < 11; D_800C3E50++, bit <<= 1) {
+        if (bit & *(u16*)((u8*)D_800C34B0 + 0x5FAC)) {
+            D_800C3E34 = (u8*)D_800C34B0 + D_800C3E50 * 0x170;
+            D_800D2DC8 = D_800C3E34 + 0xA4;
+            D_800C3D60 = D_800C3E34 + 0x148;
+            if (D_800C3E50 < 3) {
+                func_800968C0();
+            }
+            D_800C348C[((u8*)D_800C3DFC)[0x16]]();
+            func_800946F4();
+            if (((Battle*)D_800C34B0)->f5FA0[D_800C3E50] == 0) {
+                f = ((u16*)D_800C3DFC)[5];
+                if (f & 0x800) {
+                    func_80095B44();
+                } else if (f & 0x4000) {
+                    func_80095A78();
+                } else if (f & 4) {
+                    func_800958D8();
+                }
+            }
+            if (((u16*)D_800C3DFC)[5] & 1) {
+                *(u16*)((u8*)D_800C34B0 + 0x5FB0) = *(u16*)((u8*)D_800C3DFC + 2);
+            } else {
+                *(u16*)((u8*)D_800C34B0 + 0x5FB0) = ((u8*)D_800C34B0)[0x5FC2];
+            }
+        }
+    }
+    func_80099FB0();
+    func_8009AB38(D_800C3E04);
+    if (((u8*)D_800C3E00)[0x56] == 4 && D_800C34AE == 0) {
+        func_8009AFD8();
+    }
+    if (D_800C3E04 < 3 && ((u8*)D_800C34B0)[0x5FC2] < 7) {
+        u16* q = (u16*)((u8*)D_800C3E00 + ((u8*)D_800C34B0)[0x5FC2] * 2 + 0x90);
+
+        if (*q < 65000) {
+            *q += ((u8*)D_800C3E00)[0x55] + ((u8*)D_800C3E00)[0xA1];
+        }
+    }
+    func_80094C78();
+    return D_800D2DB8;
+}
+
 extern u16 D_800C3AA4[];
 extern s32 D_800D2C54[];
 extern u16 D_800CCD68__rows[][0xB8] asm("D_800CCD68");
