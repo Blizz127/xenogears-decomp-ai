@@ -287,7 +287,39 @@ void func_80072938(void* prims, s32 start, s32 end, u8 mode) {
 }
 #endif
 INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80072A9C);
-INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80072DA8);
+extern void* D_800C3EA4;
+extern u16 D_800C3254[];
+extern u8 D_800D3280;
+extern u8 D_800D2D88[];
+extern u16 D_800C3076[];
+extern s32 func_80076A10(s32 index, u8* polys, s16 x, s16 y);
+
+/* func_80072DA8.s, byte-exact: draw the five-glyph label of slot `slot`.
+ * For each D_800D2D88 glyph that is not 0xFF, func_80076A10(glyph + 0x67,
+ * the slot's prims at D_800C3EA4 + 0x3A88 + slot * 0xC80 + count * 80,
+ * x = D_800C3076[slot * 24 + i] + D_800C3254[D_800D3280 * 3 + slot], y =
+ * 0x10) adds its sprite count to the slot's D_800D2D28 +0xE0 word.  With
+ * `flag`, func_80072938 then colours the prims from the old count to the
+ * new one.  Codegen: the record offset is parenthesised (retail hoists
+ * slot * 0xC80 + 0x3A88 as one value); func_80076A10 takes an s32 glyph
+ * as its main4 definition does (main2 declared u8, which masks the
+ * argument; retail passes glyph + 0x67 unmasked). */
+void func_80072DA8(s32 slot, u8 flag) {
+    s32 start;
+    s32 i;
+
+    start = *(s32*)((u8*)D_800D2D28 + slot * 4 + 0xE0);
+    for (i = 0; i < 5; i++) {
+        if (D_800D2D88[i] != 0xFF) {
+            *(s32*)((u8*)D_800D2D28 + slot * 4 + 0xE0) += func_80076A10(D_800D2D88[i] + 0x67,
+                (u8*)D_800C3EA4 + (slot * 0xC80 + 0x3A88) + *(s32*)((u8*)D_800D2D28 + slot * 4 + 0xE0) * 80,
+                D_800C3076[slot * 24 + i] + D_800C3254[D_800D3280 * 3 + slot], 0x10);
+        }
+    }
+    if (flag) {
+        func_80072938((u8*)D_800C3EA4 + (slot * 0xC80 + 0x3A88), start, *(s32*)((u8*)D_800D2D28 + slot * 4 + 0xE0), flag);
+    }
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80072F38);
 INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80073380);
 extern void* D_800C3EA4;
@@ -302,7 +334,7 @@ extern u8 D_800D3280;
 extern void* D_800D2F5C;
 extern s32 D_800CCB34__a[] asm("D_800CCB34");
 extern u8 D_800D2D24[];
-extern s32 func_80076A10(u8 glyph, u8* prims, s16 x, s16 y);
+extern s32 func_80076A10(s32 index, u8* polys, s16 x, s16 y);
 extern s32 func_80076A6C(u8 glyph, u8* prims, s16 x, s16 y);
 extern void func_80076C34(u8* prim);
 extern s32 func_80025FA8(void* font, s32 glyph, u8* prims, s32 buf, s32 x, s32 y, s32 sx, s32 sy, s32 a8);
