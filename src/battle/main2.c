@@ -801,7 +801,72 @@ void func_80074554(void) {
     AddPrim(D_800CCB04__a_s32[0] + 4, (*(u8 *)((s8*)(*(void **)((s8*)(D_800C3EA4) + 0xA230)) + 0x66A) * 0x28) + 0x2D0 + *(void **)((s8*)(D_800C3EA4) + 0xA230));
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/main2", func_800745EC);
+/* func_800745EC.s, byte-exact: draw the current menu panel's extra prims
+ * (state D_800D2D28 +0xB7 = 1..5).  Each state runs func_800743A4, then
+ * adds its double-buffered prims of the panel set (re-read from
+ * D_800C3EA4 + 0xA230 after every AddPrim, as in retail) to OT entry 1:
+ * 1: six 0x28-byte prims from +0x410 when +0x669 is set; with +0x66B the
+ * cursor prims (+0x3C0 if +0x66E, +0x140), the +0x190 strip
+ * (func_800728B8) and func_80074554 / func_800744BC; 2: +0x140 / +0x190
+ * with +0x66B, func_800744BC / func_80074554 with +0x66D; 3: +0x5F0
+ * (0x24) and +0x638 (0x18) with +0x66F; 4: state 1's +0x66B part without
+ * the strip; 5: nothing more. */
+void func_800745EC(void) {
+    switch (((u8*)D_800D2D28)[0xB7]) {
+    case 1:
+        func_800743A4();
+        if (*(u8*)(*(u8**)(D_800C3EA4 + 0xA230) + 0x669) != 0) {
+            AddPrim(D_800CCB04__a_s32[0] + 4, (*(u8*)(*(u8**)(D_800C3EA4 + 0xA230) + 0x66C) * 0x28) + 0x410 + *(u8**)(D_800C3EA4 + 0xA230));
+            AddPrim(D_800CCB04__a_s32[0] + 4, (*(u8*)(*(u8**)(D_800C3EA4 + 0xA230) + 0x66C) * 0x28) + 0x460 + *(u8**)(D_800C3EA4 + 0xA230));
+            AddPrim(D_800CCB04__a_s32[0] + 4, (*(u8*)(*(u8**)(D_800C3EA4 + 0xA230) + 0x66C) * 0x28) + 0x4B0 + *(u8**)(D_800C3EA4 + 0xA230));
+            AddPrim(D_800CCB04__a_s32[0] + 4, (*(u8*)(*(u8**)(D_800C3EA4 + 0xA230) + 0x66C) * 0x28) + 0x500 + *(u8**)(D_800C3EA4 + 0xA230));
+            AddPrim(D_800CCB04__a_s32[0] + 4, (*(u8*)(*(u8**)(D_800C3EA4 + 0xA230) + 0x66C) * 0x28) + 0x550 + *(u8**)(D_800C3EA4 + 0xA230));
+            AddPrim(D_800CCB04__a_s32[0] + 4, (*(u8*)(*(u8**)(D_800C3EA4 + 0xA230) + 0x66C) * 0x28) + 0x5A0 + *(u8**)(D_800C3EA4 + 0xA230));
+        }
+        if (*(u8*)(*(u8**)(D_800C3EA4 + 0xA230) + 0x66B) != 0) {
+            if (*(u8*)(*(u8**)(D_800C3EA4 + 0xA230) + 0x66E) != 0) {
+                AddPrim(D_800CCB04__a_s32[0] + 4, (*(u8*)(*(u8**)(D_800C3EA4 + 0xA230) + 0x66C) * 0x28) + 0x3C0 + *(u8**)(D_800C3EA4 + 0xA230));
+            }
+            AddPrim(D_800CCB04__a_s32[0] + 4, (*(u8*)(*(u8**)(D_800C3EA4 + 0xA230) + 0x66A) * 0x28) + 0x140 + *(u8**)(D_800C3EA4 + 0xA230));
+            func_800728B8(*(u8**)(D_800C3EA4 + 0xA230) + 0x190, *(u8*)(*(u8**)(D_800C3EA4 + 0xA230) + 0x66E), *(u8*)(*(u8**)(D_800C3EA4 + 0xA230) + 0x66A));
+            func_80074554();
+            func_800744BC();
+        }
+        break;
+    case 2:
+        func_800743A4();
+        if (*(u8*)(*(u8**)(D_800C3EA4 + 0xA230) + 0x66B) != 0) {
+            AddPrim(D_800CCB04__a_s32[0] + 4, (*(u8*)(*(u8**)(D_800C3EA4 + 0xA230) + 0x66A) * 0x28) + 0x140 + *(u8**)(D_800C3EA4 + 0xA230));
+            AddPrim(D_800CCB04__a_s32[0] + 4, (*(u8*)(*(u8**)(D_800C3EA4 + 0xA230) + 0x66A) * 0x28) + 0x190 + *(u8**)(D_800C3EA4 + 0xA230));
+        }
+        if (*(u8*)(*(u8**)(D_800C3EA4 + 0xA230) + 0x66D) != 0) {
+            func_800744BC();
+            func_80074554();
+        }
+        break;
+    case 3:
+        func_800743A4();
+        if (*(u8*)(*(u8**)(D_800C3EA4 + 0xA230) + 0x66F) != 0) {
+            AddPrim(D_800CCB04__a_s32[0] + 4, (*(u8*)(*(u8**)(D_800C3EA4 + 0xA230) + 0x66C) * 0x24) + 0x5F0 + *(u8**)(D_800C3EA4 + 0xA230));
+            AddPrim(D_800CCB04__a_s32[0] + 4, (*(u8*)(*(u8**)(D_800C3EA4 + 0xA230) + 0x66C) * 0x18) + 0x638 + *(u8**)(D_800C3EA4 + 0xA230));
+        }
+        break;
+    case 4:
+        func_800743A4();
+        if (*(u8*)(*(u8**)(D_800C3EA4 + 0xA230) + 0x66B) != 0) {
+            if (*(u8*)(*(u8**)(D_800C3EA4 + 0xA230) + 0x66E) != 0) {
+                AddPrim(D_800CCB04__a_s32[0] + 4, (*(u8*)(*(u8**)(D_800C3EA4 + 0xA230) + 0x66C) * 0x28) + 0x3C0 + *(u8**)(D_800C3EA4 + 0xA230));
+            }
+            AddPrim(D_800CCB04__a_s32[0] + 4, (*(u8*)(*(u8**)(D_800C3EA4 + 0xA230) + 0x66A) * 0x28) + 0x140 + *(u8**)(D_800C3EA4 + 0xA230));
+            func_80074554();
+            func_800744BC();
+        }
+        break;
+    case 5:
+        func_800743A4();
+        break;
+    }
+}
 
 #ifndef XENO_PC_PORT
 void func_80074AB8(void) {

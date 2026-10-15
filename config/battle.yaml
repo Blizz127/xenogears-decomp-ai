@@ -63,6 +63,8 @@ segments:
       # dispatch tables) exactly as the other overlays do; modelling it as
       # `data` would make gears place it after .text and move every byte.
       - [0x0, rodata]
+      - [0x4, .rodata, main2]        # jtbl_8006FAF4 (func_800745EC)
+      - [0x18, rodata]
       # Compiler-emitted switch tables of byte-exact C bodies live in the C
       # object's .rodata and are placed at their retail table address (as field
       # does).  Tables belonging to bodies that are still retail assembly stay
