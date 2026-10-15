@@ -241,7 +241,30 @@ void func_80078508(void* pBuffer) {
         out[i] = 0;
     }
 }
-INCLUDE_ASM("asm/battle/nonmatchings/main8", func_800785D4);
+extern u8* D_800C3EAC;
+extern u8 D_800D2E5C__e[][8] asm("D_800D2E5C");
+extern u8 D_800C400B[];
+extern u8 D_800C4022[];
+
+/* func_800785D4.s, byte-exact: append a 72-byte entry at the D_800C3EAC
+ * +0x2DA cursor (D_800C400B = a, D_800C4022 = the halfword at bytes +4/+5
+ * of the 8-byte D_800D2E5C entry b), then bump the cursor.
+ * Codegen: the halfword is read through an 8-byte entry view of
+ * D_800D2E5C.  Its byte addresses are symbol + offset CONSTs with no
+ * symbolic term for sched's alias test, so both loads stay ahead of the
+ * D_800C400B byte store as in retail; plain D_800D2E60/D_800D2E61 reads
+ * sink below it.  The high byte is read first, and `p` reloads D_800C3EAC
+ * after the byte store as in func_8007887C.  Matches under gcc 2.6.3
+ * (main8's preset), 2.6.0 and 2.7.2. */
+void func_800785D4(u8 a, u8 b) {
+    u16 word = (D_800D2E5C__e[b][5] << 8) | D_800D2E5C__e[b][4];
+    u8* p;
+
+    D_800C400B[D_800C3EAC[0x2DA] * 72] = a;
+    p = D_800C3EAC;
+    *(u16*)(D_800C4022 + p[0x2DA] * 72) = word;
+    p[0x2DA] = p[0x2DA] + 1;
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main8", func_80078658);
 #endif
 #ifndef XENO_PC_PORT
