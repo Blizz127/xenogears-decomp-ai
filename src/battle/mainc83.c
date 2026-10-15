@@ -782,7 +782,61 @@ void func_800B4F88(u8* actor, s32 idx, MATRIX* m) {
         SetMulMatrix(m, (MATRIX*)(*(u8**)(actor + 0x20) + 0xC));
     }
 }
-INCLUDE_ASM("asm/battle/nonmatchings/mainc83", func_800B50D4);
+/* func_800B50D4.s, byte-exact: when the actor's +0x3C state (low 2 bits)
+ * is 1 and its +0x20 record has a +0x34 point table, write five scaled
+ * points to dst: for i = 0..4 take the 8-byte table entry D_800C356C[i]
+ * (s8 x, y), negate x when the actor's +0xAC bit 2 is set, scale both by
+ * the actor's +0x2C halfword / 8192 (signed division), and store
+ * (x, y, 0) as s16 at dst + i * 8.
+ * Codegen:
+ * - CONSTRUCT: the entry pointer passes through an identity inline helper
+ *   (F50D4_Id, found by decomp-permuter's inline_fn).  That gives retail's
+ *   allocation: x in a0, with the actor parameter copied out to t1 (and
+ *   dst to t0).  The plain pointer, a copy through a local, a chained
+ *   assignment, or helpers that compute the address keep the actor in a0,
+ *   one insn short.
+ * - i is incremented in the body before the three stores, where retail
+ *   schedules it; in the for header it lands after them.
+ * - The walking v gives retail's two dst pointer IVs (v and v + 4). */
+extern u8 D_800C356C[];
+
+static inline s8* F50D4_Id(s8* q) {
+    return q;
+}
+
+void func_800B50D4(u8* actor, u8* dst) {
+    s16* v = (s16*)dst;
+    s32 i;
+    s8* p;
+    s32 x;
+    s32 y;
+
+    if ((*(u32*)(actor + 0x3C) & 3) != 1) {
+        return;
+    }
+    if (*(u8**)(actor + 0x20) == NULL) {
+        return;
+    }
+    if (*(u8**)(*(u8**)(actor + 0x20) + 0x34) == NULL) {
+        return;
+    }
+    i = 0;
+    while (i != 5) {
+        p = F50D4_Id((s8*)(*(u8**)(*(u8**)(actor + 0x20) + 0x34) + D_800C356C[i] * 8));
+        x = p[0];
+        y = p[1];
+        if ((*(u32*)(actor + 0xAC) >> 2) & 1) {
+            x = -x;
+        }
+        x = x * *(s16*)(actor + 0x2C) / 8192;
+        y = y * *(s16*)(actor + 0x2C) / 8192;
+        i++;
+        v[0] = x;
+        v[1] = y;
+        v[2] = 0;
+        v += 4;
+    }
+}
 extern u8 g_GfxCurWorkBufferEnd__b[] asm("g_GfxCurWorkBufferEnd");
 extern u8 g_GfxCurWorkBuffer__b[] asm("g_GfxCurWorkBuffer");
 extern u8 g_GfxCurOT__b[] asm("g_GfxCurOT");
