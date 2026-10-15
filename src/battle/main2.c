@@ -1020,7 +1020,139 @@ void func_80075168(void) {
 #undef H75_H
 #undef H75_B
 #undef H75_X
-INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80075938);
+/* func_80075938.s, byte-exact: per-frame party gauge pass.  Runs
+ * func_80075168, clears D_800D2D28[0x82], then for slots 0-2 whose state
+ * byte (D_800C3EB6 rows) is not 0x7F:
+ * - outside the command menu (D_800D2D28[0x90 + i] == 0): the time gauge
+ *   POLY_GT4 at D_800C3EA4 + 0x5A0 + (i * 2 + the D_800CCB34 buffer) *
+ *   0x34, width w = (100 - D_800D2E06[i] * 100 / D_800D2E06[i - 11]) *
+ *   0x15E0 / 10000, x from D_800C3254 as func_80075168, y 0x1A / 0x1E, uvs
+ *   from the work-area offsets +0xA244 / +0xA248, CLUT +0xA2B2 / +0xA2B0 /
+ *   +0xA2AC by the D_800CCD6C|D_800CCD6E bit 15 / D_800CCD64 bit 12 status;
+ *   D_800D2D28[0x7F + i] = 1;
+ * - in the menu: the vertical gauge at +0x6D8 + buffer * 0x34 (x 0xC/0x14,
+ *   y 0xCE - w * 2 .. 0xCE), w = (100 - D_800D2E06[i]) * 0x15E0 / 10000 or
+ *   the HP share (D_800CCDC4 / D_800CCDC6) when D_800D32A1[i * 8] is set
+ *   and D_800D2D24[i] != 7, CLUT +0xA2AE, and D_800D2D28[0x82] = 1 while
+ *   D_800D2D28[0xCB] is set.
+ * State-0x7F slots get D_800D2D28[0x7F + i] = 0.
+ * CAVEAT (retail behaviour kept): each pass first clamps w[i] to >= 0
+ * before either branch assigns it, so it reads the stack array's previous
+ * contents (never used afterwards).
+ * Codegen: w is a stack array (retail keeps it at sp+0x10); the u-coordinate
+ * sums go through block-local s32 copies of w[i]; work-area stores through
+ * local base + offset macros (#undef'd after) and an H59Big record view
+ * for the CLUT fields.  Matches under 2.6.3 (preset) and 2.6.0. */
+extern s16 D_800D2E06__s[] asm("D_800D2E06");
+extern u16 D_800CCD64__rows[][184] asm("D_800CCD64");
+extern u16 D_800CCD6C__rows[][184] asm("D_800CCD6C");
+extern u16 D_800CCD6E__rows[][184] asm("D_800CCD6E");
+typedef struct {
+    u8 v[8];
+} H59Row8;
+extern H59Row8 D_800D32A1__r[] asm("D_800D32A1");
+typedef struct {
+    u8 v;
+} H59Byte;
+typedef struct {
+    s16 x0;
+    s16 y0;
+    u8 r0;
+    u8 g0;
+    u16 f;
+    u8 pad[0x2C];
+} H59R;
+typedef struct {
+    u8 pad[0x5A8];
+    H59R rec[1];
+} H59Big;
+extern H59Byte D_800D2D24__b[] asm("D_800D2D24");
+
+#define H59_P(off) ((u8*)D_800C3EA4 + (i * 2 + D_800CCB34__a[0]) * 0x34 + (off))
+#define H59_H(off, v) (*(s16*)H59_P(off) = (v))
+#define H59_B(off, v) (*(u8*)H59_P(off) = (v))
+#define H59_E(off) ((u8*)D_800C3EA4 + D_800CCB34__a[0] * 0x34 + (off))
+#define H59_EH(off, v) (*(s16*)H59_E(off) = (v))
+#define H59_EB(off, v) (*(u8*)H59_E(off) = (v))
+#define H59_G(off) (((u8*)D_800C3EA4)[off])
+
+void func_80075938(void) {
+    s32 i;
+    s32 w[3];
+    u16 v;
+
+    func_80075168();
+    *(u8*)(D_800D2D28 + 0x82) = 0;
+    for (i = 0; i < 3; i++) {
+        if (D_800C3EB6__s[i].state != 0x7F) {
+            if (w[i] < 0) {
+                w[i] = 0;
+            }
+            if (((u8*)D_800D2D28 + i)[0x90] == 0) {
+                w[i] = (100 - D_800D2E06__s[i] * 100 / D_800D2E06__s[i - 11]) * 0x15E0 / 10000;
+                H59_H(0x5A8, D_800C3254[D_800D3280 * 3 + i] + i * 0x60 + 0x2D);
+                H59_H(0x5AA, 0x1A);
+                H59_H(0x5B4, i * 0x60 + (D_800C3254[D_800D3280 * 3 + i] + 0x2C) + ((u16)w[i] + 1));
+                H59_H(0x5B6, 0x1A);
+                H59_H(0x5C0, D_800C3254[D_800D3280 * 3 + i] + i * 0x60 + 0x2D);
+                H59_H(0x5C2, 0x1E);
+                H59_H(0x5CC, i * 0x60 + (D_800C3254[D_800D3280 * 3 + i] + 0x2C) + ((u16)w[i] + 1));
+                H59_H(0x5CE, 0x1E);
+                H59_B(0x5AC, (H59_G(0xA244) & 0x3F) * 2);
+                H59_B(0x5AD, H59_G(0xA248));
+                { s32 t = w[i]; H59_B(0x5B8, (t + (H59_G(0xA244) & 0x3F)) * 2); }
+                H59_B(0x5B9, H59_G(0xA248));
+                H59_B(0x5C4, (H59_G(0xA244) & 0x3F) * 2);
+                H59_B(0x5C5, H59_G(0xA248) + 4);
+                { s32 t = w[i]; H59_B(0x5D0, (t + (H59_G(0xA244) & 0x3F)) * 2); }
+                H59_B(0x5D1, H59_G(0xA248) + 4);
+                if ((D_800CCD6C__rows[i][0] | D_800CCD6E__rows[i][0]) & 0x8000) {
+                    v = *(u16*)((u8*)D_800C3EA4 + 0xA2B2);
+                } else if (D_800CCD64__rows[i][0] & 0x1000) {
+                    v = *(u16*)((u8*)D_800C3EA4 + 0xA2B0);
+                } else {
+                    v = *(u16*)((u8*)D_800C3EA4 + 0xA2AC);
+                }
+                ((H59Big*)D_800C3EA4)->rec[i * 2 + D_800CCB34__a[0]].f = v;
+                ((u8*)D_800D2D28 + i)[0x7F] = 1;
+            } else {
+                w[i] = (100 - D_800D2E06__s[i]) * 0x15E0 / 10000;
+                if (D_800D32A1__r[i].v[0] != 0 && D_800D2D24__b[i].v != 7) {
+                    w[i] = D_800CCDC4__rows[i][0] * 100 / D_800CCDC6__rows[i][0] * 0x15E0 / 10000;
+                }
+                H59_EH(0x6E0, 0xC);
+                H59_EH(0x6E2, 0xCE);
+                H59_EH(0x6EC, 0xC);
+                H59_EH(0x6EE, 0xCE - w[i] * 2);
+                H59_EH(0x6F8, 0x14);
+                H59_EH(0x6FA, 0xCE);
+                H59_EH(0x704, 0x14);
+                H59_EH(0x706, 0xCE - w[i] * 2);
+                H59_EB(0x6E4, (H59_G(0xA244) & 0x3F) * 2);
+                H59_EB(0x6E5, H59_G(0xA248));
+                { s32 t = w[i]; H59_EB(0x6F0, (t + (H59_G(0xA244) & 0x3F)) * 2); }
+                H59_EB(0x6F1, H59_G(0xA248));
+                H59_EB(0x6FC, (H59_G(0xA244) & 0x3F) * 2);
+                H59_EB(0x6FD, H59_G(0xA248) + 4);
+                { s32 t = w[i]; H59_EB(0x708, (t + (H59_G(0xA244) & 0x3F)) * 2); }
+                H59_EB(0x709, H59_G(0xA248) + 4);
+                ((H59Big*)D_800C3EA4)->rec[D_800CCB34__a[0] + 6].f = *(u16*)((u8*)D_800C3EA4 + 0xA2AE);
+                if (((u8*)D_800D2D28)[0xCB] != 0) {
+                    ((u8*)D_800D2D28)[0x82] = 1;
+                }
+            }
+        } else {
+            ((u8*)D_800D2D28 + i)[0x7F] = 0;
+        }
+    }
+}
+#undef H59_P
+#undef H59_H
+#undef H59_B
+#undef H59_E
+#undef H59_EH
+#undef H59_EB
+#undef H59_G
 #endif
 #ifndef XENO_PC_PORT
 extern u8 D_800C492A;
