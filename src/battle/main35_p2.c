@@ -594,7 +594,59 @@ void func_80082504(u32 arg0) {
     }
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/main35_p2", func_800826CC);
+/* func_800826CC.s, byte-exact: run func_80088490, func_8009AEFC and
+ * func_800BAF48 on actor, set bit 7 of its D_800CCE42 record byte, run
+ * func_800883AC, and set its D_800D32A0 row byte 1 to 2.  Unless its
+ * D_800D2D24 kind is 7, set byte +0x853D of its 0x1E4-byte D_800C3EA4
+ * record to 2.  Then set its D_800C3EB8 row byte and
+ * D_800C3EAC[0x2EB + actor] to 1, and flag g_GameState[0x22B1 + i] for
+ * each of the three +0x1D34 entries equal to its kind (only while
+ * D_80059179 is clear).  Codegen (gcc 2.7.2): i = 0 is written before the
+ * kind test, so reorg puts it in the branch delay slot (as the for-init
+ * the slot is filled from the fall-through).  Computing the record
+ * pointer by itself, p = D_800C3EA4 + actor * 0x1E4 and then p[0x853D],
+ * gives retail's base-first add.  Folding 0x853D into the index comes out
+ * offset-first: written directly, through a register copy of the base,
+ * or in five other spellings.  The D_800D32A0 row view and the `a` copy
+ * of actor were already in the 10-13 draft. */
+extern void func_80088490(u32);
+extern void func_8009AEFC(u32);
+extern void func_800BAF48(u32);
+extern void func_800883AC(u32);
+extern u8 D_800CCE42[][0x170];
+extern u8 D_800D32A0__r[][8] asm("D_800D32A0");
+extern u8 D_800D2D24[];
+extern u8* D_800C3EA4;
+extern u8 D_800C3EB8[][28];
+extern u8 D_80059179;
+extern u8 g_GameState[];
+
+void func_800826CC(u32 arg0) {
+    u32 actor = arg0 & 0xFF;
+    s32 i;
+    u32 a;
+
+    func_80088490(actor);
+    func_8009AEFC(actor);
+    func_800BAF48(actor);
+    D_800CCE42[actor][0] |= 0x80;
+    func_800883AC(actor);
+    D_800D32A0__r[actor][1] = 2;
+    i = 0;
+    if (D_800D2D24[actor] != 7) {
+        u8* p = D_800C3EA4 + actor * 0x1E4;
+
+        p[0x853D] = 2;
+    }
+    a = actor;
+    D_800C3EB8[a][0] = 1;
+    *((u8 *)D_800C3EAC + a + 0x2EB) = 1;
+    for (; i < 3; i++) {
+        if (g_GameState[0x1D34 + i] == D_800D2D24[a] && D_80059179 == 0) {
+            g_GameState[0x22B1 + i] = 1;
+        }
+    }
+}
 extern void func_800826CC(u32);
 
 /* func_80082820.s, byte-exact WITH THE CROSS-JUMP CONSTRUCT:
