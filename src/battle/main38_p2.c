@@ -50,7 +50,218 @@ s32 func_80086028(u8 actor, s32 slot, s32 row, u8 id, u32* buf, u8 flag) {
     D_800D2DB4[0x5D80]++;
     return ++slot;
 }
-INCLUDE_ASM("asm/battle/nonmatchings/main38_p2", func_800861D0);
+/* func_800861D0.s, byte-exact: add combo input `index` - 4 to actor
+ * `actor`'s input list in the command menu context D_800C3EAC (+0x2CC,
+ * count +0x2D6; with +0x2E4 set the new tail reads 0xFF during the lookup)
+ * and look the list up among the 13 seven-byte D_800C3160 sequences
+ * (combo = first full match, 13 for none).  The D_800D2DB4 prim counts
+ * +0x5D80/+0x5D81 are cleared and one glyph per input is drawn at x = 0x50
+ * + i * 16 (0 -> 0x5D, 2 -> 0x5E, 3 -> 0x5F; any other value reuses the
+ * previous glyph, which retail leaves unset on the first input).  Entries
+ * come from D_800C31AC[the actor's D_800CCD3E id] and must pass
+ * func_80089C6C (g_GameState +0x16C0 mask row D_800D2D24[actor]):
+ * - combos 0-12 offer entry `combo` (while actor row +0x20 is clear): glyph
+ *   7 after the inputs (with +0x2E4 set the slot steps back instead), then
+ *   n = func_80086028(..., 0) and shown = 1.  With +0x2E4 set and shown,
+ *   +0x2DC = entry + 8, the D_800CCB34 low byte goes to +0x5D90/+0x5D8F,
+ *   D_800D2D28[0xA8] = 1, func_800716D8 runs, the three D_800C3A70 text
+ *   buffers are freed and that is all.
+ * - Otherwise combos 0-5 and 8 offer entry 13 + combo / 19 (glyphs 8 and 7,
+ *   actor +0x1C and +0x20 clear) and combos 0, 1 and 3 offer entries 20,
+ *   21 and 22 (glyphs 9 and 7, +0x1E and +0x20 clear), both through
+ *   func_80086028(..., 1); then the D_800CCB34 bytes, D_800D2D28[0xA8] = 1,
+ *   func_800716D8 and the frees.
+ * Codegen: one variable serves as the match flag and then the combo, one
+ * as the inner index and then the fallthrough step count, as retail's
+ * registers show; the lookup walks a ctx copy (retail reloads D_800C3EAC
+ * after it); the second glyph of a pair is at (i + 1) * 16 (a shared
+ * i * 16 would stay live across the call and push actor out of fp); the
+ * D_800CCD3E id is read through a [][0x170] row view (a flat
+ * [actor * 0x170] index gets its whole address kept in a register); shown
+ * = 1 after the call (sched2 hoists it among the arguments).  Both jump
+ * tables (jtbl_800702B8, jtbl_800702F0) are this TU's .rodata. */
+typedef struct {
+    u32 buf;
+} M38TextBuf;
+extern M38TextBuf D_800C3A70[];
+extern u8* D_800C3EAC;
+extern u8 D_800D2D24[];
+extern u8 g_GameState[];
+extern u32 D_800C3160[];
+extern u32 D_800C31AC[];
+extern u8 D_800CCD3E__r[][0x170] asm("D_800CCD3E");
+extern u8* D_800D2D28;
+extern s32 D_800CCB34__a[] asm("D_800CCB34");
+extern u32 func_80089C6C(u32 a0, u8 a1);
+extern void* func_8008AC00(s32 size);
+extern s32 func_80076A10(s32 index, u8* polys, s16 x, s16 y);
+extern void func_800716D8(void);
+
+void func_800861D0(u8 index, u8 actor) {
+    s32 n = 0;
+    s32 shown = 0;
+    s32 j;
+    s32 i;
+    s32 step;
+    s32 combo;
+    u8 glyph;
+    u8* seq;
+    u8* ctx;
+
+    for (j = 0; j < 3; j++) {
+        D_800C3A70[j].buf = (u32)func_8008AC00(0x1E);
+    }
+    (D_800C3EAC + D_800C3EAC[0x2D6])[0x2CC] = index - 4;
+    D_800C3EAC[0x2D6]++;
+    if (D_800C3EAC[0x2E4] != 0) {
+        (D_800C3EAC + D_800C3EAC[0x2D6])[0x2CB] = 0xFF;
+    }
+    ctx = D_800C3EAC;
+    for (i = 0; i < 13; i++) {
+        seq = (u8*)D_800C3160[i];
+        for (step = 0; step < 7; step++) {
+            combo = 0;
+            if ((ctx + step)[0x2CC] != seq[step]) {
+                break;
+            }
+            combo = 1;
+        }
+        if (combo) {
+            break;
+        }
+    }
+    combo = i;
+    if (D_800C3EAC[0x2E4] != 0) {
+        (D_800C3EAC + D_800C3EAC[0x2D6])[0x2CB] = index - 4;
+    }
+    D_800D2DB4[0x5D81] = 0;
+    D_800D2DB4[0x5D80] = 0;
+    for (i = 0; i < D_800C3EAC[0x2D6]; i++) {
+        switch ((D_800C3EAC + i)[0x2CC]) {
+        case 0:
+            glyph = 0x5D;
+            break;
+        case 2:
+            glyph = 0x5E;
+            break;
+        case 3:
+            glyph = 0x5F;
+            break;
+        }
+        D_800D2DB4[0x5D81] += func_80076A10(glyph, D_800D2DB4 + (D_800D2DB4[0x5D81] * 0x50 + 0x5640),
+                                            i * 16 + 0x50, 0xD0 - n * 16);
+    }
+    step = 0;
+    switch (combo) {
+    case 0:
+        step++;
+    case 1:
+        step++;
+    case 2:
+        step++;
+    case 3:
+        step++;
+    case 4:
+        step++;
+    case 5:
+        step++;
+    case 6:
+        step++;
+    case 7:
+        step++;
+    case 8:
+        step++;
+    case 9:
+        step++;
+    case 10:
+        step++;
+    case 11:
+        step++;
+    case 12:
+        if ((u16)func_80089C6C(*(u16*)(g_GameState + 0x16C0 + D_800D2D24[actor] * 32),
+                               *(u8*)(D_800C31AC[D_800CCD3E__r[actor][0]] + (12 - step))) != 0 &&
+            *(u16*)(D_800C3EAC + (actor << 6) + 0x20) == 0) {
+            if (D_800C3EAC[0x2E4] == 0) {
+                D_800D2DB4[0x5D81] += func_80076A10(7, D_800D2DB4 + (D_800D2DB4[0x5D81] * 0x50 + 0x5640),
+                                                    i * 16 + 0x50, 0xD0 - n * 16);
+            } else {
+                i--;
+            }
+            n = func_80086028(actor, n, i, *(u8*)(D_800C31AC[D_800CCD3E__r[actor][0]] + (12 - step)),
+                              &D_800C3A70[n / 2].buf, 0);
+            shown = 1;
+        }
+        break;
+    }
+    if (D_800C3EAC[0x2E4] != 0 && shown != 0) {
+        D_800D2DB4[0x5D90] = *(u8*)D_800CCB34__a;
+        D_800C3EAC[0x2DC] = *(u8*)(D_800C31AC[D_800CCD3E__r[actor][0]] + (12 - step)) + 8;
+        D_800D2DB4[0x5D8F] = *(u8*)D_800CCB34__a;
+        D_800D2D28[0xA8] = 1;
+        func_800716D8();
+        for (j = 0; j < 3; j++) {
+            HeapFree((void*)D_800C3A70[j].buf);
+        }
+        return;
+    }
+    step = 0;
+    switch (combo) {
+    case 0:
+        step++;
+    case 1:
+        step++;
+    case 2:
+        step++;
+    case 3:
+        step++;
+    case 4:
+        step++;
+    case 5:
+        step++;
+    case 8:
+        if ((u16)func_80089C6C(*(u16*)(g_GameState + 0x16C0 + D_800D2D24[actor] * 32),
+                               *(u8*)(D_800C31AC[D_800CCD3E__r[actor][0]] + (0x13 - step))) != 0 &&
+            *(u16*)(D_800C3EAC + (actor << 6) + 0x1C) == 0 && *(u16*)(D_800C3EAC + (actor << 6) + 0x20) == 0) {
+            s16 y = 0xD0 - n * 16;
+
+            D_800D2DB4[0x5D81] += func_80076A10(8, D_800D2DB4 + (D_800D2DB4[0x5D81] * 0x50 + 0x5640),
+                                                i * 16 + 0x54, y);
+            D_800D2DB4[0x5D81] += func_80076A10(7, D_800D2DB4 + (D_800D2DB4[0x5D81] * 0x50 + 0x5640),
+                                                (i + 1) * 16 + 0x54, y);
+            n = func_80086028(actor, n, i, *(u8*)(D_800C31AC[D_800CCD3E__r[actor][0]] + (0x13 - step)),
+                              &D_800C3A70[n / 2].buf, 1);
+        }
+        break;
+    }
+    step = 0;
+    switch (combo) {
+    case 0:
+        step++;
+    case 1:
+        step++;
+    case 3:
+        if ((u16)func_80089C6C(*(u16*)(g_GameState + 0x16C0 + D_800D2D24[actor] * 32),
+                               *(u8*)(D_800C31AC[D_800CCD3E__r[actor][0]] + (0x16 - step))) != 0 &&
+            *(u16*)(D_800C3EAC + (actor << 6) + 0x1E) == 0 && *(u16*)(D_800C3EAC + (actor << 6) + 0x20) == 0) {
+            s16 y = 0xD0 - n * 16;
+
+            D_800D2DB4[0x5D81] += func_80076A10(9, D_800D2DB4 + (D_800D2DB4[0x5D81] * 0x50 + 0x5640),
+                                                i * 16 + 0x58, y);
+            D_800D2DB4[0x5D81] += func_80076A10(7, D_800D2DB4 + (D_800D2DB4[0x5D81] * 0x50 + 0x5640),
+                                                (i + 1) * 16 + 0x58, y);
+            func_80086028(actor, n, i, *(u8*)(D_800C31AC[D_800CCD3E__r[actor][0]] + (0x16 - step)),
+                          &D_800C3A70[n / 2].buf, 1);
+        }
+        break;
+    }
+    D_800D2DB4[0x5D90] = *(u8*)D_800CCB34__a;
+    D_800D2DB4[0x5D8F] = *(u8*)D_800CCB34__a;
+    D_800D2D28[0xA8] = 1;
+    func_800716D8();
+    for (j = 0; j < 3; j++) {
+        HeapFree((void*)D_800C3A70[j].buf);
+    }
+}
 extern u8* D_800C3EAC;
 extern u8 D_800D2C34[];
 extern u8 D_800D2D24[];
@@ -114,10 +325,6 @@ INCLUDE_ASM("asm/battle/nonmatchings/main38_p2", func_80086C88);
  * reorg moves ret = 1 into the shared jal delay slot), the other two set it
  * after their calls (sched2 hoists it into the lbu delay). */
 extern u8 D_800CCE42[];
-typedef struct {
-    u32 buf;
-} M38TextBuf;
-extern M38TextBuf D_800C3A70[];
 extern u8* D_800D2D28;
 extern s32 D_800CCB34__a[] asm("D_800CCB34");
 extern void* func_8008AC00(s32 size);
