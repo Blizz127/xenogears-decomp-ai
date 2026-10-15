@@ -218,6 +218,7 @@ func_8009C198	port arm in src/battle/main59.c	func_8009C198
 func_8009C4B4	port arm in src/battle/main59.c	func_8009C4B4
 func_8009C9C4	port arm in src/battle/main59.c	func_8009C9C4
 func_8009CA90	port arm in src/battle/main59.c	func_8009CA90
+func_8009CBC4	port arm in src/battle/main60.c	func_8009CBC4
 func_8009D3A0	port arm in src/battle/main61.c	func_8009D3A0
 func_8009D948	port arm in src/battle/main61.c	func_8009D948
 func_8009DA04	port arm in src/battle/main61.c	func_8009DA04
