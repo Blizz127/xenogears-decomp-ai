@@ -265,7 +265,55 @@ void func_800785D4(u8 a, u8 b) {
     *(u16*)(D_800C4022 + p[0x2DA] * 72) = word;
     p[0x2DA] = p[0x2DA] + 1;
 }
-INCLUDE_ASM("asm/battle/nonmatchings/main8", func_80078658);
+/* func_80078658.s, byte-exact: while fewer than nine strips are in use,
+ * render string D_800D2E5F[a * 8] of the D_800C3DDC table into strip
+ * D_800C3E8C.  Strips are 96-byte records at D_800D3718 (rect at +0, work
+ * word at +8, width byte at +0xE).  Upload the strip (func_800769E8), then
+ * append a 0xFA entry with colour b and the strip index, and advance both
+ * the strip count and the entry cursor.  Codegen: the work word is read
+ * through a 96-byte record view of D_800D3720.  With
+ * *(void**)(D_800D3720 + idx * 96) the folded address temp stays a dead
+ * pseudo with a stack slot (frame 0x20, retail 0x18).  The tail reads the
+ * count into its own n and computes the entry pointer before the count
+ * store, as retail orders it (decomp-permuter hint, natural form). */
+extern u8* D_800C3DDC;
+extern u8 D_800C3E8C;
+extern u8* D_800C3EAC;
+extern u8 D_800C400B[];
+extern u8 D_800C402F[];
+extern u8 D_800C4022[];
+extern u8 D_800D2E5F[];
+extern u8 D_800D3718[];
+extern u8 D_800D3726[];
+extern u8* GetStringEntry(u8* table, u8 id);
+extern s32 SystemRenderStringEntry(void* pString, void* pWork, s32 height, s32 flag);
+extern void func_800769E8(u8* rect, void* work);
+typedef struct { void* work; u8 pad[92]; } Strip96;
+extern Strip96 D_800D3720__s[] asm("D_800D3720");
+
+void func_80078658(u8 a, u8 b) {
+    u32 strip;
+    u8* p;
+    u16* dst;
+    u32 n;
+
+    if (D_800C3E8C >= 9) {
+        return;
+    }
+    D_800D3726[D_800C3E8C * 96] = SystemRenderStringEntry(GetStringEntry(D_800C3DDC, D_800D2E5F[(u32)a << 3]),
+                                                          D_800D3720__s[D_800C3E8C].work, 0x39,
+                                                          D_800C3E8C & 1);
+    strip = D_800C3E8C;
+    func_800769E8(D_800D3718 + strip * 96, D_800D3720__s[strip].work);
+    D_800C400B[D_800C3EAC[0x2DA] * 72] = b;
+    D_800C402F[D_800C3EAC[0x2DA] * 72] = 0xFA;
+    p = D_800C3EAC;
+    n = D_800C3E8C;
+    dst = (u16*)(D_800C4022 + p[0x2DA] * 72);
+    D_800C3E8C = n + 1;
+    *dst = (u16)n;
+    p[0x2DA] = p[0x2DA] + 1;
+}
 #endif
 #ifndef XENO_PC_PORT
 extern u8* D_800C3EAC;
