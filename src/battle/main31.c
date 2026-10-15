@@ -634,7 +634,47 @@ void func_8007FB70(u8 index) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/main31", func_8007FBE0);
+/* func_8007FBE0.s, byte-exact: lay out count - 1 cursor cells (four
+ * halfwords each: 0xC, glyph + 0x5E, 0x12, glyph + 0x5E) in the
+ * D_800C3EA4 work area at +0x910, 16-byte cells from slot D_800CCB34 two
+ * per entry, with the glyphs from D_800C3202 row `count`.  Then record
+ * the selection (minus one when it equals the count) and the base slot's
+ * low byte in D_800D2D28+0x97/+0x98.  Codegen (gcc 2.6.x/2.7.2):
+ * - The cells are stored as struct fields, which gcc treats as in-struct.
+ *   So the fixed D_800C3EA4 word is loaded once before the loop, while
+ *   the D_800CCB34 slot (a struct-field view) is reloaded before every
+ *   store, as in retail.
+ * - Indexing a CursorCell pointer gives retail's offset-first address
+ *   add; a struct member array gives base-first.
+ * - The glyph is read through a [][6] row view, which loop.c reduces to
+ *   retail's incremented pointer.  With a plain index the giv is "not
+ *   worth while", and a source pointer is set before the entry test.
+ * - A plain for loop gives the single blez.  Its exit-test temp is the
+ *   dead pseudo behind retail's empty 8-byte frame; an enclosing
+ *   if (n > 0) duplicates the test. */
+extern u8* D_800C3EA4;
+typedef struct BattleCursorSlot { s32 slot; } BattleCursorSlot;
+extern BattleCursorSlot D_800CCB34__s asm("D_800CCB34");
+extern u8 D_800C3202__r[][6] asm("D_800C3202");
+typedef struct { u16 h0, h1, h2, h3; u8 pad[8]; } CursorCell;
+extern u8* D_800D2D28;
+
+void func_8007FBE0(u8 count, u8 sel) {
+    u8 chosen = sel;
+    s32 i;
+
+    if (count == sel) {
+        chosen = sel - 1;
+    }
+    for (i = 0; i < count - 1; i++) {
+        ((CursorCell*)(D_800C3EA4 + 0x910))[i * 2 + D_800CCB34__s.slot].h0 = 0xC;
+        ((CursorCell*)(D_800C3EA4 + 0x910))[i * 2 + D_800CCB34__s.slot].h1 = D_800C3202__r[count][i] + 0x5E;
+        ((CursorCell*)(D_800C3EA4 + 0x910))[i * 2 + D_800CCB34__s.slot].h2 = 0x12;
+        ((CursorCell*)(D_800C3EA4 + 0x910))[i * 2 + D_800CCB34__s.slot].h3 = D_800C3202__r[count][i] + 0x5E;
+    }
+    D_800D2D28[0x97] = chosen;
+    D_800D2D28[0x98] = *(u8*)&D_800CCB34__s.slot;
+}
 #endif
 
 
