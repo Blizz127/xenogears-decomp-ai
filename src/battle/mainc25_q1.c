@@ -10,15 +10,16 @@ extern u8 D_800D32A1__rows[][8] asm("D_800D32A1");
 extern u8 D_800C3EB4__rows[][28] asm("D_800C3EB4");
 /* The 64-byte enemy AI records at D_800D3400 (index = actor - 3): +0x00
  * the script func_800799C8 runs, +0x08 / +0x0C the ones func_80079AB0 /
- * func_80079C24 run, +0x10 four words and +0x20 sixteen halfwords that the
- * battle-script ops write. */
+ * func_80079C24 run, then the battle-script ops' slots: four words at
+ * +0x10, eight halfwords at +0x20 and sixteen bytes at +0x30. */
 typedef struct {
     u8* script;
     u8 pad4[4];
     u8* script8;
     u8* scriptC;
     u32 w[4];
-    u16 h[16];
+    u16 h[8];
+    u8 b[16];
 } EnemyAiRec;
 extern EnemyAiRec D_800D3400__rec[] asm("D_800D3400");
 
@@ -174,9 +175,25 @@ void func_8007CD10(u8** pp, s32 idx) {
     row[(*pp)[1]] = n;
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/mainc25_q1", func_8007CDD0);
-
 extern u32 func_80079E7C(u16 value);
+extern u8* D_800D3364;
+
+/* func_8007CDD0.s, byte-exact: battle-script op on pp (func_8007B424's
+ * kind): v = func_80079E7C(halfword slot (*pp)[2] of enemy `index`'s
+ * D_800D3400 record), then byte slot (*pp)[1] of the same record gets the
+ * D_800D3364 byte at +0x140 + group(index + 3) * 64 + group(v) * 8 (groups
+ * are byte 0 of the 28-byte D_800C3EB4 rows).
+ * Codegen: both slots go through the record view, so retail's
+ * `la D_800D3420` is reused for the byte table as `+ 0x10`.  The table byte
+ * is read through an integer address ((u32)D_800D3364 + sum + 0x140, as
+ * func_80087A38 in main39 does); pointer indexing swaps the addu operands.
+ * Matches under gcc 2.6.x (the TU's preset) and 2.7.2. */
+void func_8007CDD0(u8** pp, u8 index) {
+    u8 v;
+
+    v = func_80079E7C(D_800D3400__rec[index].h[(*pp)[2]]);
+    D_800D3400__rec[index].b[(*pp)[1]] = *(u8*)((u32)D_800D3364 + ((D_800C3EB4__rows[v][0] << 3) + (D_800C3EB4__rows[index + 3][0] << 6)) + 0x140);
+}
 extern u8 D_800D3420[];
 
 /* func_8007CEA4.s: func_8007CC50 with the record byte taken from an actor:

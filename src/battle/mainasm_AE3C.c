@@ -7,15 +7,16 @@
 #ifndef XENO_PC_PORT
 /* The 64-byte enemy AI records at D_800D3400 (index = actor - 3): +0x00
  * the script func_800799C8 runs, +0x08 / +0x0C the ones func_80079AB0 /
- * func_80079C24 run, +0x10 four words and +0x20 sixteen halfwords that the
- * battle-script ops write. */
+ * func_80079C24 run, then the battle-script ops' slots: four words at
+ * +0x10, eight halfwords at +0x20 and sixteen bytes at +0x30. */
 typedef struct {
     u8* script;
     u8 pad4[4];
     u8* script8;
     u8* scriptC;
     u32 w[4];
-    u16 h[16];
+    u16 h[8];
+    u8 b[16];
 } EnemyAiRec;
 extern EnemyAiRec D_800D3400__rec[] asm("D_800D3400");
 
