@@ -451,6 +451,87 @@ s32 func_80086F98(u8 index, u8 actor) {
     }
     return ret;
 }
-INCLUDE_ASM("asm/battle/nonmatchings/main38_p2", func_800877E0);
+/* func_800877E0.s, byte-exact: fill the nine 6-byte entries after
+ * D_800C48E8 for actor a against b.  All are set to 0xFFFF/0xFFFF; entry 0
+ * takes a's +0xA/+0xC halfwords (28-byte rows at D_800C3EB4) with flag 0.
+ * Entries 1..7 come from the D_800D3364 table: the byte grid at +0x140,
+ * indexed by the +0 bytes of a's and b's rows (64 bytes per a value, 8 per
+ * b value), gives per slot either 0xFF (stop) or a byte whose low 3 bits
+ * pick a 32-byte table entry (its two halfwords) and whose bit 7 is the
+ * entry's flag.  Returns 1 if D_800D2D24[a] is 4, else 0.
+ * Codegen:
+ * - The grid address is rebuilt for each of the three reads, and each
+ *   read reloads a's and b's row bytes after the previous entry store, as
+ *   in retail.  The entry stores go through the D_800C48E8 block view;
+ *   their relocations name D_800C48E8 + 4.. where splat says
+ *   D_800C48EC/EE/F0, and the bytes are the same.
+ * - Each address is built as `x = (s32)(t + <a's byte> * 64);` then
+ *   `row = (u8*)(<b's byte> * 8 + x + 0x140);`.  With a's part as its own
+ *   statement a's byte loads first, and with b's term first in the int
+ *   sum the sum lands in b's register, as in retail.  As one expression,
+ *   the int form loads b's byte first and the pointer form puts the sum
+ *   in a's register. */
+typedef struct {
+    u16 a;
+    u16 b;
+    u8 flag;
+    u8 pad;
+} BattleEntry6;
+typedef struct {
+    u16 a;
+    u16 b;
+    u8 pad[28];
+} BattleTblEntry;
+typedef struct {
+    BattleTblEntry e[8];
+    u8 pad[0x40];
+    u8 grid[0][8][8];
+} BattleTbl;
+typedef struct {
+    u16 mask;
+    u16 pad;
+    BattleEntry6 e[9];
+} BattleEntryBlock;
+extern BattleEntryBlock D_800C48E8__blk asm("D_800C48E8");
+extern u8 D_800C3EB4__rows[][28] asm("D_800C3EB4");
+extern u16 D_800C3EBE__rows[][14] asm("D_800C3EBE");
+extern u16 D_800C3EC0__rows[][14] asm("D_800C3EC0");
+extern u8* D_800D3364;
+extern u8 D_800D2D24[];
+
+s32 func_800877E0(u8 a, u8 b) {
+    s32 ret = 0;
+    s32 i;
+    u8* t;
+    u8* row;
+    s32 x;
+
+    for (i = 0; i < 9; i++) {
+        D_800C48E8__blk.e[i].a = 0xFFFF;
+        D_800C48E8__blk.e[i].b = 0xFFFF;
+    }
+    D_800C48E8__blk.e[0].a = D_800C3EBE__rows[a][0];
+    D_800C48E8__blk.e[0].b = D_800C3EC0__rows[a][0];
+    D_800C48E8__blk.e[0].flag = 0;
+    for (i = 1; i < 8; i++) {
+        t = D_800D3364;
+        x = (s32)(t + D_800C3EB4__rows[a][0] * 64);
+        row = (u8*)(D_800C3EB4__rows[b][0] * 8 + x + 0x140);
+        if (row[i] == 0xFF) {
+            break;
+        }
+        D_800C48E8__blk.e[i].a = ((BattleTbl*)t)->e[row[i] & 7].a;
+        x = (s32)(t + D_800C3EB4__rows[a][0] * 64);
+        row = (u8*)(D_800C3EB4__rows[b][0] * 8 + x + 0x140);
+        D_800C48E8__blk.e[i].b = ((BattleTbl*)t)->e[row[i] & 7].b;
+        x = (s32)(t + D_800C3EB4__rows[a][0] * 64);
+        row = (u8*)(D_800C3EB4__rows[b][0] * 8 + x + 0x140);
+        D_800C48E8__blk.e[i].flag = row[i] & 0x80;
+    }
+    if (D_800D2D24[a] == 4) {
+        ret = 1;
+    }
+    return ret;
+}
 #endif
 #include "main38.c"
