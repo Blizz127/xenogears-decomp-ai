@@ -2,7 +2,41 @@
 
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/mainc82", func_800B3B94);
+/* func_800B3B94.s, byte-exact: the timer callback of func_800B3CD4's
+ * task.  While the +0x3C countdown runs, +0x46 moves from +0x40 towards
+ * +0x42: n = +0x3C - 1 (stored back), f = (n << 5) / +0x38, and
+ * +0x46 = +0x42 - (+0x42 - +0x40) * f / 32.  Once the countdown is 0 and
+ * +0x46 is 0, it calls the task's +0xC function with the task.
+ * Codegen (counted natural, flagged):
+ * - x carries the whole chain (the +0x40 value, the product, the quotient,
+ *   the result).  That gives retail's rounding copy, which reads the
+ *   product, and retail's registers.  The +0x40 read must stay its own
+ *   statement: folded into the product the registers come out mirrored
+ *   (v0/v1, 14/38).  With separate expressions the copy is coalesced (one
+ *   insn short).
+ * - p is a second name for t, used only in the else branch; it gives
+ *   retail's a1 (then) / a0 (else) split (t alone is one insn short). */
+void func_800B3B94(u8* t) {
+    u8* p = t;
+    s32 n;
+    s32 f;
+    s32 a;
+    s32 x;
+
+    if (*(s32*)(t + 0x3C) != 0) {
+        n = *(s32*)(t + 0x3C) - 1;
+        f = (n << 5) / *(s32*)(t + 0x38);
+        a = *(s16*)(t + 0x42);
+        *(s32*)(t + 0x3C) = n;
+        x = *(s16*)(t + 0x40);
+        x = (a - x) * f;
+        x /= 32;
+        x = a - x;
+        *(s16*)(t + 0x46) = x;
+    } else if (*(s16*)(p + 0x46) == 0) {
+        (*(void (**)(u8*))(p + 0xC))(p);
+    }
+}
 #endif
 
 
