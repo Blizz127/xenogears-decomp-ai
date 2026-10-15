@@ -83,7 +83,7 @@ s32 func_80086B88(u8 index, u8 slot) {
 INCLUDE_ASM("asm/battle/nonmatchings/main38_p2", func_80086C88);
 /* func_80086F98.s, byte-exact: confirm command `index` for the battle
  * character in slot `actor` of the command menu context D_800C3EAC; the
- * caller func_80083948 returns the result from one call site and stores
+ * caller func_80083948 ignores the result at one call site and stores
  * (result == 0) in +0x2E4 at the other.
  * - With bit 7 of the actor's D_800CCE42 byte (0x170-byte records) clear
  *   and D_800D2C34 != 4: +0x2DC = D_800C34CC[index], return 1.

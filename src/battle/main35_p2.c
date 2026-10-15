@@ -1360,6 +1360,222 @@ reject:
     func_8008AA74(arg0);
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/main35_p2", func_80083948);
+/* func_80083948.s, byte-exact: input step of actor `actor`'s cost-paid
+ * command list (event D_800D3014, context D_800C3EAC, mode D_800D2C34).
+ * D_800D366C = 0; nothing while +0x2E1 is set.  After func_8008189C:
+ * event 5 closes the list (func_80080B64, +0x2E1 = 1) when +0x2E7 is set
+ * outside mode 4, else clears D_800D2D28[0xA8], runs func_800B8DA4, sets
+ * D_800D366C, +0x2DD = 0x10, func_80077980 and func_8009413C(actor, 1)
+ * (mode 4: +0x2E7 = +0x2D6 = 0 instead); events 4/7/6 become event 5
+ * with func_8008AA40(0x4F) while the actor row's +0x20/+0x1E/+0x1C is
+ * set.  While +0x2E9 is clear, events 0-3 move the +0x2E8 target
+ * (func_80084854) with func_8008AA40(0x4C).  D_800D2D28[0x7C + actor] =
+ * 1.  With +0x2E7 set the list closes when the mode is not 4 and (mode
+ * == 0 or mode - 1 < +0x2CC), or when func_80089C9C(D_800C48E8, actor
+ * row +0x3C, the target) is nonzero.  Events 4/7/6 then pick entry k = 3/2/1.  In mode 4
+ * the first pick (+0x2E7 == 0; events other than 4-7 take it too) bumps
+ * +0x2E7 and calls func_80086F98(0xFF, actor).  Otherwise, when
+ * func_80086B88(k - 1, actor) allows it and the actor's D_800CCDC4 value
+ * (0x170-byte records) covers the cost (D_800D2C0A[k] with no list,
+ * [mode * 3 + k] in mode 4, else [(+0x2CC + 1) * 3 + k]):
+ * func_8008AA40(0x4D), D_800C4929 = 1, func_800819A4, +0x2E4++ when
+ * listing, +0x2DD/+0x2E2 = 0x65/0xFF and +0x2E0 = 1 (D_800D2D28[0xCB] set)
+ * or 0x19/0x19, +0x2E4 = !func_80086F98(k - 1, actor),
+ * func_80087AF0(actor, k), the value drops by D_800D2C0A[+0x2DC]
+ * (func_800898F0, which re-reads it), +0x2E7++; a short value plays
+ * func_8008AA74(0x4F) under D_800D366C.  A set +0x2E4 closes the list.
+ * Codegen: declared s32 with no return value, as func_80081B58 (v0 stays
+ * live, so the event-5 branch keeps an empty delay slot); the other
+ * events' first pick jumps into the k path's block (`goto first`: retail
+ * reloads +0x2E7 there through the same ctx register); the cost is picked
+ * before ONE `mp - cost` test (retail's three subu are reorg copies, and
+ * a subtraction per branch ranks mp above ok); D_800D2C0A is a cost table
+ * whose +0x2A byte is the mode (retail addresses the table from the mode
+ * byte's address), and mode 4 indexes it as mode * 3 + k (cse turns that
+ * into k + 12 after fold, so the 12 stays out of the displacement); the
+ * func_80087AF0 argument goes through a u8 local; D_800CCDC4 is read
+ * through a non-volatile view (the TU's volatile declaration belongs to
+ * func_80082D4C's construct).  The only caller, the main34_q1 dispatcher,
+ * ignores the result. */
+extern u8* D_800D2D28;
+extern u16 D_800C48E8;
+extern u8 D_800C4929;
+typedef struct {
+    u16 cost[21];
+    u8 mode;
+} M35CostTable;
+extern M35CostTable D_800D2C0A;
+extern u16 D_800CCDC4__nv[][184] asm("D_800CCDC4");
+extern void func_80080B64(u8 v);
+extern void func_800B8DA4(void);
+extern void func_8008AA40(u8 v);
+extern u16 func_80089C9C(u16 mask, u8 target);
+extern u8 func_80086B88(u8 index, u8 slot);
+extern u8 func_80086F98(u8 index, u8 actor);
+extern u8 func_80087AF0(u8 a, u8 b);
+extern void func_800898F0(u8 actor);
+
+s32 func_80083948(u8 actor) {
+    s32 k = 0;
+    u16 mp = D_800CCDC4__nv[actor][0];
+    u8 ok = 0;
+    u8 go;
+    u16 cost;
+    u8* ctx;
+
+    D_800D366C = 0;
+    if (((u8*)D_800C3EAC)[0x2E1] != 0) {
+        return;
+    }
+    func_8008189C(actor);
+    switch (D_800D3014) {
+    case 5:
+        go = 1;
+        if (((u8*)D_800C3EAC)[0x2E7] != 0 && D_800D2C34 != 4) {
+            func_80080B64(actor);
+            ((u8*)D_800C3EAC)[0x2E1] = 1;
+            go = 0;
+        }
+        if (go) {
+            D_800D2D28[0xA8] = 0;
+            func_800B8DA4();
+            D_800D366C = 1;
+            ((u8*)D_800C3EAC)[0x2DD] = 0x10;
+            func_80077980();
+            if (D_800D2C34 != 4) {
+                func_8009413C(actor, 1);
+            } else {
+                ((u8*)D_800C3EAC)[0x2E7] = 0;
+                ((u8*)D_800C3EAC)[0x2D6] = 0;
+            }
+        }
+        break;
+    case 4:
+        if (*(u16*)((u8*)D_800C3EAC + (actor << 6) + 0x20) != 0) {
+            D_800D3014 = 5;
+            func_8008AA40(0x4F);
+        }
+        break;
+    case 7:
+        if (*(u16*)((u8*)D_800C3EAC + (actor << 6) + 0x1E) != 0) {
+            D_800D3014 = 5;
+            func_8008AA40(0x4F);
+        }
+        break;
+    case 6:
+        if (*(u16*)((u8*)D_800C3EAC + (actor << 6) + 0x1C) != 0) {
+            D_800D3014 = 5;
+            func_8008AA40(0x4F);
+        }
+        break;
+    }
+    if (((u8*)D_800C3EAC)[0x2E9] == 0) {
+        switch (D_800D3014) {
+        case 0:
+            ((u8*)D_800C3EAC)[0x2E8] = func_80084854(((u8*)D_800C3EAC)[0x2E8], 0);
+            func_8008AA40(0x4C);
+            break;
+        case 1:
+            ((u8*)D_800C3EAC)[0x2E8] = func_80084854(((u8*)D_800C3EAC)[0x2E8], 1);
+            func_8008AA40(0x4C);
+            break;
+        case 2:
+            ((u8*)D_800C3EAC)[0x2E8] = func_80084854(((u8*)D_800C3EAC)[0x2E8], 2);
+            func_8008AA40(0x4C);
+            break;
+        case 3:
+            ((u8*)D_800C3EAC)[0x2E8] = func_80084854(((u8*)D_800C3EAC)[0x2E8], 3);
+            func_8008AA40(0x4C);
+            break;
+        }
+    }
+    (D_800D2D28 + actor)[0x7C] = 1;
+    if (((u8*)D_800C3EAC)[0x2E7] != 0) {
+        if (D_800D2C34 != 4 && (D_800D2C34 == 0 || D_800D2C34 - 1 < ((u8*)D_800C3EAC)[0x2CC])) {
+            func_80080B64(actor);
+            ((u8*)D_800C3EAC)[0x2E1] = 1;
+            return;
+        }
+        if (func_80089C9C(D_800C48E8, ((u8*)D_800C3EAC + (actor << 6))[0x3C]) != 0) {
+            func_80080B64(actor);
+            ((u8*)D_800C3EAC)[0x2E1] = 1;
+            return;
+        }
+    }
+    switch (D_800D3014) {
+    case 5:
+        break;
+    default:
+        if (D_800D2C34 != 4) {
+            break;
+        }
+        ctx = (u8*)D_800C3EAC;
+        if (ctx[0x2E7] != 0) {
+            break;
+        }
+        goto first;
+    case 4:
+        k++;
+    case 7:
+        k++;
+    case 6:
+        k++;
+        if (D_800D2C34 == 4) {
+            ctx = (u8*)D_800C3EAC;
+            if (ctx[0x2E7] == 0) {
+            first:
+                ctx[0x2E7]++;
+                func_80086F98(0xFF, actor);
+                break;
+            }
+        }
+        if (func_80086B88(k - 1, actor)) {
+            if (((u8*)D_800C3EAC)[0x2D6] == 0) {
+                cost = D_800D2C0A.cost[k];
+            } else if (D_800D2C0A.mode == 4) {
+                cost = D_800D2C0A.cost[D_800D2C0A.mode * 3 + k];
+            } else {
+                cost = D_800D2C0A.cost[(((u8*)D_800C3EAC)[0x2CC] + 1) * 3 + k];
+            }
+            if (mp - cost >= 0) {
+                ok = 1;
+            }
+            if (ok) {
+                func_8008AA40(0x4D);
+                D_800C4929 = 1;
+                func_800819A4(actor);
+                if (((u8*)D_800C3EAC)[0x2D6] != 0) {
+                    ((u8*)D_800C3EAC)[0x2E4]++;
+                }
+                if (D_800D2D28[0xCB] != 0) {
+                    ((u8*)D_800C3EAC)[0x2DD] = 0x65;
+                    ((u8*)D_800C3EAC)[0x2E2] = 0xFF;
+                    ((u8*)D_800C3EAC)[0x2E0] = 1;
+                } else {
+                    ((u8*)D_800C3EAC)[0x2DD] = 0x19;
+                    ((u8*)D_800C3EAC)[0x2E2] = 0x19;
+                }
+                ((u8*)D_800C3EAC)[0x2E4] = func_80086F98(k - 1, actor) == 0;
+                {
+                    u8 cmd = k;
+
+                    func_80087AF0(actor, cmd);
+                }
+                D_800CCDC4__nv[actor][0] -= D_800D2C0A.cost[((u8*)D_800C3EAC)[0x2DC]];
+                func_800898F0(actor);
+                ((u8*)D_800C3EAC)[0x2E7]++;
+            } else {
+                D_800D366C = 1;
+                func_8008AA74(0x4F);
+                D_800D366C = 0;
+            }
+            if (((u8*)D_800C3EAC)[0x2E4] != 0) {
+                func_80080B64(actor);
+                ((u8*)D_800C3EAC)[0x2E1] = 1;
+            }
+        }
+        break;
+    }
+}
 #endif
 #include "main35.c"
