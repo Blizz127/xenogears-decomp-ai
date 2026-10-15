@@ -783,7 +783,126 @@ void func_800B4F88(u8* actor, s32 idx, MATRIX* m) {
     }
 }
 INCLUDE_ASM("asm/battle/nonmatchings/mainc83", func_800B50D4);
-INCLUDE_ASM("asm/battle/nonmatchings/mainc83", func_800B51B0);
+extern u8 g_GfxCurWorkBufferEnd__b[] asm("g_GfxCurWorkBufferEnd");
+extern u8 g_GfxCurWorkBuffer__b[] asm("g_GfxCurWorkBuffer");
+extern u8 g_GfxCurOT__b[] asm("g_GfxCurOT");
+extern u8 D_800C3D4C__b[] asm("D_800C3D4C");
+extern u8 D_800D2FCC__b[] asm("D_800D2FCC");
+extern u8 D_800D2FD8__b[] asm("D_800D2FD8");
+extern u8 D_800D3334__b[] asm("D_800D3334");
+extern u8 D_800C3E9C__b[] asm("D_800C3E9C");
+extern u8 D_800C3CA4__b[] asm("D_800C3CA4");
+extern u8 D_800C3CA6__b[] asm("D_800C3CA4+2");
+extern u8 D_800C3CA8__b[] asm("D_800C3CA8");
+extern u8 D_800C3CAA__b[] asm("D_800C3CA8+2");
+
+/* func_800B51B0.s, byte-exact: func_800C08CC's draw callback for one
+ * trail segment from `from` to `to` (skipped when they are equal).  A
+ * LINE_F2 (colour 0xF0; semi-transparent, abr = D_800C3D4C - 1, when
+ * D_800C3D4C is non-zero) is projected with RotTransPers3; z = D_800D3334
+ * + 2 when the D_800D2FD8 byte for segment D_800D2FCC / 8 is set, else
+ * - 2.  For 0 < z < 0x1000, a POLY_FT4 ribbon of half-width D_800C3E9C
+ * runs perpendicular to the line (ratan2 + 0x400, rsin/rcos): its first
+ * edge is the line start for segment 0, or the previous segment's end
+ * (D_800C3CA4..D_800C3CAA).  The end edge is saved there, the prim goes
+ * to OT entry z, and the segment counter goes up.  Work-buffer prims are
+ * taken only while they fit.
+ * Codegen: every scalar global goes through a cast of an unsized u8
+ * asm-label array (`*(s16*)D_800C3D4C__b`).  That keeps it out of -G8
+ * small data (retail gives each its own %hi/%lo pair, the +2 halves
+ * through their own `sym+2` labels) and makes it a plain non-struct MEM,
+ * so CSE and sched treat it as a scalar.  This body matched with plain
+ * externs only at -G0, which func_800B3F04 cannot share; the casts give
+ * the same code under mainc83's -G8, so no .text split is needed.  Check
+ * then take for each work-buffer prim; dx before dy for ratan2; z from an
+ * if/else; two SetSemiTrans calls (retail cross-jumps them).  Matches only
+ * under the CDK cc1 (mainc83's BattleCdk). */
+void func_800B51B0(VECTOR* from, VECTOR* to) {
+    SVECTOR v0;
+    SVECTOR v1;
+    long sxy2;
+    long flag;
+    LINE_F2* line;
+    POLY_FT4* poly;
+    s32 abr;
+    s32 z;
+    s32 w;
+    s32 ang;
+    s32 dx;
+    s32 dy;
+
+    if (from->vx == to->vx && from->vy == to->vy && from->vz == to->vz) {
+        return;
+    }
+    v0.vx = from->vx;
+    v0.vy = from->vy;
+    v0.vz = from->vz;
+    v1.vx = to->vx;
+    v1.vy = to->vy;
+    v1.vz = to->vz;
+    if ((u8*)(*(void**)g_GfxCurWorkBuffer__b) + sizeof(LINE_F2) < (u8*)(*(void**)g_GfxCurWorkBufferEnd__b)) {
+        line = (*(void**)g_GfxCurWorkBuffer__b);
+        (*(void**)g_GfxCurWorkBuffer__b) = line + 1;
+        SetLineF2(line);
+        abr = (*(s16*)D_800C3D4C__b);
+        if (abr != 0) {
+            abr--;
+            SetSemiTrans(line, 1);
+        } else {
+            SetSemiTrans(line, 0);
+        }
+        setRGB0(line, 0xF0, 0xF0, 0xF0);
+        if ((*(u8**)D_800D2FD8__b)[(*(s32*)D_800D2FCC__b) / 8] != 0) {
+            z = 2;
+        } else {
+            z = -2;
+        }
+        z += (*(s16*)D_800D3334__b);
+        RotTransPers3(&v0, &v1, &v0, (long*)&line->x0, (long*)&line->x1, &sxy2, &sxy2, &flag);
+        if (z > 0 && z < 0x1000) {
+            w = (*(s16*)D_800C3E9C__b);
+            dx = line->x1 - line->x0;
+            dy = line->y1 - line->y0;
+            ang = ratan2(dy, dx) + 0x400;
+            dx = rsin(ang) * w / 8192;
+            dy = rcos(ang) * w / 8192;
+            if ((u8*)(*(void**)g_GfxCurWorkBuffer__b) + sizeof(POLY_FT4) < (u8*)(*(void**)g_GfxCurWorkBufferEnd__b)) {
+                poly = (*(void**)g_GfxCurWorkBuffer__b);
+                (*(void**)g_GfxCurWorkBuffer__b) = poly + 1;
+                SetPolyFT4(poly);
+                SetShadeTex(poly, 1);
+                poly->u0 = ((*(s32*)D_800D2FCC__b) & 7) - 0x40;
+                poly->v0 = 0xF0;
+                poly->u1 = ((*(s32*)D_800D2FCC__b) & 7) - 0x3F;
+                poly->v1 = 0xF0;
+                poly->u2 = ((*(s32*)D_800D2FCC__b) & 7) - 0x40;
+                poly->v2 = 0xF7;
+                poly->u3 = ((*(s32*)D_800D2FCC__b) & 7) - 0x3F;
+                poly->v3 = 0xF7;
+                poly->tpage = GetTPage(0, abr, 0x3F0, 0x1F0);
+                poly->clut = GetClut(0x3F0, 0x1EE);
+                setRGB0(poly, 0xF0, 0xF0, 0xF0);
+                if ((*(s32*)D_800D2FCC__b) == 0) {
+                    poly->x0 = line->x0 - dx;
+                    poly->y0 = line->y0 - dy;
+                    poly->x1 = line->x0 + dx;
+                    poly->y1 = line->y0 + dy;
+                } else {
+                    poly->x0 = (*(s16*)D_800C3CA4__b);
+                    poly->y0 = (*(s16*)D_800C3CA6__b);
+                    poly->x1 = (*(s16*)D_800C3CA8__b);
+                    poly->y1 = (*(s16*)D_800C3CAA__b);
+                }
+                (*(s16*)D_800C3CA4__b) = poly->x2 = line->x1 - dx;
+                (*(s16*)D_800C3CA6__b) = poly->y2 = line->y1 - dy;
+                (*(s16*)D_800C3CA8__b) = poly->x3 = line->x1 + dx;
+                (*(s16*)D_800C3CAA__b) = poly->y3 = line->y1 + dy;
+                AddPrim((*(u_long**)g_GfxCurOT__b) + z, poly);
+                (*(s32*)D_800D2FCC__b)++;
+            }
+        }
+    }
+}
 INCLUDE_ASM("asm/battle/nonmatchings/mainc83", func_800B5588);
 #endif
 
@@ -799,7 +918,10 @@ extern void func_800BDC14(void);
 extern void func_800BDF1C(void);
 extern void func_8001E148(u32 v);
 extern void func_800C08CC(u32 a0, void* a1, void* a2);
+#ifdef XENO_PC_PORT
+/* Retail defines it above as (VECTOR* from, VECTOR* to). */
 extern void func_800B51B0(void);
+#endif
 extern void func_800245D8(u32 a0, u32 a1);
 #ifndef XENO_PC_PORT
 extern u8 D_800C3EB0[];
