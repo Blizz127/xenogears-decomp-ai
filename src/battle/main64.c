@@ -20,7 +20,58 @@ s32 func_8009E53C(u8 idx) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/main64", func_8009E5C8);
+/* func_8009E5C8.s, byte-exact: the Gear twin of main55's func_8009A854.
+ * Copy entry a0's bytes +0xE/+0x11/+0x10 (20-byte stride at
+ * D_800C34B0+0x5750) into the slot of the current Gear record
+ * (g_GameState[0x59C] selects the 0xA4-stride record) whose id
+ * (+0x98D/+0x995/+0x99D) matches the entry's +0xF byte.  The three ids
+ * select slots 0, 1 and 3, the last match wins, and no match keeps a1.
+ * Then record a0 at g_GameState[rec + 0x97C + slot], mirror +0xC into
+ * g_GameState+0x2286[a0] and patch every type-4 actor among the first
+ * three.  Retail stores +0x11 twice.  The 0xA4 product is spelled
+ * (x * 41) << 2: under gcc 2.6.3 a plain `* 0xA4` leaves the product in a
+ * temporary plus a copy into the variable, CSE splits the uses between
+ * the two and every register shifts.  `s = a1` is retail's int copy of
+ * the slot (made after k), and the loop recomputes s * 8. */
+void func_8009E5C8(u8 a0, u8 a1) {
+    u8* e = D_800C34B0 + (a0 * 20 + 0x5750);
+    s32 rec = (g_GameState[0x59C] * 41) << 2;
+    u8 id = e[0xF];
+    s32 k;
+    s32 s;
+    u8 i;
+
+    if (g_GameState[0x98D + rec] == id) {
+        a1 = 0;
+    }
+    if (g_GameState[0x995 + rec] == id) {
+        a1 = 1;
+    }
+    if (g_GameState[0x99D + rec] == id) {
+        a1 = 3;
+    }
+    k = a1 * 8 + rec;
+    g_GameState[k + 0x98A] = e[0xE];
+    g_GameState[k + 0x98C] = e[0x11];
+    g_GameState[k + 0x98B] = e[0x10];
+    g_GameState[k + 0x98C] = e[0x11];
+    s = a1;
+    g_GameState[0x97C + s + rec] = a0;
+    g_GameState[0x2286 + a0] = e[0xC];
+    for (i = 0; i < 3; i++) {
+        s32 a = i * 0x170;
+
+        if (D_800C34B0[a + 0x56] == 4) {
+            s32 x = s * 8 + a;
+
+            *(D_800C34B0 + x + 0xB6) = e[0xE];
+            *(D_800C34B0 + x + 0xB8) = e[0x11];
+            *(D_800C34B0 + x + 0xB7) = e[0x10];
+            *(D_800C34B0 + x + 0xB8) = e[0x11];
+            *(D_800C34B0 + a + s + 0xA8) = a0;
+        }
+    }
+}
 
 extern u8* D_800D2D6C;
 
