@@ -505,7 +505,32 @@ void func_80071964(void) {
     }
 }
 #else
-INCLUDE_ASM("asm/battle/nonmatchings/main", func_80071964);
+/* func_80071964.s, byte-exact: render the pending battle string
+ * (GetStringEntry(D_800D39F0, D_800D2CAF)) into the D_800D39C0 strip,
+ * upload it, then run three func_800716D8 passes.  Skipped while
+ * D_800D2CAF is clear or the D_800D2C94/D_800C48E8 masks intersect.
+ * GetStringEntry takes (table, index) (slus system.c defines
+ * void* GetStringEntry(void*, s32)).  The tested D_800D2CAF byte is the
+ * index argument, which is why retail loads it into $a1 at entry: CSE
+ * reuses the loaded value and the copy preference puts it in a1.  The
+ * one-argument declaration above is shared with the port arm, so this
+ * body calls it through a two-argument asm-label alias. */
+extern u32 D_800D39C0__a[] asm("D_800D39C0");
+extern u32 GetStringEntryAt(u32 table, s32 index) asm("GetStringEntry");
+
+void func_80071964(void) {
+    if (D_800D2CAF != 0 && (D_800D2C94 & D_800C48E8) == 0) {
+        u32* strip = D_800D39C0__a;
+        s32 i = 3;
+
+        D_800D39C6 = SystemRenderStringEntry(GetStringEntryAt(D_800D39F0, D_800D2CAF), *strip, 0x39, 1);
+        LoadImage((u8*)strip - 8, *strip);
+        do {
+            func_800716D8();
+            i--;
+        } while (i != 0);
+    }
+}
 #endif
 #ifndef XENO_PC_PORT
 extern u8* D_800C3EAC;
