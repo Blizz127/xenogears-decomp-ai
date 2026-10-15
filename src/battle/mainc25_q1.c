@@ -3,11 +3,58 @@
 #define BATTLE_TU_SUB 1
 #include "common.h"
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/mainc25_q1", func_8007C840);
-
 extern u32 func_8007A628(u32 a0, u32 a1);
 extern u8 func_8001BD40(u8 a0, u8 a1);
 extern u32 func_80089C08(u8 idx);
+extern u8 D_800D32A1__rows[][8] asm("D_800D32A1");
+extern u8 D_800C3EB4__rows[][28] asm("D_800C3EB4");
+/* The 64-byte enemy AI records at D_800D3400 (index = actor - 3): +0x00
+ * the script func_800799C8 runs, +0x08 / +0x0C the ones func_80079AB0 /
+ * func_80079C24 run, +0x10 four words and +0x20 sixteen halfwords that the
+ * battle-script ops write. */
+typedef struct {
+    u8* script;
+    u8 pad4[4];
+    u8* script8;
+    u8* scriptC;
+    u32 w[4];
+    u16 h[16];
+} EnemyAiRec;
+extern EnemyAiRec D_800D3400__rec[] asm("D_800D3400");
+
+/* func_8007C840.s, byte-exact: battle-script op on pp: clear halfword
+ * slot (*pp)[1] of enemy `idx`'s D_800D3400 record, then draw
+ * r = func_8001BD40(0, 2) not tried yet: when func_8007A628(r, (*pp)[2])
+ * accepts r, r's D_800D32A1 byte is SET and r's group (byte 0 of its
+ * 28-byte D_800C3EB4 row) is that of slot idx + 3, store func_80089C08(r)
+ * in the slot and return; otherwise mark r tried, until all three are.
+ * Codegen: the slot goes through the D_800D3400 record view (field h at
+ * +0x20).  A `D_800D3420 + index * 64` row pointer instead gets its `la`
+ * scheduled ahead of the p[1] load into another register; through the
+ * record, retail's `la` lands after that load, in p's register.  Matches
+ * under gcc 2.6.x (the TU's preset) and 2.7.2. */
+void func_8007C840(u8** pp, u8 idx) {
+    u8 tried[3];
+    u16 v;
+    u8 r;
+
+    tried[0] = tried[1] = tried[2] = 0;
+    D_800D3400__rec[idx].h[(*pp)[1]] = 0;
+    while (!(tried[0] & tried[1] & tried[2])) {
+        r = func_8001BD40(0, 2);
+        if (tried[r] == 0) {
+            if ((u8)func_8007A628(r, (*pp)[2]) != 0
+                && D_800D32A1__rows[r][0] != 0
+                && D_800C3EB4__rows[idx + 3][0] == D_800C3EB4__rows[r][0]) {
+                v = func_80089C08(r);
+                D_800D3400__rec[idx].h[(*pp)[1]] = v;
+                return;
+            }
+            tried[r] = 1;
+        }
+    }
+}
+
 extern u8 D_800D32A1[];
 extern u8 D_800D3420[];
 

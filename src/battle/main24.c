@@ -69,7 +69,53 @@ void func_8007BD5C(u8** ppBoard, u8 index) {
         }
     }
 }
-INCLUDE_ASM("asm/battle/nonmatchings/main24", func_8007BEA8);
+/* The 64-byte enemy AI records at D_800D3400 (index = actor - 3): +0x00
+ * the script func_800799C8 runs, +0x08 / +0x0C the ones func_80079AB0 /
+ * func_80079C24 run, +0x10 four words and +0x20 sixteen halfwords that the
+ * battle-script ops write. */
+typedef struct {
+    u8* script;
+    u8 pad4[4];
+    u8* script8;
+    u8* scriptC;
+    u32 w[4];
+    u16 h[16];
+} EnemyAiRec;
+extern EnemyAiRec D_800D3400__rec[] asm("D_800D3400");
+
+/* func_8007BEA8.s, byte-exact: battle-script op on p = *ppBoard.  Clear
+ * halfword slot p[1] of enemy `index`'s D_800D3400 record, then draw
+ * r = func_8001BD40(0, 2) not tried yet: when func_8007A628(r, p[2])
+ * accepts r, r's group (byte 0 of its 28-byte D_800C3EB4 row) is the same as
+ * that of slot index + 3 and r's D_800D32A1 byte is clear, store
+ * func_80089C08(r) in the slot and return; otherwise mark r tried, until
+ * all three are.  func_8007BD5C plus the group test.
+ * Codegen: the slot goes through the D_800D3400 record view (field h at
+ * +0x20).  A `D_800D3420 + index * 64` row pointer instead gets its `la`
+ * scheduled ahead of the p[1] load into another register; through the
+ * record, retail's `la` lands after that load, in p's register.  Matches
+ * under gcc 2.6.x (main24's preset) and 2.7.2. */
+void func_8007BEA8(u8** ppBoard, u8 index) {
+    u8 tried[3];
+    u16 v;
+    u32 r;
+
+    tried[0] = tried[1] = tried[2] = 0;
+    D_800D3400__rec[index].h[(*ppBoard)[1]] = 0;
+    while (!(tried[0] & tried[1] & tried[2])) {
+        r = func_8001BD40(0, 2);
+        if (tried[(u8)r] == 0) {
+            if ((u8)func_8007A628((u8)r, (*ppBoard)[2]) != 0
+                && D_800C3EB4[index + 3][0] == D_800C3EB4[(u8)r][0]
+                && D_800D32A1[(u8)r][0] == 0) {
+                v = func_80089C08(r);
+                D_800D3400__rec[index].h[(*ppBoard)[1]] = v;
+                return;
+            }
+            tried[(u8)r] = 1;
+        }
+    }
+}
 /* func_8007C040.s / func_8007C33C.s, byte-exact: battle-script ops on
  * p = *ppBoard.  Clear halfword p[1] of row `index` of D_800D3420, collect
  * the slots i in 3..10 that func_8007A628(i, p[2]) accepts, whose
@@ -102,7 +148,39 @@ void func_8007C040(u8** ppBoard, u8 index) {
         dst[(*ppBoard)[1]] = v;
     }
 }
-INCLUDE_ASM("asm/battle/nonmatchings/main24", func_8007C1A4);
+/* func_8007C1A4.s, byte-exact: battle-script op on p = *ppBoard.  Clear
+ * halfword slot p[1] of enemy `index`'s D_800D3400 record, then draw
+ * r = func_8001BD40(0, 2) not tried yet: when func_8007A628(r, p[2])
+ * accepts r, r's group (byte 0 of its 28-byte D_800C3EB4 row) differs from
+ * that of slot index + 3 and r's D_800D32A1 byte is clear, store
+ * func_80089C08(r) in the slot and return; otherwise mark r tried, until
+ * all three are.  func_8007BD5C plus the group test.
+ * Codegen: the slot goes through the D_800D3400 record view (field h at
+ * +0x20).  A `D_800D3420 + index * 64` row pointer instead gets its `la`
+ * scheduled ahead of the p[1] load into another register; through the
+ * record, retail's `la` lands after that load, in p's register.  Matches
+ * under gcc 2.6.x (main24's preset) and 2.7.2. */
+void func_8007C1A4(u8** ppBoard, u8 index) {
+    u8 tried[3];
+    u16 v;
+    u32 r;
+
+    tried[0] = tried[1] = tried[2] = 0;
+    D_800D3400__rec[index].h[(*ppBoard)[1]] = 0;
+    while (!(tried[0] & tried[1] & tried[2])) {
+        r = func_8001BD40(0, 2);
+        if (tried[(u8)r] == 0) {
+            if ((u8)func_8007A628((u8)r, (*ppBoard)[2]) != 0
+                && D_800C3EB4[index + 3][0] != D_800C3EB4[(u8)r][0]
+                && D_800D32A1[(u8)r][0] == 0) {
+                v = func_80089C08(r);
+                D_800D3400__rec[index].h[(*ppBoard)[1]] = v;
+                return;
+            }
+            tried[(u8)r] = 1;
+        }
+    }
+}
 void func_8007C33C(u8** ppBoard, u8 index) {
     u8 list[8];
     s32 i = 3;
