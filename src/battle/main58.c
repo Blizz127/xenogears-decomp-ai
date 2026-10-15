@@ -239,7 +239,99 @@ void func_8009B684(u8 menu, u16 mask) {
         break;
     }
 }
-INCLUDE_ASM("asm/battle/nonmatchings/main58", func_8009BAC4);
+/* func_8009BAC4.s, byte-exact: pick an enemy action for actor idx into
+ * out[0] (kind) and out[1] (argument).
+ * - Kind 4 at 10% while the +0x7A bit 8 is clear and *a2 == 0.
+ * - Kind 2 at 25% while +0x7A bit 5 is clear, with a random slot r < n
+ *   allowed by the type's mask word at g_GameState+0x16C2[type * 32].
+ * - 0/0 for type 8.
+ * - Otherwise kind 1, with argument 0/1/2 weighted 48/32/20.
+ * As in retail, n and mask stay unset for a type >= 11.  Codegen
+ * (gcc 2.6.3):
+ * - A narrow r (u8; u16 matches too) gets its own register, copied from
+ *   the remainder as in retail (addu a1, v1, zero); an int r is one insn
+ *   short.
+ * - The last test is written `>= 0x3C` with out[1] = 1 first, so the
+ *   out[1] = 0 arm cross-jumps into type 8's tail as in retail.
+ * - The case source order is retail's block order.
+ * The switch table jtbl_800704A0 is now main58's .rodata, after
+ * func_8009B684's (config/battle.yaml: [0x988, .rodata, main58] covers
+ * both). */
+extern u8 D_800CCCE8[];
+extern u8 D_800CCE42[];
+extern u8 g_GameState[];
+
+void func_8009BAC4(u8 idx, u8* out, s16* a2) {
+    u32 off = idx * 0x170;
+    u8* rec = off + D_800CCCE8;
+    u8 n;
+    u16 mask;
+    u8 r;
+
+    if (!(D_800CCE42[off] & 0x80)) {
+        if (rand() % 100 < 10 && !(*(u16*)(rec + 0x7A) & 0x100) && *a2 == 0) {
+            out[0] = 4;
+            return;
+        }
+        switch (rec[0x56]) {
+        case 3:
+            mask = 0xC3C0;
+            n = 0xA;
+            break;
+        case 4:
+            mask = 0xDF80;
+            n = 0xA;
+            break;
+        case 5:
+            mask = 0x1000;
+            n = 4;
+            break;
+        case 7:
+            mask = 0xE000;
+            n = 3;
+            break;
+        case 0:
+        case 8:
+            mask = 0xC000;
+            n = 2;
+            break;
+        case 2:
+        case 9:
+            mask = 0xBFE0;
+            n = 0xB;
+            break;
+        case 1:
+        case 6:
+        case 10:
+            mask = 0xF000;
+            n = 4;
+            break;
+        }
+        if (rand() % 100 < 0x19 && !(*(u16*)(rec + 0x7A) & 0x20)) {
+            out[0] = 2;
+            r = rand() % n;
+            if (*(u16*)(g_GameState + 0x16C2 + rec[0x56] * 32) & ((0x8000 >> r) & mask)) {
+                out[1] = r;
+                return;
+            }
+        }
+        if (rec[0x56] == 8) {
+            out[0] = 0;
+            out[1] = 0;
+            return;
+        }
+    }
+    out[0] = 1;
+    if (rand() % 100 < 0x50) {
+        if (rand() % 100 >= 0x3C) {
+            out[1] = 1;
+        } else {
+            out[1] = 0;
+        }
+    } else {
+        out[1] = 2;
+    }
+}
 #include "battle/c34b0.h"
 extern u8* D_800C34B0;
 extern u8* D_800C3DFC;

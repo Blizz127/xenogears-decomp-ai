@@ -220,6 +220,7 @@ func_8009AFD8	port arm in src/battle/main57.c	func_8009AFD8
 func_8009B104	port arm in src/battle/main58.c	func_8009B104
 func_8009B1E4	port arm in src/battle/main58.c	func_8009B1E4
 func_8009B684	port arm in src/battle/main58.c	func_8009B684
+func_8009BAC4	port arm in src/battle/main58.c	func_8009BAC4
 func_8009BD94	port arm in src/battle/main58.c	func_8009BD94
 func_8009BE0C	port arm in src/battle/main58.c	func_8009BE0C
 func_8009C050	port arm in src/battle/main58.c	func_8009C050
