@@ -200,7 +200,7 @@ extern void func_8003A89C(s32 a0, s32 a1, s32 a2);
 extern void func_800AA788(u32 v);
 extern void func_800B3E04(void);
 void func_800B4EDC(u8* task);
-extern void func_800B5588(void);
+extern void func_800B5588(u8* task);
 extern void func_800B572C(u8* actor, u8* slot);
 extern void func_800B5B3C(u8* task);
 extern void func_800B5C18(u8* actor, u8* args);
@@ -903,7 +903,84 @@ void func_800B51B0(VECTOR* from, VECTOR* to) {
         }
     }
 }
-INCLUDE_ASM("asm/battle/nonmatchings/mainc83", func_800B5588);
+typedef struct {
+    u8 pad0[0x2E];
+    u16 f2E;
+    u8 pad30[4];
+    u16 f34;
+    u8 pad36[0x72];
+    u32 fA8;
+    u8 padAC[3];
+    s8 fAF;
+} T5588Actor;
+
+/* The timer task's data (task + 4). */
+typedef struct {
+    u8 pad0[0xC];
+    void (*fC)(u8*);
+    u8 pad10[0x28];
+    T5588Actor* a;
+    s32 f3C;
+    s32 f40;
+    u16 f44;
+    u8 pad46[2];
+    u16 f48;
+    u8 pad4A[2];
+    s32 f4C;
+} T5588Task;
+
+extern void func_800B50D4(u8* actor, u8* dst);
+
+/* func_800B5588.s, byte-exact: timer callback of the trail task (data s =
+ * task + 4, actor a = s +0x38).  Publish s +0x4C / +0x48 / +0x44 and the
+ * actor's +0x2E to D_800D2FD8 / D_800C3E9C / D_800C3D4C / D_800D3334; when
+ * the actor's +0x34 differs from s +0x3C, take it and re-pose the five
+ * segment vectors at s +0x50 (func_800B50D4).  Then ease the four s16
+ * vec3s at s +0x80..+0x98 halfway towards s +0x58..+0x70, copy s +0x50 to
+ * s +0x78, and call s +0xC(s) unless s +0x40 equals the actor's (s8) +0xAF
+ * and its +0xA8 bits 28-29 are 2 or 3.
+ * Codegen: the globals are stored through the cast views above
+ * func_800B51B0 (non-struct, not -G8 small data) and the task fields are
+ * read through a struct view (in-struct), so the actor loads pass the
+ * global stores as in retail; this used to need -G0.  `v` holds +0x4C and
+ * later the +0xA8 bits; the last test reads s->a again instead of
+ * reloading `a`.  Matches only under the CDK cc1 (mainc83's BattleCdk). */
+void func_800B5588(u8* task) {
+    u8* s = *(u8**)(task + 4);
+    T5588Actor* a;
+    u8* p;
+    s32 i;
+    s32 v;
+
+    v = ((T5588Task*)s)->f4C;
+    *(s32*)D_800D2FD8__b = v;
+    a = ((T5588Task*)s)->a;
+    *(u16*)D_800C3E9C__b = ((T5588Task*)s)->f48;
+    *(u16*)D_800C3D4C__b = ((T5588Task*)s)->f44;
+    *(u16*)D_800D3334__b = a->f2E;
+    if (a->f34 != ((T5588Task*)s)->f3C) {
+        ((T5588Task*)s)->f3C = a->f34;
+        func_800B50D4((u8*)a, s + 0x50);
+    }
+    for (i = 1; i != 5; i++) {
+        p = s + i * 8;
+        *(s16*)(p + 0x78) += (*(s16*)(p + 0x50) - *(s16*)(p + 0x78)) / 2;
+        *(s16*)(p + 0x7A) += (*(s16*)(p + 0x52) - *(s16*)(p + 0x7A)) / 2;
+        *(s16*)(p + 0x7C) += (*(s16*)(p + 0x54) - *(s16*)(p + 0x7C)) / 2;
+    }
+    *(s16*)(s + 0x78) = *(s16*)(s + 0x50);
+    *(s16*)(s + 0x7A) = *(s16*)(s + 0x52);
+    *(s16*)(s + 0x7C) = *(s16*)(s + 0x54);
+    if (((T5588Task*)s)->f40 == ((T5588Task*)s)->a->fAF) {
+        v = (((T5588Task*)s)->a->fA8 >> 28) & 3;
+        if (v != 0) {
+            if (v != 1) {
+                return;
+            }
+        }
+    }
+    ((T5588Task*)s)->fC(s);
+}
 #endif
 
 
