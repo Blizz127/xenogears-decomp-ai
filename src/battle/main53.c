@@ -442,7 +442,228 @@ void func_80098C6C(s32 arg0) {
     }
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/main53", func_80098D2C);
+typedef struct {
+    s32 unk0[0xD];
+    u16 unk34;
+    u16 unk36;
+    u16 unk38;
+    u8 unk3A[0x12];
+    s16 unk4C;
+    u16 unk4E;
+    u8 unk50[0x6];
+    u8 unk56;
+    u8 unk57[0x21];
+    u16 unk78;
+    u16 unk7A;
+    u16 unk7C;
+    u16 unk7E;
+    u16 unk80;
+    u16 unk82;
+    u16 unk84;
+    u16 unk86;
+    u16 unk88;
+    u16 unk8A;
+    u16 unk8C;
+    u16 unk8E;
+    u16 unk90[7];
+    u8 unk9E[0x6];
+    u8 unkA4[0xB6];
+    u8 unk15A;
+    u8 unk15B;
+    u8 unk15C[0x14];
+} M53Actor;
+
+extern M53Actor D_800CCCE8__a[] asm("D_800CCCE8");
+
+typedef struct {
+    u8 unk0[0x8];
+    u8 unk8;
+    u8 unk9;
+    s16 unkA;
+    s16 unkC;
+    u16 unkE;
+} M53Entry;
+
+/* 0xA4-byte g_GameState character records viewed from their +0x2B0 word. */
+typedef struct {
+    s32 unk0;
+    s32 unk4;
+    u8 unk8[0x9C];
+} M53GsRow;
+
+extern M53GsRow g_GameState__r2B0[] asm("g_GameState+0x2B0");
+extern u8 D_800D2C88[];
+extern s32 D_800D2C54[];
+extern u8 D_800D2CAF;
+extern void func_8009AC48(u8 idx, u8 check);
+extern void func_8009B684(u8 menu, u16 mask);
+void func_800995A0(u8 actor, u8 menu, u16 button, u8 value);
+s32 func_80099498(void);
+
+/* func_80098D2C.s, byte-exact: apply item/effect entry `target` (16-byte
+ * records at D_800CCCE8 + 0x5518) to actor `actor`.  Damage (0x8000: 50 per
+ * unit into the +0x5F6C word, doubled by +0x86 bit 7) and healing (0x4000:
+ * 10 per unit into D_800D2C54) set the D_800D2C88 result and stop; else an
+ * actor with +0x15A bit 7 refuses everything but kind 1.  The other flag
+ * bits clear or set the +0x7A..+0x8E status words (0x100 also revives:
+ * clears all of them and sets +0x4C from +0x4E), 0x80 toggles +0x7C via
+ * func_80099498, and kind 1 runs the sub-switch on unk8 (10..15).
+ * Codegen: the s32 padding keeps the record 4-byte aligned for
+ * func_80099890's word compares; heal (10) and dmg (50) are variables, so
+ * retail multiplies with mult; the g_GameState row view keeps the frame. */
+void func_80098D2C(u8 actor, u8 target) {
+    u8 hits = 0;
+    M53Actor* rec = &D_800CCCE8__a[actor];
+    M53Entry* entry = (M53Entry*)((u8*)D_800CCCE8__a + 0x5518) + target;
+    u8* stats = D_800CCCE8__a[actor].unkA4;
+    s32 heal = 10;
+    u8 i;
+
+    if (entry->unkA & 0x8000) {
+        u8 n = entry->unk8;
+        s32 dmg = 50;
+
+        D_800D2C88[actor] = 2;
+        *(s32*)((u8*)D_800CCCE8__a + 0x5F6C + actor * 4) = n * dmg;
+        if (rec->unk86 & 0x80) {
+            *(s32*)(D_800C34B0 + 0x5F6C + actor * 4) *= 2;
+        }
+        if (rec->unk36 & 0x8000) {
+            D_800D2C88[actor] = 0;
+        }
+        hits = 1;
+    }
+    if (entry->unkA & 0x4000) {
+        hits++;
+        D_800D2C54[actor] = heal * entry->unk8;
+        D_800D2C88[actor] = 3;
+    }
+    if (hits != 0) {
+        return;
+    }
+    if ((D_800CCCE8__a[actor].unk15A & 0x80) && entry->unkA != 1) {
+        D_800D2CAF = 0x30;
+        D_800D2C9E |= 0x8000;
+        return;
+    }
+    if (entry->unkA & 0x2000) {
+        rec->unk7C &= 0x8000;
+    }
+    if (entry->unkA & 0x1000) {
+        rec->unk80 = 0;
+        rec->unk7A &= 0xFFDF;
+    }
+    if (entry->unkA & 0x100) {
+        if (D_800CCCE8__a[actor].unk56 == 2) {
+            func_8009AC48(actor, 0);
+        }
+        rec->unk7C = 0;
+        rec->unk80 = 0;
+        rec->unk84 = 0;
+        rec->unk88 = 0;
+        rec->unk8C = 0;
+        rec->unk4C = rec->unk4E * entry->unk8 / 10;
+        *(u16*)(D_800C34B0 + 0x5FB6) |= 1 << actor;
+    }
+    if (entry->unkA & 0x800) {
+        rec->unk84 |= entry->unkC;
+        func_800995A0(actor, 5, entry->unkC, 5);
+        func_8009B684(5, entry->unkC);
+    }
+    if (entry->unkA & 0x400) {
+        rec->unk88 |= entry->unkC;
+        func_800995A0(actor, 7, entry->unkC, 5);
+        func_8009B684(7, entry->unkC);
+    }
+    if (entry->unkA & 0x200) {
+        rec->unk8C |= entry->unkC;
+        if ((entry->unkC & 0xF000) && !(rec->unk8E & 0xF000)) {
+            rec->unk8C &= 0xFFF;
+            rec->unk8C |= entry->unkC;
+            func_800995A0(actor, 9, entry->unkC, 5);
+            func_8009B684(9, entry->unkC);
+        }
+        if ((entry->unkC & 0xF00) && !(rec->unk8E & 0xF00)) {
+            rec->unk8C &= 0xF0FF;
+            rec->unk8C |= entry->unkC;
+            func_800995A0(actor, 9, entry->unkC, 5);
+            func_8009B684(9, entry->unkC);
+        }
+    }
+    if (entry->unkA & 0x20) {
+        rec->unk7E |= 0x3F7C;
+    }
+    if (entry->unkA & 0x10) {
+        rec->unk7E |= 0xFFFE;
+    }
+    if (entry->unkA & 8) {
+        (&rec->unk84)[entry->unk8] = 0;
+        switch (entry->unk8) {
+        case 0:
+            D_800C34B0[0x5FC7] = 0x35;
+            break;
+        case 2:
+            D_800C34B0[0x5FC7] = 0x36;
+            break;
+        case 4:
+            D_800C34B0[0x5FC7] = 0x37;
+            break;
+        }
+    }
+    if ((entry->unkA & 0x80) && (entry->unkC & 2)) {
+        if (actor >= 3) {
+            D_800C34B0[0x5FC7] = 0x33;
+            return;
+        }
+        if (entry->unk9 == 0) {
+            if (func_80099498() & 0xFF) {
+                rec->unk7C |= entry->unkC;
+                D_800C34B0[0x5FC7] = 0x31;
+                rec->unk7A = 0xFFEF;
+            } else {
+                D_800C34B0[0x5FC7] = 0x32;
+            }
+        } else {
+            rec->unk7C &= ~entry->unkC;
+            rec->unk7A = D_800C3AA4[actor];
+        }
+    }
+    if (entry->unkA == 1) {
+        switch (entry->unk8) {
+        case 10:
+            rec->unk38 = 0;
+            rec->unk38 |= entry->unkC;
+            break;
+        case 11:
+            if (!(rec->unk7E & entry->unkC)) {
+                rec->unk7C |= entry->unkC;
+                func_800995A0(actor, 0, entry->unkC, entry->unk9);
+                func_8009B684(0, entry->unkC);
+            }
+            break;
+        case 12:
+            if (!(rec->unk82 & entry->unkC)) {
+                rec->unk80 |= entry->unkC;
+                func_800995A0(actor, 2, entry->unkC, entry->unk9);
+                func_8009B684(2, entry->unkC);
+            }
+            break;
+        case 13:
+            stats[0x99] += entry->unkC;
+            D_800C34B0[0x5FC7] = 0x28;
+            break;
+        case 14:
+            g_GameState__r2B0[rec->unk56].unk0 = 1;
+            g_GameState__r2B0[rec->unk56].unk4 = 1;
+            break;
+        case 15:
+            for (i = 0; i < 7; i++) {
+                rec->unk90[i] += 10;
+            }
+            break;
+        }
+    }
+}
 extern u8 D_800C34AD;
 extern u8* D_800C34B0;
 
@@ -597,29 +818,6 @@ void func_800995A0(u8 actor, u8 menu, u16 button, u8 value) {
         row[slot] = value;
     }
 }
-typedef struct {
-    s32 unk0[0x1E];
-    u16 unk78;
-    u16 unk7A;
-    u16 unk7C;
-    u16 unk7E;
-    u16 unk80;
-    u16 unk82;
-    u16 unk84;
-    u16 unk86;
-    u16 unk88;
-    u16 unk8A;
-    u16 unk8C;
-    u16 unk8E;
-    u8 unk90[0x14];
-    u8 unkA4[0xB6];
-    u8 unk15A;
-    u8 unk15B;
-    u8 unk15C[0x14];
-} M53Actor;
-
-extern M53Actor D_800CCCE8__a[] asm("D_800CCCE8");
-
 /* func_80099890.s, byte-exact under gcc 2.6.3 (BattleGcc263).  Count down an
  * actor's status timers (bytes +0x15C + k of its 0x170-byte D_800CCCE8
  * record): when the record's +0x15A has 0x80, hand the +0xA4 block, the
