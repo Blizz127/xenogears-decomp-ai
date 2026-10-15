@@ -1012,7 +1012,84 @@ void func_80092784(u8 a, u8* ids, u8* vals) {
     HeapFree(D_800D2DB0);
     func_8009209C();
 }
-INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80092B74);
+/* func_80092B74.s, byte-exact: lay out a value n and a row of glyphs as
+ * sprites.  The +0xF8 word of D_800D2D28 counts the 0x50-byte sprite
+ * records at D_800C3EA4 + 0xBA8; func_80076A10(glyph, record, x, y) adds
+ * the records it writes.  n's tens digit (skipped when 0) and ones digit
+ * go to (0x56, 0x38) and (0x5E, 0x38) as glyphs + 0x67.  Then for up to
+ * seven entries, stopping at the first D_800C3EAC +0x2C4[i] == 0xFF:
+ * glyph D_800C3DE1[i - 1] + 0x39 at (i * 32 + 0x2A, 0x4A) and, for i > 0,
+ * glyph 0xA at (i * 32 + 0x1A, 0x4A).  Then D_800D2D28[0xA5] = D_800CCB34,
+ * [0x9C] = 1, two quads in the record pointed to by the word at
+ * D_800C3EA4 + 0xA230 (x 0x80 to n * 4 + 0x80, then n * 4 + 0x80 to 0xF0;
+ * y 0x34 to 0x3C), and that record's +0x66C = D_800CCB34, +0x66F = 1.
+ * a is unused (the caller is main48's func_8008C81C).  Codegen: x1 is an
+ * int holding (s16)(i * 32 + 0x2A), x2 a short, and j = i - 1 is computed
+ * in the loop.  loop.c then inserts the reduced inits as x2, j, x1, sched1
+ * hoists only x2's above the ones-digit call, and global.c gives j s2 and
+ * x2 s3 as in retail.  With j a separate induction variable, j and x2
+ * swap s2/s3; with x1 a short (j still computed in the loop), j and x1
+ * swap s1/s2.  The record index is read as D_800CCB34__w[0], an array
+ * element, so each quad store forces a reload as in retail (a plain
+ * scalar stays in a register: 300 bytes short). */
+extern u8 D_800C3DE1[];
+typedef struct {
+    u8 pad[0x2C4];
+    u8 f2C4[7];
+} Ids3EAC;
+extern u8* D_800C3EAC;
+
+void func_80092B74(u8 a, u8 n) {
+    u8 d[2];
+    s32 i;
+    s32 j;
+    s32 x1;
+    s16 x2;
+
+    d[1] = n - (d[0] = n / 10) * 10;
+    *(s32*)(D_800D2D28 + 0xF8) = 0;
+    if (d[0] != 0) {
+        *(s32*)(D_800D2D28 + 0xF8) = func_80076A10(d[0] + 0x67, D_800C3EA4 + 0xBA8 + *(s32*)(D_800D2D28 + 0xF8) * 0x50, 0x56, 0x38) + *(s32*)(D_800D2D28 + 0xF8);
+    }
+    *(s32*)(D_800D2D28 + 0xF8) = func_80076A10(d[1] + 0x67, D_800C3EA4 + 0xBA8 + *(s32*)(D_800D2D28 + 0xF8) * 0x50, 0x5E, 0x38) + *(s32*)(D_800D2D28 + 0xF8);
+    for (i = 0; i < 7; i++) {
+        x1 = (s16)(i * 32 + 0x2A);
+        x2 = i * 32 + 0x1A;
+        j = i - 1;
+        if (((Ids3EAC*)D_800C3EAC)->f2C4[i] == 0xFF) {
+            break;
+        }
+        *(s32*)(D_800D2D28 + 0xF8) = func_80076A10(D_800C3DE1[j] + 0x39, D_800C3EA4 + 0xBA8 + *(s32*)(D_800D2D28 + 0xF8) * 0x50, x1, 0x4A) + *(s32*)(D_800D2D28 + 0xF8);
+        if (i != 0) {
+            *(s32*)(D_800D2D28 + 0xF8) = func_80076A10(0xA, D_800C3EA4 + 0xBA8 + *(s32*)(D_800D2D28 + 0xF8) * 0x50, x2, 0x4A) + *(s32*)(D_800D2D28 + 0xF8);
+        }
+    }
+    D_800D2D28[0xA5] = *(u8*)D_800CCB34__w;
+    D_800D2D28[0x9C] = 1;
+    {
+        s32 base = D_800C3EA4;
+        s16 x = n * 4 + 0x80;
+
+        *(s16*)(*(u8**)(base + 0xA230) + D_800CCB34__w[0] * 0x24 + 0x5F8) = 0x80;
+        *(s16*)(*(u8**)(base + 0xA230) + D_800CCB34__w[0] * 0x24 + 0x5FA) = 0x34;
+        *(s16*)(*(u8**)(base + 0xA230) + D_800CCB34__w[0] * 0x24 + 0x600) = x;
+        *(s16*)(*(u8**)(base + 0xA230) + D_800CCB34__w[0] * 0x24 + 0x602) = 0x34;
+        *(s16*)(*(u8**)(base + 0xA230) + D_800CCB34__w[0] * 0x24 + 0x608) = 0x80;
+        *(s16*)(*(u8**)(base + 0xA230) + D_800CCB34__w[0] * 0x24 + 0x60A) = 0x3C;
+        *(s16*)(*(u8**)(base + 0xA230) + D_800CCB34__w[0] * 0x24 + 0x610) = x;
+        *(s16*)(*(u8**)(base + 0xA230) + D_800CCB34__w[0] * 0x24 + 0x612) = 0x3C;
+        *(s16*)(*(u8**)(base + 0xA230) + D_800CCB34__w[0] * 0x18 + 0x640) = x;
+        *(s16*)(*(u8**)(base + 0xA230) + D_800CCB34__w[0] * 0x18 + 0x642) = 0x34;
+        *(s16*)(*(u8**)(base + 0xA230) + D_800CCB34__w[0] * 0x18 + 0x644) = 0xF0;
+        *(s16*)(*(u8**)(base + 0xA230) + D_800CCB34__w[0] * 0x18 + 0x646) = 0x34;
+        *(s16*)(*(u8**)(base + 0xA230) + D_800CCB34__w[0] * 0x18 + 0x648) = x;
+        *(s16*)(*(u8**)(base + 0xA230) + D_800CCB34__w[0] * 0x18 + 0x64A) = 0x3C;
+        *(s16*)(*(u8**)(base + 0xA230) + D_800CCB34__w[0] * 0x18 + 0x64C) = 0xF0;
+        *(s16*)(*(u8**)(base + 0xA230) + D_800CCB34__w[0] * 0x18 + 0x64E) = 0x3C;
+    }
+    (*(u8**)(D_800C3EA4 + 0xA230))[0x66C] = *(u8*)D_800CCB34__w;
+    (*(u8**)(D_800C3EA4 + 0xA230))[0x66F] = 1;
+}
 extern void* func_80033A8C(s32 index);
 
 
