@@ -54,7 +54,46 @@ void func_800883AC(u8 index) {
     D_800D301C__groups[D_800C3EB4__rows[index][0] + bank][0]--;
     D_800D301C__groups[D_800C3EB4__rows[index][0] + bank][1] &= func_80089C48(D_800C3EB4__rows[index][1]);
 }
-INCLUDE_ASM("asm/battle/nonmatchings/main39", func_80088490);
+extern u8* D_800D3364;
+/* The +0xA / +0xC halfwords of the 0x1C-byte D_800C3EB4 rows, under their
+ * own symbols as retail addresses them. */
+typedef struct {
+    u16 v;
+    u8 pad[0x1A];
+} M39Half;
+extern M39Half D_800C3EBE[];
+extern M39Half D_800C3EC0[];
+
+/* Put combatant `index` alone into an alternate group: its own group if
+ * that is empty, else the first empty one of the eight; mark the group
+ * (+0 and +1 = 1), clear the row's +1 byte and copy the group's two
+ * D_800D3364 +0x100 halfwords into the row's +0xA / +0xC.  CAVEAT (retail
+ * behaviour kept): when all eight groups are taken `pick` is never set
+ * (retail stores whatever $a2 held on entry; the main39.c port arm below
+ * models it as a third parameter).  Codegen: s32 loop counter (slti), and
+ * the group index scaled with `<< 3` for the base-first D_800D3364 add. */
+void func_80088490(u8 index) {
+    u32 group = D_800C3EB4__rows[index][0];
+    u32 pick;
+    s32 i;
+
+    if (D_800D301C__groups[group + 0x10][0] == 0) {
+        pick = group;
+    } else {
+        for (i = 0; i < 8; i++) {
+            if (D_800D301C__groups[0x10 + i][0] == 0) {
+                pick = i;
+                break;
+            }
+        }
+    }
+    D_800C3EB4__rows[index][0] = pick;
+    D_800C3EB4__rows[index][1] = 0;
+    D_800D301C__groups[D_800C3EB4__rows[index][0] + 0x10][1] = 1;
+    D_800D301C__groups[D_800C3EB4__rows[index][0] + 0x10][0] = 1;
+    D_800C3EBE[index].v = *(u16*)(D_800D3364 + (D_800C3EB4__rows[index][0] << 3) + 0x100);
+    D_800C3EC0[index].v = *(u16*)(D_800D3364 + (D_800C3EB4__rows[index][0] << 3) + 0x102);
+}
 #endif
 
 
@@ -130,7 +169,9 @@ extern u32 func_80089C9C(u32 mask, u8 index);
  * (group + bank) * 4: +0 occupant count, +1 occupied-slot mask; bank 0 is the
  * party side, 8 the enemy side and 0x10/0x18 their alternate sets.  Combatants
  * 0-2 are the party.  These bodies are for the port and the differential
- * harnesses; the matching build still assembles retail bytes. */
+ * harnesses; the retail build compiles the byte-exact C above where it
+ * exists (docs/port/shadowing_matched_c.tsv) and assembles retail bytes for
+ * the rest. */
 #ifdef XENO_PC_PORT
 #define ROW(i) ((u8*)D_800C3EB4 + (u32)(i) * 28u)
 #define GROUP(i) (D_800D301C + (u32)(i) * 4u)

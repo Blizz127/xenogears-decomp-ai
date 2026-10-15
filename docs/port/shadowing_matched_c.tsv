@@ -139,6 +139,7 @@ func_80087B5C	port arm spanning the body in src/field/main/misc.c	func_80087B5C
 func_80087F60	pc_port body wm_80087F60 (pc_port/src/world_map_resume_initializers.c)	wm_80087F60
 func_80088198	port arm in src/field/main/misc.c	func_80088198
 func_800883AC	port arm in src/battle/main39.c	func_800883AC
+func_80088490	port arm in src/battle/main39.c	func_80088490
 func_8008860C	port arm in src/battle/main40.c	func_8008860C
 func_80088990	port arm in src/battle/main40.c	func_80088990
 func_80088B80	port arm in src/battle/main40.c	func_80088B80
