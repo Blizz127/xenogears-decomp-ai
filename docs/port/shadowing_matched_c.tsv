@@ -251,6 +251,7 @@ func_800AA760	port arm spanning the body in src/battle/main70.c	func_800AA760
 func_800AA934	generated logging stub (matched C not linked)	func_800AA934
 func_800AE1BC	port arm in src/battle/main72.c	func_800AE1BC
 func_800AE220	port arm in src/battle/main72.c	func_800AE220
+func_800AE2A4	lifted port arm (battle_lift.h) in src/battle/main72.c	func_800AE2A4
 func_800AEEF8	port arm in src/battle/main73.c	func_800AEEF8
 func_800AF180	port arm in src/battle/main73.c	func_800AF180
 func_800AF270	port arm in src/battle/main73.c	func_800AF270

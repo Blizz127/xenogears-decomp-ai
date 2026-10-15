@@ -486,6 +486,12 @@ paths = [
     # main35_p3_q1 (2026-10-14): func_80084548, its only C, matches only under
     # 2.6.x (2.7.2: diff 6/130, the loop delay slots).  No divisions.
     "src/battle/main35_p3_q1.",
+    # main72_p3 (2026-10-15): func_800AE2A4 matches only under 2.6.3 (2.7.2:
+    # 3120 vs 3144 bytes; it reads the GTE result back with halfword loads
+    # only under 2.6.x); main72.c's part-3 func_800AEEEC compiles to the same
+    # bytes.  Its one division is by a constant, so no --expand-div.
+    # Neighbours main72_p2 and main73_p2 are BattleGcc263 too.
+    "src/battle/main72_p3.",
 ]
 
 [[build_preset]]
