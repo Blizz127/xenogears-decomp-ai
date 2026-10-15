@@ -929,7 +929,97 @@ void func_8007500C(void) {
         }
     }
 }
-INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80075168);
+/* func_80075168.s, byte-exact: refresh the three party gauges.  For slot
+ * i (state byte D_800C3EA4 + i * 0x1E4 + 0x853D) the gauge is the POLY_G4
+ * at D_800C3EA4 + 0x740 + (i * 2 + the D_800CCB34 buffer) * 0x24; its
+ * left x is i * 0x60 + 0x28 + D_800C3254[D_800D3280 * 3 + i], y 0x22 (top)
+ * / 0x26 (bottom).
+ * - State 1: width D_800D32A0[i * 8] * 2, vertex 0/1 colours green (0, 0xFF, 0).
+ * - State 2: width = hp * 100 / max * 0x15E0 / 10000 (D_800CCDC4 /
+ *   D_800CCDC6 of the 0x170-byte record, unsigned); vertex 0/1 colours blue at
+ *   hp >= max / 4, yellow at hp >= max / 8, else (0xFF, 0x7F, 0x7F).
+ * Other states leave the gauge alone.
+ * Codegen: the state-2 width is computed once into a u32 local before the
+ * stores (inline twice it is one word longer); every store goes through
+ * the same base + (i * 2 + buffer) * 0x24 + offset expression (local
+ * macros).  Matches under 2.6.3 (preset) and 2.6.0. */
+extern u16 D_800CCDC6__rows[][184] asm("D_800CCDC6");
+
+#define H75_P(off) ((u8*)D_800C3EA4 + (i * 2 + D_800CCB34__a[0]) * 0x24 + (off))
+#define H75_H(off, v) (*(s16*)H75_P(off) = (v))
+#define H75_B(off, v) (*(u8*)H75_P(off) = (v))
+#define H75_X() (i * 0x60 + (D_800C3254[D_800D3280 * 3 + i] + 0x28))
+
+void func_80075168(void) {
+    s32 i;
+    u8* base;
+    u8* p;
+    u32 cur;
+    u32 max;
+    u32 w;
+
+    for (i = 0; i < 3; i++) {
+        base = D_800C3EA4;
+        p = base + i * 0x1E4;
+        switch (p[0x853D]) {
+        case 1:
+            H75_H(0x748, H75_X());
+            H75_H(0x74A, 0x22);
+            H75_H(0x750, H75_X() + D_800D32A0[i << 3] * 2);
+            H75_H(0x752, 0x22);
+            H75_H(0x758, H75_X());
+            H75_H(0x75A, 0x26);
+            H75_H(0x760, H75_X() + D_800D32A0[i << 3] * 2);
+            H75_H(0x762, 0x26);
+            H75_B(0x744, 0);
+            H75_B(0x745, 0xFF);
+            H75_B(0x746, 0);
+            H75_B(0x74C, 0);
+            H75_B(0x74D, 0xFF);
+            H75_B(0x74E, 0);
+            break;
+        case 2:
+            cur = D_800CCDC4__rows[i][0];
+            max = D_800CCDC6__rows[i][0];
+            w = cur * 100 / max * 0x15E0 / 10000;
+            H75_H(0x748, H75_X());
+            H75_H(0x74A, 0x22);
+            H75_H(0x750, i * 0x60 + 0x28 + D_800C3254[D_800D3280 * 3 + i] + w);
+            H75_H(0x752, 0x22);
+            H75_H(0x758, H75_X());
+            H75_H(0x75A, 0x26);
+            H75_H(0x760, i * 0x60 + 0x28 + D_800C3254[D_800D3280 * 3 + i] + w);
+            H75_H(0x762, 0x26);
+            if (cur >= max / 4) {
+                H75_B(0x744, 0);
+                H75_B(0x745, 0);
+                H75_B(0x746, 0xFF);
+                H75_B(0x74C, 0);
+                H75_B(0x74D, 0);
+                H75_B(0x74E, 0xFF);
+            } else if (cur >= max / 8) {
+                H75_B(0x744, 0xFF);
+                H75_B(0x745, 0xFF);
+                H75_B(0x746, 0);
+                H75_B(0x74C, 0xFF);
+                H75_B(0x74D, 0xFF);
+                H75_B(0x74E, 0);
+            } else {
+                H75_B(0x744, 0xFF);
+                H75_B(0x745, 0x7F);
+                H75_B(0x746, 0x7F);
+                H75_B(0x74C, 0xFF);
+                H75_B(0x74D, 0x7F);
+                H75_B(0x74E, 0x7F);
+            }
+            break;
+        }
+    }
+}
+#undef H75_P
+#undef H75_H
+#undef H75_B
+#undef H75_X
 INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80075938);
 #endif
 #ifndef XENO_PC_PORT
