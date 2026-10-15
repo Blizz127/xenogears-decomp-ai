@@ -11,7 +11,140 @@
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/battle/nonmatchings/main31", func_8007EF6C);
-INCLUDE_ASM("asm/battle/nonmatchings/main31", func_8007F8C0);
+extern u32 func_8007E954(u8** pp, u8 index);
+extern u32 func_8007E98C(u8** pp, u8 index);
+extern u32 func_8007E9D0(u8** pp, u8 index);
+extern u32 func_8007EA08(u8** pp, u8 index);
+extern u32 func_8007EA4C(u8** pp, u8 index);
+extern u32 func_8007EA84(u8** pp, u8 index);
+extern u32 func_8007EAC8(u8** pp, u8 index);
+extern u32 func_8007EB08(u8** pp, u8 index);
+extern u32 func_8007EB50(u8** pp, u8 index);
+extern u32 func_8007EB90(u8** pp, u8 index);
+extern u32 func_8007EBD8(u8** pp, u8 index);
+extern u32 func_8007EC10(u8** pp, u8 index);
+extern u32 func_8007EC54(u8** pp, u8 index);
+extern u32 func_8007EC94(u8** pp, u8 index);
+extern u32 func_8007ECDC(u8** pp, u8 index);
+extern u32 func_8007ED14(u8** pp, u8 index);
+extern u32 func_8007ED58(u8** pp, u8 index);
+extern u32 func_8007ED98(u8** pp, u8 index);
+extern u32 func_8007EDE0(u8** pp, u8 index);
+extern u32 func_8007EE28(u8** pp, u8 index);
+extern u32 func_8007EE70(u8** pp);
+extern u32 func_8007EEA8(u8** pp);
+extern u32 func_8007EED0(void);
+extern u32 func_8007EEE8(void);
+extern u32 func_8007EF44(u8 index);
+extern void func_80079934(u8** pp);
+
+/* func_8007F8C0.s, byte-exact: evaluate the AI-script condition at *pp
+ * for enemy `index`.  0x80 and 0x9A are true, 0x99 opens an OR group,
+ * 0x81..0x98 and 0x9B are main30's tests; func_80079934 steps past each
+ * record.  Outside a group the first result is returned; inside one the
+ * results are ORed while the next opcode is still >= 0x80. */
+u8 func_8007F8C0(u8** pp, u8 index) {
+    u8 result = 0;
+    u8 multi = 0;
+    u8 acc = 0;
+
+    while (1) {
+        switch (**pp) {
+        case 0x80:
+        case 0x9A:
+            result = 1;
+            break;
+        case 0x99:
+            multi = 1;
+            break;
+        case 0x81:
+            result = func_8007E954(pp, index);
+            break;
+        case 0x82:
+            result = func_8007E98C(pp, index);
+            break;
+        case 0x83:
+            result = func_8007E9D0(pp, index);
+            break;
+        case 0x84:
+            result = func_8007EA08(pp, index);
+            break;
+        case 0x85:
+            result = func_8007EA4C(pp, index);
+            break;
+        case 0x86:
+            result = func_8007EA84(pp, index);
+            break;
+        case 0x87:
+            result = func_8007EAC8(pp, index);
+            break;
+        case 0x88:
+            result = func_8007EB08(pp, index);
+            break;
+        case 0x89:
+            result = func_8007EB50(pp, index);
+            break;
+        case 0x8A:
+            result = func_8007EB90(pp, index);
+            break;
+        case 0x8B:
+            result = func_8007EBD8(pp, index);
+            break;
+        case 0x8C:
+            result = func_8007EC10(pp, index);
+            break;
+        case 0x8D:
+            result = func_8007EC54(pp, index);
+            break;
+        case 0x8E:
+            result = func_8007EC94(pp, index);
+            break;
+        case 0x8F:
+            result = func_8007ECDC(pp, index);
+            break;
+        case 0x90:
+            result = func_8007ED14(pp, index);
+            break;
+        case 0x91:
+            result = func_8007ED58(pp, index);
+            break;
+        case 0x92:
+            result = func_8007ED98(pp, index);
+            break;
+        case 0x93:
+            result = func_8007EDE0(pp, index);
+            break;
+        case 0x94:
+            result = func_8007EE28(pp, index);
+            break;
+        case 0x95:
+            result = func_8007EE70(pp);
+            break;
+        case 0x96:
+            result = func_8007EEA8(pp);
+            break;
+        case 0x97:
+            result = func_8007EED0();
+            break;
+        case 0x98:
+            result = func_8007EEE8();
+            break;
+        case 0x9B:
+            result = func_8007EF44(index);
+            break;
+        }
+        func_80079934(pp);
+        if (multi == 0) {
+            break;
+        }
+        acc |= result;
+        if (**pp < 0x80) {
+            result = acc;
+            break;
+        }
+    }
+    return result;
+}
 extern u8 D_800D2D24[];
 extern u8* D_800D2D28;
 extern void func_8008FA60(s32 a0);

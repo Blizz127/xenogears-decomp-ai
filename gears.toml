@@ -500,6 +500,11 @@ paths = [
     # bytes.  Its one division is by a constant, so no --expand-div.
     # Neighbours main72_p2 and main73_p2 are BattleGcc263 too.
     "src/battle/main72_p3.",
+    # main31 (2026-10-15): func_8007F8C0 matches only under 2.6.x (2.7.2:
+    # diff 2/172, it folds the u8 OR-group store into the OR); the other C
+    # in main31 compiles to the same bytes.  No divisions.  Neighbours
+    # main30 and main32 are Default; main33 is BattleGcc263.
+    "src/battle/main31.",
 ]
 
 [[build_preset]]
