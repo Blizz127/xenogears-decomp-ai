@@ -132,7 +132,49 @@ void func_8007B6C0(u8** ppBoard, u8 index) {
     }
     }
 }
-INCLUDE_ASM("asm/battle/nonmatchings/main21", func_8007B7B0);
+/* The 64-byte enemy AI records at D_800D3400 (index = actor - 3): +0x00
+ * the script func_800799C8 runs, +0x08 / +0x0C the ones func_80079AB0 /
+ * func_80079C24 run, then the battle-script ops' slots: four words at
+ * +0x10, eight halfwords at +0x20 and sixteen bytes at +0x30. */
+typedef struct {
+    u8* script;
+    u8 pad4[4];
+    u8* script8;
+    u8* scriptC;
+    u32 w[4];
+    u16 h[8];
+    u8 b[16];
+} EnemyAiRec;
+extern EnemyAiRec D_800D3400__rec[] asm("D_800D3400");
+extern u8 D_800CCDF0[];
+extern u8 D_800CCDEC[];
+
+/* func_8007B7B0.s, byte-exact: the func_8007B4B8 / func_8007B608 op for
+ * the word slots.  v = func_80079E7C(halfword slot (*pp)[3] of enemy
+ * `index`'s D_800D3400 record); for v < 3 set D_800D2E5C to 0x20 and
+ * return n + 1; otherwise store word slot (*pp)[1] of the record into
+ * actor v's D_800CCDF0 word ((*pp)[2] == 0) or D_800CCDEC word (0x170-byte
+ * records) and return n.
+ * Codegen: both slots go through the record view.  Retail keeps
+ * `la D_800D3420` across the call and derives the word table as
+ * `- 0x10` inside each branch, which a separate `base - 0x10` row pointer
+ * (parked draft, 21/73) did not reproduce.  Matches under gcc 2.7.2
+ * (main21's preset) and 2.6.x. */
+u8 func_8007B7B0(u8** pp, u8 index, u8 n) {
+    u8 r = n;
+    u8 v;
+
+    v = func_80079E7C(D_800D3400__rec[index].h[(*pp)[3]]);
+    if (v < 3) {
+        D_800D2E5C = 0x20;
+        r = n + 1;
+    } else if ((*pp)[2] == 0) {
+        *(u32*)(D_800CCDF0 + v * 0x170) = D_800D3400__rec[index].w[(*pp)[1]];
+    } else {
+        *(u32*)(D_800CCDEC + v * 0x170) = D_800D3400__rec[index].w[(*pp)[1]];
+    }
+    return r;
+}
 #endif
 #ifndef XENO_PC_PORT
 extern u8 D_800D3420[];
