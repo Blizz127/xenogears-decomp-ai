@@ -505,6 +505,11 @@ paths = [
     # in main31 compiles to the same bytes.  No divisions.  Neighbours
     # main30 and main32 are Default; main33 is BattleGcc263.
     "src/battle/main31.",
+    # main52 (2026-10-15): func_80097964 matches only under 2.6.x (2.7.2:
+    # diff 6/233, CDK 944 vs 932 bytes); func_80097D08 compiles to the same
+    # bytes.  No divisions.  Neighbours main51 and main53 are BattleGcc263
+    # too.
+    "src/battle/main52.",
 ]
 
 [[build_preset]]
