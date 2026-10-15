@@ -81,7 +81,169 @@ s32 func_80086B88(u8 index, u8 slot) {
     return ok;
 }
 INCLUDE_ASM("asm/battle/nonmatchings/main38_p2", func_80086C88);
-INCLUDE_ASM("asm/battle/nonmatchings/main38_p2", func_80086F98);
+/* func_80086F98.s, byte-exact: confirm command `index` for the battle
+ * character in slot `actor` of the command menu context D_800C3EAC; the
+ * caller func_80083948 returns the result from one call site and stores
+ * (result == 0) in +0x2E4 at the other.
+ * - With bit 7 of the actor's D_800CCE42 byte (0x170-byte records) clear
+ *   and D_800D2C34 != 4: +0x2DC = D_800C34CC[index], return 1.
+ * - Unless (D_800D2C34 != 0 and index < D_800D2C34) or +0x2E7 is set:
+ *   +0x2DC = index, return 1.
+ * - Otherwise three 0x1E text buffers (func_8008AC00) go into D_800C3A70,
+ *   index is appended to the +0x2CC list (count +0x2D6; with +0x2E4 set the
+ *   new tail byte is written 0xFF then index, and sel = index + (+0x2CC +
+ *   1) * 3), the D_800D2DB4 prim counts +0x5D80..+0x5D82 are cleared and
+ *   one glyph per listed entry is drawn at x = 0x80 + i * 16 (0 -> 0x5E,
+ *   1 -> 0x5F, 2 -> 0x5D, 0xFF skipped; any other byte reuses the previous
+ *   glyph, which retail leaves unset on the first entry).  With D_800D2C34
+ *   == 4 sel is index + 12 (12 for index 0xFF).  When func_80089C6C allows
+ *   D_800C34CC[sel] for the actor (g_GameState +0x16C4 mask), ret = 1 and
+ *   func_80086C88 lists entry sel: directly with +0x2E4 set, else after
+ *   glyph 8 and only while actor +0x1C is zero.  With +0x2E4 set and ret =
+ *   1: ret = 0 and +0x2DC = D_800C34CC[sel] (sel = index + 12 when +0x2CC
+ *   is 0xFF).  Otherwise +0x2DC = index and entries (index + 1) * 3 + 1 /
+ *   + 2 (13 / 14 in mode 4) are offered with glyphs 9 / 7 (ret = 1 each)
+ *   when allowed and actor +0x1E / +0x20 is zero.  Both exits copy the
+ *   D_800CCB34 low byte into +0x5D8F..+0x5D91, set D_800D2D28[0xA8] = 1,
+ *   run func_800716D8, free the three buffers and return ret.
+ * Codegen: `(actor << 6)` keeps retail's base-first addu; D_800C3A70 is a
+ * struct array so the loops keep a scaled index with symbol addressing; the
+ * mode-4 sel is an if/else (the single-if form lets reorg steal the actor
+ * mask into the first branch's delay slot); the first follow-up sets ret = 1
+ * once after its inner if/else (both func_80086C88 calls then cross-jump and
+ * reorg moves ret = 1 into the shared jal delay slot), the other two set it
+ * after their calls (sched2 hoists it into the lbu delay). */
+extern u8 D_800CCE42[];
+typedef struct {
+    u32 buf;
+} M38TextBuf;
+extern M38TextBuf D_800C3A70[];
+extern u8* D_800D2D28;
+extern s32 D_800CCB34__a[] asm("D_800CCB34");
+extern void* func_8008AC00(s32 size);
+extern s32 func_80076A10(s32 index, u8* polys, s16 x, s16 y);
+extern s32 func_80086C88(u8 actor, s32 slot, s32 row, u8 id, u32* buf);
+extern void func_800716D8(void);
+
+s32 func_80086F98(u8 index, u8 actor) {
+    u8 sel = (index + 1) * 3;
+    s32 n = 0;
+    s32 ret = 0;
+    u8 id;
+    u8 glyph;
+    s32 i;
+    s32 j;
+
+    if (!(D_800CCE42[(D_800C3EAC + (actor << 6))[0x3C] * 0x170] & 0x80) && D_800D2C34[0] != 4) {
+        D_800C3EAC[0x2DC] = D_800C34CC[index];
+        return 1;
+    }
+    if ((D_800D2C34[0] != 0 && D_800D2C34[0] - 1 >= index) || D_800C3EAC[0x2E7] != 0) {
+        for (j = 0; j < 3; j++) {
+            D_800C3A70[j].buf = (u32)func_8008AC00(0x1E);
+        }
+        (D_800C3EAC + D_800C3EAC[0x2D6])[0x2CC] = index;
+        D_800C3EAC[0x2D6]++;
+        if (D_800C3EAC[0x2E4] != 0) {
+            (D_800C3EAC + D_800C3EAC[0x2D6])[0x2CB] = 0xFF;
+            (D_800C3EAC + D_800C3EAC[0x2D6])[0x2CB] = index;
+            sel = index + (D_800C3EAC[0x2CC] + 1) * 3;
+        }
+        D_800D2DB4[0x5D81] = 0;
+        D_800D2DB4[0x5D80] = 0;
+        D_800D2DB4[0x5D82] = 0;
+        for (i = 0; i < D_800C3EAC[0x2D6]; i++) {
+            if ((D_800C3EAC + i)[0x2CC] != 0xFF) {
+                switch ((D_800C3EAC + i)[0x2CC]) {
+                case 0:
+                    glyph = 0x5E;
+                    break;
+                case 1:
+                    glyph = 0x5F;
+                    break;
+                case 2:
+                    glyph = 0x5D;
+                    break;
+                }
+                D_800D2DB4[0x5D81] += func_80076A10(glyph, D_800D2DB4 + (D_800D2DB4[0x5D81] * 0x50 + 0x5640),
+                                                    i * 16 + 0x80, 0xD0 - n * 16);
+            }
+        }
+        if (D_800D2C34[0] == 4) {
+            if (index == 0xFF) {
+                sel = 12;
+            } else {
+                sel = index + 12;
+            }
+        }
+        id = sel;
+        if ((u16)func_80089C6C(*(u16*)(g_GameState + 0x16C4 + D_800D2D24[actor] * 32), D_800C34CC[id]) != 0) {
+            if (D_800C3EAC[0x2E4] == 0) {
+                if (*(u16*)(D_800C3EAC + (actor << 6) + 0x1C) == 0) {
+                    D_800D2DB4[0x5D81] += func_80076A10(8, D_800D2DB4 + (D_800D2DB4[0x5D81] * 0x50 + 0x5640),
+                                                        i * 16 + 0x80, 0xD0 - n * 16);
+                    n = func_80086C88(actor, n, i - 1, id, &D_800C3A70[n / 2].buf);
+                }
+            } else {
+                n = func_80086C88(actor, n, i - 1, id, &D_800C3A70[n / 2].buf);
+            }
+            ret = 1;
+        }
+        if (D_800C3EAC[0x2E4] != 0 && ret != 0) {
+            ret = 0;
+            if (D_800C3EAC[0x2CC] == 0xFF) {
+                sel = index + 12;
+            }
+            D_800D2DB4[0x5D90] = *(u8*)D_800CCB34__a;
+            D_800C3EAC[0x2DC] = D_800C34CC[sel];
+            D_800D2DB4[0x5D8F] = *(u8*)D_800CCB34__a;
+            D_800D2DB4[0x5D91] = *(u8*)D_800CCB34__a;
+            D_800D2D28[0xA8] = 1;
+            func_800716D8();
+            for (j = 0; j < 3; j++) {
+                HeapFree((void*)D_800C3A70[j].buf);
+            }
+        } else {
+            D_800C3EAC[0x2DC] = index;
+            if (D_800D2C34[0] != 4) {
+                id = (index + 1) * 3 + 1;
+            } else {
+                id = 13;
+            }
+            if ((u16)func_80089C6C(*(u16*)(g_GameState + 0x16C4 + D_800D2D24[actor] * 32), D_800C34CC[id]) != 0 &&
+                *(u16*)(D_800C3EAC + (actor << 6) + 0x1E) == 0) {
+                D_800D2DB4[0x5D81] += func_80076A10(9, D_800D2DB4 + (D_800D2DB4[0x5D81] * 0x50 + 0x5640),
+                                                    i * 16 + 0x84, 0xD0 - n * 16);
+                n = func_80086C88(actor, n, i, id, &D_800C3A70[n / 2].buf);
+                ret = 1;
+            }
+            if (D_800D2C34[0] != 4) {
+                id = (index + 1) * 3 + 2;
+            } else {
+                id = 14;
+            }
+            if ((u16)func_80089C6C(*(u16*)(g_GameState + 0x16C4 + D_800D2D24[actor] * 32), D_800C34CC[id]) != 0 &&
+                *(u16*)(D_800C3EAC + (actor << 6) + 0x20) == 0) {
+                D_800D2DB4[0x5D81] += func_80076A10(7, D_800D2DB4 + (D_800D2DB4[0x5D81] * 0x50 + 0x5640),
+                                                    i * 16 + 0x88, 0xD0 - n * 16);
+                func_80086C88(actor, n, i, id, &D_800C3A70[n / 2].buf);
+                ret = 1;
+            }
+            D_800D2DB4[0x5D90] = *(u8*)D_800CCB34__a;
+            D_800D2DB4[0x5D8F] = *(u8*)D_800CCB34__a;
+            D_800D2DB4[0x5D91] = *(u8*)D_800CCB34__a;
+            D_800D2D28[0xA8] = 1;
+            func_800716D8();
+            for (j = 0; j < 3; j++) {
+                HeapFree((void*)D_800C3A70[j].buf);
+            }
+        }
+    } else {
+        D_800C3EAC[0x2DC] = index;
+        ret = 1;
+    }
+    return ret;
+}
 INCLUDE_ASM("asm/battle/nonmatchings/main38_p2", func_800877E0);
 #endif
 #include "main38.c"
