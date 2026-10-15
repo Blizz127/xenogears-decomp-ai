@@ -2339,7 +2339,122 @@ void func_800968C0(void) {
 }
 #endif
 
-INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80096AB8);
+/* func_80096AB8.s, byte-exact: the hit roll for func_80094EE4.  It returns
+ * the outcome code.
+ * - 3 when: command +0xA bit 0x40 is set with the target's D_800CCE42
+ *   bit 7; either D_800C3DFC +0x10 bit 0x80 / 0x10 check finds
+ *   g_GameState[0x2286 + attacker +0x6F / +0x72] == 0 (these two also set
+ *   D_800C34AE = 1); command +0xA bit 0x200 is set with target +0x34 bit
+ *   8 or D_800CCE42 bit 7; command flag 0x1000 is set; or target status
+ *   0x100 is set.
+ * - 1 for the target's +0x7C 0x2000 / +0x80 0x1000 bits or command flag
+ *   0x8000, and 5 for command flag 2.
+ * - Otherwise roll = rand() % 100 - diff, with diff = (s8) command +0x15
+ *   + attacker +0x5E - target +0x5F.  Bit 0 of the target's actor-record
+ *   flags (actors[D_800C3E50]) gives 2 at 95%, else 1.  Target status
+ *   0x20 gives 1 below 50, else 3; status 0x40 gives 1 below 50, else 2.
+ *   Then 3 at or above bonus - (penalty - 90), 2 at or above
+ *   bonus - (penalty - 85), else 1.
+ * Codegen (gcc 2.6.3):
+ * - The four roll-vs-limit picks (status 0x20, status 0x40 and the two
+ *   final limits) are written with the test inverted
+ *   (`if (roll >= 50) return 3; return 1;`).  Each then keeps its own two
+ *   returns, as in retail.  Written the other way, jump.c turns them into
+ *   `v0 = 3; if (c) v0 = 1` and cross-jumps the sites together.  The 95%
+ *   actor-flag pick keeps its `<` form.
+ * - The last pick comes last, so it falls into the epilogue.
+ * - The inner (s16) in (s16)(penalty - 90) keeps the subtraction from
+ *   being reassociated into (bonus + 90) - penalty.
+ * - diff is written (s8)cmd[0x15] + atk - def, which gives retail's add
+ *   operand order. */
+extern u8 D_800C34AE;
+
+s32 func_80096AB8(void) {
+    s16 bonus = 0;
+    s16 penalty = 0;
+    u8 atk = ((u8*)D_800C3E00)[0x5E];
+    u8 def = D_800C3E34[0x5F];
+    u16 flags;
+    u16 st;
+    s16 diff;
+
+    if ((*(u16*)((u8*)D_800C3DFC + 0xA) & 0x40) && (D_800CCE42[D_800C3E50 * 0x170] & 0x80)) {
+        return 3;
+    }
+    if (((u8*)D_800C3E00)[0x56] == 4) {
+        if ((((u8*)D_800C3DFC)[0x10] & 0x80) && g_GameState[0x2286 + ((u8*)D_800C3E00)[0x6F]] == 0) {
+            D_800C34AE = 1;
+            return 3;
+        }
+        if ((((u8*)D_800C3DFC)[0x10] & 0x10) && g_GameState[0x2286 + ((u8*)D_800C3E00)[0x72]] == 0) {
+            D_800C34AE = 1;
+            return 3;
+        }
+    }
+    if (*(u16*)((u8*)D_800C3DFC + 0xA) & 0x200) {
+        if (*(u16*)(D_800C3E34 + 0x34) & 8) {
+            return 3;
+        }
+        if (D_800CCE42[D_800C3E50 * 0x170] & 0x80) {
+            return 3;
+        }
+    }
+    flags = *(u16*)((u8*)D_800C3DFC + 0xA);
+    if (flags & 0x1000) {
+        return 3;
+    }
+    st = *(u16*)(D_800C3E34 + 0x84) | *(u16*)(D_800C3E34 + 0x86);
+    if (st & 0x100) {
+        return 3;
+    }
+    if (*(u16*)(D_800C3E34 + 0x7C) & 0x2000) {
+        return 1;
+    }
+    if (*(u16*)(D_800C3E34 + 0x80) & 0x1000) {
+        return 1;
+    }
+    if (flags & 0x8000) {
+        return 1;
+    }
+    if (flags & 2) {
+        return 5;
+    }
+    if (*(u16*)((u8*)D_800C3E00 + 0x7C) & 0x400) {
+        bonus -= 50;
+    }
+    if ((*(u16*)((u8*)D_800C3E00 + 0x84) | *(u16*)((u8*)D_800C3E00 + 0x86)) & 0x1000) {
+        bonus += 30;
+    }
+    if (st & 0x800) {
+        penalty += 50;
+    }
+    diff = (s8)((u8*)D_800C3DFC)[0x15] + atk - def;
+    if (((Battle*)D_800C34B0)->actors[D_800C3E50].flags & 1) {
+        if (rand() % 100 < 95) {
+            return 2;
+        }
+        return 1;
+    }
+    if (st & 0x20) {
+        if ((s16)(rand() % 100 - diff) >= 50) {
+            return 3;
+        }
+        return 1;
+    }
+    if ((*(u16*)(D_800C3E34 + 0x84) | *(u16*)(D_800C3E34 + 0x86)) & 0x40) {
+        if ((s16)(rand() % 100 - diff) >= 50) {
+            return 2;
+        }
+        return 1;
+    }
+    if ((s16)(rand() % 100 - diff) >= (s16)(bonus - (s16)(penalty - 90))) {
+        return 3;
+    }
+    if ((s16)(rand() % 100 - diff) >= (s16)(bonus - (s16)(penalty - 85))) {
+        return 2;
+    }
+    return 1;
+}
 extern u8 D_800CCE2A[];
 extern void func_8009B46C(u16* p);
 
