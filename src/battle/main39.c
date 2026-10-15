@@ -33,9 +33,64 @@ void func_80087A38(s32 arg0) {
 
 INCLUDE_ASM("asm/battle/nonmatchings/main39", func_80087AF0);
 INCLUDE_ASM("asm/battle/nonmatchings/main39", func_80087EDC);
-INCLUDE_ASM("asm/battle/nonmatchings/main39", func_800881B8);
 extern u8 D_800C3EB4__rows[][28] asm("D_800C3EB4");
+extern u8 D_800C3EB0__rows[][28] asm("D_800C3EB0");
 extern u8 D_800D301C__groups[][4] asm("D_800D301C");
+extern u8* D_800D3364;
+/* The +0xA / +0xC halfwords of the 0x1C-byte D_800C3EB4 rows, under their
+ * own symbols as retail addresses them. */
+typedef struct {
+    u16 v;
+    u8 pad[0x1A];
+} M39Half;
+extern M39Half D_800C3EBE[];
+extern M39Half D_800C3EC0[];
+void func_800883AC(u8 index);
+
+/* func_800881B8.s, byte-exact: move combatant `index` into the alternate
+ * group of `target`.  Nothing happens when the two rows already share a
+ * group, or when that group (row byte 0 + bank: 0x18 when `target` is a
+ * party member (< 3) and `index` is not, else 0x10) is taken.  Otherwise
+ * func_800883AC(index) takes the combatant out of its old group, the row
+ * gets target's group and a cleared +1 byte, the group is marked (+0 and
+ * +1 = 1), and the row's +0xA / +0xC halfwords come from the group's
+ * D_800D3364 entry (+0x100/+0x102 for a party member, else +0x104/+0x106).
+ * Codegen: `ally = index < 3` comes before the bank select (a
+ * decomp-permuter find: it puts the second compare in retail's register),
+ * and the select is written with `||`.  The && form lets jump.c rewrite it
+ * as `bank = 0x10; if (...) bank = 0x18;` (one insn longer); the || form
+ * keeps retail's two-armed select.  The row byte goes through the
+ * D_800C3EB0 view (+4): a symbol + offset CONST address has no symbolic
+ * term for sched's alias test, so the reloads stay behind the group
+ * stores as in retail.  The byte is stored before the +1 clear, so CSE
+ * forgets it at the QImode clear and reloads it as retail does.  `<< 3`
+ * keeps the base-first D_800D3364 add (as in func_80088490).  Matches
+ * under gcc 2.7.2 (main39's preset) and 2.6.x. */
+void func_800881B8(u8 index, u8 target) {
+    s32 ally;
+    u8 bank;
+
+    if (D_800C3EB0__rows[index][4] == D_800C3EB0__rows[target][4]) {
+        return;
+    }
+    ally = index < 3;
+    bank = (target >= 3 || ally) ? 0x10 : 0x18;
+    if (D_800D301C__groups[D_800C3EB0__rows[target][4] + bank][0] != 0) {
+        return;
+    }
+    func_800883AC(index);
+    D_800C3EB0__rows[index][4] = D_800C3EB0__rows[target][4];
+    D_800C3EB0__rows[index][5] = 0;
+    D_800D301C__groups[D_800C3EB0__rows[index][4] + bank][0] = 1;
+    D_800D301C__groups[D_800C3EB0__rows[index][4] + bank][1] = 1;
+    if (index < 3) {
+        D_800C3EBE[index].v = *(u16*)(D_800D3364 + (D_800C3EB0__rows[index][4] << 3) + 0x100);
+        D_800C3EC0[index].v = *(u16*)(D_800D3364 + (D_800C3EB0__rows[index][4] << 3) + 0x102);
+    } else {
+        D_800C3EBE[index].v = *(u16*)(D_800D3364 + (D_800C3EB0__rows[index][4] << 3) + 0x104);
+        D_800C3EC0[index].v = *(u16*)(D_800D3364 + (D_800C3EB0__rows[index][4] << 3) + 0x106);
+    }
+}
 extern u8 D_800D32A1__2[][8] asm("D_800D32A1");
 extern u32 func_80089C48(u8 index);
 
@@ -54,15 +109,6 @@ void func_800883AC(u8 index) {
     D_800D301C__groups[D_800C3EB4__rows[index][0] + bank][0]--;
     D_800D301C__groups[D_800C3EB4__rows[index][0] + bank][1] &= func_80089C48(D_800C3EB4__rows[index][1]);
 }
-extern u8* D_800D3364;
-/* The +0xA / +0xC halfwords of the 0x1C-byte D_800C3EB4 rows, under their
- * own symbols as retail addresses them. */
-typedef struct {
-    u16 v;
-    u8 pad[0x1A];
-} M39Half;
-extern M39Half D_800C3EBE[];
-extern M39Half D_800C3EC0[];
 
 /* Put combatant `index` alone into an alternate group: its own group if
  * that is empty, else the first empty one of the eight; mark the group
