@@ -22,7 +22,212 @@ void func_800B9C00(void *arg0, s32 arg1) {
 }
 
 INCLUDE_ASM("asm/battle/nonmatchings/mainl110", func_800B9C78);
-INCLUDE_ASM("asm/battle/nonmatchings/mainl110", func_800B9F78);
+typedef struct {
+    u8 unk0[2];
+    s16 unk2;
+    u8 unk4[6];
+    s16 unkA;
+    u8 unkC[0x3C];
+    s32 unk48;
+    u8 unk4C[0x28];
+    u8* unk74;
+    u8 unk78[0x28];
+    u16 unkA0;
+    u16 unkA2;
+    u16 unkA4;
+    u8 unkA6[2];
+    u32 unkA8 : 28;
+    u32 mode : 2;
+    u32 slot : 4 __attribute__((packed));
+    u32 unkAC : 22;
+    s32 unkAF : 8;
+    s8 unkB0;
+} B9FSpr;
+
+typedef struct {
+    s16 x;
+    s16 z;
+} B9FPos2;
+
+extern s32 D_800C3660[];
+extern s32 D_800C3628[];
+extern u8 D_800C3623[];
+extern u8 D_800C362C[];
+extern u8 D_800C3624[];
+extern B9FSpr* D_800D363C[];
+extern s32 D_800C360C[];
+extern s32 D_80059464__array[] asm("D_80059464");
+extern u8 D_800C3EB0__r[][28] asm("D_800C3EB0");
+extern u8 func_800B7E94(void);
+extern void func_80021BF8(B9FSpr* spr, void* cb);
+void func_800B9B30();
+extern void func_800245D8(B9FSpr* spr, s32 anim);
+extern void func_800BF0B4(u32 value);
+void func_800B9C78();
+extern void func_800B8048(B9FSpr* spr);
+extern void func_800BE790(void);
+extern void func_800BF4F0(B9FSpr* spr, s32 anim);
+extern void func_800BAEB8(s32 a0);
+extern s32 func_800BF720(void);
+extern void func_800BF9EC(void);
+extern void func_800B8EBC(void);
+extern void func_800BFA9C(void);
+extern s32 func_800C07CC(B9FPos2 a, B9FPos2 b);
+extern void func_800B905C(void);
+
+/* func_800B9F78.s, byte-exact: the battle command task's per-frame
+ * callback (guarded by D_800C3660).  It publishes the task in D_800C3610,
+ * finishes a pending entry (D_800C3628: func_800B7E94, else the slot
+ * sprite's 0x12/0x13 pose and the 7 window), counts down +0x34 steps
+ * through func_800B9C78, runs the +0x49 request once (4: the D_800D363C
+ * target's step-7 reaction, waiting while its pose is 0x1B; 6/2: the
+ * sprite's +0x74 animation via func_800BF4F0 / func_800B9C00; 5: pose
+ * and func_800BAEB8), then dispatches on the +0x1C state (jtbl_80070AB8;
+ * states 2 and 6 move the sprite towards +0xA0/+0xA4 while the
+ * func_800C07CC distance in +0x44 shrinks).  The sprite slot is the
+ * 4-bit field straddling +0xA8/+0xAC (packed). */
+void func_800B9F78(u8* task) {
+    B9FSpr* spr;
+    s32 target;
+    B9FPos2 a;
+    B9FPos2 b;
+    B9FPos2 b6;
+
+    if (D_800C3660[0] != 0) {
+        return;
+    }
+    D_800C3660[0] = 1;
+    spr = *(B9FSpr**)(task + 4);
+    D_800C3610[0] = task;
+    target = *(s32*)(task + 0x4C);
+    if (D_800C3628[0] != 0) {
+        D_800C3628[0] = 0;
+        if (func_800B7E94() != 0) {
+            func_80021BF8(spr, func_800B9B30);
+        } else {
+            if (spr->slot < 3) {
+                if (D_800C3623[0] != 0) {
+                    func_800245D8(spr, 0x13);
+                } else {
+                    func_800245D8(spr, 0x12);
+                }
+                D_800C3623[0] = 0;
+            }
+            if (spr->unk48 != 0) {
+                func_800BF0B4(7);
+            }
+        }
+    }
+    if (*(s32*)(D_800C3610[0] + 0x34) != 0) {
+        func_800B9C78();
+        (*(s32*)(D_800C3610[0] + 0x34))--;
+    }
+    if (D_800C3610[0][0x49] != 0) {
+        switch (D_800C3610[0][0x49]) {
+        case 4: {
+            B9FSpr* t = D_800D363C[0];
+            s32 slot = t->slot;
+
+            if (slot < 3 && D_800C3EB0__r[slot][8] == 0) {
+                u8* base = (u8*)D_800C3EB0__r;
+                s32 prev = D_800C360C[0] - 1;
+
+                if (*(base + prev * 0x48 + slot + 0x150) == 7) {
+                    func_800B8048(t);
+                    func_800245D8(t, 0x1B);
+                    while (t->unkAF == 0x1B) {
+                        func_800BE790();
+                    }
+                }
+            }
+            break;
+        }
+        case 6:
+            func_800BF4F0(spr, (s32)spr->unk74);
+            break;
+        case 2:
+            func_800B9C00(spr, (s32)spr->unk74);
+            break;
+        case 5:
+            if (D_800C3EB0__r[spr->slot][7] == 0) {
+                func_800245D8(spr, spr->unkB0);
+            }
+            func_800BAEB8(*(s32*)(D_800C3610[0] + 0x24));
+            func_800BF0B4(0xA);
+            break;
+        }
+        D_800C3610[0][0x49] = 0;
+    }
+    switch (*(s32*)(D_800C3610[0] + 0x1C)) {
+    case 7:
+        if (D_80059464__array[0] == func_800BF720()) {
+            func_800BF0B4(4);
+            D_800C3610[0][0x48] = 1;
+            func_800BF9EC();
+        }
+        break;
+    case 10:
+        if (D_80059464__array[0] == func_800BF720()) {
+            func_800B8EBC();
+        }
+        break;
+    case 9:
+        func_800B9C78();
+        break;
+    case 8:
+        if (D_800C362C[0] != 0 && D_80059464__array[0] == func_800BF720() && D_800C3624[0] != 0) {
+            if (D_800C362C[0] == 1) {
+                (*(s32*)(D_800C3610[0] + 0x34))++;
+            }
+            func_800BFA9C();
+        }
+        break;
+    case 2: {
+        s32 x;
+        u32 z;
+        s32 d;
+
+        x = spr->unk2;
+        a.x = x;
+        z = spr->unkA;
+        a.z = z;
+        b.x = spr->unkA0;
+        b.z = spr->unkA4;
+        d = func_800C07CC(a, b);
+        if (*(s32*)(D_800C3610[0] + 0x44) < d) {
+            func_800B9C00(spr, target);
+        } else {
+            *(s32*)(D_800C3610[0] + 0x44) = d;
+        }
+        break;
+    }
+    case 6: {
+        s32 x;
+        u32 z;
+        s32 d;
+
+        x = spr->unk2;
+        a.x = x;
+        z = spr->unkA;
+        a.z = z;
+        b6.x = spr->unkA0;
+        b6.z = spr->unkA4;
+        d = func_800C07CC(a, b6);
+        if (*(s32*)(D_800C3610[0] + 0x44) < d) {
+            func_800BF4F0(spr, target);
+        } else {
+            *(s32*)(D_800C3610[0] + 0x44) = d;
+        }
+        break;
+    }
+    case 4:
+        if (D_800C3610[0][0x48] != 0) {
+            func_800B905C();
+        }
+        break;
+    }
+    D_800C3660[0] = 0;
+}
 extern u8 D_800591AC__array[] asm("D_800591AC");
 extern s32 D_80059464__array[] asm("D_80059464");
 extern u8 D_800C3EB0[];
