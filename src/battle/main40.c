@@ -71,9 +71,9 @@ extern s32 D_800C2084;
 
 #if BATTLE_PART(1)
 /* func_8008860C.s */
-/* Not yet byte-matching: the matching build assembles retail bytes for
- * this function from its own asm segment (see config/battle.yaml).  The
- * body below is kept for the port and the differential harnesses. */
+/* The retail build compiles this function's byte-exact C in
+ * mainasm_18B1C.c.  The body below is kept for the port and the
+ * differential harnesses. */
 #ifdef XENO_PC_PORT
 void func_8008860C(void) {
     s32 i;

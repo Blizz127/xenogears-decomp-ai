@@ -24,7 +24,48 @@ extern s32 D_800C3A9C;
 extern s32 func_8001BD40(s32, s32);
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/mainasm_18B1C", func_8008860C);
+extern u8* D_800D2DB4;
+extern u8 D_800C33B0[];
+extern u8 D_800CCB34__b[] asm("D_800CCB34");
+extern s32 func_80076A10(s32 glyph, u8* prims, s16 x, s16 y);
+extern void func_80076B68(u8* p);
+extern void func_80076BF0(u8* p);
+
+/* Draw the battle message glyph rows: two command-name glyph runs from
+ * D_800C33B0[0..1] appended to the +0x5D74 POLY_FT4 run at +0x1720 (80
+ * bytes each), the 0xA8 cursor glyph at +0x5D70 (prims at +0), their
+ * current D_800CCB34 buffers recorded at +0x5D83 / +0x5D92, the glyphs
+ * submitted through func_80076B68 for both runs, then D_800C33B0[2..3] at
+ * +0x5D7E (+0x2530, buffer +0x5D8D) through func_80076BF0.  gcc 2.6.x.
+ * Codegen: D_800D2DB4 is re-read in every statement and the prim offset
+ * is added before the base, as retail; D_800CCB34 through an unsized array
+ * view, so its address stays in s0 across the calls; the draw loops are
+ * for loops: their duplicated `j < count` tests leave three dead compare
+ * temporaries, which still get retail's three spare frame slots. */
+void func_8008860C(void) {
+    s32 i;
+    s32 j;
+
+    for (i = 0; i < 2; i++) {
+        D_800D2DB4[0x5D74] += func_80076A10(D_800C33B0[i], D_800D2DB4 + (D_800D2DB4[0x5D74] * 80 + 0x1720), 0xA0, 0x64);
+    }
+    D_800D2DB4[0x5D83] = D_800CCB34__b[0];
+    D_800D2DB4[0x5D70] = func_80076A10(0xA8, D_800D2DB4 + D_800D2DB4[0x5D70] * 80, 0xA0, 0x64);
+    D_800D2DB4[0x5D92] = D_800CCB34__b[0];
+    for (j = 0; j < D_800D2DB4[0x5D74]; j++) {
+        func_80076B68(D_800D2DB4 + ((j * 2 + D_800D2DB4[0x5D83]) * 40 + 0x1720));
+    }
+    for (j = 0; j < D_800D2DB4[0x5D70]; j++) {
+        func_80076B68(D_800D2DB4 + (j * 2 + D_800D2DB4[0x5D92]) * 40);
+    }
+    for (i = 2; i < 4; i++) {
+        D_800D2DB4[0x5D7E] += func_80076A10(D_800C33B0[i], D_800D2DB4 + (D_800D2DB4[0x5D7E] * 80 + 0x2530), 0xA0, 0x64);
+    }
+    D_800D2DB4[0x5D8D] = D_800CCB34__b[0];
+    for (j = 0; j < D_800D2DB4[0x5D7E]; j++) {
+        func_80076BF0(D_800D2DB4 + ((j * 2 + D_800D2DB4[0x5D8D]) * 40 + 0x2530));
+    }
+}
 #endif
 
 void func_8008887C(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {

@@ -485,6 +485,10 @@ paths = [
     # main35_p3_q1 (2026-10-14): func_80084548, its only C, matches only under
     # 2.6.x (2.7.2: diff 6/130, the loop delay slots).  No divisions.
     "src/battle/main35_p3_q1.",
+    # mainasm_18B1C (2026-10-15): func_8008860C matches only under 2.6.x
+    # (2.7.2: diff 10/156); func_8008887C and func_80088990 compile to the
+    # same bytes.  No divisions.
+    "src/battle/mainasm_18B1C.",
     # main60 (2026-10-15): func_8009CBC4 matches only under 2.6.x (2.7.2:
     # diff 181/484, CDK 1944 vs 1936); func_8009D354 compiles to the same
     # bytes.  Its divides carry no aspsx checks, so no --expand-div.
