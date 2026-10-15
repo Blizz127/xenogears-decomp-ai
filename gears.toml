@@ -510,6 +510,13 @@ paths = [
     # bytes.  No divisions.  Neighbours main51 and main53 are BattleGcc263
     # too.
     "src/battle/main52.",
+    # main39 (2026-10-15): func_80087AF0 matches only under 2.6.3 (2.7.2:
+    # diff 22/251, it shares the +0x2DC and +0x2DA loads retail repeats;
+    # 2.6.0 1000 and CDK 1008 vs 1004 bytes); main39's other C (func_80087A38,
+    # func_80087EDC, func_800881B8, func_800883AC, func_80088490) compiles
+    # to the same bytes under 2.6.3 (full relink).  No divisions.
+    # Neighbour main38_p2 is BattleGcc263 too.
+    "src/battle/main39.",
 ]
 
 [[build_preset]]

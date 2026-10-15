@@ -31,7 +31,114 @@ void func_80087A38(s32 arg0) {
     D_800C3E18 = 0;
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/main39", func_80087AF0);
+/* func_80087AF0.s, byte-exact: run actor `actor`'s chosen command
+ * (target = the actor's D_800C3EAC row byte +0x3C).  On the first call
+ * (D_800C3E18 == 0) the actor joins the target's group:
+ * func_800881B8(actor, target) when its D_800D32A1 flag is set, else
+ * func_80087EDC(actor, target) unless D_800D2D24[actor] is 4; then
+ * D_800C3E18 = 1.  After func_80085388():
+ * - flag set: D_800C3EAC +0x2DC++;
+ * - else, with n = +0x2DC: n < 8 stores the D_800C34B3 entry [n][column]
+ *   (3-byte rows); otherwise a nonzero (u16)func_80089C6C(mask, n - 8)
+ *   (mask = the g_GameState +0x16C0 halfword of 32-byte record
+ *   D_800D2D24[actor]) makes it return 1, else +0x2DC = 7.
+ * A target whose D_800CCD1C halfword (0x170-byte records) has bit 0x800
+ * gets a command row (actor, 0xF3, func_80089C08(target)) at +0x2DA, which
+ * advances.  Then func_80085CCC(actor, func_80089C08(target),
+ * +0x2DC - 1), a command row (actor, D_800D2C94, D_800D2C98's low byte) at
+ * row = +0x2DA, which advances, and func_80079840(actor, target).  A
+ * target >= 3 whose func_80079AB0(target) is nonzero also makes it
+ * return 1.  Last, func_80085C88(row).
+ * Codegen (gcc 2.6.3: main39 is BattleGcc263):
+ * - column is copied into a block-local u32 c at the top of the n < 8
+ *   arm.  c is then local to that block, and local-alloc gives it a0
+ *   while the row address chain and the table base take v0 and v1;
+ *   global-alloc then puts n in a1 and ctx in a2, as retail does (-dl/-dg
+ *   dumps).  Copied before the n < 8 test, c gets an a1 preference
+ *   (column's entry copy) and n takes a0 (10/251).  Used in place, or
+ *   through a u8 c, column is masked late into v1 (11/251).
+ * - actor is a plain u8 parameter: retail never masks it on entry and
+ *   masks it once per region.
+ * - The else arm rereads +0x2DC and the second command row reads +0x2DA
+ *   twice, as retail; gcc 2.7.2 shares both loads (diff 22/251).
+ * - func_80089C6C is declared as defined (u32); the (u16) on its result
+ *   is retail's andi.
+ * - The command rows go through asm-label row views, as in
+ *   func_8008C4A8 (main48). */
+extern u8 D_800D32A1[];
+extern u8 D_800D2D24[];
+extern u8 D_800C34B3__rows[][3] asm("D_800C34B3");
+extern u8 D_800CCD1C[];
+extern u8 D_800C400B__rows[][0x48] asm("D_800C400B");
+extern u8 D_800C402F__rows[][0x48] asm("D_800C402F");
+extern u16 D_800C4022__rows[][0x24] asm("D_800C4022");
+extern u16 D_800C3FFE__rows[][0x24] asm("D_800C3FFE");
+extern u16 D_800D2C94;
+extern u16 D_800D2C98;
+extern u8 g_GameState[];
+extern void func_80085388(void);
+extern void func_800881B8(u8 index, u8 target);
+extern void func_80087EDC(u8 index, u8 target);
+extern u32 func_80089C6C(u32 mask, u8 index);
+extern u16 func_80089C08(u8 index);
+extern void func_80085CCC(u8 a0, u16 a1, u16 a2);
+extern void func_80079840(u8 a, u8 e);
+extern u8 func_80079AB0(u8 actor);
+extern void func_80085C88(u8 index);
+
+u32 func_80087AF0(u8 actor, u8 column) {
+    u32 done = 0;
+    u8 row;
+    u8* ctx;
+    u32 n;
+
+    if (D_800C3E18 == 0) {
+        if (D_800D32A1[actor * 8] == 0) {
+            if (D_800D2D24[actor] != 4) {
+                func_80087EDC(actor, (D_800C3EAC + (actor << 6))[0x3C]);
+            }
+        } else {
+            func_800881B8(actor, (D_800C3EAC + (actor << 6))[0x3C]);
+        }
+        D_800C3E18 = 1;
+    }
+    func_80085388();
+    if (D_800D32A1[actor * 8] == 0) {
+        ctx = D_800C3EAC;
+        n = ctx[0x2DC];
+        if (n < 8) {
+            u32 c = column;
+
+            ctx[0x2DC] = D_800C34B3__rows[n][c];
+        } else if ((u16)func_80089C6C(*(u16*)(g_GameState + 0x16C0 + D_800D2D24[actor] * 32), ctx[0x2DC] - 8) != 0) {
+            done = 1;
+        } else {
+            D_800C3EAC[0x2DC] = 7;
+        }
+    } else {
+        D_800C3EAC[0x2DC]++;
+    }
+    if (*(u16*)(D_800CCD1C + (D_800C3EAC + (actor << 6))[0x3C] * 0x170) & 0x800) {
+        D_800C400B__rows[D_800C3EAC[0x2DA]][0] = actor;
+        D_800C402F__rows[D_800C3EAC[0x2DA]][0] = 0xF3;
+        D_800C4022__rows[D_800C3EAC[0x2DA]][0] = func_80089C08((D_800C3EAC + (actor << 6))[0x3C]);
+        D_800C3EAC[0x2DA]++;
+    }
+    func_80085CCC(actor, func_80089C08((D_800C3EAC + (actor << 6))[0x3C]), D_800C3EAC[0x2DC] - 1);
+    row = D_800C3EAC[0x2DA];
+    D_800C400B__rows[D_800C3EAC[0x2DA]][0] = actor;
+    D_800C3FFE__rows[D_800C3EAC[0x2DA]][0] = D_800D2C94;
+    D_800C402F__rows[D_800C3EAC[0x2DA]][0] = *(u8*)&D_800D2C98;
+    D_800C3EAC[0x2DA]++;
+    func_80079840(actor, (D_800C3EAC + (actor << 6))[0x3C]);
+    if ((D_800C3EAC + (actor << 6))[0x3C] >= 3) {
+        if (func_80079AB0((D_800C3EAC + (actor << 6))[0x3C]) != 0) {
+            done = 1;
+        }
+    }
+    func_80085C88(row);
+    return done;
+}
 extern u8 D_800C3EB4__rows[][28] asm("D_800C3EB4");
 extern u8 D_800C3EB0__rows[][28] asm("D_800C3EB0");
 extern u8 D_800D301C__groups[][4] asm("D_800D301C");
