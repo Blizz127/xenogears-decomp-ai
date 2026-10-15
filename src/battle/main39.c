@@ -32,7 +32,6 @@ void func_80087A38(s32 arg0) {
 }
 
 INCLUDE_ASM("asm/battle/nonmatchings/main39", func_80087AF0);
-INCLUDE_ASM("asm/battle/nonmatchings/main39", func_80087EDC);
 extern u8 D_800C3EB4__rows[][28] asm("D_800C3EB4");
 extern u8 D_800C3EB0__rows[][28] asm("D_800C3EB0");
 extern u8 D_800D301C__groups[][4] asm("D_800D301C");
@@ -46,6 +45,61 @@ typedef struct {
 extern M39Half D_800C3EBE[];
 extern M39Half D_800C3EC0[];
 void func_800883AC(u8 index);
+extern u16 func_80089C9C(u32 mask, u8 index);
+extern u16 func_80089C08(u8 index);
+
+/* func_80087EDC.s, byte-exact: move combatant `index` into the group of
+ * `target`.  Nothing happens when the two rows already share a group, or
+ * when that group (row byte 0 + bank: 8 when `target` is a party member
+ * (< 3) and `index` is not, else 0) already holds four.  Otherwise
+ * func_800883AC(index) takes the combatant out of its old group, the
+ * group's count goes up, row byte 1 gets the first slot 0..3 whose bit
+ * func_80089C9C finds clear in the group's +1 mask (row byte 0 gets
+ * target's group), func_80089C08(slot) sets that bit, and the row's +0xA
+ * / +0xC halfwords come from the D_800D3364 entry at group * 32 + slot * 4
+ * (+4/+6 for a party member, else +0x10/+0x12).
+ * Codegen (CONSTRUCT): `own` repeats the select's inner flag and is never
+ * read.  CSE turns the then-arm into a copy of it, so the flag
+ * ((index >= 3) << 3) is computed before the target test and moved in the
+ * then-arm, as in retail.  Without it the nested ?: computes the flag
+ * inside the then-arm (7/183), and a separate flag variable gives jump.c
+ * a single-move then-arm that it rewrites branch-free (708 vs 732 bytes).
+ * The D_800D3364 offset keeps row byte 0 first for retail's load order;
+ * func_80089C9C is read as u16 (retail masks its result, as main45's
+ * callers do).  Matches under gcc 2.7.2 (main39's preset) and 2.6.x. */
+void func_80087EDC(u8 index, u8 target) {
+    u8 bank;
+    s32 own;
+    s32 slot;
+    u8 group;
+
+    if (D_800C3EB4__rows[index][0] == D_800C3EB4__rows[target][0]) {
+        return;
+    }
+    own = (index >= 3) ? 8 : 0;
+    bank = (target < 3) ? ((index >= 3) ? 8 : 0) : 0;
+    if (D_800D301C__groups[D_800C3EB4__rows[target][0] + bank][0] >= 4) {
+        return;
+    }
+    func_800883AC(index);
+    D_800D301C__groups[D_800C3EB4__rows[target][0] + bank][0]++;
+    for (slot = 0; slot < 4; slot++) {
+        if (func_80089C9C(D_800D301C__groups[D_800C3EB4__rows[target][0] + bank][1], slot) == 0) {
+            break;
+        }
+    }
+    group = D_800C3EB4__rows[target][0];
+    D_800C3EB4__rows[index][1] = slot;
+    D_800C3EB4__rows[index][0] = group;
+    D_800D301C__groups[D_800C3EB4__rows[index][0] + bank][1] |= func_80089C08(D_800C3EB4__rows[index][1]);
+    if (index < 3) {
+        D_800C3EBE[index].v = *(u16*)(D_800D3364 + (D_800C3EB4__rows[index][0] * 32 + D_800C3EB4__rows[index][1] * 4) + 4);
+        D_800C3EC0[index].v = *(u16*)(D_800D3364 + (D_800C3EB4__rows[index][0] * 32 + D_800C3EB4__rows[index][1] * 4) + 6);
+    } else {
+        D_800C3EBE[index].v = *(u16*)(D_800D3364 + (D_800C3EB4__rows[index][0] * 32 + D_800C3EB4__rows[index][1] * 4) + 0x10);
+        D_800C3EC0[index].v = *(u16*)(D_800D3364 + (D_800C3EB4__rows[index][0] * 32 + D_800C3EB4__rows[index][1] * 4) + 0x12);
+    }
+}
 
 /* func_800881B8.s, byte-exact: move combatant `index` into the alternate
  * group of `target`.  Nothing happens when the two rows already share a
