@@ -486,7 +486,282 @@ void func_800A6F98(void) {
 }
 
 INCLUDE_ASM("asm/battle/nonmatchings/main70", func_800A7064);
-INCLUDE_ASM("asm/battle/nonmatchings/main70", func_800A7948);
+#include "battle/gte_inline.h"
+
+/* Psy-Q P_TAG (OT link word) and POLY_GT3, as libgpu.h lays them out. */
+typedef struct {
+    unsigned addr : 24;
+    unsigned len : 8;
+} A79Tag;
+
+typedef struct {
+    A79Tag tag;
+    u8 r0, g0, b0, code;
+    s16 x0, y0;
+    u8 u0, v0;
+    u16 clut;
+    u8 r1, g1, b1, p1;
+    s16 x1, y1;
+    u8 u1, v1;
+    u16 tpage;
+    u8 r2, g2, b2, p2;
+    s16 x2, y2;
+    u8 u2, v2;
+    u16 pad2;
+} A79GT3;
+
+/* Cloth vertex (0x18 bytes): chains of these end at len == 0; pos.pad
+ * counts the faces whose normals were summed into nx/ny/nz. */
+typedef struct {
+    s16 len;
+    s16 sag;
+    SVECTOR pos;
+    s32 nx;
+    s32 ny;
+    s32 nz;
+} A79Vtx;
+
+/* Collision sphere (0x10 bytes). */
+typedef struct {
+    u8 pad[8];
+    s16 x;
+    s16 y;
+    s16 z;
+    s16 r;
+} A79Ball;
+
+/* Cloth face (0x58 bytes): three vertex indices and a double-buffered
+ * POLY_GT3. */
+typedef struct {
+    s16 v[3];
+    s16 pad;
+    A79GT3 prim[2];
+} A79Face;
+
+/* Cloth object (main65's +0x114 records, 0x24 bytes). */
+typedef struct {
+    u8 pad0[4];
+    s16 nChains;
+    s16 nFaces;
+    s16 nVerts;
+    s16 nBalls;
+    u8 front[3];
+    u8 back[3];
+    u8 pad12[2];
+    s32 active;
+    A79Ball* balls;
+    A79Vtx** chains;
+    A79Face* faces;
+} A79Cloth;
+
+extern s32 D_80050100;
+
+/* Step and draw a cloth: walk each vertex chain, pulling every next vertex
+ * to `len` (scaled by `scale` >> 20) from the previous one along the
+ * segment plus `wind` (and `sag` on y), clamp it above floorY and push it
+ * out of each collision sphere (radius * scale >> 12); then average the
+ * face normals per vertex (GTE outer product, VectorNormal) and draw each
+ * face as a lit POLY_GT3 (RTPT, NCLIP side select between the front and
+ * back colours, NCCS per vertex) linked at otz >> D_80050100.  CAVEAT
+ * (retail behaviour kept): the face pointer only advances for faces that
+ * are drawn, so a face rejected by the RTPT flag check is retried by every
+ * remaining iteration and the faces after it are not drawn.  Codegen: the
+ * chain pointer `v` doubles as the vertex base in the later loops; the clear
+ * and divide loops walk it (`v++, i++`, so the field givs combine at nz);
+ * `flag` doubles as the sphere counter (retail keeps both in one stack
+ * slot); `unused` is retail's untouched 8-byte slot at sp+0x58; the OT link
+ * is libgpu's addPrim through the P_TAG view of &f->prim[buf].  Matches
+ * under gcc 2.6.x with maspsx --expand-div (BattleGcc263Div). */
+void func_800A7948(A79Cloth* c, SVECTOR* wind, MATRIX* view, u32* ot, s32 buf, s32 scale, s16 floorY) {
+    VECTOR d;
+    SVECTOR n;
+    VECTOR e1;
+    VECTOR e2;
+    VECTOR cr;
+    SVECTOR unused;
+    CVECTOR col;
+    s32 flag;
+    s32 opz;
+    s32 otz;
+    A79Vtx* v;
+    A79Ball* b;
+    A79Face* f;
+    s32 i;
+    s32 len;
+    s32 r;
+
+    if (c->active != 0) {
+        col.cd = c->faces->prim[0].code;
+        for (i = 0; i < c->nChains; i++) {
+            v = c->chains[i];
+            if (v->len != 0) {
+                do {
+                    d.vx = v[1].pos.vx - v->pos.vx + wind->vx;
+                    d.vy = v[1].pos.vy - v->pos.vy + wind->vy + v->sag;
+                    d.vz = v[1].pos.vz - v->pos.vz + wind->vz;
+                    len = SquareRoot0(d.vx * d.vx + d.vy * d.vy + d.vz * d.vz);
+                    if (len != 0) {
+                        d.vx = (d.vx << 8) / len;
+                        d.vy = (d.vy << 8) / len;
+                        d.vz = (d.vz << 8) / len;
+                    } else {
+                        d.vx = 0;
+                        d.vy = 0;
+                        d.vz = 0;
+                    }
+                    v[1].pos.vx = v->pos.vx + v->len * d.vx * scale / 0x100000;
+                    v[1].pos.vy = v->pos.vy + v->len * d.vy * scale / 0x100000;
+                    v[1].pos.vz = v->pos.vz + v->len * d.vz * scale / 0x100000;
+                    if (floorY < v[1].pos.vy) {
+                        v[1].pos.vy = floorY;
+                    }
+                    for (flag = 0, b = c->balls; flag < c->nBalls; flag++, b++) {
+                        d.vx = v[1].pos.vx - b->x;
+                        d.vy = v[1].pos.vy - b->y;
+                        d.vz = v[1].pos.vz - b->z;
+                        len = SquareRoot0(d.vx * d.vx + d.vy * d.vy + d.vz * d.vz);
+                        r = (s16)(b->r * scale / 0x1000);
+                        if (len < r) {
+                            if (len != 0) {
+                                d.vx = b->x + r * d.vx / len;
+                                d.vy = b->y + r * d.vy / len;
+                                d.vz = b->z + r * d.vz / len;
+                            } else {
+                                d.vx = b->x;
+                                d.vy = b->y;
+                                d.vz = b->z;
+                            }
+                            d.vx -= v->pos.vx;
+                            d.vy -= v->pos.vy;
+                            d.vz -= v->pos.vz;
+                            len = SquareRoot0(d.vx * d.vx + d.vy * d.vy + d.vz * d.vz);
+                            if (len != 0) {
+                                d.vx = (d.vx << 8) / len;
+                                d.vy = (d.vy << 8) / len;
+                                d.vz = (d.vz << 8) / len;
+                            } else {
+                                d.vx = 0;
+                                d.vy = 0;
+                                d.vz = 0;
+                            }
+                            v[1].pos.vx = v->pos.vx + v->len * d.vx * scale / 0x100000;
+                            v[1].pos.vy = v->pos.vy + v->len * d.vy * scale / 0x100000;
+                            v[1].pos.vz = v->pos.vz + v->len * d.vz * scale / 0x100000;
+                        }
+                    }
+                    v++;
+                } while (v->len != 0);
+            }
+        }
+        v = c->chains[0];
+        for (i = 0; i < c->nVerts; v++, i++) {
+            v->pos.pad = 0;
+            v->nx = 0;
+            v->ny = 0;
+            v->nz = 0;
+        }
+        f = c->faces;
+        v = c->chains[0];
+        for (i = 0; i < c->nFaces; i++, f++) {
+            e1.vx = v[f->v[0]].pos.vx - v[f->v[1]].pos.vx;
+            e1.vy = v[f->v[0]].pos.vy - v[f->v[1]].pos.vy;
+            e1.vz = v[f->v[0]].pos.vz - v[f->v[1]].pos.vz;
+            e2.vx = v[f->v[0]].pos.vx - v[f->v[2]].pos.vx;
+            e2.vy = v[f->v[0]].pos.vy - v[f->v[2]].pos.vy;
+            e2.vz = v[f->v[0]].pos.vz - v[f->v[2]].pos.vz;
+            BATTLE_GTE_LDOPV1(&e1);
+            BATTLE_GTE_LDOPV2(&e2);
+            BATTLE_GTE_OP0();
+            BATTLE_GTE_STLVNL(&cr);
+            cr.vx /= 8;
+            cr.vy /= 8;
+            cr.vz /= 8;
+            VectorNormal(&cr, &e1);
+            v[f->v[0]].nx += e1.vx;
+            v[f->v[0]].ny += e1.vy;
+            v[f->v[0]].nz += e1.vz;
+            v[f->v[0]].pos.pad++;
+            v[f->v[1]].nx += e1.vx;
+            v[f->v[1]].ny += e1.vy;
+            v[f->v[1]].nz += e1.vz;
+            v[f->v[1]].pos.pad++;
+            v[f->v[2]].nx += e1.vx;
+            v[f->v[2]].ny += e1.vy;
+            v[f->v[2]].nz += e1.vz;
+            v[f->v[2]].pos.pad++;
+        }
+        v = c->chains[0];
+        for (i = 0; i < c->nVerts; v++, i++) {
+            v->nx /= v->pos.pad;
+            v->ny /= v->pos.pad;
+            v->nz /= v->pos.pad;
+        }
+        SetRotMatrix(view);
+        SetTransMatrix(view);
+        f = c->faces;
+        v = c->chains[0];
+        for (i = 0; i < c->nFaces; i++) {
+            BATTLE_GTE_LDV3(&v[f->v[0]].pos, &v[f->v[1]].pos, &v[f->v[2]].pos);
+            BATTLE_GTE_RTPT();
+            flag = 0;
+            BATTLE_GTE_STFLG(&flag);
+            if (!(flag & 0x40000)) {
+                BATTLE_GTE_NCLIP();
+                BATTLE_GTE_STOPZ(&opz);
+                BATTLE_GTE_STSXY3(&f->prim[buf].x0, &f->prim[buf].x1, &f->prim[buf].x2);
+                BATTLE_GTE_AVSZ3();
+                BATTLE_GTE_STOTZ(&otz);
+                otz >>= D_80050100;
+                if (opz < 0) {
+                    col.r = c->front[0];
+                    col.g = c->front[1];
+                    col.b = c->front[2];
+                    n.vx = v[f->v[0]].nx;
+                    n.vy = v[f->v[0]].ny;
+                    n.vz = v[f->v[0]].nz;
+                } else {
+                    col.r = c->back[0];
+                    col.g = c->back[1];
+                    col.b = c->back[2];
+                    n.vx = -v[f->v[0]].nx;
+                    n.vy = -v[f->v[0]].ny;
+                    n.vz = -v[f->v[0]].nz;
+                }
+                BATTLE_GTE_LDV0(&n);
+                BATTLE_GTE_LDRGB(&col);
+                BATTLE_GTE_NCCS();
+                BATTLE_GTE_STRGB(&f->prim[buf].r0);
+                if (opz < 0) {
+                    n.vx = v[f->v[1]].nx;
+                    n.vy = v[f->v[1]].ny;
+                    n.vz = v[f->v[1]].nz;
+                } else {
+                    n.vx = -v[f->v[1]].nx;
+                    n.vy = -v[f->v[1]].ny;
+                    n.vz = -v[f->v[1]].nz;
+                }
+                BATTLE_GTE_LDV0(&n);
+                BATTLE_GTE_NCCS();
+                BATTLE_GTE_STRGB(&f->prim[buf].r1);
+                if (opz < 0) {
+                    n.vx = v[f->v[2]].nx;
+                    n.vy = v[f->v[2]].ny;
+                    n.vz = v[f->v[2]].nz;
+                } else {
+                    n.vx = -v[f->v[2]].nx;
+                    n.vy = -v[f->v[2]].ny;
+                    n.vz = -v[f->v[2]].nz;
+                }
+                BATTLE_GTE_LDV0(&n);
+                BATTLE_GTE_NCCS();
+                BATTLE_GTE_STRGB(&f->prim[buf].r2);
+                ((A79Tag*)&f->prim[buf])->addr = ((A79Tag*)(ot + otz))->addr;
+                ((A79Tag*)(ot + otz))->addr = (u32)&f->prim[buf];
+                f++;
+            }
+        }
+    }
+}
 
 #ifndef XENO_PC_PORT
 void func_800A8A88(void *arg0) {

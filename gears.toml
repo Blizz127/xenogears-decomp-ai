@@ -386,7 +386,6 @@ paths = [
     "src/battle/main49.",
     "src/battle/main8.",
     "src/battle/mainasm_146F0.",
-    "src/battle/main70.",
     "src/battle/main61.",
     "src/battle/main62.",
     "src/battle/main63.",
@@ -527,7 +526,10 @@ build_variables = {
 # `-= 1` decrement, which gives addiu 0xFF only under 2.6.0/2.6.3):
 # func_8009F1C4's three signed divisions carry the checks.  main64's other
 # C is the same with or without --expand-div (no divisions).
-paths = [ "src/battle/main69.", "src/battle/main73_p1.", "src/battle/main74.", "src/battle/main68.", "src/battle/main65.", "src/battle/main67.", "src/battle/main64." ]
+# main70 (2026-10-15, BattleGcc263 since 10-12): func_800A7948's twelve
+# divisions (cloth springs and normal averaging) carry the checks, and so do
+# retail func_800A7064's two.
+paths = [ "src/battle/main69.", "src/battle/main73_p1.", "src/battle/main74.", "src/battle/main68.", "src/battle/main65.", "src/battle/main67.", "src/battle/main64.", "src/battle/main70." ]
 
 [[build_preset]]
 name = "WorldMapDiv"

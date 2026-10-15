@@ -46,4 +46,33 @@
 #define BATTLE_GTE_STSZOTZ(p) \
     __asm__ volatile("mfc2 $12, $19\n\tnop\n\tsra $12, $12, 2\n\tsw $12, 0(%0)" : : "r"(p) : "$12", "memory")
 
+/* R11, R22, R33 = *(VECTOR*)p, the outer product's first operand (gte_ldopv1;
+ * clobbers $12-$14) */
+#define BATTLE_GTE_LDOPV1(p)                                                                                \
+    __asm__ volatile("lw $12, 0(%0)\n\tlw $13, 4(%0)\n\tctc2 $12, $0\n\tlw $14, 8(%0)\n\tctc2 $13, $2\n\t" \
+                     "ctc2 $14, $4"                                                                        \
+                     :                                                                                     \
+                     : "r"(p)                                                                              \
+                     : "$12", "$13", "$14")
+/* IR1..IR3 = *(VECTOR*)p, the outer product's second operand (gte_ldopv2) */
+#define BATTLE_GTE_LDOPV2(p) __asm__ volatile("lwc2 $11, 8(%0)\n\tlwc2 $9, 0(%0)\n\tlwc2 $10, 4(%0)" : : "r"(p))
+/* OP sf=0: outer product (gte_op0) */
+#define BATTLE_GTE_OP0() __asm__ volatile("nop\n\tnop\n\t.word 0x4B70000C")
+/* *(s32*)p = FLAG (gte_stflg; clobbers $12) */
+#define BATTLE_GTE_STFLG(p) __asm__ volatile("cfc2 $12, $31\n\tnop\n\tsw $12, 0(%0)" : : "r"(p) : "$12", "memory")
+/* NCLIP (gte_nclip) */
+#define BATTLE_GTE_NCLIP() __asm__ volatile("nop\n\tnop\n\t.word 0x4B400006")
+/* *(s32*)p = MAC0 (gte_stopz) */
+#define BATTLE_GTE_STOPZ(p) __asm__ volatile("swc2 $24, 0(%0)" : : "r"(p) : "memory")
+/* AVSZ3 (gte_avsz3) */
+#define BATTLE_GTE_AVSZ3() __asm__ volatile("nop\n\tnop\n\t.word 0x4B58002D")
+/* *(s32*)p = OTZ (gte_stotz) */
+#define BATTLE_GTE_STOTZ(p) __asm__ volatile("swc2 $7, 0(%0)" : : "r"(p) : "memory")
+/* RGBC = *(CVECTOR*)p (gte_ldrgb) */
+#define BATTLE_GTE_LDRGB(p) __asm__ volatile("lwc2 $6, 0(%0)" : : "r"(p))
+/* NCCS: normal colour, single vector (gte_nccs) */
+#define BATTLE_GTE_NCCS() __asm__ volatile("nop\n\tnop\n\t.word 0x4B08041B")
+/* *(CVECTOR*)p = RGB2 (gte_strgb) */
+#define BATTLE_GTE_STRGB(p) __asm__ volatile("swc2 $22, 0(%0)" : : "r"(p) : "memory")
+
 #endif
