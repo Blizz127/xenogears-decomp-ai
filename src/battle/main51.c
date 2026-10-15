@@ -1241,7 +1241,141 @@ void func_800939CC(u8 a, u8 b) {
         (*(u8**)(D_800C3EA4 + 0xA230))[0x66B] = 0;
     }
 }
-INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80093B08);
+extern void* GetWeaponName(s32 index);
+/* 0xA4-byte records in g_GameState (the actor's equipment slots at +0x2DB,
+ * its character index at +0x30C, that character's slots at +0x97C). */
+typedef struct {
+    u8 b[0xA4];
+} M51Rec;
+extern M51Rec g_GameState__2DB[] asm("g_GameState+0x2DB");
+extern M51Rec g_GameState__30C[] asm("g_GameState+0x30C");
+extern M51Rec g_GameState__97C[] asm("g_GameState+0x97C");
+
+extern u8 g_GameState_2286[] asm("g_GameState+0x2286");
+extern u8 g_GameState_22B6[] asm("g_GameState+0x22B6");
+extern void func_8008F8F4(u8 index, u16 x, u16 y, u16 w, u16 h, u8 animate, u8 refresh);
+
+/* func_80093B08.s, byte-exact: the two weapon rows for actor a (only when
+ * its D_800D2D24 kind is 4 and D_800D2D28[0xB7] is clear).  Takes the two
+ * weapon ids from the actor's own g_GameState record (+0x2DB/+0x2DE) or,
+ * when D_800D32A1[a * 8] is set, from its character's record (+0x97C/+0x97F
+ * via +0x30C), and their counts from the +0x2286 / +0x22B6 tables.  Per row
+ * i it uploads blank strips at (0x380, i * 16 + 0x100) and (0x3C0, ...), the
+ * name GetWeaponName(id) at (0x380, i * 16 + 0x102, 0x1E, 0xD) when the id
+ * is set, and the count as three digits (hundreds and tens at x 0x3C0 + 2k
+ * with leading zeros blank, then the ones at 0x3C4; blank for id 0), as
+ * func_800930AC does for its four rows.  Then it frees the buffers, sets the
+ * first sprite's CLUT to g_SystemPalette1, places the func_80076CE8 sprites
+ * at +0 (0xA0, 0xAC, 0x60 x 0x20) and +0xA0 (0x104, 0xAC, 0x18 x 0x20),
+ * stores D_800CCB34 at +0x668 with +0x669 = 1, opens the func_8008F8F4
+ * window and sets D_800D2D28[0xB7] = 5, [0x8E] = 1.  Codegen: the g_GameState
+ * records are read through M51Rec rows (asm aliases at +0x2DB/+0x30C/+0x97C);
+ * plain base + offset indexing leaves dead address pseudos that still get
+ * four unused stack slots (frame 0xD0 instead of retail's 0xB0); `r5` is
+ * retail's untouched rect at sp+0x48. */
+void func_80093B08(u8 a) {
+    s16 r0[4];
+    s16 r1[4];
+    s16 r2[4];
+    s16 r3[4];
+    s16 r4[4];
+    s16 r5[4];
+    BattleImageRef bufs[2];
+    u16 div[2];
+    u8 ids[2];
+    u16 vals[2];
+    s32 i;
+    s32 k;
+    u8 started;
+    u8 d;
+
+    if (D_800D2D24[a] == 4 && D_800D2D28[0xB7] == 0) {
+        div[0] = 100;
+        div[1] = 10;
+        if (D_800D32A1[a * 8] == 0) {
+            ids[0] = g_GameState__2DB[D_800D2D24[a]].b[0];
+            ids[1] = g_GameState__2DB[D_800D2D24[a]].b[3];
+            vals[0] = g_GameState_2286[ids[0]];
+            vals[1] = g_GameState_2286[ids[1]];
+        } else {
+            ids[0] = g_GameState__97C[g_GameState__30C[D_800D2D24[a]].b[0]].b[0];
+            ids[1] = g_GameState__97C[g_GameState__30C[D_800D2D24[a]].b[0]].b[3];
+            vals[0] = g_GameState_22B6[ids[0]];
+            vals[1] = g_GameState_22B6[ids[1]];
+        }
+        func_80077610();
+        func_80076EA4();
+        D_800D2DB0 = func_8008AC00(0x39);
+        bzero(D_800D2DB0, 0x618);
+        for (i = 0; i < 2; i++) {
+            bufs[i].data = func_8008AC00(0x1B);
+            bzero(bufs[i].data, 0x30C);
+            r3[0] = 0x380;
+            r3[1] = i * 16 + 0x100;
+            r3[2] = 0x1B;
+            r3[3] = 0x10;
+            func_800769E8(r3, D_800D2DB0);
+            if (ids[i] != 0) {
+                SystemRenderStringEntry(GetWeaponName(ids[i]), bufs[i].data, 0x1B, 0);
+                r0[0] = 0x380;
+                r0[1] = i * 16 + 0x102;
+                r0[2] = 0x1E;
+                r0[3] = 0xD;
+                func_800769E8(r0, bufs[i].data);
+            }
+            r4[0] = 0x3C0;
+            r4[1] = i * 16 + 0x100;
+            r4[2] = 0x1B;
+            r4[3] = 0x10;
+            func_800769E8(r4, D_800D2DB0);
+            started = 0;
+            for (k = 0; k < 2; k++) {
+                r2[0] = k * 2 + 0x3C0;
+                r2[1] = i * 16 + 0x102;
+                r2[2] = 6;
+                r2[3] = 0xD;
+                d = vals[i] / div[k];
+                if (d != 0 || started != 0) {
+                    func_800769E8(r2, D_800C3E5C[d].data);
+                    started = 1;
+                    vals[i] -= d * div[k];
+                } else {
+                    func_800769E8(r2, D_800D2DB0);
+                }
+            }
+            r1[0] = 0x3C4;
+            r1[1] = i * 16 + 0x102;
+            r1[2] = 6;
+            r1[3] = 0xD;
+            if (ids[i] != 0) {
+                func_800769E8(r1, D_800C3E5C[(u16)(vals[i] % 10)].data);
+            } else {
+                func_800769E8(r1, D_800D2DB0);
+            }
+        }
+        for (i = 0; i < 2; i++) {
+            HeapFree(bufs[i].data);
+        }
+        HeapFree(D_800D2DB0);
+        {
+            s32 base = D_800C3EA4;
+            u16 pal = g_SystemPalette1;
+
+            {
+                u8* rec = *(u8**)(base + 0xA230);
+                u8* p = rec + D_800CCB34__w[0] * 40;
+                *(u16*)(p + 0xE) = pal;
+            }
+            func_80076CE8(*(u8**)(base + 0xA230) + D_800CCB34__w[0] * 40, 0xA0, 0xAC, 0, 0, 0x60, 0x20);
+        }
+        func_80076CE8(*(u8**)(D_800C3EA4 + 0xA230) + 0xA0 + D_800CCB34__w[0] * 40, 0x104, 0xAC, 0, 0, 0x18, 0x20);
+        (*(u8**)(D_800C3EA4 + 0xA230))[0x668] = *(u8*)D_800CCB34__w;
+        (*(u8**)(D_800C3EA4 + 0xA230))[0x669] = 1;
+        func_8008F8F4(0, 0x98, 0xA8, 0x8C, 0x28, 0, 1);
+        D_800D2D28[0xB7] = 5;
+        D_800D2D28[0x8E] = 1;
+    }
+}
 #endif
 
 extern void func_8007FB70(s32);
