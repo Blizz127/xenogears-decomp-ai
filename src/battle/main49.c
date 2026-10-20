@@ -213,11 +213,106 @@ void func_8008D328(void) {
         D_800D2D28[0xCB] = 0;
     }
 }
-INCLUDE_ASM("asm/battle/nonmatchings/main49", func_8008D598);
+extern u8* D_800C3000[];
+extern u16* D_800C2F4C[];
+extern s32 D_800CCB34;
+extern s32 D_800CCB34__a[] asm("D_800CCB34");
+extern s32 func_80076A10(s32 glyph, u8* prims, s16 x, s16 y);
+
+/* func_8008D598.s, byte-exact: draw the battle menu glyph groups (fade != 0:
+ * func_8008D328 and return the +0xA3 byte; else lay out each group's glyph
+ * list through func_80076A10 and tint the new prims; returns D_800CCB34).
+ * CONSTRUCTS (counted separately):
+ * - D_800CCB34 is read in three spellings (the __a alias as [0] and as *,
+ *   plus the scalar), each chosen for its RTL expansion path.
+ * - Duplicated `k += 4` before continue (the biv-count gate: loop.c judges
+ *   the k*2 giv "not worth while", so k stays an index as in retail).
+ * - The attr halfword is read twice in two spellings, so CSE keeps both
+ *   loads.
+ * - Pointer-sum spellings; the base temp `b` is set twice (base first,
+ *   then += actor << 6) for retail's addu order.
+ * - The once-set `n0 = count * 2` is copied into both inner loop counters
+ *   (per the helper: sched1 then places the shift right before the jal and
+ *   count stays in t0; mechanism not dump-verified by the lead). */
+s32 func_8008D598(u8 actor, u8 menu, u8 fade) {
+    u16 grp[2];
+    u8 lst[2];
+    s32 i;
+    s32 j;
+    s32 k;
+    s32 n;
+    s32 n0;
+    s32 code;
+    u16 attr;
+    u32 c;
+    u16* e;
+    u8* b;
+
+    if (fade) {
+        func_8008D328();
+        return D_800D2D28[0xA3];
+    }
+    for (i = 0; i < 2; i++) {
+        grp[i] = D_800C3000[menu][i];
+        lst[i] = *(D_800C3000[menu] + i + 2);
+        *(s32*)(D_800D2D28 + i * 4 + 0xD0) = 0;
+    }
+    for (j = 0; j < 2; j++) {
+        if (grp[j] == 0xFF) {
+            break;
+        }
+        k = 0;
+        while ((code = D_800C2F4C[lst[j]][k]) != 0xFFFF) {
+            if (code >= 0x4000) {
+                *(D_800C3EAC + (code & 3) + 0x2C0) = *(D_800C3EAC + (actor << 6) + (code & 0xFF));
+                code = *(D_800C3EAC + (actor << 6) + (code & 0xFF));
+                if (code == 0xFF) {
+                    k += 4;
+                    continue;
+                }
+            }
+            n0 = *(s32*)(D_800D2D28 + grp[j] * 4 + 0xD0) * 2;
+            *(s32*)(D_800D2D28 + grp[j] * 4 + 0xD0) +=
+                func_80076A10(code, D_800C3EA4 + (grp[j] * 0xFA0 + 0x641C) +
+                                        *(s32*)(D_800D2D28 + grp[j] * 4 + 0xD0) * 0x50,
+                              D_800C2F4C[lst[j]][k + 1], D_800C2F4C[lst[j]][k + 2]);
+            e = D_800C2F4C[lst[j]] + k;
+            attr = e[3];
+            c = (attr & 0xFF) >> 1;
+            if (D_800C2F4C[lst[j]][k + 3] >= 0x2000) {
+                c = 0x10;
+                b = D_800C3EAC;
+                b += actor << 6;
+                if (*(u16*)(b + (attr & 0xF) * 2 + 0x1C) == 0) {
+                    c = (attr & 0xF0) >> 1;
+                }
+            }
+            if (c != 0) {
+                for (n = n0; n < *(s32*)(D_800D2D28 + grp[j] * 4 + 0xD0) * 2; n += 2) {
+                    SetSemiTrans(D_800C3EA4 + (grp[j] * 0xFA0 + 0x641C) + (n + D_800CCB34__a[0]) * 40, 1);
+                    SetShadeTex(D_800C3EA4 + (grp[j] * 0xFA0 + 0x641C) + (n + D_800CCB34__a[0]) * 40, 0);
+                    (D_800C3EA4 + grp[j] * 0xFA0)[(n + D_800CCB34) * 40 + 0x6420] = c;
+                    (D_800C3EA4 + grp[j] * 0xFA0)[(n + D_800CCB34) * 40 + 0x6421] = c;
+                    (D_800C3EA4 + grp[j] * 0xFA0)[(n + D_800CCB34) * 40 + 0x6422] = c;
+                    *(u16*)(D_800C3EA4 + (grp[j] * 0xFA0 + (n + *D_800CCB34__a) * 40) + 0x6432) |= 0x20;
+                }
+            } else {
+                for (n = n0; n < *(s32*)(D_800D2D28 + grp[j] * 4 + 0xD0) * 2; n += 2) {
+                    (D_800C3EA4 + grp[j] * 0xFA0)[(n + D_800CCB34) * 40 + 0x6420] = 0x80;
+                    (D_800C3EA4 + grp[j] * 0xFA0)[(n + D_800CCB34) * 40 + 0x6421] = 0x80;
+                    (D_800C3EA4 + grp[j] * 0xFA0)[(n + D_800CCB34) * 40 + 0x6422] = 0x80;
+                }
+            }
+            k += 4;
+        }
+    }
+    return D_800CCB34;
+}
+
 extern u32 D_800D2E38[];
 extern u8 D_800C3E4C;
 extern s32 D_800CCB34;
-extern s32 func_80076A10(u8 glyph, u8* prims, s16 x, s16 y);
+extern s32 func_80076A10(s32 glyph, u8* prims, s16 x, s16 y);
 extern void func_80076B00(u8* prim);
 
 /* Window frame corners: restart the window block's glyph count (+0x5A0)
