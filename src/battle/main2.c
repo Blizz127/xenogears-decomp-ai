@@ -58,7 +58,164 @@ void func_80071AE0(void) {
         func_800716D8();
     }
 }
-INCLUDE_ASM("asm/battle/nonmatchings/main2", func_80071B94);
+extern u8 D_800C3E8C;
+extern u8 D_800D3298;
+extern u8 D_800C4922;
+extern u8 D_800D2CA4[];
+extern u16 D_800CCD64__rows[][184] asm("D_800CCD64");
+extern u16 D_800CCD68__rows[][184] asm("D_800CCD68");
+extern u16 D_800CCD1C__rows[][184] asm("D_800CCD1C");
+extern u8 D_800C3EB4__r[][28] asm("D_800C3EB4");
+extern u8 D_800C3E3D[];
+extern s32 D_800C3DDC;
+extern u8 D_800D3718[];
+extern u8 D_800C3D1A[];
+extern u16 D_800C3254[];
+extern u8 D_800D3280;
+extern s32 D_800CCB04__a_s32[] asm("D_800CCB04");
+extern u8* D_800C3EA4__b asm("D_800C3EA4");
+extern u16 D_8005941C;
+extern u8 D_800D36C0;
+extern u8 D_800C48EA[];
+extern void func_80085350(void);
+extern void func_80071A08(void);
+extern u16 func_80099890(u8 actor);
+extern void func_800799C8(u8 actor, s32 flag);
+extern u8* GetStringEntry(s32 table, s32 id);
+extern s32 SystemRenderStringEntry(u8* str, u8* buf, s32 w, s32 flags);
+extern void func_800769E8(u8* rect, u8* buf);
+extern void func_80079778(u8 actor);
+extern void func_80071A8C(void);
+extern void func_80071964(void);
+extern void func_80070EB0(s32 arg);
+extern void func_80080160(u8 actor);
+extern void func_80080C94(u8 actor);
+extern void func_800BCD98(s32 arg);
+extern u16 func_80089C9C(s32 mask, u8 idx);
+extern void func_80079C24(void);
+extern void func_80071A38(void);
+void func_80072270(void);
+extern u8 func_800841E0(u8 idx);
+extern u8 func_80085310(u8 idx, u8 v);
+extern s32 func_80080AE4(u8 actor);
+extern void func_800BA4E0(s32 arg);
+void func_8007252C(void);
+extern void func_80085B58(u8 actor);
+extern void func_800BFE48(void);
+extern void func_800718BC(void);
+
+/* func_80071B94.s, byte-exact.
+ * CONSTRUCTS (counted separately):
+ * - The x1 (+0x63D4) / x3 (+0x63DC) cursor sums assign their D_800C3254
+ *   operand to write-only u16 temps `t` / `u` inside the expression, so the
+ *   operand is already a REG while actor*0x60 arrives as a narrowed SUBREG.
+ *   expand_binop's commutative swap then gives retail's base-first
+ *   `addu v0,v0,v1`.  One shared temp gives 1748.
+ * - Inherited: the asm-alias row views, `(u8)replay`, the reused
+ *   `k = D_800D3280 * 3`, a separate clear-loop counter `m`, and
+ *   `(D_800C3EAC + (i << 6))[0x3C]`. */
+void func_80071B94(s32 replay) {
+    s32 i;
+    s32 k;
+    s32 m;
+    u16 t;
+    u16 u;
+
+    D_800C3E8C = 1;
+    D_800D2CA4[0xB] = 0;
+    if (D_800C3EAC[0x2D3] != 0) {
+        func_80085350();
+        func_80071A08();
+        D_800D3298 = 0;
+        D_800C3EAC[0x2D3]--;
+        D_800C4922 = D_800C3EAC[0x2D3];
+        D_800C3EAC[0x2DA] = 0;
+        D_800C3EAC[0x2DB] = 0;
+        for (i = 0; i < 5; i++) {
+            D_800D2CA4[i] = 0;
+        }
+        D_800D2C94 = 0;
+        func_80099890(D_800C3EAC[0x2D3]);
+        if (D_800C3EAC[0x2D3] >= 3) {
+            if ((u8)replay == 0) {
+                func_800799C8(D_800C3EAC[0x2D3], D_800CCD68__rows[D_800C3EAC[0x2D3]][0] & 0x2000);
+                if (!(D_800C3EB4__r[D_800C3EAC[0x2D3]][3] & 0x80) && !(D_800CCD1C__rows[D_800C3EAC[0x2D3]][0] & 0x400)) {
+                    ((u8*)D_800D2D28)[0xB5] = 1;
+                    D_800D3718[0xE] = SystemRenderStringEntry(GetStringEntry(D_800C3DDC, D_800C3E3D[D_800C3EAC[0x2D3]]),
+                                                              *(u8**)(D_800D3718 + 8), 0x39, 0);
+                    func_800769E8(D_800D3718, *(u8**)(D_800D3718 + 8));
+                    D_800D3718[0xD] = 1;
+                }
+            }
+            if (!(D_800CCD64__rows[D_800C3EAC[0x2D3]][0] & 0x2080) && !(D_800CCD68__rows[D_800C3EAC[0x2D3]][0] & 0x1000)) {
+                func_80079778(D_800C3EAC[0x2D3]);
+                func_80071A8C();
+                func_80071964();
+                func_80071AE0();
+            }
+            func_80071A8C();
+            func_80070EB0(0);
+        } else {
+            for (m = 0x1C; m >= 0; m -= 4) {
+                D_800C3D1A[m] = 0;
+            }
+            /* the turn cursor POLY_F4 of this buffer */
+            *(s16*)(D_800C3EA4__b + D_800CCB04__a_s32[12] * 0x18 + 0x63D0) = D_800C3EAC[0x2D3] * 0x60 + (D_800C3254[D_800D3280 * 3 + D_800C3EAC[0x2D3]] + 0x10);
+            *(s16*)(D_800C3EA4__b + D_800CCB04__a_s32[12] * 0x18 + 0x63D2) = 8;
+            *(s16*)(D_800C3EA4__b + D_800CCB04__a_s32[12] * 0x18 + 0x63D4) = D_800C3EAC[0x2D3] * 0x60 + (t = D_800C3254[D_800D3280 * 3 + D_800C3EAC[0x2D3]]) + 0x28;
+            *(s16*)(D_800C3EA4__b + D_800CCB04__a_s32[12] * 0x18 + 0x63D6) = 8;
+            k = D_800D3280 * 3;
+            *(s16*)(D_800C3EA4__b + D_800CCB04__a_s32[12] * 0x18 + 0x63D8) = D_800C3EAC[0x2D3] * 0x60 + (D_800C3254[k + D_800C3EAC[0x2D3]] + 0x10);
+            *(s16*)(D_800C3EA4__b + D_800CCB04__a_s32[12] * 0x18 + 0x63DA) = 0x20;
+            *(s16*)(D_800C3EA4__b + D_800CCB04__a_s32[12] * 0x18 + 0x63DC) = D_800C3EAC[0x2D3] * 0x60 + (u = D_800C3254[k + D_800C3EAC[0x2D3]]) + 0x28;
+            *(s16*)(D_800C3EA4__b + D_800CCB04__a_s32[12] * 0x18 + 0x63DE) = 0x20;
+            D_800C3EA4__b[0x6414] = D_800CCB04__a_s32[12];
+            D_800C3EA4__b[0x6415] = 1;
+            if (!(D_800CCD64__rows[D_800C3EAC[0x2D3]][0] & 0x2080) && !(D_800CCD68__rows[D_800C3EAC[0x2D3]][0] & 0x1000)) {
+                if (!(D_800CCD68__rows[D_800C3EAC[0x2D3]][0] & 0x2000)) {
+                    func_80080160(D_800C3EAC[0x2D3]);
+                } else {
+                    func_80080C94(D_800C3EAC[0x2D3]);
+                }
+                if (D_800C3EAC[0x2EA] != 0) {
+                    D_8005941C++;
+                }
+                D_800D36C0 = D_800C3EAC[0x2D3];
+                ((u8*)D_800D2D28)[0x97] = 0;
+                func_800BCD98(0);
+            }
+            func_80071964();
+            func_80071AE0();
+            func_80071A8C();
+            func_80070EB0(0);
+            for (i = 0; i < 8; i++) {
+                if (func_80089C9C(D_800D2C94, i + 3) != 0) {
+                    D_800C3D1A[i << 2] = 1;
+                }
+            }
+            func_80079C24();
+        }
+        func_80071A38();
+        func_80072270();
+        D_800C3EA4__b[0x6415] = 0;
+        for (i = 0; i < 11; i++) {
+            (D_800C3EAC + (i << 6))[0x3C] = func_800841E0(i);
+            D_800C3EB4__r[i][6] = func_80085310(i, (D_800C3EAC + (i << 6))[0x3C]);
+        }
+        func_800BA4E0(func_80080AE4(D_800C3EAC[0x2D3]));
+        func_80071A08();
+        func_8007252C();
+        if (D_800C48EA[0] == 0) {
+            func_80085B58(D_800C3EAC[0x2D3]);
+        }
+        func_8007252C();
+        func_80071A38();
+        func_800BFE48();
+        func_800718BC();
+        D_800D3298 = 1;
+    }
+}
+
 extern u16 D_800D2C9E;
 extern u16 D_800D2E06[];
 extern u8 D_800D2DE4[];
