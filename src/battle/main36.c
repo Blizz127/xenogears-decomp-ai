@@ -205,9 +205,9 @@ extern void func_800883AC(u8 a0);
  * func_800883AC(s2) (for s2 >= 3). The s4 stores address absolute
  * retail scratch (s4+0x8F3C etc., resolved in the test). Retail leaves
  * residue in v0, ignored by the only caller. */
-/* Not yet byte-matching: the matching build assembles retail bytes for
- * this function from its own asm segment (see config/battle.yaml).  The
- * body below is kept for the port and the differential harnesses. */
+/* The retail build compiles this function's byte-exact C in
+ * mainasm_15898.c.  The body below is kept for the port and the
+ * differential harnesses. */
 #ifdef XENO_PC_PORT
 void func_80085618(s32 a0) {
     u32 A = (u32)a0 & 0xFFu;

@@ -517,6 +517,11 @@ paths = [
     # to the same bytes under 2.6.3 (full relink).  No divisions.
     # Neighbour main38_p2 is BattleGcc263 too.
     "src/battle/main39.",
+    # mainasm_15898 (2026-10-20): func_80085618 matches under 2.6.3 and
+    # 2.6.0 only (2.7.2: 1184 vs 1196 bytes, CDK 884); the TU's other C
+    # (func_80085388, func_80085454, func_80085AC4) compiles to the same
+    # bytes under 2.6.3 (full relink).  Retail-only file, no port impact.
+    "src/battle/mainasm_15898.",
 ]
 
 [[build_preset]]

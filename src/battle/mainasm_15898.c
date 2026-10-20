@@ -115,7 +115,149 @@ void func_80085454(u8 row) {
     }
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/mainasm_15898", func_80085618);
+typedef struct {
+    u8 pad0[0x4C];
+    s16 hp;
+    u16 hpMax;
+    s16 mp;
+    u16 mpMax;
+    u8 pad54[0x28];
+    u16 flags;
+    u8 pad7E[0x5E];
+    u16 fDC;
+    u16 fDE;
+    u8 padE0[0x24];
+    u32 f104;
+    u32 f108;
+    u8 pad10C[0x14];
+    u16 f120;
+    u8 pad122[0x4E];
+} R618Actor;
+
+typedef struct {
+    u16 amt[12];
+    u8 kind[0x30];
+} R618Cmd;
+
+typedef struct {
+    u8 pad0[4];
+    u8 rows[11][28];
+    R618Cmd cmd[32];
+    u16 mask;
+    u8 padA3A[0x8E38 - 0xA3A];
+    R618Actor actors[11];
+} R618State;
+
+extern R618State D_800C3EB0__st asm("D_800C3EB0");
+extern R618Actor D_800CCCE8__a[] asm("D_800CCCE8");
+extern u8 D_800C4000__k[][0x48] asm("D_800C4000");
+extern u8 D_800D2DCC[];
+extern u16 D_800C48E8[];
+extern u8 D_800C2050;
+extern u16 func_80089C08(u8 v);
+extern void func_800883AC(u8 a);
+
+/* func_80085618.s: apply action row a0's amounts to battle slots 0..10.
+ * Empty slots (D_800D2DCC[i] == 0) are skipped; a slot whose actor flags
+ * have bit 15 only re-sets its D_800C48E8 bit.  Otherwise the row kind
+ * picks the effect: 0/5/7/8 damage (hp, or f104 when the slot's row flag
+ * +4 is set; at zero the slot is knocked out, and slots >= 3 also call
+ * func_800883AC), 2 hp/f104 heal and 3 mp heal with max clamps, 1/9 mp
+ * damage, 10 fDC damage and 11 fDC heal.  The cases that break mark
+ * D_800C3EAC[0x2EB + i].  Each one stores its own mark: the extra uses
+ * of i make global-alloc give it s2 ahead of the amount walker, as in
+ * retail, and cross-jumping folds the copies into one tail. */
+void func_80085618(u8 a0) {
+    s32 i;
+    s32 v;
+
+    for (i = 0; i < 11; i++) {
+        if (D_800D2DCC[i] == 0) {
+            continue;
+        }
+        if (D_800CCCE8__a[i].flags & 0x8000) {
+            D_800C48E8[0] |= func_80089C08(i);
+            continue;
+        }
+        switch (D_800C4000__k[a0][i]) {
+        case 0:
+        case 5:
+        case 7:
+        case 8:
+            if (D_800C3EB0__st.rows[i][4] == 0) {
+                if (D_800CCCE8__a[i].hp - (s16)D_800C3EB0__st.cmd[a0].amt[i] > 0) {
+                    D_800CCCE8__a[i].hp -= D_800C3EB0__st.cmd[a0].amt[i];
+                } else {
+                    D_800CCCE8__a[i].hp = 0;
+                    D_800C3EB0__st.mask |= func_80089C08(i);
+                    D_800CCCE8__a[i].flags |= 0x8000;
+                    if (i >= 3) {
+                        func_800883AC(i);
+                    }
+                }
+            } else {
+                v = D_800CCCE8__a[i].f104 - D_800C3EB0__st.cmd[a0].amt[i];
+                if (v > 0) {
+                    D_800CCCE8__a[i].f104 = v;
+                } else {
+                    D_800CCCE8__a[i].f104 = 0;
+                    D_800C3EB0__st.mask |= func_80089C08(i);
+                    D_800CCCE8__a[i].f120 |= 0x8000;
+                    D_800CCCE8__a[i].flags |= 0x8000;
+                    if (i >= 3) {
+                        func_800883AC(i);
+                    }
+                }
+            }
+            (D_800C3EAC + i)[0x2EB] = 1;
+            break;
+        case 2:
+            if (D_800C3EB0__st.rows[i][4] != 0 && D_800C2050 == 0) {
+                if (D_800CCCE8__a[i].f108 < (D_800C3EB0__st.actors[i].f104 = D_800C3EB0__st.cmd[a0].amt[i] + D_800CCCE8__a[i].f104)) {
+                    D_800CCCE8__a[i].f104 = D_800CCCE8__a[i].f108;
+                }
+            } else {
+                if (D_800CCCE8__a[i].hpMax < (u16)(D_800C3EB0__st.actors[i].hp = D_800CCCE8__a[i].hp + D_800C3EB0__st.cmd[a0].amt[i])) {
+                    D_800CCCE8__a[i].hp = D_800CCCE8__a[i].hpMax;
+                }
+            }
+            (D_800C3EAC + i)[0x2EB] = 1;
+            break;
+        case 1:
+        case 9:
+            if (D_800CCCE8__a[i].mp - (s16)D_800C3EB0__st.cmd[a0].amt[i] > 0) {
+                D_800CCCE8__a[i].mp -= D_800C3EB0__st.cmd[a0].amt[i];
+            } else {
+                D_800CCCE8__a[i].mp = 0;
+            }
+            continue;
+        case 3:
+            if (D_800C3EB0__st.rows[i][4] == 0 || D_800C2050 != 0) {
+                if (D_800CCCE8__a[i].mpMax < (u16)(D_800C3EB0__st.actors[i].mp = D_800CCCE8__a[i].mp + D_800C3EB0__st.cmd[a0].amt[i])) {
+                    D_800CCCE8__a[i].mp = D_800CCCE8__a[i].mpMax;
+                }
+            }
+            continue;
+        case 10:
+            if (D_800CCCE8__a[i].fDC - D_800C3EB0__st.cmd[a0].amt[i] > 0) {
+                D_800CCCE8__a[i].fDC -= D_800C3EB0__st.cmd[a0].amt[i];
+            } else {
+                D_800CCCE8__a[i].fDC = 0;
+            }
+            (D_800C3EAC + i)[0x2EB] = 1;
+            break;
+        case 11:
+            if (D_800CCCE8__a[i].fDE < (u16)(D_800C3EB0__st.actors[i].fDC = D_800CCCE8__a[i].fDC + D_800C3EB0__st.cmd[a0].amt[i])) {
+                D_800CCCE8__a[i].fDC = D_800CCCE8__a[i].fDE;
+            }
+            (D_800C3EAC + i)[0x2EB] = 1;
+            break;
+        default:
+            continue;
+        }
+    }
+}
+
 
 extern u8 D_800CCD34[];
 extern u8 D_800CCD36[];
