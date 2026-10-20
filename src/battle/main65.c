@@ -448,7 +448,532 @@ void func_8009F844(u8* actor, MATRIX* view, MATRIX* light, s32 a3, s32 rate, u32
         rec8 += 0x70;
     }
 }
-INCLUDE_ASM("asm/battle/nonmatchings/main65", func_800A0838);
+/* func_800A0838.s, byte-exact under gcc 2.6.3 (main65 is BattleGcc263Div).
+ * One step of the up-to-three track records (+0x6C rotation, +0x70
+ * position, +0x74 scale, relative to e = entry + 4) of each of the model's
+ * +0xA 0x7C-byte entries, the first two dispatched on the track kind
+ * through jtbl_80070514 / jtbl_8007053C; returns the OR of the per-track
+ * flags (the lifted port body below describes the arguments).
+ * Drafted by helper xb-7424 over five passes; the last unit came from a
+ * lead permuter run (--stack-diffs, limited to the two single-site regions).
+ * Frame notes: retail's 0xB8 frame has seven 8-byte slots that nothing
+ * touches; this body reproduces them as seven "ghost" pseudos (counted as
+ * "ST_REGS or none" in the -dl dump; that retail's slots arose the same way
+ * is inferred).  A ghost is a pseudo whose RTL combine removed but whose
+ * reference count survived, e.g. a signed halfword load whose narrow copy is
+ * reused; regclass gives it no register and alter_reg a stack slot.  Here:
+ * the per-track s16 n/n2/n3 (case 4), s16 cur/cur2, the 0x7D00 test and the
+ * `pos` flag.
+ * CONSTRUCTS (counted separately):
+ * - goto-structured node loop and `goto rot_done`;
+ * - the `t = h` second track pointer;
+ * - the A08_ROT/POS/SCL accessor macros;
+ * - the kind 7/8 aim rewrite (cur read after ratan2);
+ * - a phony do/while(0) around the node body (increments outside);
+ * - the first aim clamp's sign test goes through a flag
+ *   (`s32 pos = d >= 0; if (pos)`).  The code is unchanged, and the flag adds
+ *   the seventh ghost (reg 368 in the -dl dump); which pass folds it away is
+ *   not traced. */
+extern void func_800A23E8(u8* a0, u32 p);
+
+#define A08_ROT(e, k) (*(u16*)((e) + 0x50 + (k) * 2))
+#define A08_POS(e, k) (*(s32*)((e) + 0x58 + (k) * 4))
+#define A08_SCL(e, k) (*(s16*)((e) + 0x48 + (k) * 2))
+
+u32 func_800A0838(u8* ctx, u8* nodes, u32 id, s32 rate) {
+    SVECTOR sv;
+    VECTOR out;
+    u32 i;
+    u32 count;
+    u32 flags;
+    u8* e;
+    u8* h;
+    u8* p;
+    u8* q;
+    u8* p2;
+    u8* t;
+    s16 qa;
+    s16 qb;
+    s16 qc;
+    s16 qa2;
+    s16 qb2;
+    s16 qc2;
+    s16 qa3;
+    s16 qb3;
+    s16 qc3;
+    u8 kind;
+    u8 kind2;
+    u8 kind3;
+    s32 d;
+    s32 a;
+    s32 b;
+    s32 c;
+    s16 n;
+    s16 n2;
+    s16 n3;
+    s32 dist;
+    s32 lim;
+    s16 cur;
+    s16 cur2;
+    s32 f;
+    s32 f2;
+    s32 f3;
+    s32 hi;
+
+    i = 0;
+    count = *(u16*)(nodes + 0xA);
+    flags = 0;
+    if (count != 0) {
+        e = nodes + 4;
+    next:
+        do {
+            if (*(u8**)(e + 0x6C) != NULL) {
+                h = *(u8**)(e + 0x6C);
+                kind = h[2];
+                switch (kind & 0xF) {
+                case 0:
+                    q = *(u8**)(h + 8);
+                    if (!(kind & 0x10)) {
+                        A08_ROT(e, 0) = *(u16*)q;
+                        q += 2;
+                        *(u8**)(h + 8) += 2;
+                    }
+                    if (!(kind & 0x20)) {
+                        A08_ROT(e, 1) = *(u16*)q;
+                        q += 2;
+                        *(u8**)(h + 8) += 2;
+                    }
+                    if (!(kind & 0x40)) {
+                        A08_ROT(e, 2) = *(u16*)q;
+                        *(u8**)(h + 8) += 2;
+                    }
+                    break;
+                case 1:
+                    if (!(kind & 0x10)) {
+                        p = *(u8**)(h + 8);
+                        *(u8**)(h + 8) = p + 1;
+                        d = *(s8*)p;
+                        if (d != -0x80) {
+                            A08_ROT(e, 0) = A08_ROT(e, 0) + d;
+                        } else {
+                            *(u8**)(h + 8) = p + 2;
+                            d = p[1];
+                            *(u8**)(h + 8) = p + 3;
+                            hi = *(s8*)(p + 2);
+                            A08_ROT(e, 0) = d | (hi << 8);
+                        }
+                    }
+                    if (!(kind & 0x20)) {
+                        p = *(u8**)(h + 8);
+                        *(u8**)(h + 8) = p + 1;
+                        d = *(s8*)p;
+                        if (d != -0x80) {
+                            A08_ROT(e, 1) = A08_ROT(e, 1) + d;
+                        } else {
+                            *(u8**)(h + 8) = p + 2;
+                            d = p[1];
+                            *(u8**)(h + 8) = p + 3;
+                            hi = *(s8*)(p + 2);
+                            A08_ROT(e, 1) = d | (hi << 8);
+                        }
+                    }
+                    if (!(kind & 0x40)) {
+                        p = *(u8**)(h + 8);
+                        *(u8**)(h + 8) = p + 1;
+                        d = *(s8*)p;
+                        if (d != -0x80) {
+                            A08_ROT(e, 2) = A08_ROT(e, 2) + d;
+                        } else {
+                            *(u8**)(h + 8) = p + 2;
+                            d = p[1];
+                            *(u8**)(h + 8) = p + 3;
+                            hi = *(s8*)(p + 2);
+                            A08_ROT(e, 2) = d | (hi << 8);
+                        }
+                    }
+                    break;
+                case 2:
+                    q = *(u8**)(h + 8);
+                    if (!(kind & 0x10)) {
+                        A08_ROT(e, 0) += *(u16*)q;
+                        q += 2;
+                        *(u8**)(h + 8) += 2;
+                    }
+                    if (!(kind & 0x20)) {
+                        A08_ROT(e, 1) += *(u16*)q;
+                        q += 2;
+                        *(u8**)(h + 8) += 2;
+                    }
+                    if (!(kind & 0x40)) {
+                        A08_ROT(e, 2) += *(u16*)q;
+                        *(u8**)(h + 8) += 2;
+                    }
+                    break;
+                case 3:
+                    t = h;
+                    f = (s16)(*(u16*)(h + 0x10) + 1);
+                    A08_ROT(e, 0) = *(u16*)(h + 4) + *(s16*)(h + 0xA) * f / *(s16*)(h + 0x12);
+                    A08_ROT(e, 1) = *(u16*)(h + 6) + *(s16*)(h + 0xC) * f / *(s16*)(h + 0x12);
+                    A08_ROT(e, 2) = *(u16*)(h + 8) + *(s16*)(h + 0xE) * f / *(s16*)(h + 0x12);
+                    break;
+                case 4:
+                    t = h;
+                    n = *(s16*)(h + 0x12);
+                    qa = (*(s16*)(h + 0xA) - (s16)A08_ROT(e, 0)) / n;
+                    qb = (*(s16*)(h + 0xC) - (s16)A08_ROT(e, 1)) / n;
+                    qc = (*(s16*)(h + 0xE) - (s16)A08_ROT(e, 2)) / n;
+                    if (qa == 0 && qb == 0 && qc == 0) {
+                        *(u16*)(h + 0x10) = n;
+                        A08_ROT(e, 0) = *(s16*)(h + 0xA);
+                        A08_ROT(e, 1) = *(s16*)(h + 0xC);
+                        A08_ROT(e, 2) = *(s16*)(h + 0xE);
+                    } else {
+                        A08_ROT(e, 0) += qa;
+                        A08_ROT(e, 1) += qb;
+                        A08_ROT(e, 2) += qc;
+                        *(u16*)(h + 0x10) = 0;
+                    }
+                    break;
+                case 5:
+                    t = h;
+                    *(u16*)(h + 4) += *(s16*)(h + 0xA);
+                    A08_ROT(e, 0) += *(u16*)(h + 4);
+                    *(u16*)(h + 6) += *(s16*)(h + 0xC);
+                    A08_ROT(e, 1) += *(u16*)(h + 6);
+                    *(u16*)(h + 8) += *(s16*)(h + 0xE);
+                    A08_ROT(e, 2) += *(u16*)(h + 8);
+                    break;
+                case 7:
+                case 8:
+                    t = h;
+                    a = *(s16*)(h + 0xA) - A08_POS(e, 0);
+                    b = *(s16*)(h + 0xC) - A08_POS(e, 1);
+                    c = *(s16*)(h + 0xE) - A08_POS(e, 2);
+                    dist = SquareRoot0(a * a + b * b + c * c) + 1;
+                    d = ratan2(-a, -c);
+                    cur = A08_ROT(e, 1);
+                    d = (d - cur) & 0xFFF;
+                    if (d >= 0x800) {
+                        d -= 0x1000;
+                    }
+                    lim = *(s16*)(h + 6) + (dist + *(s16*)(h + 0x10)) * *(s16*)(h + 8) / *(s16*)(h + 4);
+                    if ((d < 0 ? -d : d) < lim) {
+                        A08_ROT(e, 1) = cur + d;
+                    } else {
+                        s32 pos = d >= 0;
+
+                        if (pos) {
+                            A08_ROT(e, 1) = cur + lim;
+                        } else {
+                            A08_ROT(e, 1) = cur - lim;
+                        }
+                    }
+                    if ((kind & 0xF) == 7) {
+                        d = ratan2(b, SquareRoot0(a * a + c * c));
+                        cur2 = A08_ROT(e, 0);
+                        d = (d - cur2) & 0xFFF;
+                        if (d >= 0x800) {
+                            d -= 0x1000;
+                        }
+                        if ((d < 0 ? -d : d) < lim) {
+                            A08_ROT(e, 0) = cur2 + d;
+                        } else if (d >= 0) {
+                            A08_ROT(e, 0) = cur2 + lim;
+                        } else {
+                            A08_ROT(e, 0) = cur2 - lim;
+                        }
+                    }
+                    if (*(s16*)(t + 0x10) < 0x7D00) {
+                        *(u16*)(t + 0x10) += *(s16*)(t + 0x12);
+                    }
+                    goto rot_done;
+                }
+                *(u16*)(h + 0x10) += 1;
+                if (*(s16*)(h + 0x10) >= *(s16*)(h + 0x12)) {
+                    if (h[1] == 0) {
+                        if (h[3] == id) {
+                            flags |= 2;
+                        }
+                        flags |= 0x200;
+                        func_800A23E8(ctx, (u32)h);
+                        *(u8**)(e + 0x6C) = NULL;
+                    } else {
+                        if (h[3] == id) {
+                            flags |= 4;
+                        }
+                        flags |= 0x400;
+                        if ((kind & 0xF) < 3) {
+                            *(u16*)(h + 0x10) = 0;
+                            *(u8**)(h + 8) = *(u8**)(h + 4);
+                        } else {
+                            *(s16*)(h + 0x10) = -1;
+                            if ((kind & 0xF) == 5) {
+                                *(s16*)(t + 0xA) = 0;
+                                *(s16*)(t + 0xC) = 0;
+                                *(s16*)(t + 0xE) = 0;
+                            }
+                        }
+                    }
+                } else {
+                    if (h[3] == id) {
+                        flags |= 1;
+                    }
+                    flags |= 0x100;
+                }
+            rot_done:
+                e[1] = 1;
+                e[0] = 1;
+            }
+            if (*(u8**)(e + 0x70) != NULL) {
+                h = *(u8**)(e + 0x70);
+                kind2 = h[2];
+                switch (kind2 & 0xF) {
+                case 0:
+                    q = *(u8**)(h + 8);
+                    if (!(kind2 & 0x10)) {
+                        A08_POS(e, 0) = *(s16*)q;
+                        q += 2;
+                        *(u8**)(h + 8) += 2;
+                    }
+                    if (!(kind2 & 0x20)) {
+                        A08_POS(e, 1) = *(s16*)q;
+                        q += 2;
+                        *(u8**)(h + 8) += 2;
+                    }
+                    if (!(kind2 & 0x40)) {
+                        A08_POS(e, 2) = *(s16*)q;
+                        *(u8**)(h + 8) += 2;
+                    }
+                    break;
+                case 1:
+                    if (!(kind2 & 0x10)) {
+                        p2 = *(u8**)(h + 8);
+                        *(u8**)(h + 8) = p2 + 1;
+                        d = *(s8*)p2;
+                        if (d != -0x80) {
+                            A08_POS(e, 0) = d + A08_POS(e, 0);
+                        } else {
+                            *(u8**)(h + 8) = p2 + 2;
+                            d = p2[1];
+                            *(u8**)(h + 8) = p2 + 3;
+                            hi = *(s8*)(p2 + 2);
+                            A08_POS(e, 0) = d | (hi << 8);
+                        }
+                    }
+                    if (!(kind2 & 0x20)) {
+                        p2 = *(u8**)(h + 8);
+                        *(u8**)(h + 8) = p2 + 1;
+                        d = *(s8*)p2;
+                        if (d != -0x80) {
+                            A08_POS(e, 1) = d + A08_POS(e, 1);
+                        } else {
+                            *(u8**)(h + 8) = p2 + 2;
+                            d = p2[1];
+                            *(u8**)(h + 8) = p2 + 3;
+                            hi = *(s8*)(p2 + 2);
+                            A08_POS(e, 1) = d | (hi << 8);
+                        }
+                    }
+                    if (!(kind2 & 0x40)) {
+                        p2 = *(u8**)(h + 8);
+                        *(u8**)(h + 8) = p2 + 1;
+                        d = *(s8*)p2;
+                        if (d != -0x80) {
+                            A08_POS(e, 2) = d + A08_POS(e, 2);
+                        } else {
+                            *(u8**)(h + 8) = p2 + 2;
+                            d = p2[1];
+                            *(u8**)(h + 8) = p2 + 3;
+                            hi = *(s8*)(p2 + 2);
+                            A08_POS(e, 2) = d | (hi << 8);
+                        }
+                    }
+                    break;
+                case 2:
+                    q = *(u8**)(h + 8);
+                    if (!(kind2 & 0x10)) {
+                        sv.vx = *(s16*)q;
+                        q += 2;
+                        *(u8**)(h + 8) += 2;
+                    } else {
+                        sv.vx = 0;
+                    }
+                    if (!(kind2 & 0x20)) {
+                        sv.vy = *(s16*)q;
+                        q += 2;
+                        *(u8**)(h + 8) += 2;
+                    } else {
+                        sv.vy = 0;
+                    }
+                    if (!(kind2 & 0x40)) {
+                        sv.vz = *(s16*)q;
+                        *(u8**)(h + 8) += 2;
+                    } else {
+                        sv.vz = 0;
+                    }
+                    sv.vx = sv.vx * A08_SCL(e, 0) >> 12;
+                    sv.vy = sv.vy * A08_SCL(e, 1) >> 12;
+                    sv.vz = sv.vz * A08_SCL(e, 2) >> 12;
+                    ApplyMatrix((MATRIX*)(nodes + 0x2C), &sv, &out);
+                    A08_POS(e, 0) += rate * out.vx >> 12;
+                    A08_POS(e, 1) += rate * out.vy >> 12;
+                    A08_POS(e, 2) += rate * out.vz >> 12;
+                    break;
+                case 3:
+                    t = h;
+                    f2 = (s16)(*(u16*)(h + 0x10) + 1);
+                    A08_POS(e, 0) = *(s16*)(h + 4) + *(s16*)(h + 0xA) * f2 / *(s16*)(h + 0x12);
+                    A08_POS(e, 1) = *(s16*)(h + 6) + *(s16*)(h + 0xC) * f2 / *(s16*)(h + 0x12);
+                    A08_POS(e, 2) = *(s16*)(h + 8) + *(s16*)(h + 0xE) * f2 / *(s16*)(h + 0x12);
+                    break;
+                case 4:
+                    t = h;
+                    n2 = *(s16*)(h + 0x12);
+                    qa2 = (*(s16*)(h + 0xA) - A08_POS(e, 0)) / n2;
+                    qb2 = (*(s16*)(h + 0xC) - A08_POS(e, 1)) / n2;
+                    qc2 = (*(s16*)(h + 0xE) - A08_POS(e, 2)) / n2;
+                    if (qa2 == 0 && qb2 == 0 && qc2 == 0) {
+                        *(u16*)(h + 0x10) = n2;
+                        A08_POS(e, 0) = *(s16*)(h + 0xA);
+                        A08_POS(e, 1) = *(s16*)(h + 0xC);
+                        A08_POS(e, 2) = *(s16*)(h + 0xE);
+                    } else {
+                        A08_POS(e, 0) += qa2;
+                        A08_POS(e, 1) += qb2;
+                        A08_POS(e, 2) += qc2;
+                        *(u16*)(h + 0x10) = 0;
+                    }
+                    break;
+                case 5:
+                    t = h;
+                    *(s16*)(h + 4) += *(s16*)(h + 0xA);
+                    A08_POS(e, 0) += *(s16*)(h + 4);
+                    *(s16*)(h + 6) += *(s16*)(h + 0xC);
+                    A08_POS(e, 1) += *(s16*)(h + 6);
+                    *(s16*)(h + 8) += *(s16*)(h + 0xE);
+                    A08_POS(e, 2) += *(s16*)(h + 8);
+                    break;
+                }
+                *(u16*)(h + 0x10) += 1;
+                if (*(s16*)(h + 0x10) >= *(s16*)(h + 0x12)) {
+                    if (h[1] == 0) {
+                        if (h[3] == id) {
+                            flags |= 2;
+                        }
+                        flags |= 0x200;
+                        func_800A23E8(ctx, (u32)h);
+                        *(u8**)(e + 0x70) = NULL;
+                    } else {
+                        if (h[3] == id) {
+                            flags |= 4;
+                        }
+                        flags |= 0x400;
+                        if ((kind2 & 0xF) < 3) {
+                            *(u16*)(h + 0x10) = 0;
+                            *(u8**)(h + 8) = *(u8**)(h + 4);
+                        } else {
+                            *(s16*)(h + 0x10) = -1;
+                            if ((kind2 & 0xF) == 5) {
+                                *(s16*)(t + 0xA) = 0;
+                                *(s16*)(t + 0xC) = 0;
+                                *(s16*)(t + 0xE) = 0;
+                            }
+                        }
+                    }
+                } else {
+                    if (h[3] == id) {
+                        flags |= 1;
+                    }
+                    flags |= 0x100;
+                }
+                e[0] = 1;
+            }
+            if (*(u8**)(e + 0x74) != NULL) {
+                h = *(u8**)(e + 0x74);
+                kind3 = h[2] & 0xF;
+                switch (kind3) {
+                case 3:
+                    t = h;
+                    f3 = (s16)(*(u16*)(h + 0x10) + 1);
+                    A08_SCL(e, 0) = *(u16*)(h + 4) + *(s16*)(h + 0xA) * f3 / *(s16*)(h + 0x12);
+                    A08_SCL(e, 1) = *(u16*)(h + 6) + *(s16*)(h + 0xC) * f3 / *(s16*)(h + 0x12);
+                    A08_SCL(e, 2) = *(u16*)(h + 8) + *(s16*)(h + 0xE) * f3 / *(s16*)(h + 0x12);
+                    break;
+                case 4:
+                    t = h;
+                    n3 = *(s16*)(h + 0x12);
+                    qa3 = (*(s16*)(h + 0xA) - *(s16*)(h + 4)) / n3;
+                    qb3 = (*(s16*)(h + 0xC) - *(s16*)(h + 6)) / n3;
+                    qc3 = (*(s16*)(h + 0xE) - *(s16*)(h + 8)) / n3;
+                    if (qa3 == 0 && qb3 == 0 && qc3 == 0) {
+                        *(u16*)(h + 0x10) = n3;
+                        A08_SCL(e, 0) = *(s16*)(h + 0xA);
+                        A08_SCL(e, 1) = *(s16*)(h + 0xC);
+                        A08_SCL(e, 2) = *(s16*)(h + 0xE);
+                    } else {
+                        *(u16*)(t + 4) += qa3;
+                        *(u16*)(t + 6) += qb3;
+                        *(u16*)(t + 8) += qc3;
+                        A08_SCL(e, 0) = *(u16*)(t + 4);
+                        A08_SCL(e, 1) = *(u16*)(t + 6);
+                        A08_SCL(e, 2) = *(u16*)(t + 8);
+                        *(u16*)(h + 0x10) = 0;
+                    }
+                    break;
+                case 5:
+                    t = h;
+                    *(u16*)(h + 4) += *(s16*)(h + 0xA);
+                    A08_SCL(e, 0) += *(u16*)(h + 4);
+                    *(u16*)(h + 6) += *(s16*)(h + 0xC);
+                    A08_SCL(e, 1) += *(u16*)(h + 6);
+                    *(u16*)(h + 8) += *(s16*)(h + 0xE);
+                    A08_SCL(e, 2) += *(u16*)(h + 8);
+                    break;
+                }
+                *(u16*)(h + 0x10) += 1;
+                if (*(s16*)(h + 0x10) >= *(s16*)(h + 0x12)) {
+                    if (h[1] == 0) {
+                        if (h[3] == id) {
+                            flags |= 2;
+                        }
+                        flags |= 0x200;
+                        func_800A23E8(ctx, (u32)h);
+                        *(u8**)(e + 0x74) = NULL;
+                    } else {
+                        if (h[3] == id) {
+                            flags |= 4;
+                        }
+                        *(s16*)(h + 0x10) = -1;
+                        flags |= 0x400;
+                        if (kind3 == 5) {
+                            *(s16*)(t + 0xA) = 0;
+                            *(s16*)(t + 0xC) = 0;
+                            *(s16*)(t + 0xE) = 0;
+                        }
+                    }
+                } else {
+                    if (h[3] == id) {
+                        flags |= 1;
+                    }
+                    flags |= 0x100;
+                }
+                e[1] = 1;
+                e[0] = 1;
+            }
+        } while (0);
+            e += 0x7C;
+            i++;
+            nodes += 0x7C;
+        if (i < count) {
+            goto next;
+        }
+    }
+    return flags;
+}
+#undef A08_ROT
+#undef A08_POS
+#undef A08_SCL
+
 typedef struct {
     u8 unk0[0x54];
     s16 rot[3];
