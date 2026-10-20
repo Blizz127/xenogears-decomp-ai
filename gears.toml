@@ -522,6 +522,11 @@ paths = [
     # (func_80085388, func_80085454, func_80085AC4) compiles to the same
     # bytes under 2.6.3 (full relink).  Retail-only file, no port impact.
     "src/battle/mainasm_15898.",
+    # main35_p1 (2026-10-20): func_80080C94 matches under 2.6.3 only (2.7.2:
+    # 1216 vs 1224; three 2.7.2-only families vanish under 2.6.3).  The TU's
+    # other C, main35.c's part-1 func_8008115C, is byte-identical under 2.6.3
+    # with its case-3 base temp (full relink).
+    "src/battle/main35_p1.",
 ]
 
 [[build_preset]]

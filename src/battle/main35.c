@@ -87,7 +87,13 @@ void func_8008115C(u32 arg0) {
         ((u8 *)D_800C3EAC)[0x2DD] = 3;
         return;
     case 3:
-        row = (u8 *)D_800C3EAC + (arg0 & 0xFF) * 64;
+        {
+            /* base first: gcc 2.6.3 (main35_p1's preset) keeps retail's
+             * base-first addu only with the base in its own once-set temp. */
+            u8* base = (u8 *)D_800C3EAC;
+
+            row = base + (arg0 & 0xFF) * 64;
+        }
         if (!*(u16 *)(row + 0x30)) {
             ((u8 *)D_800C3EAC)[0x2DD] = 4;
             return;
