@@ -531,6 +531,12 @@ paths = [
     # 2.6.3 and 2.6.0 only (2.7.2: diff 7/339, the * 100 / 56 quotient region).
     # Split out of main35_p2 with mainasm_11828; retail-only file, no port impact.
     "src/battle/mainasm_12068.",
+    # mainasm_1FF0 (2026-10-20): main2's head (func_80071AE0, func_80071B94,
+    # func_80072270, func_80072324), moved verbatim and kept on 2.6.3 like
+    # main2 (func_80071AE0 is 2.6.x-only).  Split out of main2 with
+    # mainasm_28F0, whose func_800723E0 matches only under the Default 2.7.2.
+    # Retail-only file, no port impact.
+    "src/battle/mainasm_1FF0.",
 ]
 
 [[build_preset]]

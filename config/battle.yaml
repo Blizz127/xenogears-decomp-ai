@@ -117,7 +117,9 @@ segments:
       # src/battle/main{,2..61}.c (plus mainl* for the addiu-flavoured li TUs); each entry starts where the previous C run
       # ended and ends where its own C run ends.
       - [0x1450, c, main]
-      - [0x1FF0, c, main2]
+      - [0x1FF0, c, mainasm_1FF0]
+      - [0x28F0, c, mainasm_28F0]  # func_800723E0 (gcc 2.7.2)
+      - [0x2A3C, c, main2]
       - [0x6A54, c, main3]
       - [0x6F20, c, main4]
       - [0x7010, c, main5]
