@@ -256,6 +256,7 @@ func_800A2F94	port arm in src/battle/main67.c	func_800A2F94
 func_800A2FD8	port arm in src/battle/main67.c	func_800A2FD8
 func_800A32D8	port arm in src/battle/main67.c	func_800A32D8
 func_800A3640	port arm in src/battle/main68.c	func_800A3640
+func_800A3E98	port arm in src/battle/main68.c	func_800A3E98
 func_800A4348	port arm in src/battle/main68.c	func_800A4348
 func_800A43F8	port arm in src/battle/main68.c	func_800A43F8
 func_800A44C0	port arm in src/battle/main68.c	func_800A44C0

@@ -260,7 +260,117 @@ void* callback;
     }
     return e;
 }
-INCLUDE_ASM("asm/battle/nonmatchings/main68", func_800A3E98);
+/* func_800A3E98.s, byte-exact under gcc 2.6.3 (main68 is BattleGcc263Div).
+ * Advance an effect-image record by ticks; the port body below documents
+ * the steps.  The overlap blit reads both records' rects through A3Rect
+ * views at +0x28 into src/dst rect locals.
+ * CONSTRUCTS (counted separately):
+ * - The equal-frame exit is a bare `return;` in an s32 function.  That path
+ *   returns the loaded +0x18 halfword left in v0 (equal to frame, which is
+ *   >= 0 there; retail leaves the beq delay slot empty).  Every valued
+ *   return adds `move v0, s1`.  Neither caller (func_800A4654 here,
+ *   func_8009F844 in main65, which declares it void) reads v0 after the call.
+ * - The type-5 texel load assigns its row term inside the address,
+ *   `(r = (src.y + y) * 6) + (u32)*(u8**)(e + 0x1C) + ...`, in u32 address
+ *   arithmetic.  That gives retail's register order for the row, base and
+ *   column terms; plain pointer arithmetic does not. */
+typedef struct {
+    s16 x, y, w, h;
+} A3Rect;
+typedef s16 (*A3Callback)(u16 phase, s16 a, s16 b);
+extern void func_80026F44(s32 count, s32 factor, u16* dst, const u16* src);
+extern void func_80026FE8(s32 count, s32 factor, u16* dst, const u16* srcA, const u16* srcB);
+void func_800A4348(u8* e, s16 factor);
+void func_800A43F8(u8* e, s16 factor);
+
+s32 func_800A3E98(u8* e, s32 ticks) {
+    A3Rect src;
+    A3Rect dst;
+    u8* linked;
+    s16 frame;
+    s32 x;
+    s32 y;
+    u32 r;
+    u8* dstBase;
+    u8* srcBase;
+
+    if (*(u16*)(e + 0x1A) == 0) {
+        return -1;
+    }
+    *(u16*)(e + 0x14) += *(u16*)(e + 0x16) * (ticks + 1);
+    frame = (*(A3Callback*)(e + 0x24))(*(u16*)(e + 0x14), *(s16*)(e + 0x20), *(s16*)(e + 0x22));
+    if (frame < 0) {
+        func_800A429C(e);
+        return frame;
+    }
+    if (frame == *(u16*)(e + 0x18)) {
+        return;
+    }
+    *(u16*)(e + 0x18) = frame;
+    switch (e[0x10]) {
+    case 0:
+        func_80026F44(*(s16*)(e + 0x12), frame, *(u16**)(e + 0xC), *(u16**)(e + 0x4));
+        if (*(u32*)(e + 0x0) == 0) {
+            LoadImage((void*)(e + 0x28), *(void**)(e + 0xC));
+        }
+        break;
+    case 1:
+        func_80026FE8(*(s16*)(e + 0x12), frame, *(u16**)(e + 0xC), *(u16**)(e + 0x8), *(u16**)(e + 0x4));
+        if (*(u32*)(e + 0x0) == 0) {
+            LoadImage((void*)(e + 0x28), *(void**)(e + 0xC));
+        }
+        break;
+    case 4:
+        func_800A4348(e, frame);
+        break;
+    case 5:
+        func_800A43F8(e, frame);
+        break;
+    }
+    linked = *(u8**)(e + 0x0);
+    if (linked != NULL && *(u16*)(linked + 0x1A) != 0) {
+        if (((A3Rect*)(linked + 0x28))->x < ((A3Rect*)(e + 0x28))->x) {
+            dst.x = ((A3Rect*)(e + 0x28))->x - ((A3Rect*)(linked + 0x28))->x;
+            src.x = 0;
+            dst.w = ((A3Rect*)(linked + 0x28))->x + ((A3Rect*)(linked + 0x28))->w - ((A3Rect*)(e + 0x28))->x;
+        } else {
+            dst.x = 0;
+            src.x = ((A3Rect*)(linked + 0x28))->x - ((A3Rect*)(e + 0x28))->x;
+            dst.w = ((A3Rect*)(e + 0x28))->x + ((A3Rect*)(e + 0x28))->w - ((A3Rect*)(linked + 0x28))->x;
+        }
+        if (((A3Rect*)(linked + 0x28))->y < ((A3Rect*)(e + 0x28))->y) {
+            dst.y = ((A3Rect*)(e + 0x28))->y - ((A3Rect*)(linked + 0x28))->y;
+            src.y = 0;
+            dst.h = ((A3Rect*)(linked + 0x28))->y + ((A3Rect*)(linked + 0x28))->h - ((A3Rect*)(e + 0x28))->y;
+        } else {
+            dst.y = 0;
+            src.y = ((A3Rect*)(linked + 0x28))->y - ((A3Rect*)(e + 0x28))->y;
+            dst.h = ((A3Rect*)(e + 0x28))->y + ((A3Rect*)(e + 0x28))->h - ((A3Rect*)(linked + 0x28))->y;
+        }
+        if (dst.w > 0 && dst.h > 0) {
+            linked[0x11] = 1;
+            dstBase = *(u8**)(linked + 0x4);
+            if (linked[0x10] < 4) {
+                srcBase = *(u8**)(e + 0xC);
+                for (y = 0; y < dst.h; y++) {
+                    for (x = 0; x < dst.w; x++) {
+                        *(u16*)(dstBase + dst.x * 2 + x * 2 + (dst.y + y) * ((A3Rect*)(linked + 0x28))->w * 2) =
+                            *(u16*)(srcBase + src.x * 2 + x * 2 + (src.y + y) * ((A3Rect*)(e + 0x28))->w * 2);
+                    }
+                }
+            } else {
+                for (y = 0; y < dst.h; y++) {
+                    for (x = 0; x < dst.w; x++) {
+                        *(u16*)(dstBase + dst.x * 2 + x * 2 + (dst.y + y) * ((A3Rect*)(linked + 0x28))->w * 2) =
+                            *(u16*)((r = (src.y + y) * 6) + (u32)*(u8**)(e + 0x1C) + (src.x + x) * 2);
+                    }
+                }
+            }
+        }
+    }
+    return frame;
+}
+
 #endif
 
 /* Rebase stored PS1 heap pointers only on the native port. */
