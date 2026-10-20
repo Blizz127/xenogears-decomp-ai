@@ -2288,7 +2288,151 @@ void func_80096018(void) {
         break;
     }
 }
-INCLUDE_ASM("asm/battle/nonmatchings/main51", func_80096494);
+extern u8* D_800D2D6C;
+extern u8 D_800C3E04;
+extern u8* D_800D2DC8;
+
+/* func_80096494.s, byte-exact: apply the element modifier to atk/def/hit (see
+ * the caller notes near the top of this block).
+ * CONSTRUCTS (counted separately):
+ * - The u8 flag `weak` is reused to hold the second status word, so the
+ *   first `if (weak)` keeps retail's andi 0xFF.
+ * - The inherited permuter cast `(u8)(elem & st1)`.
+ * - `if (st & 8) *hit = 4;` is duplicated into both arms of each `if (st & 4)`
+ *   (the duplicated-statement allocation lever: st reaches 8 refs and gets
+ *   v1).  jump2 cross-jumps the copies back.
+ * Natural: the block-local u32 `sv` per arm, and `st1 = (...) >> 12` in each
+ * arm (both small sets, so combine drops elem's mask in `elem & st1`). */
+void func_80096494(u16* atk, u16* def, u8* hit) {
+    u8* base;
+    u8* p;
+    u8* q;
+    u16 st1;
+    u8 self;
+    u8 elem;
+    u8 res;
+    u8 weak;
+    s16 weak2;
+    s16 boost;
+    u16 st;
+    s8 mul;
+    s32 r8;
+    u8 dmul;
+
+    boost = 0;
+    weak = 0;
+    base = D_800C34B0;
+    q = base + D_800C3E50 * 0x170;
+    self = q[0x15A] >> 7;
+    elem = ((u8*)D_800C3DFC)[0x22] & 0x3F;
+    res = D_800C3E34[0x38] & 0x3F;
+    p = base + D_800C3E04 * 0x170;
+    if (!(p[0x15A] >> 7)) {
+        st1 = (((u16*)D_800C3E00)[0x46] | ((u16*)D_800C3E00)[0x47]) >> 12;
+    } else {
+        st1 = (((u16*)D_800D2D6C)[0x42] | ((u16*)D_800D2D6C)[0x43]) >> 12;
+    }
+    if (((u16*)D_800C3DFC)[0x5] & 0x100) {
+        boost = 1;
+    }
+    if (elem == 0 && st1 != 0) {
+        elem = st1;
+    }
+    if ((u8)(elem & st1)) {
+        weak = 1;
+    }
+    mul = 10;
+    dmul = 10;
+    if (elem & res) {
+        mul = (((u16*)D_800C3E34)[0x1C] & 0x40) ? 0x12 : 0xF;
+        if (weak) {
+            mul += 2;
+        }
+    }
+    weak2 = 0;
+    if (!self) {
+        u32 sv = ((u16*)D_800C3E34)[0x46] | ((u16*)D_800C3E34)[0x47];
+
+        res = (sv & 0xF00) >> 8;
+        st = sv;
+        weak2 = (sv >> 1) & 1;
+    } else {
+        u32 sv = ((u16*)D_800D2DC8)[0x42] | ((u16*)D_800D2DC8)[0x43];
+
+        res = (sv & 0xF00) >> 8;
+        st = sv;
+        weak = sv;
+        if (weak & 2) {
+            weak2 = 1;
+        }
+    }
+    if (elem & res) {
+        if (boost) {
+            mul -= 3;
+            if (st & 4) {
+                mul -= 3;
+                if (st & 8) {
+                    *hit = 4;
+                }
+            } else {
+                if (st & 8) {
+                    *hit = 4;
+                }
+            }
+        }
+        if ((elem & res) && weak2) {
+            mul -= 3;
+            if (st & 4) {
+                mul -= 3;
+                if (st & 8) {
+                    *hit = 4;
+                }
+            } else {
+                if (st & 8) {
+                    *hit = 4;
+                }
+            }
+        }
+    }
+    r8 = res << 8;
+    switch (elem) {
+    case 8:
+        if (r8 & 0x400) {
+            mul += 3;
+        }
+        break;
+    case 4:
+        if (r8 & 0x800) {
+            mul += 3;
+        }
+        break;
+    case 2:
+        if (r8 & 0x100) {
+            mul += 3;
+        }
+        break;
+    case 1:
+        if (r8 & 0x200) {
+            mul += 3;
+        }
+        break;
+    }
+    if (mul <= 0) {
+        mul = 1;
+    }
+    if (dmul <= 0) {
+        dmul = 1;
+    }
+    *atk = *atk * mul / 10;
+    *def = dmul * *def / 10;
+    if (((u16*)D_800C3E00)[0x19] & 0x10) {
+        *atk += *atk / 5;
+    }
+    if (((u16*)D_800C3E34)[0x19] & 0x10) {
+        *def += *def / 5;
+    }
+}
+
 
 #ifndef XENO_PC_PORT
 void func_80096824(void) {
