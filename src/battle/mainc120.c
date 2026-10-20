@@ -74,7 +74,76 @@ void func_800BDE58(void) {
         D_800D3680__a[0] = -1;
     }
 }
-INCLUDE_ASM("asm/battle/nonmatchings/mainc120", func_800BDF1C);
+extern s32 D_800C3D38[];
+extern s32 D_800D3630[];
+extern s16 D_800C3752[];
+extern void func_800BE330(s32 value);
+extern void func_800BE6E8(s32 value, u8* out, s32 digits, u32 lead, u32 bias);
+extern s32 func_80026DCC(u8* pTable, s32 index, u8* pPrimBuffer, s16 ofsX, s16 ofsY);
+
+/* func_800BDF1C.s, byte-exact.  Codegen notes:
+ * - The +0x63 `&= 0xFE` comes after the three +0x40/+0x44/+0x48 stores.  Those
+ *   varying stores drop cse.c's memory entries, so the code byte is re-read
+ *   instead of folded into the 0x2D store (retail's sb / lbu / andi / sb).
+ * - D_800C3D38 / D_800D3630 are unsized arrays read through [0] (this -G8
+ *   TU's convention; sized scalars would go small-data).
+ * - The nested if puts the once-set `t` copy in the block that tests
+ *   D_800D3680, where it fills the beq delay slot as in retail. */
+void func_800BDF1C(void) {
+    u8* t;
+    s32 v = D_800C3D38[0];
+    u8 digits[8];
+    s32 x;
+    s32 i;
+    s32 mode;
+
+    if (D_800D2D68[0] != 0 && D_800C3780 == 0) {
+        t = (u8*)D_800D2D68[0];
+        if (v != D_800D3680__a[0]) {
+            D_800D3680__a[0] = v;
+            func_800BE330(v);
+            t[0x63] = 0x2D;
+            *(s32*)(t + 0x40) = 0x2000;
+            *(s32*)(t + 0x44) = 0x2000;
+            *(s32*)(t + 0x48) = 0x2000;
+            t[0x63] &= 0xFE;
+            mode = D_800D3630[0];
+            *(s16*)(t + 0x38) = 0;
+            *(s16*)(t + 0x3A) = 0;
+            *(s16*)(t + 0x3C) = 0;
+            switch (mode) {
+            case 0xB:
+                t[0x60] = 0;
+                t[0x61] = 0;
+                t[0x62] = 0x80;
+                break;
+            case 3:
+                t[0x60] = 0x80;
+                t[0x61] = 0;
+                t[0x62] = 0x80;
+                break;
+            case 2:
+                t[0x60] = 0;
+                t[0x61] = 0x80;
+                t[0x62] = 0;
+                break;
+            default:
+                t[0x60] = 0x80;
+                t[0x61] = 0x80;
+                t[0x62] = 0x80;
+                break;
+            }
+            func_800BE6E8(v, digits, 5, 0, 0);
+            x = D_800C3752[digits[0]];
+            *(s32*)(t + 0x64) = 0;
+            for (i = 0; i != digits[0]; i++, x += 10) {
+                *(s32*)(t + 0x64) += func_80026DCC(D_800D2F5C[0], digits[i + 1] + 0x72,
+                                                   t + (*(s32*)(t + 0x64) * 0x18 + 0x68), x, -8);
+            }
+        }
+    }
+}
+
 #endif
 
 
