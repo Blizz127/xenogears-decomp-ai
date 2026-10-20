@@ -315,6 +315,7 @@ func_800B8D7C	generated logging stub (matched C not linked)	func_800B8D7C
 func_800B9258	port arm spanning the body in src/battle/mainc107.c	func_800B9258
 func_800B9B30	port arm spanning the body in src/battle/mainc108.c	func_800B9B30
 func_800B9B54	generated logging stub (matched C not linked)	func_800B9B54
+func_800B9C78	port arm in src/battle/mainl110.c	func_800B9C78
 func_800BA59C	port arm in src/battle/mainl110.c	func_800BA59C
 func_800BA614	port arm in src/battle/mainl110.c	func_800BA614
 func_800BA768	port arm in src/battle/mainl110.c	func_800BA768

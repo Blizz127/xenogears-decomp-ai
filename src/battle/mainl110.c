@@ -21,7 +21,145 @@ void func_800B9C00(void *arg0, s32 arg1) {
     func_800B9B54(arg0, arg1);
 }
 
-INCLUDE_ASM("asm/battle/nonmatchings/mainl110", func_800B9C78);
+typedef struct {
+    u8 unk0[0xA8];
+    u32 unkA8 : 28;
+    u32 mode : 2;
+    u32 slot : 4 __attribute__((packed));
+    u32 unkAC : 22;
+    u32 unkAF : 8;
+} B9CSpr;
+
+typedef struct {
+    u8 unk0[0x16];
+    u16 unk16;
+    u8 unk18[0xB];
+    u8 unk23;
+    u8 unk24[0x16];
+    u16 unk3A;
+    u8 unk3C[0xB];
+    u8 unk47;
+} BattleStep;
+
+typedef struct {
+    u8 unk0[0x138];
+    BattleStep steps[32];
+} BattleScriptHead;
+
+extern BattleScriptHead D_800C3EB0__h asm("D_800C3EB0");
+extern s16 D_800C3614__a[] asm("D_800C3614");
+extern s32 D_800C360C__a[] asm("D_800C360C");
+extern u8 D_800C3EB0[];
+extern u16 D_800C3DF0__a[] asm("D_800C3DF0");
+extern u16 D_800D39E4__a[] asm("D_800D39E4");
+extern void func_800BF9EC(void);
+extern void func_800BEFF4(u8 kind);
+extern void func_800BF3E8(void* rec);
+extern void func_800BF0B4(u32 value);
+extern void func_800B8354(void);
+extern void func_800BEE2C(s32 a0, u16 a1, s32 a2);
+extern void func_800AA760(s32 index, u16 value);
+extern void func_800B9284(u8* rec, u8 kind);
+extern void func_800AA79C(s32 slot, u16 value);
+extern void func_800B8048();
+
+/* func_800B9C78.s, byte-exact command-step driver (the port body further down
+ * describes it).
+ * CONSTRUCTS (counted separately):
+ * - The shared default/0xFD tail stores D_800C360C + 1 through a scalar view,
+ *   `*(s32*)(void*)D_800C360C__a`, written identically in both arms so jump2
+ *   cross-jumps them.  An array-view store is an in-struct MEM that pins the
+ *   steps[i].unk16 load above it; the scalar store lets sched1 hoist the load
+ *   chain, giving retail's idx v1 / base a1 / %hi a3.
+ * - Inherited: the asm-alias views (D_800C3EB0__h, D_800C3614__a,
+ *   D_800C360C__a, D_800C3DF0__a, D_800D39E4__a), the flat-offset `base`
+ *   local, the unprototyped func_800B8048 (coexists with B9F78's prototype),
+ *   the packed 4-bit slot bitfield, `target` reused for two values, and case
+ *   0xF4's idx/v locals. */
+void func_800B9C78(void) {
+    u8* rec;
+    s32 target;
+    u8 kind;
+    s32 v;
+    s32 idx;
+    u8* base;
+
+    if (D_800C3614__a[0] != 0) {
+        D_800C3614__a[0]--;
+        return;
+    }
+    func_800BF9EC();
+    base = D_800C3EB0;
+    target = base[D_800C360C__a[0] * 0x48 + 0x15B];
+    func_800BEFF4(target);
+    func_800BF3E8(*(void**)(D_800C3610[0] + 4));
+    target = *(s32*)(D_800C3610[0] + 0x24);
+    rec = *(u8**)(base + target * 4 + 0x8C8C);
+    kind = base[D_800C360C__a[0] * 0x48 + 0x17F];
+    func_800BF0B4(8);
+    if (D_800C3610[0][0x4A] != 0) {
+        base[0xA73] = 0;
+    }
+    D_800C3610[0][0x4A] = 0;
+    switch (kind) {
+    case 0xFF:
+        func_800BF0B4(9);
+        break;
+    case 0xFE:
+        func_800B8354();
+        func_800BEE2C(*(s32*)(D_800C3610[0] + 0x20), D_800C3EB0__h.steps[D_800C360C__a[0]].unk16, 4);
+        func_800BF0B4(0xA);
+        break;
+    case 0xFC:
+        func_800AA760(target, D_800C3EB0__h.steps[D_800C360C__a[0]].unk3A);
+        func_800BF0B4(9);
+        D_800C360C__a[0]++;
+        break;
+    case 0xFD:
+        {
+            s32 i = D_800C360C__a[0];
+
+            *(s32*)(void*)D_800C360C__a = i + 1;
+            func_800BEE2C(target, D_800C3EB0__h.steps[i].unk16, 2);
+        }
+        break;
+    case 0xF3:
+    case 0xF5:
+    case 0xF6:
+    case 0xF7:
+    case 0xF8:
+    case 0xFA:
+        func_800B9284(rec, kind);
+        func_800BF0B4(9);
+        D_800C360C__a[0]++;
+        break;
+    case 0xFB:
+        func_800BF0B4(9);
+        func_800AA79C(((B9CSpr*)rec)->slot,
+                      D_800C3EB0__h.steps[D_800C360C__a[0]].unk3A);
+        D_800C360C__a[0]++;
+        break;
+    case 0xF4:
+        func_800BF0B4(9);
+        idx = D_800C360C__a[0];
+        D_800C360C__a[0] = idx + 1;
+        v = D_800C3EB0__h.steps[idx].unk3A;
+        D_800C3DF0__a[0] = (v >> 9) & 0x3F;
+        D_800D39E4__a[0] = v & 0x1FF;
+        break;
+    default:
+        D_800C3610[0][0x4A] = 1;
+        func_800B8048(rec);
+        {
+            s32 i = D_800C360C__a[0];
+
+            *(s32*)(void*)D_800C360C__a = i + 1;
+            func_800BEE2C(target, D_800C3EB0__h.steps[i].unk16, kind);
+        }
+        break;
+    }
+}
+
 typedef struct {
     u8 unk0[2];
     s16 unk2;
