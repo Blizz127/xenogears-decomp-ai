@@ -202,7 +202,421 @@ void func_800B1F0C(void* ot) {
         AddPrim(ot, p);
     }
 }
-INCLUDE_ASM("asm/battle/nonmatchings/main77", func_800B1F6C);
+/* func_800B1F6C.s, byte-exact under BattleCdk (gcc 2.7.2-cdk, -G8; main77's
+ * preset, unchanged).  The model renderer behind animation callback index 15
+ * (the port's native body is in anim_render_index15.inc):
+ * - set the draw tpage when `tpage` is non-zero;
+ * - walk the geometry's `count` primitive records (+0x10, with vertex +0x0
+ *   and normal +0x8 tables relative to `geom`);
+ * - pick each record's vertices; kinds 0x100/0x104/0x108 light the colour
+ *   through NormalColor and 0x114 through NormalColor3, keeping the prim's
+ *   code byte;
+ * - transform and cull: the triangle kinds (0x00/0x04/0x10/0x14) inline
+ *   (RTPT, then skip on GTE FLAG bit 0x4000 or a non-positive NCLIP), the
+ *   quad kinds (0x08/0x0C/0x18/0x1C) through RotAverageNclip4 (skip on a
+ *   non-positive result or flag bit 0x8000);
+ * - after the D_80050100 shift and depth bias, raise otz below 5 to 5, skip
+ *   otz >= 0x1000, and link the prim into `ot` (P_TAG addPrim).  The kinds
+ *   with bit 2 clear (0x00/0x08/0x10/0x18) then call func_800B1F0C on that OT
+ *   entry when `tpage` is set;
+ * - advance prim and record by their sizes.
+ * Natural shape notes: block-local `saved` code bytes in the NormalColor
+ * cases, the 0x114 normals computed before its saved byte, `t` reused for
+ * the second switch, and the bitfield addPrim on `ot + otz`.
+ * CONSTRUCTS (counted separately; ablation in w/xb-b1f6c3/NOTES.txt):
+ * - a phony do/while(0) around the first switch (record outranks prim);
+ * - a DOUBLE phony do/while(0) around the four no-call emitter tails
+ *   (0x04/0x14 STSXY3 + addPrim, 0x0C/0x1C addPrim): prim's refs go 151 ->
+ *   187, between record and verts, as retail's s1/s2/s3.  Without it
+ *   81/736; a single wrapper 9/736;
+ * - B1F6C_VTX / B1F6C_NRM spell `base + idx * 8` index-first in integer
+ *   arithmetic (retail's addu order; pointer arithmetic keeps base first);
+ * - v0 reused as the normal pointer in the three NormalColor cases.
+ * Inherited: `extern s32 D_80050100[]` read as [0], and the inline-asm GTE
+ * macros. */
+#define B1F6C_VTX(o) ((u8*)(*(u16*)(record + (o)) * 8 + (u32)verts))
+#define B1F6C_NRM(o) ((u8*)(*(u16*)(record + (o)) * 8 + (u32)normals))
+#include "battle/gte_inline.h"
+
+extern s32 D_80050100[];
+
+extern void SetDrawTPage(void* p, s32 dfe, s32 dtd, s32 tpage);
+
+/* *p = FLAG (gte_stflg; clobbers $12) */
+#define B1F6C_GTE_STFLG(p) \
+    __asm__ volatile("cfc2 $12, $31\n\tnop\n\tsw $12, 0(%0)" : : "r"(p) : "$12", "memory")
+/* NCLIP (gte_nclip) */
+#define B1F6C_GTE_NCLIP() __asm__ volatile("nop\n\tnop\n\t.word 0x4B400006")
+/* *p = MAC0 (gte_stopz) */
+#define B1F6C_GTE_STOPZ(p) __asm__ volatile("swc2 $24, 0(%0)" : : "r"(p) : "memory")
+/* AVSZ3 (gte_avsz3) */
+#define B1F6C_GTE_AVSZ3() __asm__ volatile("nop\n\tnop\n\t.word 0x4B58002D")
+/* *p = OTZ (gte_stotz) */
+#define B1F6C_GTE_STOTZ(p) __asm__ volatile("swc2 $7, 0(%0)" : : "r"(p) : "memory")
+
+typedef struct {
+    unsigned addr : 24;
+    unsigned len : 8;
+} B1F6C_TAG;
+#define B1F6C_ADDPRIM(e, q) \
+    ((B1F6C_TAG*)(q))->addr = ((B1F6C_TAG*)(e))->addr; \
+    ((B1F6C_TAG*)(e))->addr = (u32)(q);
+
+void func_800B1F6C(u8* geom, u8* out, u32* ot, s32 unused, s32 depthBias, s32 tpage) {
+    long flag00;
+    long opz;
+    long otz;
+    long flag10;
+    long flag04;
+    long flag14;
+    long p;
+    long flagq;
+    u8* record;
+    u8* verts;
+    u8* normals;
+    u8* v0;
+    u8* v1;
+    u8* v2;
+    u8* v3;
+    s32 count;
+    s32 i;
+    s32 t;
+    u8* prim;
+
+    if (tpage != 0) {
+        SetDrawTPage(D_800C3BF8, 0, 0, ((tpage - 1) & 3) << 5);
+    }
+    prim = out;
+    count = *(s32*)(geom + 0x14);
+    record = (u8*)(*(s32*)(geom + 0x10) + (s32)geom);
+    verts = (u8*)(*(s32*)(geom + 0x0) + (s32)geom);
+    normals = (u8*)(*(s32*)(geom + 0x8) + (s32)geom);
+    for (i = 0; i != count; i++) {
+        t = record[3] & 0x1C;
+        t |= ((record[2] ^ 1) & 1) << 8;
+        do {
+        switch (t) {
+        case 0x00:
+            v0 = B1F6C_VTX(0x8);
+            v1 = B1F6C_VTX(0xA);
+            v2 = B1F6C_VTX(0xC);
+            break;
+        case 0x10:
+            v0 = B1F6C_VTX(0x10);
+            v1 = B1F6C_VTX(0x12);
+            v2 = B1F6C_VTX(0x14);
+            break;
+        case 0x18:
+            v0 = B1F6C_VTX(0x14);
+            v1 = B1F6C_VTX(0x16);
+            v2 = B1F6C_VTX(0x18);
+            v3 = B1F6C_VTX(0x1A);
+            break;
+        case 0x08:
+            v0 = B1F6C_VTX(0x8);
+            v1 = B1F6C_VTX(0xA);
+            v2 = B1F6C_VTX(0xC);
+            v3 = B1F6C_VTX(0xE);
+            break;
+        case 0x04:
+            v0 = B1F6C_VTX(0x14);
+            v1 = B1F6C_VTX(0x16);
+            v2 = B1F6C_VTX(0x18);
+            break;
+        case 0x14:
+            v0 = B1F6C_VTX(0x1C);
+            v1 = B1F6C_VTX(0x1E);
+            v2 = B1F6C_VTX(0x20);
+            break;
+        case 0x0C:
+            v0 = B1F6C_VTX(0x18);
+            v1 = B1F6C_VTX(0x1A);
+            v2 = B1F6C_VTX(0x1C);
+            v3 = B1F6C_VTX(0x1E);
+            break;
+        case 0x1C:
+            v0 = B1F6C_VTX(0x24);
+            v1 = B1F6C_VTX(0x26);
+            v2 = B1F6C_VTX(0x28);
+            v3 = B1F6C_VTX(0x2A);
+            break;
+        case 0x100:
+            v0 = B1F6C_NRM(0x8);
+            {
+                u8 saved = prim[7];
+
+                NormalColor((SVECTOR*)v0, (CVECTOR*)(prim + 4));
+                prim[7] = saved;
+            }
+            v0 = B1F6C_VTX(0xA);
+            v1 = B1F6C_VTX(0xC);
+            v2 = B1F6C_VTX(0xE);
+            break;
+        case 0x110:
+            v0 = B1F6C_VTX(0x10);
+            v1 = B1F6C_VTX(0x16);
+            v2 = B1F6C_VTX(0x1A);
+            break;
+        case 0x108:
+            v0 = B1F6C_NRM(0x8);
+            {
+                u8 saved = prim[7];
+
+                NormalColor((SVECTOR*)v0, (CVECTOR*)(prim + 4));
+                prim[7] = saved;
+            }
+            v0 = B1F6C_VTX(0xA);
+            v1 = B1F6C_VTX(0xC);
+            v2 = B1F6C_VTX(0xE);
+            v3 = B1F6C_VTX(0x10);
+            break;
+        case 0x104:
+            v0 = B1F6C_NRM(0x10);
+            {
+                u8 saved = prim[7];
+
+                NormalColor((SVECTOR*)v0, (CVECTOR*)(prim + 4));
+                prim[7] = saved;
+            }
+            v0 = B1F6C_VTX(0x12);
+            v1 = B1F6C_VTX(0x14);
+            v2 = B1F6C_VTX(0x16);
+            break;
+        case 0x114:
+            {
+                SVECTOR* n0 = (SVECTOR*)(B1F6C_NRM(0x10));
+                SVECTOR* n1 = (SVECTOR*)(B1F6C_NRM(0x14));
+                SVECTOR* n2 = (SVECTOR*)(B1F6C_NRM(0x18));
+                u8 saved = prim[7];
+
+                NormalColor3(n0, n1, n2, (CVECTOR*)(prim + 4), (CVECTOR*)(prim + 0x10), (CVECTOR*)(prim + 0x1C));
+                prim[7] = saved;
+            }
+            v0 = B1F6C_VTX(0x12);
+            v1 = B1F6C_VTX(0x16);
+            v2 = B1F6C_VTX(0x1A);
+            break;
+        case 0x10C:
+            v0 = B1F6C_VTX(0x16);
+            v1 = B1F6C_VTX(0x18);
+            v2 = B1F6C_VTX(0x1A);
+            v3 = B1F6C_VTX(0x1C);
+            break;
+        case 0x118:
+        case 0x11C:
+            v0 = B1F6C_VTX(0x16);
+            v1 = B1F6C_VTX(0x1A);
+            v2 = B1F6C_VTX(0x1E);
+            v3 = B1F6C_VTX(0x22);
+            break;
+        }
+        } while (0);
+        t = record[3] & 0x1C;
+        switch (t) {
+        case 0x00:
+            BATTLE_GTE_LDV3(v0, v1, v2);
+            BATTLE_GTE_RTPT();
+            B1F6C_GTE_STFLG(&flag00);
+            B1F6C_GTE_NCLIP();
+            if (flag00 & 0x4000) {
+                break;
+            }
+            B1F6C_GTE_STOPZ(&opz);
+            B1F6C_GTE_AVSZ3();
+            if (opz <= 0) {
+                break;
+            }
+            B1F6C_GTE_STOTZ(&otz);
+            otz = (otz >> D_80050100[0]) + depthBias;
+            if (otz < 5) {
+                otz = 5;
+            }
+            if (otz >= 0x1000) {
+                break;
+            }
+            BATTLE_GTE_STSXY3(prim + 8, prim + 0xC, prim + 0x10);
+            B1F6C_ADDPRIM((ot + otz), prim);
+            if (tpage != 0) {
+                func_800B1F0C(ot + otz);
+            }
+            break;
+        case 0x10:
+            BATTLE_GTE_LDV3(v0, v1, v2);
+            BATTLE_GTE_RTPT();
+            B1F6C_GTE_STFLG(&flag10);
+            B1F6C_GTE_NCLIP();
+            if (flag10 & 0x4000) {
+                break;
+            }
+            B1F6C_GTE_STOPZ(&opz);
+            B1F6C_GTE_AVSZ3();
+            if (opz <= 0) {
+                break;
+            }
+            B1F6C_GTE_STOTZ(&otz);
+            otz = (otz >> D_80050100[0]) + depthBias;
+            if (otz < 5) {
+                otz = 5;
+            }
+            if (otz >= 0x1000) {
+                break;
+            }
+            BATTLE_GTE_STSXY3(prim + 8, prim + 0x10, prim + 0x18);
+            B1F6C_ADDPRIM((ot + otz), prim);
+            if (tpage != 0) {
+                func_800B1F0C(ot + otz);
+            }
+            break;
+        case 0x04:
+            BATTLE_GTE_LDV3(v0, v1, v2);
+            BATTLE_GTE_RTPT();
+            B1F6C_GTE_STFLG(&flag04);
+            B1F6C_GTE_NCLIP();
+            if (flag04 & 0x4000) {
+                break;
+            }
+            B1F6C_GTE_STOPZ(&opz);
+            B1F6C_GTE_AVSZ3();
+            if (opz <= 0) {
+                break;
+            }
+            B1F6C_GTE_STOTZ(&otz);
+            otz = (otz >> D_80050100[0]) + depthBias;
+            if (otz < 5) {
+                otz = 5;
+            }
+            if (otz >= 0x1000) {
+                break;
+            }
+            do {
+                do {
+                    BATTLE_GTE_STSXY3(prim + 8, prim + 0x10, prim + 0x18);
+                    B1F6C_ADDPRIM((ot + otz), prim);
+                } while (0);
+            } while (0);
+            break;
+        case 0x14:
+            BATTLE_GTE_LDV3(v0, v1, v2);
+            BATTLE_GTE_RTPT();
+            B1F6C_GTE_STFLG(&flag14);
+            B1F6C_GTE_NCLIP();
+            if (flag14 & 0x4000) {
+                break;
+            }
+            B1F6C_GTE_STOPZ(&opz);
+            B1F6C_GTE_AVSZ3();
+            if (opz <= 0) {
+                break;
+            }
+            B1F6C_GTE_STOTZ(&otz);
+            otz = (otz >> D_80050100[0]) + depthBias;
+            if (otz < 5) {
+                otz = 5;
+            }
+            if (otz >= 0x1000) {
+                break;
+            }
+            do {
+                do {
+                    BATTLE_GTE_STSXY3(prim + 8, prim + 0x14, prim + 0x20);
+                    B1F6C_ADDPRIM((ot + otz), prim);
+                } while (0);
+            } while (0);
+            break;
+        case 0x08:
+            opz = RotAverageNclip4((SVECTOR*)v0, (SVECTOR*)v1, (SVECTOR*)v2, (SVECTOR*)v3, (long*)(prim + 8),
+                                   (long*)(prim + 0xC), (long*)(prim + 0x10), (long*)(prim + 0x14), &p, &otz, &flagq);
+            if (opz <= 0) {
+                break;
+            }
+            otz = (otz >> D_80050100[0]) + depthBias;
+            if (otz < 5) {
+                otz = 5;
+            }
+            if (flagq & 0x8000) {
+                break;
+            }
+            if (otz >= 0x1000) {
+                break;
+            }
+            B1F6C_ADDPRIM((ot + otz), prim);
+            if (tpage != 0) {
+                func_800B1F0C(ot + otz);
+            }
+            break;
+        case 0x18:
+            opz = RotAverageNclip4((SVECTOR*)v0, (SVECTOR*)v1, (SVECTOR*)v2, (SVECTOR*)v3, (long*)(prim + 8),
+                                   (long*)(prim + 0x10), (long*)(prim + 0x18), (long*)(prim + 0x20), &p, &otz, &flagq);
+            if (opz <= 0) {
+                break;
+            }
+            otz = (otz >> D_80050100[0]) + depthBias;
+            if (otz < 5) {
+                otz = 5;
+            }
+            if (flagq & 0x8000) {
+                break;
+            }
+            if (otz >= 0x1000) {
+                break;
+            }
+            B1F6C_ADDPRIM((ot + otz), prim);
+            if (tpage != 0) {
+                func_800B1F0C(ot + otz);
+            }
+            break;
+        case 0x0C:
+            opz = RotAverageNclip4((SVECTOR*)v0, (SVECTOR*)v1, (SVECTOR*)v2, (SVECTOR*)v3, (long*)(prim + 8),
+                                   (long*)(prim + 0x10), (long*)(prim + 0x18), (long*)(prim + 0x20), &p, &otz, &flagq);
+            if (opz <= 0) {
+                break;
+            }
+            otz = (otz >> D_80050100[0]) + depthBias;
+            if (otz < 5) {
+                otz = 5;
+            }
+            if (flagq & 0x8000) {
+                break;
+            }
+            if (otz >= 0x1000) {
+                break;
+            }
+            do {
+                do {
+                    B1F6C_ADDPRIM((ot + otz), prim);
+                } while (0);
+            } while (0);
+            break;
+        case 0x1C:
+            opz = RotAverageNclip4((SVECTOR*)v0, (SVECTOR*)v1, (SVECTOR*)v2, (SVECTOR*)v3, (long*)(prim + 8),
+                                   (long*)(prim + 0x14), (long*)(prim + 0x20), (long*)(prim + 0x2C), &p, &otz, &flagq);
+            if (opz <= 0) {
+                break;
+            }
+            otz = (otz >> D_80050100[0]) + depthBias;
+            if (otz < 5) {
+                otz = 5;
+            }
+            if (flagq & 0x8000) {
+                break;
+            }
+            if (otz >= 0x1000) {
+                break;
+            }
+            do {
+                do {
+                    B1F6C_ADDPRIM((ot + otz), prim);
+                } while (0);
+            } while (0);
+            break;
+        }
+        prim += (record[0] + 1) * 4;
+        record += (record[1] + 1) * 4;
+    }
+}
+#undef B1F6C_VTX
+#undef B1F6C_NRM
+
 extern u8 func_80021AD8(u8 c, s32 scale);
 
 #define B2AEC_RGB(o, b0, b1, b2) \
