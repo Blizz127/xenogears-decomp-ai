@@ -85,8 +85,9 @@ extern s32 func_80026DCC(u8* pTable, s32 index, u8* pPrimBuffer, s16 ofsX, s16 o
  * - The +0x63 `&= 0xFE` comes after the three +0x40/+0x44/+0x48 stores.  Those
  *   varying stores drop cse.c's memory entries, so the code byte is re-read
  *   instead of folded into the 0x2D store (retail's sb / lbu / andi / sb).
- * - D_800C3D38 / D_800D3630 are unsized arrays read through [0] (this -G8
- *   TU's convention; sized scalars would go small-data).
+ * - D_800C3D38 / D_800D3630 are unsized arrays read through [0]: a sized
+ *   scalar extern compiles to maspsx's adjacent lui macro, while retail
+ *   splits %hi/%lo across registers (the gcc-split form).
  * - The nested if puts the once-set `t` copy in the block that tests
  *   D_800D3680, where it fills the beq delay slot as in retail. */
 void func_800BDF1C(void) {
