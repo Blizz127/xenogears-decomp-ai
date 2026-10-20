@@ -2,7 +2,150 @@
 
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/battle/nonmatchings/mainc99", func_800B7424);
+#include "psyq/libgpu.h"
+#include "psyq/libgte.h"
+extern VECTOR D_800C35C4;
+
+typedef struct {
+    s16 unk0;
+    s16 unk2;
+    s16 unk4;
+    s16 unk6;
+    s16 unk8;
+    s16 unkA;
+    s16 unkC;
+    s16 unkE;
+    VECTOR unk10;
+    u8 unk20[4];
+    POLY_FT3 prims[2];
+    s32 unk64;
+    VECTOR unk68;
+    s32 unk78;
+} B7424Rec; /* 0x7C */
+
+/* func_800B7424.s, byte-exact: lay out the 2 x 14 x 20 grid of 0x7C-byte
+ * effect records at p (side offsets 0x3C / +0x87A0, rows 0x9B0 apart).
+ * Each record gets a start position, a random spin/drift vector
+ * (RotMatrixZYX + ApplyMatrixLV of D_800C35C4 with a random -z), a
+ * lifetime at +0x78 and two textured POLY_FT3s at +0x24/+0x44 cutting a
+ * 16x16 cell of the 0x2C0 page.  Retail returns p in v0.
+ * CONSTRUCTS (counted separately):
+ * - The prim and column loops are goto loops.  Without loop notes, the
+ *   loop-depth ref weights give k retail's s6 and poff/v1/u1 s3/s4/s5.
+ * - `ff` stands in for loop.c's hoisted and spilled 0xFF (setRGB0),
+ *   recreating retail's reload copy.
+ * Inherited from the parked draft: the `base` macro, the explicit
+ * c16/r16/cu/poff/u0/u1/v1 temporaries, `d` assigned inside the first
+ * +0x64 store (retail stores +0x64 twice), and the B7424Rec view. */
+u32 func_800B7424(u32 p) {
+#define base ((u8*)p)
+    VECTOR sq;
+    SVECTOR r;
+    MATRIX m;
+    s32 radius;
+    s32 row;
+    s32 side;
+    s32 r16;
+    s32 ya;
+    s32 yb;
+    s32 cu;
+    s32 roff;
+    s32 y0;
+    s32 y1;
+    s32 off;
+    s32 c16;
+    s32 col;
+    B7424Rec* e;
+    s32 d;
+    s32 a;
+    s32 ang;
+    s32 k;
+    s32 poff;
+    POLY_FT3* prim;
+    s32 u0;
+    s32 u1;
+    s32 v1;
+    u8 ff;
+
+    ff = 0xFF;
+    *(s32*)(base + 0x38) = 0;
+    radius = SquareRoot0(0x9500) << 10;
+    for (side = 0, off = 0x3C; side != 2; off += 0x87A0, side++) {
+        for (row = 0, roff = 0, y0 = -0xCA0, y1 = -0xD60; row != 0xE;
+             roff += 0x9B0, y0 += 0x200, y1 += 0x200, row++) {
+            r16 = row << 4;
+            ya = y1;
+            yb = y0;
+            col = 0;
+            c16 = 0;
+        next_col:
+            {
+                e = (B7424Rec*)(base + off + roff + col * 0x7C);
+                e->unk0 = 0;
+                e->unk2 = 0;
+                e->unk4 = 0;
+                if (side == 0) {
+                    e->unk10.vx = (c16 - 0x9B) << 5;
+                    e->unk10.vy = ya;
+                    e->unk10.vz = 0x4000;
+                } else {
+                    e->unk10.vx = (c16 - 0x95) << 5;
+                    e->unk10.vy = yb;
+                    e->unk10.vz = 0x4000;
+                }
+                D_800C35C4.vz = 0xFE0C0000;
+                D_800C35C4.vz += -(rand() % 1000) << 16;
+                Square0(&e->unk10, &sq);
+                e->unk64 = (radius / 32 - (d = SquareRoot0(sq.vx + sq.vy))) / 2048;
+                e->unk64 = d / 1024;
+                a = ratan2(e->unk10.vy, e->unk10.vx);
+                ang = a + (0x600 + rand() % 1024);
+                d = (d << 11) / radius;
+                d -= 0x20 - rand() % 64;
+                r.vx = 0;
+                r.vy = d;
+                r.vz = ang;
+                RotMatrixZYX(&r, &m);
+                ApplyMatrixLV(&m, &D_800C35C4, &e->unk68);
+                k = 0;
+                e->unk78 = 0x70800 - ((rand() % 1600) << 8);
+                u0 = c16 & 0x3F;
+                u1 = u0 + 0x10;
+                v1 = r16 + 0x10;
+                cu = c16;
+                poff = 0x24;
+                e->unk8 = (rand() & 0xFF) - 0x7F;
+                e->unkA = (rand() & 0xFF) - 0x7F;
+                e->unkC = (rand() & 0x1FF) - 0xFF;
+            next_prim:
+                    prim = (POLY_FT3*)((u8*)e + poff);
+                    SetPolyFT3(prim);
+                    SetShadeTex(prim, 0);
+                    setRGB0(prim, ff, ff, ff);
+                    prim->code &= 0xFD;
+                    prim->tpage = GetTPage(2, 1, cu + 0x2C0, 0x100);
+                    if (side == 0) {
+                        setUV3(prim, u0, r16, u1, r16, u0, v1);
+                    } else {
+                        setUV3(prim, u1, r16, u1, v1, u0, v1);
+                    }
+                    k++;
+                    poff += 0x20;
+                    if (k != 2) {
+                        goto next_prim;
+                    }
+            }
+            col++;
+            c16 += 0x10;
+            if (col != 0x14) {
+                goto next_col;
+            }
+        }
+    }
+    return p;
+#undef base
+}
+
 #include "psyq/libgpu.h"
 #include "battle/spad_stack.h"
 typedef struct {
@@ -172,7 +315,7 @@ extern void func_800245D8(u32 a0, u32 a1);
 extern u8 D_800C3EB0[];
 #endif
 extern u32 WorkListsAddTasks(u32 a0, u32 a1, void* a2, void* a3, void* a4);
-extern void func_800B7424(u32 p);
+extern u32 func_800B7424(u32 p);
 extern void func_800B7364(void);
 extern void func_800B6F0C(void);
 extern void func_800B7134(void);
