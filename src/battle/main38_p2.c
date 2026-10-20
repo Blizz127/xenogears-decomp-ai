@@ -291,7 +291,91 @@ s32 func_80086B88(u8 index, u8 slot) {
     }
     return ok;
 }
-INCLUDE_ASM("asm/battle/nonmatchings/main38_p2", func_80086C88);
+/* func_80086C88.s, byte-exact under gcc 2.6.3 (main38_p2 is BattleGcc263):
+ * the glyph-row sibling of func_80086028.  Draw entry `id` of the actor
+ * record D_800CCD88[actor * 0x170] in slot `slot` and return slot + 1.
+ * The name string (func_800339C8 of the record byte and D_800C34CC[id]) is
+ * rendered into *buf and uploaded to the 30 x 13 VRAM rect at
+ * (0x3C0 + slot / 2 * 30, 0x1A), and the D_800CCB34 buffer's +0x5550 prim
+ * is placed as in func_80086028 (x = slot * 4 + (row + 1) * 16 + 0x86).
+ * The +0x5C80 prims show up to four glyphs: after
+ * func_8008AAA0(D_800CCB34 table +0x60D8 [id]), each of the four bytes at
+ * D_800C3CF9 that is not 0xFF has its D_800C3E5C word uploaded to a 6 x 13
+ * rect at x = slot * 8 + 0x3DE + 2 * n; that prim gets x = ... + 0xEA,
+ * u = slot * 32 + 0x78, v = 0 and width n * 8.  The D_800D2DB4 counts at
+ * +0x5D80 and +0x5D82 go up by one.
+ * Codegen: the locals are one struct {rect; glyphs[4]} (retail addresses
+ * the glyph rects from the frame base); D_800CCB34 goes through a struct
+ * view (one `la` base for the buf word and the +0x60D8 table);
+ * `return ++slot`, as in func_80086028, gives slot the extra references
+ * that rank it above the D_800C3CF9 walker in global-alloc (s7 vs fp);
+ * the glyph stores are spelled `(loc.glyphs + n)->` (`loc.glyphs[n].`
+ * swaps v0/v1 in the store address); `x += 2` follows the call.
+ * CONSTRUCTS (counted separately): the call's rect argument is built
+ * set-twice (`g = loc.glyphs; g += n;`) and the glyph word is read through
+ * a pointer temp (`q = &D_800C3E5C[p[i]]; func_800769E8(g, *q);`); folding
+ * either into the call grows the function (792-808 vs 784 bytes). */
+typedef struct {
+    s32 buf;
+    u8 pad4[0x60D4];
+    u16 tbl[1];
+} B86Ctx;
+extern B86Ctx D_800CCB34__s asm("D_800CCB34");
+extern u8 D_800CCD88[];
+extern u8 D_800C3CF9[];
+extern u32 D_800C3E5C[];
+extern void* func_800339C8(u8 a, u8 b);
+extern void func_800769E8(BattleRect* r, u32 glyph);
+extern void func_8008AAA0(u32 a0);
+
+s32 func_80086C88(u8 actor, s32 slot, s32 row, u8 id, u32* buf) {
+    struct {
+        BattleRect rect;
+        BattleRect glyphs[4];
+    } loc;
+    s32 half = slot / 2;
+    s32 odd = slot % 2;
+    s32 w;
+    s32 n = 0;
+    s32 x;
+    s32 i;
+    u8* p = D_800C3CF9;
+    BattleRect* g;
+    u32* q;
+
+    func_80076D58(D_800D2DB4 + (slot * 80 + 0x5550), odd, 3);
+    w = SystemRenderStringEntry(func_800339C8(D_800CCD88[actor * 0x170], D_800C34CC[id]), *buf, 0x1B, odd);
+    loc.rect.x = half * 30 + 0x3C0;
+    loc.rect.y = 0x1A;
+    loc.rect.w = 0x1E;
+    loc.rect.h = 0xD;
+    LoadImage(&loc.rect, *buf);
+    func_80076C78(D_800D2DB4 + ((slot * 2 + D_800CCB34__s.buf) * 40 + 0x5550),
+                  slot * 4 + (row + 1) * 16 + 0x86, 0xC8 - slot * 16, half * 120, 0x1A, w);
+    func_80076D58(D_800D2DB4 + (slot * 80 + 0x5C80), 0, 3);
+    func_8008AAA0(D_800CCB34__s.tbl[id]);
+    x = slot * 8 + 0x3DE;
+    for (i = 0; i < 4; i++) {
+        if (p[i] != 0xFF) {
+            (loc.glyphs + n)->x = x;
+            (loc.glyphs + n)->y = 0;
+            (loc.glyphs + n)->w = 6;
+            (loc.glyphs + n)->h = 0xD;
+            g = loc.glyphs;
+            g += n;
+            q = &D_800C3E5C[p[i]];
+            func_800769E8(g, *q);
+            x += 2;
+            n++;
+        }
+    }
+    func_80076C78(D_800D2DB4 + ((slot * 2 + D_800CCB34__s.buf) * 40 + 0x5C80),
+                  slot * 4 + (row + 1) * 16 + 0xEA, 0xC8 - slot * 16, slot * 32 + 0x78, 0, n * 8);
+    D_800D2DB4[0x5D80]++;
+    D_800D2DB4[0x5D82]++;
+    return ++slot;
+}
+
 /* func_80086F98.s, byte-exact: confirm command `index` for the battle
  * character in slot `actor` of the command menu context D_800C3EAC; the
  * caller func_80083948 ignores the result at one call site and stores
