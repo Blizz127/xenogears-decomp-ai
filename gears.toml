@@ -527,6 +527,10 @@ paths = [
     # other C, main35.c's part-1 func_8008115C, is byte-identical under 2.6.3
     # with its case-3 base temp (full relink).
     "src/battle/main35_p1.",
+    # mainasm_12068 (2026-10-20): func_80081B58, its only C, matches under
+    # 2.6.3 and 2.6.0 only (2.7.2: diff 7/339, the * 100 / 56 quotient region).
+    # Split out of main35_p2 with mainasm_11828; retail-only file, no port impact.
+    "src/battle/mainasm_12068.",
 ]
 
 [[build_preset]]

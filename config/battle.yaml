@@ -74,7 +74,8 @@ segments:
       - [0x14C, .rodata, main31]     # jtbl_8006FC3C (func_8007EF6C) + jtbl_8006FE0C (func_8007F8C0)
       - [0x38C, rodata]
       - [0x520, .rodata, main35_p1]  # jtbl_80070010 (func_8008115C)
-      - [0x540, .rodata, main35_p2]  # jtbl_80070030..jtbl_800701F0 (all 15 command-ring steps)
+      - [0x540, .rodata, mainasm_11828]  # jtbl_80070030..jtbl_80070070 (func_80081318, func_80081504, func_800816F8)
+      - [0x5A0, .rodata, main35_p2]  # jtbl_80070090..jtbl_800701F0 (func_800820A4 .. func_80083748)
       - [0x720, .rodata, mainasm_15050]  # jtbl_80070210 (func_80084B40)
       - [0x740, .rodata, main35_p4]  # jtbl_80070230 (func_80085084)
       - [0x760, .rodata, mainasm_15898]  # jtbl_80070250 (func_80085618)
@@ -181,7 +182,9 @@ segments:
       - [0x10FF4, c, mainasm_10FF4]
       - [0x11074, c, main34_q2]
       - [0x111A4, c, main35_p1]
-      - [0x11828, c, main35_p2]
+      - [0x11828, c, mainasm_11828]
+      - [0x12068, c, mainasm_12068]  # func_80081B58 (gcc 2.6.3)
+      - [0x125B4, c, main35_p2]
       # matched C: 800841E0
       - [0x146F0, c, mainasm_146F0]
       - [0x14A58, c, main35_p3_q1]
