@@ -112,7 +112,100 @@ void func_8009B1E4(void) {
     *(u16*)(g_GameState + 0x181A) = 0xC000;
     *(u8*)(g_GameState + 0x1817) = 0x7;
 }
-INCLUDE_ASM("asm/battle/nonmatchings/main58", func_8009B46C);
+extern u8 D_800CCE42__rows[][0x170] asm("D_800CCE42");
+extern u8* D_800C3E00;
+
+/* func_8009B46C.s, byte-exact: scale the value at p by the party's low
+ * health.  For slots 0..2 in state 0 (or 3), n counts current < max / 2
+ * and current < max / 4.  The fields are the u32 +0x104/+0x108 pair (stats
+ * +0x60/+0x64 in state 3) when the slot's D_800CCE42 row has bit 7, else
+ * the u16 +0x4C/+0x4E pair.  Then *p += n * (*p / 2), and with a 10% chance
+ * (60% under flag 0x200 at D_800C3E00 +0x32) *p = mult * *p >> 1, where mult
+ * is 3, or 4 under flag 0x400.
+ * Codegen notes:
+ * - Each flag arm keeps its own mx/cur locals and its own copy of the two
+ *   tests (post-reload cross-jumping folds the copies back).  The extra
+ *   pre-reload insns lengthen p's live range, giving retail's chance/mult/p
+ *   = s0/s1/s2.
+ * - The parameter is used directly as p (no local copy declared after
+ *   `n = 0`), so n is not born while a copy still holds a0, and takes a0
+ *   as in retail. */
+void func_8009B46C(u16* p) {
+    u8 n = 0;
+    u8 i;
+    u8* rec;
+    u8* stats;
+    u32 t;
+    s32 chance;
+    s32 mult;
+
+    for (i = 0; i < 3; i++) {
+        t = i * 0x170;
+        rec = D_800C34B0 + t;
+        stats = rec + 0xA4;
+        if (rec[0x56] == 0) {
+            if (D_800CCE42__rows[i][0] & 0x80) {
+                u32 mx = *(u32*)(rec + 0x108);
+                u32 cur = *(u32*)(rec + 0x104);
+
+                if (cur < mx / 2) {
+                    n++;
+                }
+                if (cur < mx / 4) {
+                    n++;
+                }
+            } else {
+                u32 mx = *(u16*)(rec + 0x4E);
+                u32 cur = *(u16*)(rec + 0x4C);
+
+                if (cur < mx / 2) {
+                    n++;
+                }
+                if (cur < mx / 4) {
+                    n++;
+                }
+            }
+        }
+        if (rec[0x56] == 3) {
+            if (D_800CCE42__rows[i][0] & 0x80) {
+                u32 mx = *(u32*)(stats + 0x64);
+                u32 cur = *(u32*)(stats + 0x60);
+
+                if (cur < mx / 2) {
+                    n++;
+                }
+                if (cur < mx / 4) {
+                    n++;
+                }
+            } else {
+                u32 mx = *(u16*)(rec + 0x4E);
+                u32 cur = *(u16*)(rec + 0x4C);
+
+                if (cur < mx / 2) {
+                    n++;
+                }
+                if (cur < mx / 4) {
+                    n++;
+                }
+            }
+        }
+    }
+    if (n != 0) {
+        *p += n * (*p / 2);
+    }
+    chance = 10;
+    mult = 3;
+    if (*(u16*)(D_800C3E00 + 0x32) & 0x400) {
+        mult = 4;
+    }
+    if (*(u16*)(D_800C3E00 + 0x32) & 0x200) {
+        chance = 0x3C;
+    }
+    if (rand() % 100 < chance) {
+        *p = (mult * *p) >> 1;
+    }
+}
+
 /* func_8009B684.s, byte-exact: map (menu, mask bit) to the D_800C34B0
  * +0x5FC7 command code for menus 0, 2, 5, 7 and 9, the twin of main64's
  * func_8009E868; unknown pairs store nothing.  Each case stores its code
