@@ -212,7 +212,68 @@ void func_800BD098(u8* owner) {
     func_8001F6B0(sprite);
     func_800BCFAC((u8*)t);
 }
-INCLUDE_ASM("asm/battle/nonmatchings/mainc118", func_800BD1FC);
+typedef struct {
+    u16 val[12];
+    u8 kind[12];
+    u16 col[12];
+    u8 flags[12];
+} T118Pop;
+
+typedef struct {
+    u8 pad[0x138];
+    T118Pop pops[1];
+} T118Pops;
+
+typedef struct {
+    u8 pad[0x8C8C];
+    u8* slots[11];
+} T118Slots;
+
+typedef union {
+    T118Pops p;
+    T118Slots s;
+} T118View;
+
+extern T118View D_800C3EB0__t asm("D_800C3EB0");
+extern s32 D_800C360C__t[] asm("D_800C360C");
+extern u32 D_800C3D38;
+extern s32 D_800D3630;
+extern void func_800BD3AC(u8* target, u32 value, u32 kind);
+
+/* func_800BD1FC.s, byte-exact (the port body further down describes it).
+ * The two global stores go through plain scalar externs.  An array-view
+ * store is an in-struct MEM, and sched1 pins every non-QImode pops load
+ * above it.  With scalars, the once-set val load sinks (birthing) and
+ * p1/p2 tie at priority 4444; the lower pseudo, p1, takes a1 as in
+ * retail.  The match rests on that tie: keep the kind/col/flags/val temp
+ * declarations and load order as written. */
+void func_800BD1FC(u32 slot) {
+    u8* target;
+    u32 kind;
+    u32 val;
+    u32 col;
+    u32 flags;
+
+    if (D_800C3EB0__t.p.pops[D_800C360C__t[0] - 1].kind[slot] == 0xFF) {
+        return;
+    }
+    if (D_800C3EB0__t.p.pops[D_800C360C__t[0] - 1].val[slot] == 0xFFFF) {
+        return;
+    }
+    target = D_800C3EB0__t.s.slots[slot];
+    if (target == NULL) {
+        return;
+    }
+    kind = D_800C3EB0__t.p.pops[D_800C360C__t[0] - 1].kind[slot];
+    col = D_800C3EB0__t.p.pops[D_800C360C__t[0] - 1].col[slot];
+    flags = D_800C3EB0__t.p.pops[D_800C360C__t[0] - 1].flags[slot];
+    val = D_800C3EB0__t.p.pops[D_800C360C__t[0] - 1].val[slot];
+    D_800C3D38 = col;
+    D_800D3630 = flags;
+    func_800BD3AC(target, val, kind);
+    D_800C3EB0__t.p.pops[D_800C360C__t[0] - 1].val[slot] = 0xFFFF;
+}
+
 /* D_800C3EB0 seen as a union of two struct views: the per-record kind bytes
  * (0x48-byte records at +0x150) and the slot record pointers at +0x8C8C.
  * Member reads keep 0x150 as the load offset and 0x8C8C as an ori + addu
