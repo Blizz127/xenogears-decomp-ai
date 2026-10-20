@@ -537,6 +537,11 @@ paths = [
     # mainasm_28F0, whose func_800723E0 matches only under the Default 2.7.2.
     # Retail-only file, no port impact.
     "src/battle/mainasm_1FF0.",
+    # main34_q1 (2026-10-20): its only C function, func_80080160, is
+    # byte-exact under gcc 2.6.3 and 2.6.0 (2.7.2 is one instruction short).
+    # The TU holds nothing else, so the move has no collateral.  Its
+    # jtbl_8006FE7C is [0x38C, .rodata, main34_q1] in config/battle.yaml.
+    "src/battle/main34_q1.",
 ]
 
 [[build_preset]]
