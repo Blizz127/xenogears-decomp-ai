@@ -245,7 +245,9 @@ void func_80092148(void) {
     s32 arg3 = FieldScriptVMGetArgument(3);
     u16 val = FieldScriptVMGetInstructionArgument(5);
     if (arg3 < D_800AFFAC[arg1]) {
-        u8* base = *(u8**)((u8*)D_800AFFAC + arg1 * 4 - 0x80);
+        /* Buffer pointer table is 32 packed u32 slots at D_800AFFAC-0x80
+         * (D_800AFEA8+0x84). A native u8** load is 8 bytes on LP64. */
+        u8* base = (u8*)(uintptr_t)*(u32*)((u8*)D_800AFFAC + arg1 * 4 - 0x80);
         base[arg3] = (u8)val;
     }
     g_FieldScriptVMCurActor->scriptInstructionPointer += 7;
@@ -263,8 +265,10 @@ void func_800921E8(void) {
     u16 initVal;
     s16 x, y, modulus, width, destX, destY;
     s16* pSizes;
-    void** pPtrs;
-    void** pLineScrollPtrs;
+    u32* pBufs;
+    u32* pLineScrolls;
+    void* pBuf;
+    void* pLineScroll;
 
     if (D_800ADB8C != 0 || D_800AFEA8 >= 0x20) {
         g_FieldScriptVMCurActor->scriptInstructionPointer += 0x11;
@@ -275,17 +279,23 @@ void func_800921E8(void) {
     pSizes = (s16*)((u8*)&D_800AFEA8 + 0x104);
     pSizes[D_800AFEA8] = count;
 
-    pPtrs = (void**)((u8*)&D_800AFEA8 + 0x84);
-    pPtrs[D_800AFEA8] = HeapAlloc(count + 1, 0);
+    /* Same D_800AFEA8 header layout as FieldFree / func_800920D8: s16 count
+     * at +0, then two parallel u32[] arrays (line-scroll ptr, its heap
+     * buffer) at +4 and +0x84. Store the host pointer as a truncated u32 so
+     * an 8-byte void* write cannot clobber the neighbouring slot. */
+    pBufs = (u32*)((u8*)&D_800AFEA8 + 0x84);
+    pBuf = HeapAlloc(count + 1, 0);
+    pBufs[D_800AFEA8] = (u32)(uintptr_t)pBuf;
 
-    pLineScrollPtrs = (void**)((u8*)&D_800AFEA8 + 0x4);
-    pLineScrollPtrs[D_800AFEA8] = HeapAlloc(0x18, 0);
+    pLineScrolls = (u32*)((u8*)&D_800AFEA8 + 0x4);
+    pLineScroll = HeapAlloc(0x18, 0);
+    pLineScrolls[D_800AFEA8] = (u32)(uintptr_t)pLineScroll;
 
     initVal = FieldScriptVMGetInstructionArgument(0xF);
     if (count != 0) {
         s32 i;
         for (i = 0; i < count; i++) {
-            ((u8*)pPtrs[D_800AFEA8])[i] = (u8)initVal;
+            ((u8*)pBuf)[i] = (u8)initVal;
         }
     }
 
@@ -297,9 +307,9 @@ void func_800921E8(void) {
     destY = FieldScriptVMGetInstructionArgument(0xD);
 
     GfxLineScrollInitialize(
-        pLineScrollPtrs[D_800AFEA8],
+        pLineScroll,
         x, y, modulus, width, count, destX, destY,
-        (s8*)pPtrs[D_800AFEA8]);
+        (s8*)pBuf);
 
     D_800AFEA8++;
     g_FieldScriptVMCurActor->scriptInstructionPointer += 0x11;

@@ -765,7 +765,12 @@ unsigned char g_FieldTransitionPackets[0xD0] __attribute__((aligned(8)));
 unsigned char g_FieldBss_800B20A8[0x424] __attribute__((aligned(8)));
 unsigned char g_FieldBss_800AFC60[0xC0] __attribute__((aligned(8)));
 unsigned char g_FieldBss_800AEB60[0x08] __attribute__((aligned(8)));
-unsigned char g_FieldBss_800AFE9C[0x110] __attribute__((aligned(8)));
+/* Line-scroll work area (retail 0x800AFE9C). D_800AFEA8 is the s16 count;
+ * two parallel 32-entry u32 pointer tables follow at +4 and +0x84, then
+ * 32 s16 sizes at +0x104 (D_800AFFAC). The previous 0x110-byte block ended
+ * exactly at D_800AFFAC, so the size-table write and the AFFAC-0x80 buffer
+ * walk landed outside the object. */
+unsigned char g_FieldBss_800AFE9C[0x150] __attribute__((aligned(8)));
 unsigned char g_FieldBss_800AFB20[0x108] __attribute__((aligned(8)));
 unsigned char g_FieldBss_800AF85C[0x2A0] __attribute__((aligned(8)));
 /* Retail keeps D_800B004C..D_800B0052 as one packed RECT.  Host-side
@@ -880,6 +885,7 @@ FIELD_BSS_ALIAS(D_800AFE9C, g_FieldBss_800AFE9C, 0x000);
 FIELD_BSS_ALIAS(D_800AFEA0, g_FieldBss_800AFE9C, 0x004);
 FIELD_BSS_ALIAS(D_800AFEA4, g_FieldBss_800AFE9C, 0x008);
 FIELD_BSS_ALIAS(D_800AFEA8, g_FieldBss_800AFE9C, 0x00C);
+FIELD_BSS_ALIAS(D_800AFFAC, g_FieldBss_800AFE9C, 0x110);
 
 FIELD_BSS_ALIAS(D_800B007C, g_FieldBss_800B007C, 0x000);
 FIELD_BSS_ALIAS(D_800B0080, g_FieldBss_800B007C, 0x004);
