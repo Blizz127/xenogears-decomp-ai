@@ -888,40 +888,43 @@ SoundWDSEntry* SoundLoadWdsFile(SoundWDSEntry* pWdsFile, s32 mode) {
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_800380D0);
 #else
 // Loads part of a WDS file, basically a sized SoundLoadWdsFile?
+/* Port arm: keep SoundWDSEntry.spuMemoryAddress / pNext as 4-byte slots
+ * (retail sw). A native void** store at +0x28 clobbers pNext, and walking
+ * the list as void** 8-byte-loads pNext plus the following header word,
+ * so a second bank (field music after the boot WDS) walks off the heap. */
 void* func_800380D0(void* pWds, s32 arg1, s32 arg2) {
-    void* pEntry;
-    void* pSpu;
-    void* pManager;
+    SoundWDSEntry* pEntry;
+    u32 spuAddr;
     if (SoundFindWdsEntry(*(u16*)((u8*)pWds + 0x20)) != NULL) {
         SoundHandleError(0x16);
         return NULL;
     }
-    pSpu = SoundSpuMemoryAllocateWDS(pWds, arg2);
-    if (pSpu == NULL) {
+    spuAddr = SoundSpuMemoryAllocateWDS(pWds, arg2);
+    if (spuAddr == 0) {
         SoundHandleError(0x1F);
         return NULL;
     }
-    SoundWdsSetTransferParamters(pSpu, *(s32*)((u8*)pWds + 0x14), 0x1F);
+    SoundWdsSetTransferParamters((int)spuAddr, *(s32*)((u8*)pWds + 0x14));
     SoundTransferWdsPart((u8*)pWds + *(s32*)((u8*)pWds + 0x18), arg1 - *(s32*)((u8*)pWds + 0x10));
-    pManager = func_80039024(*(s32*)((u8*)pWds + 0x10));
-    if (pManager == NULL) {
-        SoundSpuMemoryFreeBlock(pSpu);
+    pEntry = func_80039024(*(s32*)((u8*)pWds + 0x10));
+    if (pEntry == NULL) {
+        SoundSpuMemoryFreeBlock(spuAddr);
         SoundHandleError(0x1E);
         return NULL;
     }
-    SoundHeapSetBlockMemory(pManager, pWds, *(s32*)((u8*)pWds + 0x10));
+    SoundHeapSetBlockMemory(pEntry, pWds, *(s32*)((u8*)pWds + 0x10));
     DisableEvent(g_unk_SoundEvent);
-    *(void**)((u8*)pManager + 0x28) = pSpu;
+    pEntry->spuMemoryAddress = (int)spuAddr;
     {
-        void** ppList = &g_SoundWdsLinkedList;
-        while (*ppList != NULL) {
-            ppList = (void**)((u8*)*ppList + 0x2C);
+        SoundPsxAddress* pList = (SoundPsxAddress*)&g_SoundWdsLinkedList;
+        while (SOUND_PSX_TO_PTR(SoundWDSEntry, *pList) != NULL) {
+            pList = &SOUND_PSX_TO_PTR(SoundWDSEntry, *pList)->pNext;
         }
-        *ppList = pManager;
+        *pList = SOUND_PTR_TO_PSX(pEntry);
     }
+    pEntry->pNext = 0;
     EnableEvent(g_unk_SoundEvent);
-    *(u32*)((u8*)pManager + 0x2C) = 0;
-    return pManager;
+    return pEntry;
 }
 #endif
 
