@@ -2544,7 +2544,9 @@ void* func_800303C8(u8* a0, s32 a1) {
 
     if (*(s32*)(s1 + 0xC) > 0) {
         for (a5 = 0; a5 < *(s32*)(s1 + 0xC); a5++) {
-            *(void**)(s3 + 0x0) = (void*)func_8003014C;
+            /* Each 0x20-byte channel starts with a 4-byte callback slot.
+             * A native void* store would overwrite the three zero words. */
+            *(u32*)(s3 + 0x0) = (u32)(uintptr_t)func_8003014C;
             *(s32*)(s3 + 0x4) = 0;
             *(s32*)(s3 + 0x8) = 0;
             *(s32*)(s3 + 0xC) = 0;
@@ -2570,33 +2572,35 @@ void func_800305D8(u8* pAnimData) {
     u32 hasNormals;
 
     if (pAnimData == NULL) return;
-    pModel = *(u8**)(pAnimData + 0x00);
-    pDeltas = *(u8**)(pAnimData + 0x04);
+    /* Control block, model header, and per-joint records keep PSX 4-byte
+     * pointer slots. Native 8-byte loads merge the next packed word. */
+    pModel = (u8*)(uintptr_t)*(u32*)(pAnimData + 0x00);
+    pDeltas = (u8*)(uintptr_t)*(u32*)(pAnimData + 0x04);
     count = *(u32*)(pAnimData + 0x0C);
-    pChannels = *(u8**)(pAnimData + 0x10);
-    pJoint = *(u8**)(pModel + 0x1C) + 4;
+    pChannels = (u8*)(uintptr_t)*(u32*)(pAnimData + 0x10);
+    pJoint = (u8*)(uintptr_t)*(u32*)(pModel + 0x1C) + 4;
     hasNormals = *(u16*)(pModel) & 0x10;
 
     func_800301C8(
-        *(u8**)(pModel + 0x08),
+        (u8*)(uintptr_t)*(u32*)(pModel + 0x08),
         pJoint,
         count,
-        *(s16**)((u32)(pJoint + count * 12))
+        (s16*)(uintptr_t)*(u32*)(pJoint + count * 12)
     );
 
     for (i = 0; i < count; i++) {
-        s32 (*cb)(u8*) = *(s32 (**)(u8*))(pChannels);
+        s32 (*cb)(u8*) = (s32 (*)(u8*))(uintptr_t)*(u32*)pChannels;
         scale = cb(pChannels);
         func_80030228(
-            *(u8**)(pModel + 0x08),
-            *(s16**)(pJoint + 4),
+            (u8*)(uintptr_t)*(u32*)(pModel + 0x08),
+            (s16*)(uintptr_t)*(u32*)(pJoint + 4),
             *(s32*)(pJoint),
             scale
         );
         if (hasNormals) {
             func_800302D4(
-                *(u8**)(pModel + 0x0C),
-                *(s16**)(pJoint + 8),
+                (u8*)(uintptr_t)*(u32*)(pModel + 0x0C),
+                (s16*)(uintptr_t)*(u32*)(pJoint + 8),
                 *(s32*)(pJoint),
                 scale
             );
@@ -2604,6 +2608,7 @@ void func_800305D8(u8* pAnimData) {
         pChannels += 0x20;
         pJoint += 0xC;
     }
+    (void)pDeltas;
 }
 #endif
 

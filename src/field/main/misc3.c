@@ -759,7 +759,7 @@ extern void func_800A28D4(void);
 extern void func_800A2714(void);
 extern void func_80073E38(void);
 extern void func_80077268(void);
-extern void func_800303C8(void* modelData, int a1);
+extern void* func_800303C8(void* modelData, int a1);
 extern void func_8002CB54(void* modelData, u32* out1, u32* out2);
 extern void func_8002C8CC(void* a0, void* a1, int a2);
 extern void func_8002C644(void* a0);
@@ -1088,13 +1088,17 @@ void FieldLoad(void) {
                            *(s32*)((u8*)pSrcModel + 0x34));
                 }
                 if (g_FieldActors[i].status & 0x2000) {
+                    void* pAnimInfo;
                     HeapChangeCurrentUser(HEAP_USER_KAZM, NULL);
-                    func_800303C8((void*)(u32)*(u32*)((u8*)pModel + 0x4), 0);
-                    /* asm: sw v0, 0x14(s0) captures HeapChangeCurrentUser's
-                     * return (prior user tag); the shared header types it void,
-                     * so preserve the store without the (unused) value. */
+                    pAnimInfo = func_800303C8(
+                        (void*)(u32)*(u32*)((u8*)pModel + 0x4), 0);
                     HeapChangeCurrentUser(HEAP_USER_YOSI, NULL);
-                    *(s32*)((u8*)pModel + 0x14) = 0;
+                    /* Retail jal func_800303C8; sw v0, 0x14(s0). The returned
+                     * work block is the only publication of that allocation:
+                     * func_80080F44 reads this 4-byte slot to install per-joint
+                     * callbacks, and func_800305D8 / FieldFree consume it. A
+                     * native pointer store would also clobber pModel+0x18. */
+                    *(u32*)((u8*)pModel + 0x14) = (u32)(uintptr_t)pAnimInfo;
                 }
                 func_8002C644((void*)(u32)*(u32*)((u8*)pModel + 0x4));
 #ifdef XENO_PC_PORT
