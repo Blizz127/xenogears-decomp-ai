@@ -379,14 +379,18 @@ extern void func_8002C700(void* a, void* b, u_long* ot, s32 flags);
 #ifndef XENO_PC_PORT
 INCLUDE_ASM(TEMP1E_ASM, func_80025718);
 #else
+/* Types 2/7 child-model draw. Work-list +0x4 (SpriteData*) and SpriteData
+ * +0x20 (pBase) are packed 4-byte slots; an 8-byte `*(u8**)` load concatenates
+ * the neighbouring word (the trigger callback at +0x8, pVramData at +0x24).
+ * Same SpriteRenderAddress(*(u32*)) rule as func_80025258. */
 void func_80025718(u8* pEntry) {
-    u8* pSprite = *(u8**)(pEntry + 0x04);
+    u8* pSprite = SpriteRenderAddress(*(u32*)(pEntry + 0x04));
     u8* pSub;
     u8* pMatrix;
     SVECTOR trans;
 
     func_80022038(pSprite);
-    pSub = *(u8**)(pSprite + 0x20);
+    pSub = SpriteRenderAddress(*(u32*)(pSprite + 0x20));
     if (*(u32*)(pSub + 0x34) == 0) return;
 
     pMatrix = pSub + 0x0C;
@@ -409,8 +413,8 @@ void func_80025718(u8* pEntry) {
         s32 ctxIdx = g_GfxCurContext;
         u32 flags = *(u16*)(pSprite + 0x42) & 4;
         func_8002C700(
-            *(void**)(pSub + 0x34),
-            *(void**)(pSub + 0x2C + ctxIdx * 4),
+            SpriteRenderAddress(*(u32*)(pSub + 0x34)),
+            SpriteRenderAddress(*(u32*)(pSub + 0x2C + ctxIdx * 4)),
             g_GfxCurOT,
             flags
         );
@@ -437,8 +441,11 @@ extern MATRIX D_8004FDA0;
 #ifndef XENO_PC_PORT
 INCLUDE_ASM(TEMP1E_ASM, func_800257F0);
 #else
+/* Index-15 indexed/quad effect render. Packed 4-byte slots: work-list +0x4
+ * and SpriteData +0x20. A native void** load of the per-context buffer at
+ * +0x2C concatenates the other context's slot at +0x30. */
 void func_800257F0(u8* pArg) {
-    u8* pSprite = *(u8**)(pArg + 4);
+    u8* pSprite = SpriteRenderAddress(*(u32*)(pArg + 4));
     u8* pData;
     MATRIX matA;
     MATRIX matB;
@@ -451,7 +458,7 @@ void func_800257F0(u8* pArg) {
     s32 halved;
 
     func_80022038(pSprite);
-    pData = *(u8**)(pSprite + 0x20);
+    pData = SpriteRenderAddress(*(u32*)(pSprite + 0x20));
     if (*(u32*)(pData + 0x34) == 0) {
         return;
     }
@@ -493,14 +500,16 @@ void func_800257F0(u8* pArg) {
 
     if (halved == 0) {
         ((void (*)(s32, void*, void*, s32, s32, s32))func_800B1F6C)(*(s32*)(pData + 0x34),
-                      *(void**)((u8*)pData + (g_GfxCurContext << 2) + 0x2C),
+                      SpriteRenderAddress(
+                          *(u32*)((u8*)pData + (g_GfxCurContext << 2) + 0x2C)),
                       g_GfxCurOT, 0,
                       (s32)*(s16*)(pSprite + 0x30), (s32)(flag >> 5));
     } else {
         saved = D_80050100;
         D_80050100 = 0x10;
         ((void (*)(s32, void*, void*, s32, s32, s32))func_800B1F6C)(*(s32*)(pData + 0x34),
-                      *(void**)((u8*)pData + (g_GfxCurContext << 2) + 0x2C),
+                      SpriteRenderAddress(
+                          *(u32*)((u8*)pData + (g_GfxCurContext << 2) + 0x2C)),
                       g_GfxCurOT, 0, 0xFEC, (s32)(flag >> 5));
         D_80050100 = saved;
     }
@@ -517,14 +526,16 @@ extern void func_800B1F6C(void* a, void* b, u_long* ot, s32 c, s32 d, s32 e, s32
 #ifndef XENO_PC_PORT
 INCLUDE_ASM(TEMP1E_ASM, func_80025A88);
 #else
+/* Battle-overlay sibling of func_800257F0: same packed work-list / pBase /
+ * per-context buffer slots. */
 void func_80025A88(u8* pEntry) {
-    u8* pSprite = *(u8**)(pEntry + 0x04);
+    u8* pSprite = SpriteRenderAddress(*(u32*)(pEntry + 0x04));
     u8* pSub;
     SVECTOR pos;
     VECTOR result;
 
     func_80022038(pSprite);
-    pSub = *(u8**)(pSprite + 0x20);
+    pSub = SpriteRenderAddress(*(u32*)(pSprite + 0x20));
     if (*(u32*)(pSub + 0x34) == 0) return;
 
     pos.vx = *(s16*)(pSprite + 0x02);
@@ -532,7 +543,7 @@ void func_80025A88(u8* pEntry) {
     pos.vz = *(s16*)(pSprite + 0x0A);
     ApplyMatrix(&D_8004FBB8, &pos, &result);
 
-    pSub = *(u8**)(pSprite + 0x20);
+    pSub = SpriteRenderAddress(*(u32*)(pSprite + 0x20));
     *(s32*)(pSub + 0x20) = D_8004FBB8.t[0] + result.vx;
     *(s32*)(pSub + 0x24) = D_8004FBB8.t[1] + result.vy;
     *(s32*)(pSub + 0x28) = D_8004FBB8.t[2] + result.vz;
@@ -553,8 +564,8 @@ void func_80025A88(u8* pEntry) {
             arg7 = *(s16*)(pSprite + 0x30);
         }
         func_800B1F6C(
-            *(void**)(pSub + 0x34),
-            *(void**)(pSub + 0x2C + ctxIdx * 4),
+            SpriteRenderAddress(*(u32*)(pSub + 0x34)),
+            SpriteRenderAddress(*(u32*)(pSub + 0x2C + ctxIdx * 4)),
             g_GfxCurOT, 0, arg7, (flags3C >> 5) & 1, 0
         );
         if ((flags3C >> 25) & 1) {
