@@ -2277,7 +2277,63 @@ void func_80022224(SpriteAnimPackage* pAnimPackage, void* pAnimPackageFile, SVEC
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/animation_scripts", func_800222BC);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): sprite_bind_resource (src/decomp/src/resident/sprite_construction.c:89). */
+#ifndef XM_T_SpriteResource
+#define XM_T_SpriteResource
+typedef struct {
+    u8 *section2;          
+    SVECTOR origin;        
+    u8 *section3;          
+    u16 *section1;         
+} SpriteResource;
+#endif
+#ifndef XM_T_SpriteImage
+#define XM_T_SpriteImage
+typedef struct {
+    u8 unknown0[4];
+    SpriteImageSize size;  
+} SpriteImage;
+#endif
+#ifndef XM_S_sprite_bind_resource
+#define XM_S_sprite_bind_resource
+void xm_sprite_bind_resource(Sprite *sprite, s32 *data) __asm__("func_800222BC");
+#endif
+#ifndef XM_S_sprite_resolve_resource
+#define XM_S_sprite_resolve_resource
+void xm_sprite_resolve_resource(SpriteResource *resource, s32 *data, SVECTOR origin, s32 mode) __asm__("func_80022224");
+#endif
+#ifndef XM_S_sprite_in_battle
+#define XM_S_sprite_in_battle
+extern u8 xm_sprite_in_battle __asm__("D_800591AD");
+#endif
+#ifndef XM_S_sprite_is_cell_directory
+#define XM_S_sprite_is_cell_directory
+s32 xm_sprite_is_cell_directory(u8 *frame) __asm__("func_8001EE68");
+#endif
+void xm_sprite_bind_resource(Sprite *sprite, s32 *data) __asm__("func_800222BC");
+void xm_sprite_bind_resource(Sprite *sprite, s32 *data) {
+    SpriteResource *resource = sprite->image;
+    s32 unused[2]; 
+
+    if (data == NULL) {
+        return;
+    }
+    if (data != sprite->resource_block) {
+        xm_sprite_resolve_resource(resource, data, resource->origin, (sprite->render.word >> 20) & 0xF);
+        sprite->resource_block = data;
+        sprite->render.word |= 0x40000000;
+    }
+    if (xm_sprite_in_battle != 0) {
+        if (!xm_sprite_is_cell_directory(resource->section2)) {
+            ((SpriteImage *)resource)->size.height = 0x100;
+            ((SpriteImage *)resource)->size.width = 0x300;
+        } else {
+            ((SpriteImage *)resource)->size = ((SpriteSequencer *)sprite->sequencer)->size;
+        }
+    }
+}
+#endif
 #else
 void func_800222BC(SpriteData* pSprite, SpriteAnimPackageFileHeader* pAnimPackageFile) {
     u8* pSpriteData = (u8*)pSprite;

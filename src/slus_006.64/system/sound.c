@@ -1745,7 +1745,72 @@ u32 SoundSpuMemoryAllocateBlock(s32 size, s32 arg1) {
     return (u32)address;
 }
 #else
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", SoundSpuMemoryAllocateBlock);
+#ifndef XENO_PC_PORT
+/* Adopted from EtherAura xenogears (GPL-3.0, github.com/EtherAura/xenogears @e54f35a): allocateSpuRam (src/main/sound.c). */
+#ifndef XM_T_SpuBlock
+#define XM_T_SpuBlock
+typedef struct SpuBlock {
+     u8 m0_flags;
+     u8 m1_tag;
+     s16 m2_next;
+     s32 m4_addr;
+     s32 m8_size;
+     s32 mC;
+} SpuBlock;
+#endif
+#ifndef XM_S_allocateSpuRam
+#define XM_S_allocateSpuRam
+s32 xm_allocateSpuRam(s32 size, s32 tag) __asm__("SoundSpuMemoryAllocateBlock");
+#endif
+#ifndef XM_S_spuAllocatedBlocks
+#define XM_S_spuAllocatedBlocks
+extern SpuBlock xm_spuAllocatedBlocks[12] __asm__("g_SoundSpuMemoryBlocks");
+#endif
+#ifndef XM_S_findFreeSlotInLoadedSamples
+#define XM_S_findFreeSlotInLoadedSamples
+s32 xm_findFreeSlotInLoadedSamples(void) __asm__("SoundSpuMemoryGetFreeBlock");
+#endif
+s32 xm_allocateSpuRam(s32 size, s32 tag) __asm__("SoundSpuMemoryAllocateBlock");
+s32 xm_allocateSpuRam(s32 size, s32 tag) {
+    SpuBlock* p;
+    SpuBlock* next;
+    s32 addr;
+    s32 i;
+
+    p = xm_spuAllocatedBlocks;
+    addr = xm_spuAllocatedBlocks[0].m4_addr + xm_spuAllocatedBlocks[0].m8_size;
+    if (p->m2_next == 0) {
+        goto tail;
+    }
+loop:
+    next = &xm_spuAllocatedBlocks[p->m2_next];
+    if (next->m4_addr - addr >= size) {
+        goto found;
+    }
+    p = next;
+    addr = next->m4_addr + next->m8_size;
+    if (p->m2_next != 0) {
+        goto loop;
+    }
+tail:
+    if (0x80000 - addr < size) {
+        return 0;
+    }
+found:
+    i = xm_findFreeSlotInLoadedSamples();
+    if (i < 0) {
+        return 0;
+    }
+    next = &xm_spuAllocatedBlocks[i];
+    next->m0_flags = 0x80;
+    next->m1_tag = 0;
+    next->m4_addr = addr;
+    next->m8_size = size;
+    next->m2_next = p->m2_next;
+    p->m2_next = i;
+    return addr;
+}
+#endif
 #endif
 
 #ifndef XENO_PC_PORT
@@ -1931,7 +1996,73 @@ u32 SoundSpuMemoryAllocateBlockAtAddress(s32 size, s32 addr, s32 arg2) {
     return addr;
 }
 #else
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", SoundSpuMemoryAllocateBlockAtAddress);
+#ifndef XENO_PC_PORT
+/* Adopted from EtherAura xenogears (GPL-3.0, github.com/EtherAura/xenogears @e54f35a): allocateSPUSpaceForSamples (src/main/sound.c). */
+#ifndef XM_S_allocateSPUSpaceForSamples
+#define XM_S_allocateSPUSpaceForSamples
+s32 xm_allocateSPUSpaceForSamples(s32 size, s32 addr, s32 tag) __asm__("SoundSpuMemoryAllocateBlockAtAddress");
+#endif
+s32 xm_allocateSPUSpaceForSamples(s32 size, s32 addr, s32 tag) __asm__("SoundSpuMemoryAllocateBlockAtAddress");
+s32 xm_allocateSPUSpaceForSamples(s32 size, s32 addr, s32 tag) {
+    SpuBlock* p;
+    SpuBlock* next;
+    s32 gap;
+    s32 end;
+    s32 a;
+    s32 i;
+    s32 lim;
+
+    p = xm_spuAllocatedBlocks;
+    gap = 0;
+    lim = addr + size;
+    end = xm_spuAllocatedBlocks[0].m4_addr + xm_spuAllocatedBlocks[0].m8_size;
+    if (xm_spuAllocatedBlocks[0].m4_addr < addr) {
+        do {
+            
+
+            do {
+                if (p->m2_next == 0) {
+                    goto top;
+                }
+            } while (0);
+            next = &xm_spuAllocatedBlocks[p->m2_next];
+            a = next->m4_addr;
+            if (a >= lim) {
+                goto mid;
+            }
+            end = a + next->m8_size;
+            p = next;
+        } while (a < addr);
+    }
+check:
+    if (gap < size) {
+        return 0;
+    }
+    if (addr >= end) {
+        goto alloc;
+    }
+    return 0;
+mid:
+    gap = a - end;
+    goto check;
+top:
+    gap = 0x80000 - end;
+    goto check;
+alloc:
+    i = xm_findFreeSlotInLoadedSamples();
+    if (i < 0) {
+        return 0;
+    }
+    next = &xm_spuAllocatedBlocks[i];
+    next->m0_flags = 0x80;
+    next->m1_tag = 0;
+    next->m4_addr = addr;
+    next->m8_size = size;
+    next->m2_next = p->m2_next;
+    p->m2_next = i;
+    return addr;
+}
+#endif
 #endif
 
 int SoundSpuMemoryFreeBlock(int targetAddress) {
@@ -5211,7 +5342,21 @@ u8* func_8003D53C(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudio
     return ip;
 }
 #else
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003D53C);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): sound_seq_reverb_on (src/decomp/src/resident/sound.c:2572). */
+#ifndef XM_S_sound_seq_reverb_on
+#define XM_S_sound_seq_reverb_on
+u8 *xm_sound_seq_reverb_on(u8 *data, SoundSeq *seq, SoundSeqChannel *channel) __asm__("func_8003D53C");
+#endif
+u8 *func_8003D53C(u8 *data, SoundSeq *seq, SoundSeqChannel *channel) {
+    if ((seq->flags & 6) && (!(xm_sound_driver_flags & 0x2000) || (channel->flags & 2))) {
+        return data;
+    }
+    channel->state.flags |= 0x4000;
+    channel->state.mode |= 0x40;
+    return data;
+}
+#endif
 #endif
 
 u8* SoundScriptSetVoiceFlags4000ClearMode(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudioElements) {

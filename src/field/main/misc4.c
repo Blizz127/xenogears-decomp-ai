@@ -2834,7 +2834,215 @@ extern s32 func_8007C694(s32* move, s32* base, void* pActorData,
                          s16* outEdge, s16* outPoint, s32 mode);
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007B814);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_collision_sweep (src/decomp/src/field/field_motion.c:648). */
+#ifndef XM_T_xm_Fixed
+#define XM_T_xm_Fixed
+typedef union {
+    s32 value;
+    struct {
+        u16 fraction;
+        s16 whole;
+    } part;
+} xm_Fixed;
+#endif
+#ifndef XM_T_xm_ScriptSlot
+#define XM_T_xm_ScriptSlot
+typedef struct xm_ScriptSlot {
+    u16 resume_pc;      
+    u8 countdown;       
+    u8 tag;             
+    u32 value : 16;     
+    u32 unk16 : 2;
+    u32 priority : 4;   
+    u32 unk22 : 1;
+    u32 move_mode : 2;  
+    u32 unk25 : 7;
+} xm_ScriptSlot;
+#endif
+#ifndef XM_T_xm_PlatformLink
+#define XM_T_xm_PlatformLink
+typedef struct xm_PlatformLink {
+    SVECTOR rotation; 
+    s16 radius;       
+    s16 unkA;
+} xm_PlatformLink;
+#endif
+#ifndef XM_T_xm_ActorState
+#define XM_T_xm_ActorState
+typedef struct {
+    u32 mode : 2;   
+    u32 unk2 : 3;   
+    u32 unk5 : 1;   
+    u32 depth : 3;  
+    u32 octant : 3; 
+    u32 unk12 : 1;  
+    u32 layer : 3;  
+    u32 unk16 : 2;  
+    u32 unk18 : 10; 
+    u32 unk28 : 4;
+} xm_ActorState;
+#endif
+#ifndef XM_T_xm_FieldActor
+#define XM_T_xm_FieldActor
+typedef struct xm_FieldActor {
+    u32 flags;           
+    u32 layer_flags;     
+    s16 triangle[4];     
+    s16 layer;           
+    u8 unk012[2];
+    u32 floor_attribute; 
+    s16 unk18;           
+    s16 height;          
+    xm_Fixed gravity;       
+    s32 position[3];     
+    u8 unk02C[4];
+    s32 unk030[3];       
+    u8 unk03C[4];
+    s32 unk40[3];        
+    u8 unk04C[4];
+    s32 unk50[3];        
+    u8 unk05C[4];
+    s16 unk60;           
+    s16 unk62;           
+    s16 unk64;           
+    u8 unk066[2];
+    s16 last_position[3]; 
+    u16 stuck;           
+    s16 unk70;           
+    s16 unk72;           
+    u8 ridden_actor;     
+    u8 unk075;           
+    s16 unk76;           
+    u16 call_stack[4];   
+    u8 character;        
+    u8 unk081;
+    u8 unk82;            
+    u8 unk83;            
+    s32 unk84;           
+    s16 unk88;           
+    s16 unk8A;           
+    xm_ScriptSlot slots[8]; 
+    u16 pc;              
+    u8 slot;             
+    u8 unk0CF;
+    s32 target[3];       
+    u8 unk0DC[0xE2 - 0xDC];
+    u8 unkE2;            
+    u8 unk0E3;
+    s16 unkE4;           
+    s16 unkE6;           
+    s16 unkE8;           
+    s16 unk0EA;          
+    s16 unkEC;           
+    s16 unkEE;           
+    s32 unkF0;           
+    s16 scale[3];        
+    u8 unk0FA[2];
+    u8 color0[3];        
+    u8 color1[3];        
+    u16 unk102;          
+    s16 heading;         
+    s16 heading_goal;    
+    s16 unk108;          
+    u16 sound;           
+    u8 sound_volume;     
+    u8 sound_mode;       
+    u8 unk10E[0x110 - 0x10E];
+    struct xm_PlatformLink *link; 
+    void *unk114;        
+    s32 *list;           
+    u16 unk11C;          
+    s16 unk11E;          
+    void *unk120;        
+    s16 unk124;          
+    u8 unk126;           
+    u8 unk127;           
+    u16 unk128;          
+    u8 unk12A[2];
+    union {
+        u32 word;
+        xm_ActorState bits;
+    } state;             
+    u32 unk130 : 9;      
+    u32 unk130_9 : 10;   
+    u32 unk130_19 : 9;   
+    u32 sprite_kind : 2; 
+    u32 unk130_30 : 2;
+    u32 unk134;          
+} xm_FieldActor;
+#endif
+#ifndef XM_S_field_collision_sweep
+#define XM_S_field_collision_sweep
+s32 xm_field_collision_sweep(VECTOR *delta, xm_FieldActor *actor, SVECTOR *edge, s16 heading) __asm__("func_8007B814");
+#endif
+#ifndef XM_S_field_collision_walk
+#define XM_S_field_collision_walk
+s32 xm_field_collision_walk(VECTOR *probe, s32 *position, xm_FieldActor *actor, SVECTOR *edge, SVECTOR *floor, s32 mode) __asm__("func_8007C694");
+#endif
+#ifndef XM_S_field_ground_override_enabled
+#define XM_S_field_ground_override_enabled
+extern s32 xm_field_ground_override_enabled __asm__("D_800ADB98");
+#endif
+s32 func_8007B814(VECTOR *delta, xm_FieldActor *actor, SVECTOR *edge, s16 heading) {
+    VECTOR probe;
+    SVECTOR floor;
+    u8 unused[0x20]; 
+    s32 angle;
+
+    angle = heading & 0xFFF;
+    probe.vx = delta->vx + (xm_gpu_get_cos(angle) << 6);
+    probe.vz = delta->vz - (xm_gpu_get_sin(angle) << 6);
+    if (xm_field_collision_walk(&probe, actor->position, actor, edge, &floor, -1) == -1) {
+        probe.vx = delta->vx;
+        probe.vy = delta->vy;
+        probe.vz = delta->vz;
+        xm_field_collision_slide_along_edge(heading, edge, &probe, 0);
+    } else {
+        angle = heading - 0x100;
+        angle &= 0xFFF;
+        probe.vx = delta->vx + (xm_gpu_get_cos(angle) << 6);
+        probe.vz = delta->vz - (xm_gpu_get_sin(angle) << 6);
+        if (xm_field_collision_walk(&probe, actor->position, actor, edge, &floor, -1) == -1) {
+            probe.vx = delta->vx;
+            probe.vy = delta->vy;
+            probe.vz = delta->vz;
+            xm_field_collision_slide_along_edge(heading, edge, &probe, 0);
+        } else {
+            angle = heading + 0x100;
+            angle &= 0xFFF;
+            probe.vx = delta->vx + (xm_gpu_get_cos(angle) << 6);
+            probe.vz = delta->vz - (xm_gpu_get_sin(angle) << 6);
+            if (xm_field_collision_walk(&probe, actor->position, actor, edge, &floor, -1) == -1) {
+                probe.vx = delta->vx;
+                probe.vy = delta->vy;
+                probe.vz = delta->vz;
+                xm_field_collision_slide_along_edge(heading, edge, &probe, 0);
+            } else {
+                probe.vx = delta->vx;
+                probe.vy = delta->vy;
+                probe.vz = delta->vz;
+            }
+        }
+    }
+    if (xm_field_collision_walk(&probe, actor->position, actor, edge, &floor, 0) == -1) {
+        return -1;
+    }
+    if (!(actor->flags & 0x40000)) {
+        if ((floor.vy << 16) < actor->position[1] && xm_field_ground_override_enabled == 0) {
+            return -1;
+        }
+    } else {
+        floor.vy = actor->unkEC;
+    }
+    probe.vy = (floor.vy << 16) - actor->position[1];
+    delta->vx = probe.vx;
+    delta->vy = probe.vy;
+    delta->vz = probe.vz;
+    actor->unk72 = (actor->position[1] + delta->vy) >> 16;
+    return 0;
+}
+#endif
 #else
 void* func_8007B814(s32* pVec, void* pActorData, s32* pOut, s16 angle) {
     u8* actorData = pActorData;
@@ -2914,7 +3122,120 @@ void* func_8007B814(s32* pVec, void* pActorData, s32* pOut, s16 angle) {
 #endif /* XENO_PC_PORT */
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007BAC0);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_collision_sweep_attribute_aware (src/decomp/src/field/field_motion.c:717). */
+#ifndef XM_T_WHOLE
+#define XM_T_WHOLE
+#define WHOLE(value) (((Fixed *)&(value))->part.whole)
+#endif
+#ifndef XM_S_field_collision_sweep_attribute_aware
+#define XM_S_field_collision_sweep_attribute_aware
+s32 xm_field_collision_sweep_attribute_aware(VECTOR *delta, xm_FieldActor *actor, SVECTOR *edge, s16 heading) __asm__("func_8007BAC0");
+#endif
+#ifndef XM_S_field_collision_walk_attribute_aware
+#define XM_S_field_collision_walk_attribute_aware
+s32 xm_field_collision_walk_attribute_aware(VECTOR *probe, s32 *position, xm_FieldActor *actor, SVECTOR *edge, SVECTOR *floor, s32 mode,
+                  s32 *attribute) __asm__("func_8007BEF4");
+#endif
+s32 func_8007BAC0(VECTOR *delta, xm_FieldActor *actor, SVECTOR *edge, s16 heading) {
+    VECTOR probe;
+    VECTOR saved;
+    SVECTOR floor;
+    SVECTOR saved_floor;
+    VECTOR d;
+    VECTOR n;
+    s32 attribute;
+    s32 angle;
+    s32 speed;
+
+    angle = heading - 0x100;
+    angle &= 0xFFF;
+    probe.vx = delta->vx + (xm_gpu_get_cos(angle) << 6);
+    probe.vz = delta->vz - (xm_gpu_get_sin(angle) << 6);
+    if (xm_field_collision_walk_attribute_aware(&probe, actor->position, actor, edge, &floor, -1, &attribute) == -1) {
+        probe.vx = delta->vx;
+        probe.vy = delta->vy;
+        probe.vz = delta->vz;
+        xm_field_collision_slide_along_edge(heading, edge, &probe, attribute);
+    } else {
+        angle = heading + 0x100;
+        angle &= 0xFFF;
+        probe.vx = delta->vx + (xm_gpu_get_cos(angle) << 6);
+        probe.vz = delta->vz - (xm_gpu_get_sin(angle) << 6);
+        if (xm_field_collision_walk_attribute_aware(&probe, actor->position, actor, edge, &floor, -1, &attribute) == -1) {
+            probe.vx = delta->vx;
+            probe.vy = delta->vy;
+            probe.vz = delta->vz;
+            xm_field_collision_slide_along_edge(heading, edge, &probe, attribute);
+        } else {
+            angle = heading & 0xFFF;
+            probe.vx = delta->vx + (xm_gpu_get_cos(angle) << 6);
+            probe.vz = delta->vz - (xm_gpu_get_sin(angle) << 6);
+            if (xm_field_collision_walk_attribute_aware(&probe, actor->position, actor, edge, &floor, -1, &attribute) == -1) {
+                probe.vx = delta->vx;
+                probe.vy = delta->vy;
+                probe.vz = delta->vz;
+                xm_field_collision_slide_along_edge(heading, edge, &probe, attribute);
+            } else {
+                probe.vx = delta->vx;
+                probe.vy = delta->vy;
+                probe.vz = delta->vz;
+            }
+        }
+    }
+    if (xm_field_collision_walk_attribute_aware(&probe, actor->position, actor, edge, &floor, 0, &attribute) == -1) {
+        return -1;
+    }
+    saved.vx = probe.vx;
+    saved.vy = probe.vy;
+    saved.vz = probe.vz;
+    saved_floor.vx = floor.vx;
+    saved_floor.vy = floor.vy;
+    saved_floor.vz = floor.vz;
+    if (WHOLE(actor->position[1]) > floor.vy) {
+    push:
+        d.vx = -probe.vx >> 8;
+        d.vy = ((floor.vy << 16) - actor->position[1]) >> 8;
+        d.vz = -probe.vz >> 8;
+        xm_VectorNormal(&d, &n);
+        speed = xm_field_compute_planar_length(probe.vx >> 8, probe.vz >> 8);
+        probe.vx = -(speed * n.vx) >> 4;
+        probe.vy = (speed * n.vy) >> 4;
+        probe.vz = -(speed * n.vz) >> 4;
+        if (xm_field_collision_walk_attribute_aware(&probe, actor->position, actor, edge, &floor, 0, &attribute) == -1) {
+            return -1;
+        }
+        actor->flags |= 0x4000000;
+        goto done;
+    }
+    if (attribute & 0x200000) {
+        goto push;
+    }
+    if (attribute & 0x420000) {
+        if (!(actor->floor_attribute & 0x420000)) {
+            goto restore;
+        }
+        goto push;
+    }
+    if (floor.vy < WHOLE(actor->position[1]) + 0x40) {
+        goto push;
+    }
+restore:
+    probe.vx = saved.vx;
+    probe.vy = saved.vy;
+    probe.vz = saved.vz;
+    floor.vx = saved_floor.vx;
+    floor.vy = saved_floor.vy;
+    floor.vz = saved_floor.vz;
+done:
+    probe.vy = (floor.vy << 16) - actor->position[1];
+    delta->vx = probe.vx;
+    delta->vy = probe.vy;
+    delta->vz = probe.vz;
+    actor->unk72 = (actor->position[1] + delta->vy) >> 16;
+    return 0;
+}
+#endif
 #else
 void* func_8007BAC0(s32* pVec, void* pActorData, s32* pOut, s16 angle) {
     u8* actorData = pActorData;

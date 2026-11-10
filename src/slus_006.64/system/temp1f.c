@@ -138,11 +138,176 @@ void func_80026338(u8* table, s32 index, u32* pOut0, s32* pTPage, s32* pClutX,
     *pTexY = (s32)(s16)(*(u16*)(item + 0x18) & 0xFF00) + *(s16*)(item + 2);
 }
 #else
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1f", func_80026338);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): sprite_sheet_get_texture (src/decomp/src/resident/sprite_sheet.c:253). */
+#ifndef XM_T_SheetPart
+#define XM_T_SheetPart
+typedef struct {
+    u16 u;             
+    s16 v;             
+    u16 w, h;          
+    u16 x, y;          
+    u8 unknownc[4];
+    s16 mode;          
+    s16 clut_x;        
+    s16 clut_y;        
+    u16 page_x;        
+    u16 page_y;        
+    u8 flip_x, flip_y; 
+} SheetPart;
+#endif
+#ifndef XM_S_sprite_sheet_get_texture
+#define XM_S_sprite_sheet_get_texture
+void xm_sprite_sheet_get_texture(u16 *sheet, s32 id, s32 *first, s32 *mode, s32 *clut_x, s32 *clut_y, s32 *x, s32 *y) __asm__("func_80026338");
+#endif
+void func_80026338(u16 *sheet, s32 id, s32 *first, s32 *mode, s32 *clut_x, s32 *clut_y, s32 *x, s32 *y) {
+    s16 *entry = (s16 *)(sheet[id + 2] + (s32)sheet);
+    SheetPart *part = (SheetPart *)(entry + 2);
+    s32 u;
+    s32 column;
+
+    *first = entry[0];
+    u = part->u << 16;
+    if (part->mode != 0) {
+        column = u >> 18;
+    } else {
+        column = u >> 20;
+    }
+    *mode = part->mode;
+    *clut_x = part->clut_x;
+    *clut_y = part->clut_y;
+    *x = (s16)(part->page_x & 0xFFC0) + column;
+    *y = (s16)(part->page_y & 0xFF00) + part->v;
+}
+#endif
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1f", func_800263E4);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): sprite_sheet_draw_scaled_flip (src/decomp/src/resident/sprite_sheet.c:278). */
+#ifndef XM_S_sprite_sheet_draw_scaled_flip
+#define XM_S_sprite_sheet_draw_scaled_flip
+s32 xm_sprite_sheet_draw_scaled_flip(u16 *sheet, s32 id, POLY_FT4 *prims, s32 index, s16 x, s16 y, u16 scale, u8 flip_x, u8 flip_y) __asm__("func_800263E4");
+#endif
+#ifndef XM_S_SetPolyFT4
+#define XM_S_SetPolyFT4
+void xm_SetPolyFT4(POLY_FT4 *p) __asm__("SetPolyFT4");
+#endif
+#ifndef XM_S_SetSemiTrans
+#define XM_S_SetSemiTrans
+void xm_SetSemiTrans(void *p, int abe) __asm__("SetSemiTrans");
+#endif
+#ifndef XM_S_SetShadeTex
+#define XM_S_SetShadeTex
+void xm_SetShadeTex(void *p, int tge) __asm__("SetShadeTex");
+#endif
+#ifndef XM_S_GetTPage
+#define XM_S_GetTPage
+u_short xm_GetTPage(int tp, int abr, int x, int y) __asm__("GetTPage");
+#endif
+#ifndef XM_S_GetClut
+#define XM_S_GetClut
+u_short xm_GetClut(int x, int y) __asm__("GetClut");
+#endif
+s32 func_800263E4(u16 *sheet, s32 id, POLY_FT4 *prims, s32 index, s16 x, s16 y, u16 scale, u8 flip_x, u8 flip_y) {
+    s16 *entry;
+    SheetPart *part;
+    POLY_FT4 *poly;
+    s32 i;
+    s16 left;
+    s16 top;
+    s16 width;
+    s16 height;
+    s16 dx;
+    s16 dy;
+    s16 dw;
+    s16 dh;
+    s16 u;
+    s16 v;
+    s16 w;
+    s16 h;
+    s16 a;
+    s16 b;
+
+    entry = (s16 *)(sheet[id + 2] + (s32)sheet);
+    for (i = 0; i != entry[0]; i++) {
+        poly = prims + i * 2 + index;
+        part = &((SheetPart *)(entry + 2))[i];
+        dx = left = (s16)part->x * scale / 4096;
+        dy = top = (s16)part->y * scale / 4096;
+        dw = width = (s16)part->w * scale / 4096;
+        dh = height = (s16)part->h * scale / 4096;
+        xm_SetPolyFT4(poly);
+        xm_SetSemiTrans(poly, 0);
+        xm_SetShadeTex(poly, 1);
+        poly->tpage = xm_GetTPage(part->mode, 0, (s16)part->page_x, (s16)part->page_y);
+        poly->clut = xm_GetClut(part->clut_x, part->clut_y);
+        if (flip_x) {
+            dw = -width;
+            dx = -left;
+        }
+        if (flip_y) {
+            dy = -top;
+            dh = -height;
+        }
+        u = part->u;
+        v = part->v;
+        w = part->w;
+        h = part->h;
+        if (!part->flip_x) {
+            a = x + dx;
+            b = dw + a;
+            poly->x0 = a;
+            poly->x1 = b;
+            poly->x2 = a;
+            poly->x3 = b;
+        } else {
+            a = x + dx;
+            b = dw + a;
+            poly->x0 = b;
+            poly->x1 = a;
+            poly->x2 = b;
+            poly->x3 = a;
+        }
+        if (!part->flip_y) {
+            a = y + dy;
+            b = dh + a;
+            poly->y0 = a;
+            poly->y1 = a;
+            poly->y2 = b;
+            poly->y3 = b;
+        } else {
+            a = y + dy;
+            b = dh + a;
+            poly->y0 = b;
+            poly->y1 = b;
+            poly->y2 = a;
+            poly->y3 = a;
+        }
+        if (poly->x3 < poly->x0) {
+            if (--u < 0) {
+                u = 0;
+                w--;
+            }
+        }
+        if (poly->y3 < poly->y0) {
+            if (--v < 0) {
+                v = 0;
+                h--;
+            }
+        }
+        poly->u0 = u;
+        poly->v0 = v;
+        poly->u1 = u + w;
+        poly->v1 = v;
+        poly->u2 = u;
+        poly->v2 = v + h;
+        poly->u3 = u + w;
+        poly->v3 = v + h;
+    }
+    return entry[0];
+}
+#endif
 #else
 /* Retail 800263E4..8002675C. The last two arguments are independent
  * byte-sized axis flips; packet coordinates narrow before the UV test. */
@@ -300,11 +465,147 @@ s32 func_8002675C(u8* table, s32 index, void* polys, s32 renderCtx, s32 x, s32 y
     return *(s16*)(pEntry);
 }
 #else
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1f", func_8002675C);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): sprite_sheet_draw_scaled (src/decomp/src/resident/sprite_sheet.c:379). */
+#ifndef XM_S_sprite_sheet_draw_scaled
+#define XM_S_sprite_sheet_draw_scaled
+s32 xm_sprite_sheet_draw_scaled(u16 *sheet, s32 id, POLY_FT4 *prims, s32 index, s16 x, s16 y, u16 scale) __asm__("func_8002675C");
+#endif
+s32 func_8002675C(u16 *sheet, s32 id, POLY_FT4 *prims, s32 index, s16 x, s16 y, u16 scale) {
+    s16 *entry;
+    SheetPart *part;
+    POLY_FT4 *poly;
+    s32 i;
+    s16 left;
+    s16 top;
+    s16 width;
+    s16 height;
+    s16 u;
+    s16 v;
+    s16 w;
+    s16 h;
+    s16 a;
+    s16 b;
+
+    entry = (s16 *)(sheet[id + 2] + (s32)sheet);
+    for (i = 0; i != entry[0]; i++) {
+        poly = prims + i * 2 + index;
+        part = &((SheetPart *)(entry + 2))[i];
+        left = (s16)part->x * scale / 4096;
+        top = (s16)part->y * scale / 4096;
+        width = (s16)part->w * scale / 4096;
+        height = (s16)part->h * scale / 4096;
+        xm_SetPolyFT4(poly);
+        xm_SetSemiTrans(poly, 0);
+        xm_SetShadeTex(poly, 1);
+        poly->tpage = xm_GetTPage(part->mode, 0, (s16)part->page_x, (s16)part->page_y);
+        poly->clut = xm_GetClut(part->clut_x, part->clut_y);
+        u = part->u;
+        v = part->v;
+        w = part->w;
+        h = part->h;
+        if (!part->flip_x) {
+            a = x + left;
+            b = width + a;
+            poly->x0 = a;
+            poly->x1 = b;
+            poly->x2 = a;
+            poly->x3 = b;
+        } else {
+            a = x + left;
+            b = width + a;
+            poly->x0 = b;
+            poly->x1 = a;
+            poly->x2 = b;
+            poly->x3 = a;
+            if (--u < 0) {
+                u = 0;
+                w--;
+            }
+        }
+        if (!part->flip_y) {
+            a = y + top;
+            b = height + a;
+            poly->y0 = a;
+            poly->y1 = a;
+            poly->y2 = b;
+            poly->y3 = b;
+        } else {
+            a = y + top;
+            b = height + a;
+            poly->y0 = b;
+            poly->y1 = b;
+            poly->y2 = a;
+            poly->y3 = a;
+            if (--v < 0) {
+                v = 0;
+                h--;
+            }
+        }
+        poly->u0 = u;
+        poly->v0 = v;
+        poly->u1 = u + w;
+        poly->v1 = v;
+        poly->u2 = u;
+        poly->v2 = v + h;
+        poly->u3 = u + w;
+        poly->v3 = v + h;
+    }
+    return entry[0];
+}
+#endif
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1f", func_80026A0C);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): sprite_sheet_draw_sprts (src/decomp/src/resident/sprite_sheet.c:465). */
+#ifndef XM_S_sprite_sheet_draw_sprts
+#define XM_S_sprite_sheet_draw_sprts
+s32 xm_sprite_sheet_draw_sprts(u16 *sheet, s32 id, SPRT *prims, s32 index, s16 x, s16 y) __asm__("func_80026A0C");
+#endif
+#ifndef XM_S_SetSprt
+#define XM_S_SetSprt
+void xm_SetSprt(SPRT *p) __asm__("SetSprt");
+#endif
+#ifndef XM_S_SetDrawMode
+#define XM_S_SetDrawMode
+void xm_SetDrawMode(DR_MODE *p, int dfe, int dtd, int tpage, RECT *tw) __asm__("SetDrawMode");
+#endif
+s32 func_80026A0C(u16 *sheet, s32 id, SPRT *prims, s32 index, s16 x, s16 y) {
+    s16 *entry;
+    SheetPart *part;
+    SPRT *sprt;
+    s32 i;
+    s16 left, top;
+    u16 u, v, w, h;
+
+    entry = (s16 *)(sheet[id + 2] + (s32)sheet);
+    for (i = 0; i != entry[0]; i++) {
+        sprt = prims + i * 2 + index;
+        part = &((SheetPart *)(entry + 2))[i];
+        xm_SetSprt(sprt);
+        sprt->clut = xm_GetClut(part->clut_x, part->clut_y);
+        xm_SetSemiTrans(sprt, 0);
+        xm_SetShadeTex(sprt, 1);
+        left = part->x;
+        top = part->y;
+        u = part->u;
+        v = part->v;
+        w = part->w;
+        h = part->h;
+        sprt->x0 = x + left;
+        sprt->y0 = y + top;
+        sprt->u0 = u;
+        sprt->v0 = v;
+        sprt->w = w;
+        sprt->h = h;
+    }
+    part = (SheetPart *)(entry + 2);
+    xm_SetDrawMode((DR_MODE *)(prims + (i << 1) + index), 0, 0,
+                xm_GetTPage(part->mode, 0, (s16)part->page_x, (s16)part->page_y), 0);
+    return entry[0] + 1;
+}
+#endif
 #else
 s32 func_80026A0C(u8* pTable, s32 index, u8* pPrimBuffer, s32 primStride, s16 ofsX, s16 ofsY) {
     u8* pDesc = pTable + *(u16*)(pTable + index * 2 + 4);
@@ -344,7 +645,73 @@ void func_80026B9C(void) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1f", func_80026BA4);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): sprite_sheet_queue_quads (src/decomp/src/resident/sprite_sheet.c:508). */
+#ifndef XM_T_SpriteQueueEntry
+#define XM_T_SpriteQueueEntry
+typedef struct SpriteQueueEntry {
+    u32 value;
+    struct SpriteQueueEntry *next;
+} SpriteQueueEntry;
+#endif
+#ifndef XM_S_sprite_sheet_queue_quads
+#define XM_S_sprite_sheet_queue_quads
+void xm_sprite_sheet_queue_quads(u16 *sheet, s32 id, s32 x, s32 y, u_long *ot) __asm__("func_80026BA4");
+#endif
+#ifndef XM_S_sprite_queue_next_free
+#define XM_S_sprite_queue_next_free
+extern SpriteQueueEntry *xm_sprite_queue_next_free __asm__("g_GfxCurWorkBuffer");
+#endif
+#ifndef XM_S_sprite_queue_block_end
+#define XM_S_sprite_queue_block_end
+extern u8 *xm_sprite_queue_block_end __asm__("g_GfxCurWorkBufferEnd");
+#endif
+#ifndef XM_S_AddPrim
+#define XM_S_AddPrim
+void xm_AddPrim(void *ot, void *p) __asm__("AddPrim");
+#endif
+void func_80026BA4(u16 *sheet, s32 id, s32 x, s32 y, u_long *ot) {
+    s16 *entry;
+    SheetPart *part;
+    POLY_FT4 *poly;
+    s32 i;
+    s32 count;
+    s32 v, w, h, left, top, mode;
+    s32 page_x, page_y, column, texture_u;
+
+    entry = (s16 *)(sheet[id + 2] + (s32)sheet);
+    count = entry[0];
+    if ((u8 *)xm_sprite_queue_next_free + count * sizeof(POLY_FT4) < xm_sprite_queue_block_end) {
+        for (i = 0; i != count; i++) {
+            poly = (POLY_FT4 *)xm_sprite_queue_next_free;
+            xm_sprite_queue_next_free = (SpriteQueueEntry *)(poly + 1);
+            setlen(poly, 9);
+            setcode(poly, 0x2d);
+            part = &((SheetPart *)(entry + 2))[i];
+            texture_u = part->u << 16;
+            if (part->mode) {
+                column = texture_u >> 18;
+            } else {
+                column = texture_u >> 20;
+            }
+            page_x = (s16)(part->page_x & 0xffc0) + column;
+            page_y = (s16)(part->page_y & 0xff00) + part->v;
+            v = part->v;
+            mode = part->mode;
+            w = (s16)part->w;
+            h = (s16)part->h;
+            left = (s16)part->x;
+            top = (s16)part->y;
+            column = (s16)part->u;
+            poly->clut = xm_GetClut(part->clut_x, part->clut_y);
+            poly->tpage = xm_GetTPage(mode, 0, page_x, page_y);
+            setXYWH(poly, left + x, top + y, w, h);
+            setUVWH(poly, column, v, w, h);
+            xm_AddPrim(ot, poly);
+        }
+    }
+}
+#endif
 #else
 /* Retail 80026BA4..80026DCC takes five arguments. Packets come from the
  * current graphics work buffer; the fifth argument is the ordering-table
@@ -392,7 +759,60 @@ void func_80026BA4(u8* pTable, s32 index, s32 ofsX, s32 ofsY, void* ot) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1f", func_80026DCC);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): sprite_sheet_fill_parts (src/decomp/src/resident/sprite_sheet.c:552). */
+#ifndef XM_T_SpritePart
+#define XM_T_SpritePart
+typedef struct {
+    s16 x, y;              
+    u8 u, v;               
+    u8 w, h;               
+    u8 byte8, byte9;       
+    u16 tpage;             
+    u16 clut;              
+    u8 unknowne[2];
+    u32 colour;            
+    u32 flags;             
+} SpritePart;
+#endif
+#ifndef XM_S_sprite_sheet_fill_parts
+#define XM_S_sprite_sheet_fill_parts
+s32 xm_sprite_sheet_fill_parts(u16 *sheet, s32 id, SpritePart *parts, s16 x, s16 y) __asm__("func_80026DCC");
+#endif
+s32 func_80026DCC(u16 *sheet, s32 id, SpritePart *parts, s16 x, s16 y) {
+    s16 *entry;
+    SheetPart *part;
+    s32 count;
+    s32 i;
+    s32 mode;
+    s32 u, column;
+    s32 page_x, page_y;
+
+    entry = (s16 *)(sheet[id + 2] + (s32)sheet);
+    count = entry[0];
+    part = (SheetPart *)(entry + 2);
+    for (i = 0; i != count; i++, part++, parts++) {
+        u = part->u << 16;
+        if (part->mode) {
+            column = u >> 18;
+        } else {
+            column = u >> 20;
+        }
+        page_x = (s16)(part->page_x & 0xffc0) + column;
+        page_y = (s16)(part->page_y & 0xff00) + part->v;
+        mode = part->mode;
+        parts->clut = xm_GetClut(part->clut_x, part->clut_y);
+        parts->tpage = xm_GetTPage(mode, 1, page_x, page_y);
+        parts->u = part->u;
+        parts->v = part->v;
+        parts->w = part->w;
+        parts->h = part->h;
+        parts->x = part->x + x;
+        parts->y = part->y + y;
+    }
+    return count;
+}
+#endif
 #else
 s32 func_80026DCC(u8* pTable, s32 index, u8* pPrimBuffer, s16 ofsX, s16 ofsY) {
     u8* pDesc = pTable + *(u16*)(pTable + index * 2 + 4);

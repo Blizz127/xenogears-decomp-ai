@@ -3400,7 +3400,93 @@ void func_8007EFB4(void) {
     }
 }
 #endif
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007F05C);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_select_draw_portrait (src/decomp/src/menu/arena_menu_screens.c:432). */
+#ifndef XM_T_PolyFT4Words
+#define XM_T_PolyFT4Words
+typedef struct PolyFT4Words {
+    u8 addr[3];
+    u8 len;
+    u32 rgbc;
+    u32 xy0;
+    u16 uv0;
+    u16 clut;
+    u32 xy1;
+    u16 uv1;
+    u16 tpage;
+    u32 xy2;
+    u16 uv2;
+    u16 pad1;
+    u32 xy3;
+    u16 uv3;
+    u16 pad2;
+} PolyFT4Words;
+#endif
+#ifndef XM_S_arena_select_draw_portrait
+#define XM_S_arena_select_draw_portrait
+void xm_arena_select_draw_portrait(s32 index, PolyFT4Words *quad, s32 right_side, s32 x, s32 fade) __asm__("func_8007F05C");
+#endif
+#ifndef XM_S_arena_current_ot
+#define XM_S_arena_current_ot
+extern u32 *xm_arena_current_ot __asm__("D_80092938");
+#endif
+void func_8007F05C(s32 index, PolyFT4Words *quad, s32 right_side, s32 x, s32 fade) {
+    GridCell *cell;
+    s32 inset;
+    s32 top;
+    s32 bottom;
+    s32 left;
+    s32 width;
+    s32 height;
+    s32 u;
+
+    if (right_side) {
+        x += 0xD3;
+    } else {
+        x += 0x33;
+    }
+    if (index > xm_arena_select_entry_count - 1) {
+        index -= xm_arena_select_entry_count;
+    }
+    if (index < 0) {
+        index += xm_arena_select_entry_count;
+    }
+    index = xm_arena_select_entries[index]->id;
+    cell = &xm_arena_select_portrait_slots[index];
+    if (fade == 0x40) {
+        quad->len = 9;
+        ((u8 *)&quad->rgbc)[3] = 0x2D;
+        quad->xy0 = x | 0x300000;
+        quad->xy1 = (x + 0x3C) | 0x300000;
+        quad->xy2 = x | 0x700000;
+        quad->xy3 = (x + 0x3C) | 0x700000;
+    } else {
+        fade += 0x40;
+        quad->len = 9;
+        quad->rgbc = fade | (fade << 8) | (fade << 16) | 0x2C000000;
+        fade -= 0x40;
+        fade >>= 4; 
+        inset = fade - 4;
+        left = x - inset;
+        top = 0x34 - fade;
+        quad->xy0 = left | (top << 16);
+        width = 0x34;
+        quad->xy1 = (left + width + fade * 2) | (top << 16);
+        height = 0x38;
+        bottom = top + height + fade * 2;
+        quad->xy2 = left | (bottom << 16);
+        quad->xy3 = (left + width + fade * 2) | (bottom << 16);
+    }
+    u = cell->image.x * 2;
+    quad->uv0 = u | (cell->image.y << 8);
+    quad->uv1 = (u + 0x3B) | (cell->image.y << 8);
+    quad->uv2 = u | ((cell->image.y + 0x3F) << 8);
+    quad->uv3 = (u + 0x3B) | ((cell->image.y + 0x3F) << 8);
+    quad->clut = xm_GetClut(cell->clut.x, cell->clut.y);
+    quad->tpage = xm_GetTPage(1, 0, cell->image.x & 0xFF80, cell->image.y);
+    xm_AddPrim(xm_arena_current_ot, quad);
+}
+#endif
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007F258);
 
 void func_8007F834(void) {
@@ -3658,7 +3744,45 @@ void func_800802A4(void) {
     }
 }
 #endif
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8008040C);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_select_step_second_pick (src/decomp/src/menu/arena_menu_screens.c:884). */
+#ifndef XM_S_arena_select_step_second_pick
+#define XM_S_arena_select_step_second_pick
+void xm_arena_select_step_second_pick() __asm__("func_8008040C");
+#endif
+#ifndef XM_S_arena_menu_buttons_pressed
+#define XM_S_arena_menu_buttons_pressed
+extern u32 xm_arena_menu_buttons_pressed __asm__("D_80092750");
+#endif
+#ifndef XM_S_arena_play_mode
+#define XM_S_arena_play_mode
+extern s32 xm_arena_play_mode __asm__("D_800928C8");
+#endif
+void func_8008040C(void) {
+    s32 same;
+
+    if (xm_arena_menu_buttons_pressed & 0x40) {
+        if (xm_arena_play_mode != 2) {
+            xm_arena_select_confirmed_sides = 0;
+            xm_arena_actor_release_model(1);
+            xm_arena_sound_play_effect(0x22);
+            return;
+        }
+        xm_arena_select_confirmed_sides &= ~2;
+    }
+    if (!(xm_arena_select_confirmed_sides & 2)) {
+        same = xm_arena_select_first_pick == xm_arena_select_second_pick;
+        do {
+            xm_arena_select_second_pick = xm_arena_menu_step_setting(xm_arena_select_second_pick, xm_arena_select_entry_count - 1, 3);
+        } while (xm_arena_select_first_pick == xm_arena_select_second_pick && !(xm_arena_menu_buttons_held & 1) && !same);
+        if (xm_arena_menu_buttons_pressed & 0x20) {
+            xm_arena_select_confirmed_sides |= 2;
+            xm_arena_sound_play_effect(0x21);
+            xm_arena_actor_load_model(1, xm_arena_select_entries[xm_arena_select_second_pick]->id);
+        }
+    }
+}
+#endif
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80080570);
 s32 ArchiveDecodeSector(s32);
 s32 ArchiveReadFileFromCdSector(s32, void *, s32, s32, u32);
@@ -4332,7 +4456,70 @@ s32 func_800828C4(VECTOR *pos) {
     return ((s32 *)xm_arena_stage_height_map)[z * 128 + x];
 }
 #endif
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_800828F8);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_stage_keep_step_inside (src/decomp/src/menu/arena_stage_views_and_hud.c:378). */
+#ifndef XM_S_arena_stage_keep_step_inside
+#define XM_S_arena_stage_keep_step_inside
+void xm_arena_stage_keep_step_inside(VECTOR *pos, VECTOR *step, s32 radius) __asm__("func_800828F8");
+#endif
+#ifndef XM_S_VectorNormalS
+#define XM_S_VectorNormalS
+long xm_VectorNormalS(VECTOR *v0, SVECTOR *v1) __asm__("VectorNormalS");
+#endif
+#ifndef XM_S_ApplyMatrixLV
+#define XM_S_ApplyMatrixLV
+VECTOR *xm_ApplyMatrixLV(MATRIX *m, VECTOR *v0, VECTOR *v1) __asm__("ApplyMatrixLV");
+#endif
+#ifndef XM_S_SetRotMatrix
+#define XM_S_SetRotMatrix
+void xm_SetRotMatrix(MATRIX *m) __asm__("SetRotMatrix");
+#endif
+#ifndef XM_S_libgte_rotate_vector
+#define XM_S_libgte_rotate_vector
+void xm_libgte_rotate_vector(VECTOR *v0, VECTOR *v1) __asm__("ApplyRotMatrixLV");
+#endif
+void xm_arena_stage_keep_step_inside(VECTOR *pos, VECTOR *step, s32 radius) __asm__("func_800828F8");
+void xm_arena_stage_keep_step_inside(VECTOR *pos, VECTOR *step, s32 radius) {
+    VECTOR local;
+    VECTOR next;
+    VECTOR square;
+    MATRIX rim;
+    MATRIX back;
+    SVECTOR dir;
+    s32 distance;
+
+    local.vx = pos->vx + step->vx - 0x3F80;
+    local.vz = pos->vz + step->vz - 0x3F80;
+    xm_Square0(&local, &square);
+    if (radius < xm_SquareRoot0(square.vx + square.vz)) {
+        xm_VectorNormalS(&local, &dir);
+        rim.m[2][1] = 0;
+        rim.m[1][2] = 0;
+        rim.m[1][0] = 0;
+        rim.m[0][1] = 0;
+        rim.m[1][1] = 0x1000;
+        rim.m[2][2] = dir.vz;
+        rim.m[0][0] = dir.vz;
+        rim.m[0][2] = -dir.vx;
+        rim.m[2][0] = dir.vx;
+        xm_ApplyMatrixLV(&rim, step, &local);
+        xm_libgte_transpose_matrix(&rim, &back);
+        xm_SetRotMatrix(&back);
+        local.vz = 0;
+        for (;;) {
+            xm_libgte_rotate_vector(&local, step);
+            next.vx = pos->vx + step->vx - 0x3F80;
+            next.vz = pos->vz + step->vz - 0x3F80;
+            xm_Square0(&next, &square);
+            distance = xm_SquareRoot0(square.vx + square.vz);
+            if (radius >= distance) {
+                break;
+            }
+            local.vz -= distance - radius - 8;
+        }
+    }
+}
+#endif
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80082A70);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80082C4C);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80082E60);
@@ -4743,7 +4930,216 @@ void func_80085EAC(s32 arg0, s16 *arg1, s32 arg2) {
     *arg1 = var_v0;
 }
 
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80085EC8);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_hud_build_overlay_buffer (src/decomp/src/menu/arena_stage_views_and_hud.c:1605). */
+#ifndef XM_T_LINE_F4
+#define XM_T_LINE_F4
+typedef struct {
+    u_long tag;
+    u_char r0, g0, b0, code;
+    short x0, y0;
+    short x1, y1;
+    short x2, y2;
+    short x3, y3;
+    u_long pad;
+} LINE_F4;
+#endif
+#ifndef XM_T_POLY_F4
+#define XM_T_POLY_F4
+typedef struct {
+    u_long tag;
+    u_char r0, g0, b0, code;
+    short x0, y0;
+    short x1, y1;
+    short x2, y2;
+    short x3, y3;
+} POLY_F4;
+#endif
+#ifndef XM_T_POLY_F3
+#define XM_T_POLY_F3
+typedef struct {
+    u_long tag;
+    u_char r0, g0, b0, code;
+    short x0, y0;
+    short x1, y1;
+    short x2, y2;
+} POLY_F3;
+#endif
+#ifndef XM_T_OverlayBuffer
+#define XM_T_OverlayBuffer
+typedef struct OverlayBuffer {
+    DR_TPAGE tpage[2];   
+    LINE_F4 frame[4];      
+    POLY_F4 bars[6];       
+    DR_TPAGE bar_tpage;  
+    POLY_F4 bars_dim[6];   
+    POLY_F4 bars_lit[6];   
+    POLY_F3 arrows[2][3];  
+    POLY_F4 marks[4];      
+} OverlayBuffer;
+#endif
+#ifndef XM_T_DVECTOR
+#define XM_T_DVECTOR
+typedef struct {
+    short vx, vy;
+} DVECTOR;
+#endif
+#ifndef XM_S_arena_hud_build_overlay_buffer
+#define XM_S_arena_hud_build_overlay_buffer
+void xm_arena_hud_build_overlay_buffer(OverlayBuffer *buf) __asm__("func_80085EC8");
+#endif
+#ifndef XM_S_arena_hud_place_left_gauge_point
+#define XM_S_arena_hud_place_left_gauge_point
+void xm_arena_hud_place_left_gauge_point(DVECTOR *point, DVECTOR *out) __asm__("func_80085E34");
+#endif
+#ifndef XM_S_arena_hud_gauge_frame_layout
+#define XM_S_arena_hud_gauge_frame_layout
+extern DVECTOR xm_arena_hud_gauge_frame_layout[8] __asm__("D_800917F4");
+#endif
+#ifndef XM_S_arena_hud_place_right_gauge_point
+#define XM_S_arena_hud_place_right_gauge_point
+void xm_arena_hud_place_right_gauge_point(DVECTOR *point, DVECTOR *out) __asm__("func_80085E60");
+#endif
+#ifndef XM_S_MargePrim
+#define XM_S_MargePrim
+int xm_MargePrim(void *p0, void *p1) __asm__("func_80043F18");
+#endif
+void xm_arena_hud_build_overlay_buffer(OverlayBuffer *buf) __asm__("func_80085EC8");
+void xm_arena_hud_build_overlay_buffer(OverlayBuffer *buf) {
+    s32 i;
+
+    xm_SetDrawTPage(&buf->tpage[0], 0, 1, xm_GetTPage(0, 2, 0, 0));
+    xm_SetDrawTPage(&buf->tpage[1], 0, 0, xm_GetTPage(0, 1, 0, 0));
+    setlen(&buf->frame[0], 6);
+    *(u32 *)&buf->frame[0].r0 = 0x4C000000;
+    buf->frame[0].pad = 0x55555555;
+    setlen(&buf->frame[1], 6);
+    *(u32 *)&buf->frame[1].r0 = 0x4C000000;
+    buf->frame[1].pad = 0x55555555;
+    setlen(&buf->frame[2], 6);
+    *(u32 *)&buf->frame[2].r0 = 0x4C000000;
+    buf->frame[2].pad = 0x55555555;
+    setlen(&buf->frame[3], 6);
+    *(u32 *)&buf->frame[3].r0 = 0x4C000000;
+    buf->frame[3].pad = 0x55555555;
+    xm_arena_hud_place_left_gauge_point(&xm_arena_hud_gauge_frame_layout[0], (DVECTOR *)&buf->frame[0].x0);
+    xm_arena_hud_place_left_gauge_point(&xm_arena_hud_gauge_frame_layout[1], (DVECTOR *)&buf->frame[0].x1);
+    xm_arena_hud_place_left_gauge_point(&xm_arena_hud_gauge_frame_layout[2], (DVECTOR *)&buf->frame[0].x2);
+    xm_arena_hud_place_left_gauge_point(&xm_arena_hud_gauge_frame_layout[3], (DVECTOR *)&buf->frame[0].x3);
+    xm_arena_hud_place_left_gauge_point(&xm_arena_hud_gauge_frame_layout[3], (DVECTOR *)&buf->frame[1].x0);
+    xm_arena_hud_place_left_gauge_point(&xm_arena_hud_gauge_frame_layout[4], (DVECTOR *)&buf->frame[1].x1);
+    xm_arena_hud_place_left_gauge_point(&xm_arena_hud_gauge_frame_layout[5], (DVECTOR *)&buf->frame[1].x2);
+    xm_arena_hud_place_left_gauge_point(&xm_arena_hud_gauge_frame_layout[0], (DVECTOR *)&buf->frame[1].x3);
+    xm_arena_hud_place_right_gauge_point(&xm_arena_hud_gauge_frame_layout[0], (DVECTOR *)&buf->frame[2].x0);
+    xm_arena_hud_place_right_gauge_point(&xm_arena_hud_gauge_frame_layout[1], (DVECTOR *)&buf->frame[2].x1);
+    xm_arena_hud_place_right_gauge_point(&xm_arena_hud_gauge_frame_layout[2], (DVECTOR *)&buf->frame[2].x2);
+    xm_arena_hud_place_right_gauge_point(&xm_arena_hud_gauge_frame_layout[3], (DVECTOR *)&buf->frame[2].x3);
+    xm_arena_hud_place_right_gauge_point(&xm_arena_hud_gauge_frame_layout[3], (DVECTOR *)&buf->frame[3].x0);
+    xm_arena_hud_place_right_gauge_point(&xm_arena_hud_gauge_frame_layout[4], (DVECTOR *)&buf->frame[3].x1);
+    xm_arena_hud_place_right_gauge_point(&xm_arena_hud_gauge_frame_layout[5], (DVECTOR *)&buf->frame[3].x2);
+    xm_arena_hud_place_right_gauge_point(&xm_arena_hud_gauge_frame_layout[0], (DVECTOR *)&buf->frame[3].x3);
+    xm_MargePrim(&buf->frame[0], &buf->frame[1]);
+    xm_MargePrim(&buf->frame[2], &buf->frame[3]);
+    buf->frame[0].x0 = 0x1D;
+    buf->frame[2].x0 = 0x121;
+    setlen(&buf->bars[0], 5);
+    *(u32 *)&buf->bars[0].r0 = 0x280000FF;
+    setlen(&buf->bars[1], 5);
+    *(u32 *)&buf->bars[1].r0 = 0x280000FF;
+    setlen(&buf->bars[2], 5);
+    *(u32 *)&buf->bars[2].r0 = 0x280000FF;
+    setlen(&buf->bars[3], 5);
+    *(u32 *)&buf->bars[3].r0 = 0x280000FF;
+    setlen(&buf->bars[4], 5);
+    *(u32 *)&buf->bars[4].r0 = 0x280000FF;
+    setlen(&buf->bars[5], 5);
+    *(u32 *)&buf->bars[5].r0 = 0x280000FF;
+    xm_arena_hud_place_left_gauge_point(&xm_arena_hud_gauge_frame_layout[0], (DVECTOR *)&buf->bars[0].x0);
+    xm_arena_hud_place_left_gauge_point(&xm_arena_hud_gauge_frame_layout[7], (DVECTOR *)&buf->bars[0].x1);
+    xm_arena_hud_place_left_gauge_point(&xm_arena_hud_gauge_frame_layout[5], (DVECTOR *)&buf->bars[0].x2);
+    xm_arena_hud_place_left_gauge_point(&xm_arena_hud_gauge_frame_layout[4], (DVECTOR *)&buf->bars[0].x3);
+    xm_arena_hud_place_left_gauge_point(&xm_arena_hud_gauge_frame_layout[7], (DVECTOR *)&buf->bars[1].x0);
+    xm_arena_hud_place_left_gauge_point(&xm_arena_hud_gauge_frame_layout[6], (DVECTOR *)&buf->bars[1].x1);
+    xm_arena_hud_place_left_gauge_point(&xm_arena_hud_gauge_frame_layout[4], (DVECTOR *)&buf->bars[1].x2);
+    xm_arena_hud_place_left_gauge_point(&xm_arena_hud_gauge_frame_layout[3], (DVECTOR *)&buf->bars[1].x3);
+    xm_arena_hud_place_left_gauge_point(&xm_arena_hud_gauge_frame_layout[6], (DVECTOR *)&buf->bars[2].x0);
+    xm_arena_hud_place_left_gauge_point(&xm_arena_hud_gauge_frame_layout[1], (DVECTOR *)&buf->bars[2].x1);
+    xm_arena_hud_place_left_gauge_point(&xm_arena_hud_gauge_frame_layout[3], (DVECTOR *)&buf->bars[2].x2);
+    xm_arena_hud_place_left_gauge_point(&xm_arena_hud_gauge_frame_layout[2], (DVECTOR *)&buf->bars[2].x3);
+    xm_arena_hud_place_right_gauge_point(&xm_arena_hud_gauge_frame_layout[0], (DVECTOR *)&buf->bars[3].x0);
+    xm_arena_hud_place_right_gauge_point(&xm_arena_hud_gauge_frame_layout[7], (DVECTOR *)&buf->bars[3].x1);
+    xm_arena_hud_place_right_gauge_point(&xm_arena_hud_gauge_frame_layout[5], (DVECTOR *)&buf->bars[3].x2);
+    xm_arena_hud_place_right_gauge_point(&xm_arena_hud_gauge_frame_layout[4], (DVECTOR *)&buf->bars[3].x3);
+    xm_arena_hud_place_right_gauge_point(&xm_arena_hud_gauge_frame_layout[7], (DVECTOR *)&buf->bars[4].x0);
+    xm_arena_hud_place_right_gauge_point(&xm_arena_hud_gauge_frame_layout[6], (DVECTOR *)&buf->bars[4].x1);
+    xm_arena_hud_place_right_gauge_point(&xm_arena_hud_gauge_frame_layout[4], (DVECTOR *)&buf->bars[4].x2);
+    xm_arena_hud_place_right_gauge_point(&xm_arena_hud_gauge_frame_layout[3], (DVECTOR *)&buf->bars[4].x3);
+    xm_arena_hud_place_right_gauge_point(&xm_arena_hud_gauge_frame_layout[6], (DVECTOR *)&buf->bars[5].x0);
+    xm_arena_hud_place_right_gauge_point(&xm_arena_hud_gauge_frame_layout[1], (DVECTOR *)&buf->bars[5].x1);
+    xm_arena_hud_place_right_gauge_point(&xm_arena_hud_gauge_frame_layout[3], (DVECTOR *)&buf->bars[5].x2);
+    xm_arena_hud_place_right_gauge_point(&xm_arena_hud_gauge_frame_layout[2], (DVECTOR *)&buf->bars[5].x3);
+    xm_SetDrawTPage(&buf->bar_tpage, 0, 1, xm_GetTPage(0, 1, 0, 0));
+    xm_arena_copy_words(buf->bars_dim, buf->bars, sizeof(buf->bars));
+    xm_arena_copy_words(buf->bars_lit, buf->bars, sizeof(buf->bars));
+    for (i = 0; i < 6; i++) {
+        setlen(&buf->bars_dim[i], 5);
+        *(u32 *)&buf->bars_dim[i].r0 = 0x28806060;
+    }
+    for (i = 0; i < 6; i++) {
+        setlen(&buf->bars_lit[i], 5);
+        *(u32 *)&buf->bars_lit[i].r0 = 0x280000FF;
+    }
+    *(u32 *)&buf->arrows[0][0].x0 = 0x200014;
+    *(u32 *)&buf->arrows[0][0].x1 = 0x20001C;
+    *(u32 *)&buf->arrows[0][0].x2 = 0x28001C;
+    *(u32 *)&buf->arrows[0][1].x0 = 0x200013;
+    *(u32 *)&buf->arrows[0][1].x1 = 0x290013;
+    *(u32 *)&buf->arrows[0][1].x2 = 0x29001B;
+    *(u32 *)&buf->arrows[0][2].x0 = 0x320013;
+    *(u32 *)&buf->arrows[0][2].x1 = 0x2A0013;
+    *(u32 *)&buf->arrows[0][2].x2 = 0x2A001B;
+    for (i = 0; i < 6; i++) {
+        setlen(&buf->arrows[0][i], 4);
+        *(u32 *)&buf->arrows[0][i].r0 = 0x2000FF00;
+        setlen(&buf->arrows[1][i], 4);
+        *(u32 *)&buf->arrows[1][i].r0 = 0x2000FF00;
+        buf->arrows[1][i].y0 = buf->arrows[0][i].y0;
+        buf->arrows[1][i].y1 = buf->arrows[0][i].y1;
+        buf->arrows[1][i].y2 = buf->arrows[0][i].y2;
+        buf->arrows[1][i].x0 = 0x140 - buf->arrows[0][i].x0;
+        buf->arrows[1][i].x1 = 0x140 - buf->arrows[0][i].x1;
+        buf->arrows[1][i].x2 = 0x140 - buf->arrows[0][i].x2;
+    }
+    buf->arrows[1][1].y0--;
+    buf->arrows[1][1].x2--;
+    setlen(&buf->marks[0], 5);
+    *(u32 *)&buf->marks[0].r0 = 0x28000000;
+    setlen(&buf->marks[1], 5);
+    *(u32 *)&buf->marks[1].r0 = 0x28000000;
+    buf->marks[0].x0 = buf->marks[0].x2 = 0x1E;
+    buf->marks[0].x1 = 0x63;
+    buf->marks[0].x3 = 0x5E;
+    buf->marks[0].y0 = buf->marks[0].y1 = 9;
+    buf->marks[0].y2 = buf->marks[0].y3 = 0x14;
+    buf->marks[1].x0 = buf->marks[1].x2 = 0x122;
+    buf->marks[1].x1 = 0xE3;
+    buf->marks[1].x3 = 0xDE;
+    buf->marks[1].y0 = buf->marks[1].y1 = 0x13;
+    buf->marks[1].y2 = buf->marks[1].y3 = 0x1E;
+    setlen(&buf->marks[2], 5);
+    *(u32 *)&buf->marks[2].r0 = 0x280000FF;
+    *(u32 *)&buf->marks[2].x0 = 0x320006;
+    *(u32 *)&buf->marks[2].x1 = 0x36000A;
+    *(u32 *)&buf->marks[2].x2 = 0x4C0006;
+    *(u32 *)&buf->marks[2].x3 = 0x48000A;
+    setlen(&buf->marks[3], 5);
+    *(u32 *)&buf->marks[3].r0 = 0x280000FF;
+    *(u32 *)&buf->marks[3].x0 = 0x32013A;
+    *(u32 *)&buf->marks[3].x1 = 0x360136;
+    *(u32 *)&buf->marks[3].x2 = 0x4C013A;
+    *(u32 *)&buf->marks[3].x3 = 0x480136;
+}
+#endif
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_800864B4);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_800866D4);
 #ifndef XENO_PC_PORT
@@ -4875,8 +5271,421 @@ extern s32 D_8009A300;
 void func_80086E24(void) {
     AddPrim(D_80092938, (D_800928A0 * 0x310) + (u8 *)&D_8009A300);
 }
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80086E70);
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80086FF8);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_hud_draw_gauge_bar (src/decomp/src/menu/arena_stage_views_and_hud.c:1898). */
+#ifndef XM_T_GaugeBar
+#define XM_T_GaugeBar
+typedef struct {
+    POLY_F4 parts[3];
+} GaugeBar;
+#endif
+#ifndef XM_S_arena_hud_draw_gauge_bar
+#define XM_S_arena_hud_draw_gauge_bar
+void xm_arena_hud_draw_gauge_bar(void *ot, GaugeBar *bar, s32 value, s32 mirrored) __asm__("func_80086E70");
+#endif
+#ifndef XM_S_arena_hud_set_gauge_x
+#define XM_S_arena_hud_set_gauge_x
+void xm_arena_hud_set_gauge_x(s32 mirrored, s16 *out, s32 x) __asm__("func_80085E90");
+#endif
+#ifndef XM_S_arena_hud_set_gauge_y
+#define XM_S_arena_hud_set_gauge_y
+void xm_arena_hud_set_gauge_y(s32 mirrored, s16 *out, s32 y) __asm__("func_80085EAC");
+#endif
+void func_80086E70(void *ot, GaugeBar *bar, s32 value, s32 mirrored) {
+    s32 over;
+
+    if (value >= 0x38) {
+        xm_arena_hud_set_gauge_x(mirrored, &bar->parts[0].x1, 0x38);
+        xm_arena_hud_set_gauge_x(mirrored, &bar->parts[0].x3, 0x34);
+        xm_AddPrim(ot, &bar->parts[0]);
+    } else {
+        xm_arena_hud_set_gauge_x(mirrored, &bar->parts[0].x1, value);
+        xm_arena_hud_set_gauge_x(mirrored, &bar->parts[0].x3, value - 4);
+        xm_AddPrim(ot, &bar->parts[0]);
+        return;
+    }
+    if (value >= 0x48) {
+        xm_arena_hud_set_gauge_x(mirrored, &bar->parts[1].x1, 0x48);
+        xm_arena_hud_set_gauge_x(mirrored, &bar->parts[1].x3, 0x40);
+        xm_arena_hud_set_gauge_y(mirrored, &bar->parts[1].y3, 0x10);
+        xm_AddPrim(ot, &bar->parts[1]);
+    } else {
+        xm_arena_hud_set_gauge_x(mirrored, &bar->parts[1].x1, value);
+        over = value - 0x38;
+        xm_arena_hud_set_gauge_x(mirrored, &bar->parts[1].x3, value - (over / 4 + 4));
+        xm_arena_hud_set_gauge_y(mirrored, &bar->parts[1].y3, over / 2 + 8);
+        xm_AddPrim(ot, &bar->parts[1]);
+        return;
+    }
+    xm_arena_hud_set_gauge_x(mirrored, &bar->parts[2].x1, value);
+    xm_arena_hud_set_gauge_x(mirrored, &bar->parts[2].x3, value - 8);
+    xm_AddPrim(ot, &bar->parts[2]);
+}
+#endif
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_hud_color_charge_mark (src/decomp/src/menu/arena_stage_views_and_hud.c:1931). */
+#ifndef XM_T_MorphDelta
+#define XM_T_MorphDelta
+typedef struct {
+    s16 dx, dy, dz;
+    s16 index;
+} MorphDelta;
+#endif
+#ifndef XM_T_MorphTarget
+#define XM_T_MorphTarget
+typedef struct {
+    s32 count;
+    void *deltas;
+    MorphDelta *normals;
+} MorphTarget;
+#endif
+#ifndef XM_T_MorphTable
+#define XM_T_MorphTable
+typedef struct {
+    s32 count;
+    MorphTarget targets[1];
+} MorphTable;
+#endif
+#ifndef XM_T_SpriteModel
+#define XM_T_SpriteModel
+typedef struct {
+    u16 flags;          
+    u16 vertex_count;
+    u16 primitive_count;
+    u16 group_count;    
+    SVECTOR *vertices;
+    SVECTOR *normals;
+    u8 *unk10;          
+    u8 *unk14;
+    u8 *unk18;
+    MorphTable *morphs; 
+    SVECTOR box_min;    
+    SVECTOR box_max;
+    s32 aux_size;       
+    s32 packet_size;    
+} SpriteModel;
+#endif
+#ifndef XM_T_ModelTable
+#define XM_T_ModelTable
+typedef struct ModelTable {
+    SpriteModel **models;
+    u32 count;
+} ModelTable;
+#endif
+#ifndef XM_T_EffectEntry
+#define XM_T_EffectEntry
+typedef struct {
+    u8 used;
+    u8 field1;     
+    u8 kind;       
+    u8 tag;        
+    u16 params[6]; 
+    u16 time;      
+    u16 duration;  
+} EffectEntry;
+#endif
+#ifndef XM_T_ModelPart
+#define XM_T_ModelPart
+typedef struct ModelPart {
+    struct ModelPart *parent; 
+    u8 dirty;         
+    u8 rotate;        
+    u8 yxz;           
+    u8 visible;       
+    u16 modelId;      
+    u16 index;        
+    MATRIX transform; 
+    MATRIX world;     
+    s16 scale[3];     
+    u16 field52;      
+
+
+    SVECTOR rotation;        
+    s32 translation[3];      
+    void *packets[2];        
+    EffectEntry *effects[3]; 
+} ModelPart;
+#endif
+#ifndef XM_T_EntryTable
+#define XM_T_EntryTable
+typedef struct EntryTable {
+    s32 count;
+    s32 *entries;
+} EntryTable;
+#endif
+#ifndef XM_T_SoundBank
+#define XM_T_SoundBank
+typedef struct SoundBank {
+    u8 unk0[0x10];
+    u16 flags;
+    u8 unk12[2];
+    u16 id;
+    u16 unk16;         
+    u16 volumes;       
+    u8 unk1A[2];
+    struct SoundBank *next;
+    u16 effect[1];     
+} SoundBank;
+#endif
+#ifndef XM_T_SoundOwner
+#define XM_T_SoundOwner
+typedef struct SoundOwner {
+    u8 pad0[8];
+    SoundBank *bank;        
+    void *end;              
+} SoundOwner;
+#endif
+#ifndef XM_T_EffectSprite
+#define XM_T_EffectSprite
+typedef struct {
+    s16 x0, y0, z0, pad06;
+    s16 x1, y1, z1;
+    s16 projected; 
+    s16 x2, y2, z2;
+    s16 age;       
+    s16 x3, y3, z3;
+    s16 lifetime;  
+    u16 color[3];  
+    s16 fade[3];   
+    POLY_FT4 packets[2]; 
+} EffectSprite;
+#endif
+#ifndef XM_T_SpritePool
+#define XM_T_SpritePool
+typedef struct SpritePool {
+    EffectSprite *records;
+    s16 count;
+    s16 next;
+} SpritePool;
+#endif
+#ifndef XM_T_ColorFade
+#define XM_T_ColorFade
+typedef struct ColorFade {
+    s16 id;           
+    u8 solid;         
+    u8 semiTrans;     
+    SpritePool *pool; 
+    EffectSprite *sprite; 
+    SVECTOR ends[2];  
+    union {
+        struct {
+            DVECTOR first[8];
+            DVECTOR second[8];
+        } screen;
+        struct {
+            VECTOR first[2];
+            VECTOR second[2];
+        } world;
+    } history; 
+    s16 time;     
+    s16 count;    
+    s16 max;      
+    s16 duration; 
+    s16 color[3]; 
+    s16 step[3];  
+} ColorFade;
+#endif
+#ifndef XM_T_SurfaceEntry
+#define XM_T_SurfaceEntry
+typedef struct {
+    s16 h0, h2, h4, h6, h8, hA, hC, hE;
+} SurfaceEntry;
+#endif
+#ifndef XM_T_SurfacePoint
+#define XM_T_SurfacePoint
+typedef struct {
+    s16 length;
+    s16 sag;
+    s16 pos[3];
+    u16 normalCount; 
+    s32 normal[3];   
+} SurfacePoint;
+#endif
+#ifndef XM_T_POLY_GT3
+#define XM_T_POLY_GT3
+typedef struct {
+    u_long tag;
+    u_char r0, g0, b0, code;
+    short x0, y0;
+    u_char u0, v0;
+    u_short clut;
+    u_char r1, g1, b1, p1;
+    short x1, y1;
+    u_char u1, v1;
+    u_short tpage;
+    u_char r2, g2, b2, p2;
+    short x2, y2;
+    u_char u2, v2;
+    u_short pad2;
+} POLY_GT3;
+#endif
+#ifndef XM_T_SurfacePoly
+#define XM_T_SurfacePoly
+typedef struct {
+    s16 index[3];
+    u8 pad6[2];
+    POLY_GT3 prim[2];
+} SurfacePoly;
+#endif
+#ifndef XM_T_Surface
+#define XM_T_Surface
+typedef struct Surface {
+    u16 h0;
+    u8 pad2[2];
+    s16 rings;              
+    s16 polys;              
+    s16 points;             
+    s16 entryCount;         
+    u8 b[6];                
+    u8 pad12[2];
+    SVECTOR *centres;       
+    SurfaceEntry *entries;  
+    SurfacePoint **strands; 
+    SurfacePoly *polyList;  
+} Surface;
+#endif
+#ifndef XM_T_ColorRow
+#define XM_T_ColorRow
+typedef struct {
+    u16 c[3];
+} ColorRow;
+#endif
+#ifndef XM_T_FrameCurve
+#define XM_T_FrameCurve
+typedef s16 (*FrameCurve)();
+#endif
+#ifndef XM_T_ImageAnim
+#define XM_T_ImageAnim
+typedef struct ImageAnim {
+    struct ImageAnim *target; 
+    u16 *pixels;              
+    u16 *pixels2;             
+    u16 *work;                
+    u8 mode;                  
+    u8 dirty;                 
+    s16 size;                 
+    u16 time;                 
+    u16 speed;                
+    u16 frame;                
+    u16 active;               
+    ColorRow *colors;         
+    s16 divisor;              
+    s16 base;                 
+    FrameCurve curve;         
+    RECT rect;                
+} ImageAnim;
+#endif
+#ifndef XM_T_Actor
+#define XM_T_Actor
+typedef struct Actor {
+    ModelTable *models;     
+    ModelPart *parts;       
+    s32 *entries;           
+    EntryTable *shared;     
+    s32 pc;                 
+    s32 *locals;            
+    s32 *globals;           
+    s16 scale;              
+    s16 h1E;                
+    u8 index;               
+    u8 b21;                 
+    u8 b22;                 
+    u8 b23;                 
+    s16 size[3];            
+    u8 reference;           
+    u8 depth;               
+    u8 queue_source[4];     
+    u8 queue_entry[4];      
+    u8 active;              
+    u8 b35;                 
+    u8 b36;                 
+    u8 scaled;              
+    u8 b38;                 
+    u8 b39;                 
+    s16 h3A;                
+    u16 h3C;                
+    s16 h3E;                
+    u16 h40;                
+    u16 h42;                
+    u16 h44;                
+    u16 h46;                
+    s16 h48;                
+    u16 flags;              
+
+
+
+    s32 w4C;                
+    s32 w50;                
+    s32 w54;                
+    s16 aim_actor;          
+    s16 aim_node;           
+    u8 parent;              
+    u8 inherit;             
+    s16 parent_node;        
+    s16 groundY;            
+
+
+    u8 b62;                 
+    u8 b63;                 
+    s16 aim_offset[3];      
+    s16 offset[3];          
+    s16 spin[3];            
+    s16 spin_accel[3];      
+    s16 drift[3];           
+    s16 drift_accel[3];     
+    s16 target[3];          
+    s16 h8E;                
+    s16 h90;                
+    s16 h92;                
+    u16 shift_x;            
+    u16 shift_y;            
+    s16 anim_state;         
+    s16 anim_loop;          
+    s16 anim_frame;         
+    s16 anim_frames;        
+    u8 *anim_pos;           
+    u8 *anim_start;         
+    void *group;            
+    void *blockAC;          
+    SoundOwner *ownerB0;    
+    SoundOwner *ownerB4;    
+    POLY_FT4 prims[2];      
+    u8 pad108[2];
+    u16 mask;               
+    u8 channel_count;       
+    u8 surfaceCount;        
+    u8 imageCount;          
+    u8 pad10F;
+    struct ColorFade *channels; 
+    struct Surface *surfaces;   
+    struct ImageAnim *images;   
+    s32 previous[3];        
+    s32 moved[3];           
+
+} Actor;
+#endif
+#ifndef XM_S_arena_hud_color_charge_mark
+#define XM_S_arena_hud_color_charge_mark
+s32 xm_arena_hud_color_charge_mark(Actor *actor, POLY_F4 *packet) __asm__("func_80086FF8");
+#endif
+#ifndef XM_S_arena_brain_check_special_charge
+#define XM_S_arena_brain_check_special_charge
+s32 xm_arena_brain_check_special_charge(Actor *actor, s32 check) __asm__("func_8008F530");
+#endif
+s32 func_80086FF8(Actor *actor, POLY_F4 *packet) {
+    if (xm_arena_brain_check_special_charge(actor, 0)) {
+        return 0;
+    }
+    if (xm_arena_brain_check_special_charge(actor, 1)) {
+        setlen(packet, 5);
+        *(u32 *)&packet->r0 = 0x2800FFFF;
+    } else {
+        setlen(packet, 5);
+        *(u32 *)&packet->r0 = 0x280000FF;
+    }
+    return 1;
+}
+#endif
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80087068);
 extern u8 D_8009A2F8[];
 void func_80085EC8(void*);
@@ -5213,7 +6022,53 @@ void func_80087EA0(u32 *ot) {
     xm_arena_debug_path_marker_count = 0;
 }
 #endif
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8008820C);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_debug_start_line (src/decomp/src/menu/arena_stage_views_and_hud.c:2325). */
+#ifndef XM_T_Line3D
+#define XM_T_Line3D
+typedef struct {
+    LINE_F2 packets[2]; 
+    SVECTOR from;      
+    SVECTOR to;        
+    s16 timer;         
+    s16 pad;
+} Line3D;
+#endif
+#ifndef XM_S_arena_debug_start_line
+#define XM_S_arena_debug_start_line
+Line3D *xm_arena_debug_start_line(VECTOR *from, VECTOR *to, s32 colour) __asm__("func_8008820C");
+#endif
+#ifndef XM_S_arena_debug_lines
+#define XM_S_arena_debug_lines
+extern Line3D xm_arena_debug_lines[100] __asm__("D_80095938");
+#endif
+Line3D *xm_arena_debug_start_line(VECTOR *from, VECTOR *to, s32 colour) __asm__("func_8008820C");
+Line3D *xm_arena_debug_start_line(VECTOR *from, VECTOR *to, s32 colour) {
+    Line3D *line;
+    s32 i;
+
+    for (i = 0; i < 100; i++) {
+        line = &xm_arena_debug_lines[i];
+        if (line->timer == 0) {
+            line->timer = 1;
+            line->from.vx = from->vx;
+            line->from.vy = from->vy;
+            line->from.vz = from->vz;
+            line->to.vx = to->vx;
+            line->to.vy = to->vy;
+            line->to.vz = to->vz;
+            line->packets[0].r0 = (colour & 2) * 0x7F;
+            line->packets[0].g0 = (colour & 4) * 0x3F;
+            line->packets[0].b0 = (colour & 1) * 0xFF;
+            line->packets[1].r0 = (colour & 2) * 0x7F;
+            line->packets[1].g0 = (colour & 4) * 0x3F;
+            line->packets[1].b0 = (colour & 1) * 0xFF;
+            return line;
+        }
+    }
+    return NULL;
+}
+#endif
 
 void func_800882D4(s32 arg0, s32 arg1, s32 arg2, s16 arg3) {
     void *temp_v0;
@@ -5236,16 +6091,6 @@ void func_80088308(void) {
 
 #ifndef XENO_PC_PORT
 /* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_debug_draw_lines (src/decomp/src/menu/arena_stage_views_and_hud.c:2370). */
-#ifndef XM_T_Line3D
-#define XM_T_Line3D
-typedef struct {
-    LINE_F2 packets[2]; 
-    SVECTOR from;      
-    SVECTOR to;        
-    s16 timer;         
-    s16 pad;
-} Line3D;
-#endif
 #ifndef XM_T_gte_ldv01
 #define XM_T_gte_ldv01
 #define gte_ldv01(r0, r1)                                                      \
@@ -5272,10 +6117,6 @@ typedef struct {
 #ifndef XM_S_arena_debug_draw_lines
 #define XM_S_arena_debug_draw_lines
 void xm_arena_debug_draw_lines(void *ot) __asm__("func_8008832C");
-#endif
-#ifndef XM_S_arena_debug_lines
-#define XM_S_arena_debug_lines
-extern Line3D xm_arena_debug_lines[100] __asm__("D_80095938");
 #endif
 void func_8008832C(void *ot) {
     SVECTOR ends[2];
@@ -5335,10 +6176,6 @@ void func_800884E0(VECTOR *vector, void *out) {
 #ifndef XM_S_arena_vector_normalize_to_svector
 #define XM_S_arena_vector_normalize_to_svector
 void xm_arena_vector_normalize_to_svector(VECTOR *vector, void *out) __asm__("func_8008859C");
-#endif
-#ifndef XM_S_VectorNormalS
-#define XM_S_VectorNormalS
-long xm_VectorNormalS(VECTOR *v0, SVECTOR *v1) __asm__("VectorNormalS");
 #endif
 void func_8008859C(VECTOR *vector, void *out) {
     VECTOR scaled = *vector;

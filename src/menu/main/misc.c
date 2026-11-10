@@ -2418,7 +2418,79 @@ void func_801C65F4(void) {
  * active party slots (currentCharacterIDs / gear flags), records the first
  * active slot, then calls func_801C65F4 to stream the menu resources. */
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801C6AA0);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): menu_init_party (src/decomp/src/slot39/menu_framework.c:935). */
+#ifndef XM_S_menu_init_party
+#define XM_S_menu_init_party
+void xm_menu_init_party(MenuState *state) __asm__("func_801C6AA0");
+#endif
+#ifndef XM_S_menu_state_screen
+#define XM_S_menu_state_screen
+extern u8 xm_menu_state_screen __asm__("D_80059460");
+#endif
+#ifndef XM_S_menu_state_screen_parameter
+#define XM_S_menu_state_screen_parameter
+extern u8 xm_menu_state_screen_parameter __asm__("D_80059171");
+#endif
+#ifndef XM_S_menu_state_saved_cursor
+#define XM_S_menu_state_saved_cursor
+extern u8 xm_menu_state_saved_cursor __asm__("D_800594CC");
+#endif
+#ifndef XM_S_menu_test_bit
+#define XM_S_menu_test_bit
+u16 xm_menu_test_bit(u16 flags, u8 bit) __asm__("func_801C865C");
+#endif
+#ifndef XM_S_menu_load_resources
+#define XM_S_menu_load_resources
+void xm_menu_load_resources(void) __asm__("func_801C65F4");
+#endif
+void xm_menu_init_party(MenuState *state) __asm__("func_801C6AA0");
+void xm_menu_init_party(MenuState *state) {
+    s32 i;
+    u16 members;
+    s32 id;
+
+    if (xm_menu_state_screen == 0 && xm_menu_state_screen_parameter == 0) {
+        xm_menu_state_current->cursor = xm_menu_state_saved_cursor;
+    } else {
+        xm_menu_state_current->cursor = 1;
+    }
+    xm_menu_state_current->cursor_shown = 0xff;
+    xm_menu_state_current->card_poll_timer = 0x3c;
+    xm_menu_state_current->cards_present = 0;
+    xm_menu_state_current->unknown335 = 0;
+    xm_menu_state_current->party_count = 0;
+    members = xm_game_data.joined & xm_game_data.available & 0x7ff;
+    for (i = 0; i < 16; i++) {
+        if (xm_menu_test_bit(members, i)) {
+            xm_menu_state_current->present[i] = 1;
+        } else {
+            xm_menu_state_current->present[i] = 0;
+        }
+    }
+    for (i = 0; i < 3; i++) {
+        xm_menu_state_current->flags->ready[i] = 0;
+        id = xm_game_data.party[i];
+        if (id != 0xff && xm_menu_state_current->present[id]) {
+            xm_menu_state_current->flags->party[i] = id;
+            xm_menu_state_current->party_count++;
+            if (xm_game_data.characters[xm_menu_state_current->flags->party[i]].gearId != 0xff) {
+                xm_menu_state_current->flags->ready[i] = 1;
+                xm_menu_state_current->fighters++;
+            }
+        } else {
+            xm_menu_state_current->flags->party[i] = 0xff;
+        }
+    }
+    for (i = 0; i < 3; i++) {
+        if (xm_menu_state_current->flags->party[i] != 0xff) {
+            xm_menu_state_current->first_member = i;
+            break;
+        }
+    }
+    xm_menu_load_resources();
+}
+#endif
 #else
 void func_801C6AA0(void) {
     s32 i;
@@ -4702,7 +4774,45 @@ extern void func_80033B34(u16*, u8*, s32);  /* true sig: system/system.c */
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CB184);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): menu_decode_game_names (src/decomp/src/slot39/menu_framework.c:2491). */
+#ifndef XM_T_GAME_NAMES
+#define XM_T_GAME_NAMES
+#define GAME_NAMES ((u8 *)&xm_game_data)
+#endif
+#ifndef XM_S_menu_decode_game_names
+#define XM_S_menu_decode_game_names
+void xm_menu_decode_game_names(void) __asm__("func_801CB184");
+#endif
+#ifndef XM_S_text_decode_codes
+#define XM_S_text_decode_codes
+void xm_text_decode_codes(void *codes, u8 *out, s32 count) __asm__("func_80033B34");
+#endif
+void func_801CB184(void) {
+    u8 codes[24];
+    u8 decoded[20];
+    s32 n;
+    s32 i;
+    u8 *src;
+    u8 *dst;
+
+    for (n = 0; n < 31; n++) {
+        for (i = 0; i < 20; i += 2) {
+            src = &GAME_NAMES[n * 20];
+            codes[i] = src[i];
+            codes[i + 1] = GAME_NAMES[n * 20 + i + 1];
+            if (src[i] == 0 && GAME_NAMES[n * 20 + i + 1] == 0) {
+                break;
+            }
+        }
+        xm_text_decode_codes(codes, decoded, i / 2);
+        dst = &GAME_NAMES[n * 20];
+        for (i = 0; i < 20; i++) {
+            dst[i] = decoded[i];
+        }
+    }
+}
+#endif
 #else
 void func_801CB184(void) {
     /* Retail copies each 0x14-byte name entry's byte pairs into ONE buffer
@@ -5048,7 +5158,162 @@ u8 func_801CB9E8(u8 idx, u8 startIdx) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CBA4C);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): menu_save_build_payload (src/decomp/src/slot39/menu_framework.c:2736). */
+#ifndef XM_T_SaveSummary
+#define XM_T_SaveSummary
+typedef struct SaveSummary {
+    s32 time;     
+    u16 hp[3];    
+    u16 hpMax[3]; 
+    u8 ep[3];     
+    u8 epMax[3];  
+    u8 level[3];  
+    u8 level2[3]; 
+    u8 ids[3];    
+    u8 unk1F;     
+    u8 pad20[0x3];
+    u8 digit;     
+} SaveSummary;
+#endif
+#ifndef XM_T_SaveWordsDC
+#define XM_T_SaveWordsDC
+typedef struct SaveWordsDC { s32 w[0xDC / 4]; } SaveWordsDC;
+#endif
+#ifndef XM_T_SaveWords190
+#define XM_T_SaveWords190
+typedef struct SaveWords190 { s32 w[0x190 / 4]; } SaveWords190;
+#endif
+#ifndef XM_T_SaveWordsA4
+#define XM_T_SaveWordsA4
+typedef struct SaveWordsA4 { s32 w[0xA4 / 4]; } SaveWordsA4;
+#endif
+#ifndef XM_T_SaveWords10
+#define XM_T_SaveWords10
+typedef struct SaveWords10 { s32 w[0x10 / 4]; } SaveWords10;
+#endif
+#ifndef XM_T_SaveWords18
+#define XM_T_SaveWords18
+typedef struct SaveWords18 { s32 w[0x18 / 4]; } SaveWords18;
+#endif
+#ifndef XM_T_SaveGear
+#define XM_T_SaveGear
+typedef struct SaveGear {
+    SaveWords10 head;     
+    SaveWords18 entries;  
+    s32 variants;         
+    u32 hp;               
+    u8 pad30[0x4];
+    u16 fuel;             
+    u8 pad36[0x2];
+    u8 defense;           
+    u8 field74;           
+    u8 field75;           
+    u8 pad3B[0x1];
+} SaveGear;
+#endif
+#ifndef XM_T_SaveWords78
+#define XM_T_SaveWords78
+typedef struct SaveWords78 { s32 w[0x78 / 4]; } SaveWords78;
+#endif
+#ifndef XM_T_SaveWords160
+#define XM_T_SaveWords160
+typedef struct SaveWords160 { s32 w[0x160 / 4]; } SaveWords160;
+#endif
+#ifndef XM_T_SaveWords100
+#define XM_T_SaveWords100
+typedef struct SaveWords100 { s32 w[0x100 / 4]; } SaveWords100;
+#endif
+#ifndef XM_T_SaveData
+#define XM_T_SaveData
+typedef struct SaveData {
+    SaveSummary summary; 
+    SaveWordsDC names; 
+    SaveWords190 unk100; 
+    SaveWordsA4 chars[11]; 
+    SaveGear gears[20]; 
+    SaveWords78 unkE4C; 
+    SaveWords160 records; 
+    SaveWords100 unk1024; 
+    u8 unk1124[0xA38]; 
+} SaveData;
+#endif
+#ifndef XM_S_menu_save_build_payload
+#define XM_S_menu_save_build_payload
+void xm_menu_save_build_payload(SaveSummary *payload, u8 port, u8 digit) __asm__("func_801CBA4C");
+#endif
+#ifndef XM_S_mode_battle_ai_variables
+#define XM_S_mode_battle_ai_variables
+extern s16 xm_mode_battle_ai_variables[] __asm__("D_8005A3A0");
+#endif
+#ifndef XM_S_pad_vblank_count
+#define XM_S_pad_vblank_count
+extern s32 xm_pad_vblank_count __asm__("D_80059488");
+#endif
+#ifndef XM_S_text_encode
+#define XM_S_text_encode
+s32 xm_text_encode(u8 *text, u16 *codes) __asm__("func_80033C20");
+#endif
+#ifndef XM_S_menu_saving_at_cd_change
+#define XM_S_menu_saving_at_cd_change
+extern u8 xm_menu_saving_at_cd_change __asm__("D_801E96A5");
+#endif
+#ifndef XM_S_cd_get_disc_number
+#define XM_S_cd_get_disc_number
+s32 xm_cd_get_disc_number(void) __asm__("ArchiveGetDiscNumber");
+#endif
+#ifndef XM_S_menu_copy_game_data_to_save
+#define XM_S_menu_copy_game_data_to_save
+void xm_menu_copy_game_data_to_save(SaveData *save) __asm__("func_801E4A28");
+#endif
+void func_801CBA4C(SaveSummary *payload, u8 port, u8 digit) {
+    u8 codes[24];
+    u8 encoded[20];
+    s32 i;
+    s32 j;
+    u8 *name;
+    u8 *names;
+
+    for (j = 0; j < 16; j++) {
+        xm_game_data.flagWords[j + 1] = xm_mode_battle_ai_variables[j];
+    }
+    for (i = 0; i < 3; i++) {
+        if (xm_menu_state_current->flags->party[i] != 0xff) {
+            payload->ids[i] = xm_menu_state_current->flags->party[i];
+            payload->hp[i] = xm_game_data.characters[xm_menu_state_current->flags->party[i]].hp;
+            payload->hpMax[i] = xm_game_data.characters[xm_menu_state_current->flags->party[i]].maxHp;
+            payload->ep[i] = xm_game_data.characters[xm_menu_state_current->flags->party[i]].ep;
+            payload->epMax[i] = xm_game_data.characters[xm_menu_state_current->flags->party[i]].maxEp;
+            payload->level[i] = xm_game_data.characters[xm_menu_state_current->flags->party[i]].level;
+            payload->level2[i] = xm_game_data.characters[xm_menu_state_current->flags->party[i]].level2;
+        } else {
+            payload->ids[i] = 0xff;
+        }
+    }
+    payload->time = xm_pad_vblank_count;
+    payload->unk1F = 0;
+    payload->digit = digit;
+    names = GAME_NAMES;
+    for (i = 0; i < 31; i++) {
+        name = &names[i * 20];
+        for (j = 0; j < 20; j++) {
+            codes[j] = name[j];
+            encoded[j] = 0;
+        }
+        xm_text_encode(codes, (u16 *)encoded);
+        for (j = 0; j < 20; j++) {
+            name[j] = encoded[j];
+        }
+    }
+    if (!xm_menu_saving_at_cd_change) {
+        xm_game_data.vars[82] = xm_cd_get_disc_number() - 1;
+    } else {
+        xm_game_data.vars[82] = 1;
+    }
+    xm_menu_copy_game_data_to_save((SaveData *)payload);
+    xm_menu_decode_game_names();
+}
+#endif
 #else
 extern u16 D_8006F958[];
 extern u16 D_8005A3A0[];
@@ -6104,7 +6369,84 @@ extern s32 func_8002675C(u8*, s32, void*, s32, s32, s32, s32);
 extern void func_801C80B8(u32 value);
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CD81C);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): menu_status_panel_layout_sprites (src/decomp/src/slot39/menu_framework.c:3449). */
+#ifndef XM_T_MenuAnchor
+#define XM_T_MenuAnchor
+typedef struct MenuAnchor {
+    s32 parts[9]; 
+    s32 face; 
+    s32 base; 
+    s32 unk2C; 
+    s32 hp; 
+    s32 hpMax; 
+    s32 ep; 
+    s32 epMax; 
+    s32 label; 
+} MenuAnchor;
+#endif
+#ifndef XM_S_menu_status_panel_layout_sprites
+#define XM_S_menu_status_panel_layout_sprites
+void xm_menu_status_panel_layout_sprites(MenuStatusPanel *panel, u8 ch, u8 row, MenuAnchor *x, MenuAnchor *y, u8 layout) __asm__("func_801CD81C");
+#endif
+#ifndef XM_S_menu_status_panel_layout_images
+#define XM_S_menu_status_panel_layout_images
+extern s32 xm_menu_status_panel_layout_images[18] __asm__("D_801EA4DC");
+#endif
+#ifndef XM_S_sprite_sheet_draw_scaled
+#define XM_S_sprite_sheet_draw_scaled
+s32 xm_sprite_sheet_draw_scaled(void *sheet, s32 id, POLY_FT4 *prims, s32 index, s32 x, s32 y, s32 scale) __asm__("func_8002675C");
+#endif
+#ifndef XM_S_menu_quad_init
+#define XM_S_menu_quad_init
+void xm_menu_quad_init(POLY_FT4 *poly) __asm__("func_801E927C");
+#endif
+#ifndef XM_S_text_plane1_clut
+#define XM_S_text_plane1_clut
+extern u16 xm_text_plane1_clut __asm__("g_SystemPalette2");
+#endif
+#ifndef XM_S_text_plane0_clut
+#define XM_S_text_plane0_clut
+extern u16 xm_text_plane0_clut __asm__("g_SystemPalette1");
+#endif
+#ifndef XM_S_menu_quad_place
+#define XM_S_menu_quad_place
+void xm_menu_quad_place(POLY_FT4 *poly, u16 x, u16 y, u8 u, u8 v, u16 w, u16 h) __asm__("func_801E920C");
+#endif
+#ifndef XM_S_menu_name_image_vram_x_table
+#define XM_S_menu_name_image_vram_x_table
+extern s32 xm_menu_name_image_vram_x_table[19] __asm__("D_801EA578");
+#endif
+#ifndef XM_S_menu_name_image_vram_y_table
+#define XM_S_menu_name_image_vram_y_table
+extern s32 xm_menu_name_image_vram_y_table[19] __asm__("D_801EA5C4");
+#endif
+void xm_menu_status_panel_layout_sprites(MenuStatusPanel *panel, u8 ch, u8 row, MenuAnchor *x, MenuAnchor *y, u8 layout) __asm__("func_801CD81C");
+void xm_menu_status_panel_layout_sprites(MenuStatusPanel *panel, u8 ch, u8 row, MenuAnchor *x, MenuAnchor *y, u8 layout) {
+    s32 i;
+
+    panel->layout_count = 0;
+    for (i = 0; i < 9; i++) {
+        if (xm_menu_status_panel_layout_images[layout * 9 + i] != 0xffff) {
+            panel->layout_count += xm_sprite_sheet_draw_scaled(xm_menu_state_current->sheet, xm_menu_status_panel_layout_images[layout * 9 + i],
+                                           &panel->layout[panel->layout_count * 2], xm_menu_state_current->buffer_index,
+                                           x->parts[i], row * 56 + y->parts[i], 0x1000);
+        }
+    }
+    xm_sprite_sheet_draw_scaled(xm_menu_state_current->sheet, row + 0x14b, panel->face, xm_menu_state_current->buffer_index, x->face,
+                  row * 56 + y->face, 0x1000);
+    xm_menu_quad_init(&panel->label[xm_menu_state_current->buffer_index]);
+    panel->label[xm_menu_state_current->buffer_index].tpage = xm_GetTPage(0, 0, 0x180, 0);
+    if (layout == 0) {
+        panel->label[xm_menu_state_current->buffer_index].clut = (ch & 1) ? xm_text_plane1_clut : xm_text_plane0_clut;
+    } else {
+        panel->label[xm_menu_state_current->buffer_index].clut = (xm_game_data.characters[ch].gearId & 1) ? xm_text_plane0_clut : xm_text_plane1_clut;
+    }
+    xm_menu_quad_place(&panel->label[xm_menu_state_current->buffer_index], (u16)x->label, (u16)(y->label + row * 56),
+                  (u8)(xm_menu_name_image_vram_x_table[layout * 3 + row] * 4), (u8)xm_menu_name_image_vram_y_table[layout * 3 + row], (layout * 3) * 8 + 0x48,
+                  13);
+}
+#endif
 #endif
 
 /* Retail 0x801CDB1C: the panel's level digits.  func_801C80B8 splits the
@@ -6134,7 +6476,79 @@ void func_801CDB1C(MenuCharacter* panel, u8 charId, u8 slot,
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801CDC6C);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): menu_status_panel_layout_hp_ep (src/decomp/src/slot39/menu_framework.c:3498). */
+#ifndef XM_S_menu_status_panel_layout_hp_ep
+#define XM_S_menu_status_panel_layout_hp_ep
+void xm_menu_status_panel_layout_hp_ep(MenuStatusPanel *panel, u8 ch, u8 row, MenuAnchor *x, MenuAnchor *y, u8 layout) __asm__("func_801CDC6C");
+#endif
+#ifndef XM_S_menu_split_digits
+#define XM_S_menu_split_digits
+void xm_menu_split_digits(u32 value) __asm__("func_801C80B8");
+#endif
+void xm_menu_status_panel_layout_hp_ep(MenuStatusPanel *panel, u8 ch, u8 row, MenuAnchor *x, MenuAnchor *y, u8 layout) __asm__("func_801CDC6C");
+void xm_menu_status_panel_layout_hp_ep(MenuStatusPanel *panel, u8 ch, u8 row, MenuAnchor *x, MenuAnchor *y, u8 layout) {
+    s32 digits;
+    s32 first;
+    s32 i;
+    s32 n;
+    u8 digit;
+
+    if (layout == 0) {
+        xm_menu_split_digits(xm_game_data.characters[ch].hp);
+        digits = 3;
+        first = 6;
+    } else {
+        digits = 5;
+        xm_menu_split_digits(xm_game_data.gears[xm_game_data.characters[ch].gearId].hp);
+        first = 4;
+    }
+    panel->hp_count = 0;
+    for (i = 0; i < digits; i++) {
+        digit = xm_menu_state_current->digits[first + i];
+        if (digit != 0xff) {
+            panel->hp_count += xm_sprite_sheet_draw_scaled(xm_menu_state_current->sheet, digit, &panel->hp[panel->hp_count * 2],
+                                              xm_menu_state_current->buffer_index, i * 8 + x->hp, row * 56 + y->hp, 0x1000);
+        }
+    }
+    if (layout == 0) {
+        xm_menu_split_digits(xm_game_data.characters[ch].maxHp);
+    } else {
+        xm_menu_split_digits(xm_game_data.gears[xm_game_data.characters[ch].gearId].maxHp);
+    }
+    panel->hp_max_count = 0;
+    for (i = 0, n = 0; i < digits; i++) {
+        digit = xm_menu_state_current->digits[first + i];
+        if (digit != 0xff) {
+            panel->hp_max_count += xm_sprite_sheet_draw_scaled(xm_menu_state_current->sheet, digit, &panel->hp_max[panel->hp_max_count * 2],
+                                              xm_menu_state_current->buffer_index, n * 8 + x->hpMax, row * 56 + y->hpMax, 0x1000);
+            n++;
+        }
+    }
+    if (layout == 0) {
+        xm_menu_split_digits(xm_game_data.characters[ch].ep);
+        panel->ep_count = 0;
+        for (i = 0; i < 2; i++) {
+            digit = xm_menu_state_current->digits[7 + i];
+            if (digit != 0xff) {
+                panel->ep_count += xm_sprite_sheet_draw_scaled(xm_menu_state_current->sheet, digit, &panel->ep[panel->ep_count * 2],
+                                                  xm_menu_state_current->buffer_index, i * 8 + x->ep, row * 56 + y->ep, 0x1000);
+            }
+        }
+        xm_menu_split_digits(xm_game_data.characters[ch].maxEp);
+        panel->ep_max_count = 0;
+        for (i = 0, n = 0; i < 2; i++) {
+            digit = xm_menu_state_current->digits[7 + i];
+            if (digit != 0xff) {
+                panel->ep_max_count += xm_sprite_sheet_draw_scaled(xm_menu_state_current->sheet, digit, &panel->ep_max[panel->ep_max_count * 2],
+                                                  xm_menu_state_current->buffer_index, n * 8 + x->epMax, row * 56 + y->epMax,
+                                                  0x1000);
+                n++;
+            }
+        }
+    }
+}
+#endif
 
 extern void func_801CD81C(MenuCharacter* panel, u8 charId, u8 slot,
                           s32* xTable, s32* yTable, u8 mode);
@@ -6909,10 +7323,6 @@ void func_801CF5E4(s32 first, s32 slotIndex, s32 limit) {
 #ifndef XM_S_menu_draw_card_headers
 #define XM_S_menu_draw_card_headers
 void xm_menu_draw_card_headers(void) __asm__("func_801CF8D8");
-#endif
-#ifndef XM_S_sprite_sheet_draw_scaled
-#define XM_S_sprite_sheet_draw_scaled
-s32 xm_sprite_sheet_draw_scaled(void *sheet, s32 id, POLY_FT4 *prims, s32 index, s32 x, s32 y, s32 scale) __asm__("func_8002675C");
 #endif
 void func_801CF8D8(void) {
     u8 built[2];
@@ -8423,7 +8833,115 @@ void func_801D2968(void) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D29A8);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): menu_field_blocks_slide (src/decomp/src/slot39/menu_framework.c:4728). */
+#ifndef XM_S_menu_field_blocks_slide
+#define XM_S_menu_field_blocks_slide
+void xm_menu_field_blocks_slide(u8 open, u8 keep) __asm__("func_801D29A8");
+#endif
+#ifndef XM_S_open
+#define XM_S_open
+long xm_open(char *devname, unsigned long flag) __asm__("open");
+#endif
+#ifndef XM_S_menu_label_render_table
+#define XM_S_menu_label_render_table
+void xm_menu_label_render_table(u8 count, MenuLabel *labels, u8 *table, u8 *flags) __asm__("func_801E8018");
+#endif
+#ifndef XM_S_menu_field_command_label_ids
+#define XM_S_menu_field_command_label_ids
+extern u8 xm_menu_field_command_label_ids[8] __asm__("D_801EA528");
+#endif
+#ifndef XM_S_menu_mover_start
+#define XM_S_menu_mover_start
+void xm_menu_mover_start(s32 x0, s32 y0, s32 x1, s32 y1, u8 speed, u8 slot) __asm__("func_801C81E0");
+#endif
+#ifndef XM_S_menu_label_clear_shown
+#define XM_S_menu_label_clear_shown
+void xm_menu_label_clear_shown(u8 count, u8 *flags) __asm__("func_801E8044");
+#endif
+#ifndef XM_S_menu_field_block_layout
+#define XM_S_menu_field_block_layout
+void xm_menu_field_block_layout(u8 index, u8 mode) __asm__("func_801D5A50");
+#endif
+#ifndef XM_S_menu_run_frame
+#define XM_S_menu_run_frame
+void xm_menu_run_frame(void) __asm__("func_801C7BF4");
+#endif
+#ifndef XM_S_menu_play_sound
+#define XM_S_menu_play_sound
+void xm_menu_play_sound(s32 sound) __asm__("func_801C8574");
+#endif
+#ifndef XM_S_menu_money_window_open
+#define XM_S_menu_money_window_open
+void xm_menu_money_window_open(void) __asm__("func_801D28A8");
+#endif
+void xm_menu_field_blocks_slide(u8 xm_open, u8 keep) __asm__("func_801D29A8");
+void xm_menu_field_blocks_slide(u8 xm_open, u8 keep) {
+    MenuFlags *party;
+    s32 i;
+
+    if (xm_open) {
+        xm_menu_label_render_table(8, xm_menu_state_current->list_labels, xm_menu_field_command_label_ids, xm_menu_state_current->flags->list_labels_shown);
+        xm_menu_mover_start(0x100, 0x86, 0x60, 6, 8, 0);
+        xm_menu_mover_start(0x108, 0x3e, 0x68, 0x3e, 8, 1);
+        xm_menu_mover_start(0x110, -10, 0x70, 0x76, 8, 2);
+    } else {
+        xm_menu_label_clear_shown(8, xm_menu_state_current->flags->list_labels_shown);
+        xm_menu_mover_start(0x60, 6, 0x100, 0x86, 8, 0);
+        xm_menu_mover_start(0x68, 0x3e, 0x108, 0x3e, 8, 1);
+        xm_menu_mover_start(0x70, 0x76, 0x110, -10, 8, 2);
+    }
+    while (xm_menu_state_current->movers[0].done == 0 && xm_menu_state_current->movers[1].done == 0 &&
+           xm_menu_state_current->movers[2].done == 0) {
+        for (i = 0; i < 3; i++) {
+            if (xm_menu_state_current->flags->party[i] != 0xff) {
+                xm_menu_field_block_layout(i, xm_menu_state_current->flags->party[i]);
+            }
+        }
+        xm_menu_run_frame();
+        for (i = 0; i < 3; i++) {
+            if (xm_menu_state_current->flags->party[i] != 0xff) {
+                xm_menu_mover_step(i);
+            }
+        }
+    }
+    if (xm_open) {
+        xm_menu_state_current->movers[0].x0 = 0x60;
+        xm_menu_state_current->movers[0].y0 = 6;
+        xm_menu_state_current->movers[1].x0 = 0x68;
+        xm_menu_state_current->movers[1].y0 = 0x3e;
+        xm_menu_state_current->movers[2].x0 = 0x70;
+        xm_menu_state_current->movers[2].y0 = 0x76;
+        xm_menu_state_current->movers[0].acc_y = 0;
+        xm_menu_state_current->movers[0].acc_x = 0;
+        xm_menu_state_current->movers[1].acc_y = 0;
+        xm_menu_state_current->movers[1].acc_x = 0;
+        xm_menu_state_current->movers[2].acc_y = 0;
+        xm_menu_state_current->movers[2].acc_x = 0;
+        for (i = 0; i < 3; i++) {
+            if (xm_menu_state_current->flags->party[i] != 0xff) {
+                xm_menu_field_block_layout(i, xm_menu_state_current->flags->party[i]);
+            }
+        }
+        xm_menu_play_sound(0x5d);
+        if (!keep) {
+            xm_menu_money_window_open();
+        }
+        xm_menu_state_current->flags->panels_shown[1] = 1;
+        xm_menu_state_current->flags->field_menu2_shown = 1;
+    } else {
+        party = xm_menu_state_current->flags;
+        party->field_blocks_shown[2] = 0;
+        party->field_blocks_shown[1] = 0;
+        party->field_blocks_shown[0] = 0;
+        if (!keep) {
+            xm_menu_state_current->flags->panels_shown[0] = 0;
+            xm_menu_state_current->flags->field_menu_shown = 0;
+        }
+    }
+    xm_menu_run_frame();
+}
+#endif
 
 #ifndef XENO_PC_PORT
 /* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): menu_field_menu_open (src/decomp/src/slot39/menu_framework.c:4796). */
@@ -8438,10 +8956,6 @@ typedef struct MenuCommandImages {
 #define XM_S_menu_field_menu_open
 void xm_menu_field_menu_open(void) __asm__("func_801D2D38");
 #endif
-#ifndef XM_S_menu_state_screen
-#define XM_S_menu_state_screen
-extern u8 xm_menu_state_screen __asm__("D_80059460");
-#endif
 #ifndef XM_S_bzero
 #define XM_S_bzero
 void *xm_bzero(unsigned char *p, int n) __asm__("bzero");
@@ -8449,10 +8963,6 @@ void *xm_bzero(unsigned char *p, int n) __asm__("bzero");
 #ifndef XM_S_menu_panel_init
 #define XM_S_menu_panel_init
 void xm_menu_panel_init(u8 index) __asm__("func_801E53CC");
-#endif
-#ifndef XM_S_menu_play_sound
-#define XM_S_menu_play_sound
-void xm_menu_play_sound(s32 sound) __asm__("func_801C8574");
 #endif
 #ifndef XM_S_menu_name_image_render
 #define XM_S_menu_name_image_render
@@ -8465,10 +8975,6 @@ void xm_menu_command_window_open(s32 count, MenuCommandImages *images) __asm__("
 #ifndef XM_S_menu_field_command_images
 #define XM_S_menu_field_command_images
 extern MenuCommandImages xm_menu_field_command_images[7] __asm__("D_801EA19C");
-#endif
-#ifndef XM_S_menu_field_blocks_slide
-#define XM_S_menu_field_blocks_slide
-void xm_menu_field_blocks_slide(u8 open, u8 keep) __asm__("func_801D29A8");
 #endif
 #ifndef XM_S_menu_play_time_window_open
 #define XM_S_menu_play_time_window_open
@@ -8658,10 +9164,6 @@ void xm_menu_notice_open(u8 message) __asm__("func_801D2F4C");
 #define XM_S_menu_panel_open
 void xm_menu_panel_open(u8 index, u16 x, u16 y, u16 w, u16 h, u8 grow, u8 flat, s32 ot_entry, u8 has_bar) __asm__("func_801D397C");
 #endif
-#ifndef XM_S_menu_run_frame
-#define XM_S_menu_run_frame
-void xm_menu_run_frame(void) __asm__("func_801C7BF4");
-#endif
 #ifndef XM_S_window_render_text_line
 #define XM_S_window_render_text_line
 s32 xm_window_render_text_line(void *text, u32 *image, s32 width, s32 flags) __asm__("SystemRenderStringEntry");
@@ -8673,10 +9175,6 @@ void *xm_text_get_resource_entry(void *resource, s32 index) __asm__("GetStringEn
 #ifndef XM_S_menu_label_init_quads
 #define XM_S_menu_label_init_quads
 void xm_menu_label_init_quads(MenuLabel *label, s32 index, s32 first, u8 mode) __asm__("func_801E7C50");
-#endif
-#ifndef XM_S_menu_quad_place
-#define XM_S_menu_quad_place
-void xm_menu_quad_place(POLY_FT4 *poly, u16 x, u16 y, u8 u, u8 v, u16 w, u16 h) __asm__("func_801E920C");
 #endif
 #ifndef XM_S_menu_set_rect_verts
 #define XM_S_menu_set_rect_verts
@@ -8833,7 +9331,56 @@ void func_801D3444(void) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D3488);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): menu_member_marks_show (src/decomp/src/slot39/menu_framework.c:4931). */
+#ifndef XM_S_menu_member_marks_show
+#define XM_S_menu_member_marks_show
+void xm_menu_member_marks_show(u8 row, u8 fighters) __asm__("func_801D3488");
+#endif
+#ifndef XM_S_menu_member_mark_x_table
+#define XM_S_menu_member_mark_x_table
+extern s32 xm_menu_member_mark_x_table[2] __asm__("D_801EA164");
+#endif
+#ifndef XM_S_menu_member_mark_y_table
+#define XM_S_menu_member_mark_y_table
+extern s32 xm_menu_member_mark_y_table[4] __asm__("D_801EA16C");
+#endif
+void xm_menu_member_marks_show(u8 row, u8 fighters) __asm__("func_801D3488");
+void xm_menu_member_marks_show(u8 row, u8 fighters) {
+    s32 count;
+    s32 i;
+    void *block;
+
+    if (!fighters) {
+        count = xm_menu_state_current->party_count;
+    } else {
+        count = xm_menu_state_current->fighters;
+    }
+    if (count != 1) {
+        if (xm_menu_state_current->flags->unknown67 == 0) {
+            block = xm_heap_alloc(0x1c4, 0);
+            xm_menu_state_current->marks = block;
+            xm_bzero(block, 0x1c4);
+            xm_menu_state_current->flags->unknown67 = 1;
+        }
+        for (i = 0; i < 2; i++) {
+            xm_sprite_sheet_draw_scaled(xm_menu_state_current->sheet, 0x164 + i, &xm_menu_state_current->marks->polys[i * 4], xm_menu_state_current->buffer_index,
+                          xm_menu_member_mark_x_table[i], xm_menu_member_mark_y_table[row], 0x1000);
+        }
+        for (i = 0; i < 4; i++) {
+            xm_menu_set_rect_verts(&xm_menu_state_current->marks->verts[i * 4],
+                          xm_menu_state_current->marks->polys[i * 2 + xm_menu_state_current->buffer_index].x0,
+                          xm_menu_state_current->marks->polys[i * 2 + xm_menu_state_current->buffer_index].y0,
+                          xm_menu_state_current->marks->polys[i * 2 + xm_menu_state_current->buffer_index].x1 -
+                              xm_menu_state_current->marks->polys[i * 2 + xm_menu_state_current->buffer_index].x0,
+                          xm_menu_state_current->marks->polys[i * 2 + xm_menu_state_current->buffer_index].y3 -
+                              xm_menu_state_current->marks->polys[i * 2 + xm_menu_state_current->buffer_index].y0);
+        }
+        xm_menu_state_current->marks->buffer = xm_menu_state_current->buffer_index;
+        xm_menu_state_current->flags->marks_shown = 1;
+    }
+}
+#endif
 #else
 
 extern s32 D_801EA164[];
@@ -8899,18 +9446,6 @@ void func_801D3674(void) {
 #define XM_S_menu_name_label_layout
 void xm_menu_name_label_layout(MenuLabel *label, u8 slot, u8 gear, u8 mode) __asm__("func_801D36E0");
 #endif
-#ifndef XM_S_menu_quad_init
-#define XM_S_menu_quad_init
-void xm_menu_quad_init(POLY_FT4 *poly) __asm__("func_801E927C");
-#endif
-#ifndef XM_S_text_plane1_clut
-#define XM_S_text_plane1_clut
-extern u16 xm_text_plane1_clut __asm__("g_SystemPalette2");
-#endif
-#ifndef XM_S_text_plane0_clut
-#define XM_S_text_plane0_clut
-extern u16 xm_text_plane0_clut __asm__("g_SystemPalette1");
-#endif
 #ifndef XM_S_menu_name_label_x_table
 #define XM_S_menu_name_label_x_table
 extern s32 xm_menu_name_label_x_table[4] __asm__("D_801EA17C");
@@ -8918,14 +9453,6 @@ extern s32 xm_menu_name_label_x_table[4] __asm__("D_801EA17C");
 #ifndef XM_S_menu_name_label_y_table
 #define XM_S_menu_name_label_y_table
 extern s32 xm_menu_name_label_y_table[4] __asm__("D_801EA18C");
-#endif
-#ifndef XM_S_menu_name_image_vram_x_table
-#define XM_S_menu_name_image_vram_x_table
-extern s32 xm_menu_name_image_vram_x_table[19] __asm__("D_801EA578");
-#endif
-#ifndef XM_S_menu_name_image_vram_y_table
-#define XM_S_menu_name_image_vram_y_table
-extern s32 xm_menu_name_image_vram_y_table[19] __asm__("D_801EA5C4");
 #endif
 void func_801D36E0(MenuLabel *label, u8 slot, u8 gear, u8 mode) {
     s32 x;
@@ -9020,7 +9547,44 @@ void func_801D36E0(MenuString* pStr, s32 slot, s32 variant, s32 style) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D397C);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): menu_panel_open (src/decomp/src/slot39/menu_framework.c:5007). */
+#ifndef XM_S_menu_panel_layout
+#define XM_S_menu_panel_layout
+void xm_menu_panel_layout(u8 index, u16 x, u16 y, u16 w, u16 h, u8 flat, s32 ot_entry, u8 has_bar) __asm__("func_801D4D1C");
+#endif
+void xm_menu_panel_open(u8 index, u16 x, u16 y, u16 w, u16 h, u8 grow, u8 flat, s32 ot_entry, u8 has_bar) __asm__("func_801D397C");
+void xm_menu_panel_open(u8 index, u16 x, u16 y, u16 w, u16 h, u8 grow, u8 flat, s32 ot_entry, u8 has_bar) {
+    MenuGrowth *mark;
+    void *block;
+
+    if (index >= 2) {
+        block = xm_heap_alloc(0x720, 0);
+        xm_menu_state_current->panels[index] = block;
+        xm_bzero(block, 0x720);
+        block = xm_heap_alloc(0x18, 0);
+        xm_menu_state_current->growth[index] = block;
+        xm_bzero(block, 0x18);
+        xm_menu_panel_init(index);
+    }
+    mark = xm_menu_state_current->growth[index];
+    if (grow) {
+        mark->index = index;
+        mark->done = 0;
+        mark->x = x;
+        mark->y = y;
+        mark->w = w;
+        mark->h = h;
+        mark->cur_w = 0;
+        mark->cur_h = 0;
+        xm_menu_state_current->flags->panels_growing[index] = 1;
+        mark->flat = flat;
+        mark->ot_entry = ot_entry;
+        return;
+    }
+    xm_menu_panel_layout(index, x, y, w, h, flat, ot_entry, has_bar);
+}
+#endif
 #else
 extern void func_801D4D1C(u8 windowIndex, u16 x, u16 y, u16 w, u16 h,
                           u8 unk714, s32 zIndex, u8 hasScrollBar);
@@ -10003,10 +10567,6 @@ void xm_menu_detail_layout_hp(u8 slot, u8 gear) __asm__("func_801D6338");
 #define XM_S_menu_detail_hp_x
 extern s32 xm_menu_detail_hp_x __asm__("D_801E9CF0");
 #endif
-#ifndef XM_S_menu_split_digits
-#define XM_S_menu_split_digits
-void xm_menu_split_digits(u32 value) __asm__("func_801C80B8");
-#endif
 #ifndef XM_S_menu_detail_hp_y
 #define XM_S_menu_detail_hp_y
 extern s32 xm_menu_detail_hp_y __asm__("D_801E9CF4");
@@ -10755,7 +11315,46 @@ void func_801D7C3C(u8 arg0, u8 arg1) {
 extern s32 D_801E977C[];
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D7CFC);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): menu_detail_layout_tabs (src/decomp/src/slot39/menu_framework.c:5901). */
+#ifndef XM_S_menu_detail_layout_tabs
+#define XM_S_menu_detail_layout_tabs
+void xm_menu_detail_layout_tabs(u8 slot, u8 shown, u8 second) __asm__("func_801D7CFC");
+#endif
+#ifndef XM_S_menu_detail_tab_images
+#define XM_S_menu_detail_tab_images
+extern s32 xm_menu_detail_tab_images[2] __asm__("D_801E977C");
+#endif
+void xm_menu_detail_layout_tabs(u8 slot, u8 shown, u8 second) __asm__("func_801D7CFC");
+void xm_menu_detail_layout_tabs(u8 slot, u8 shown, u8 second) {
+    s32 i;
+    s32 dim;
+
+    second = second == 0; 
+    xm_menu_state_current->detail->tabCount = 0;
+    if (shown) {
+        for (i = 0; i < 2; i++) {
+            xm_sprite_sheet_draw_scaled(xm_menu_state_current->sheet, xm_menu_detail_tab_images[i], &xm_menu_state_current->detail->tabs[i * 2],
+                          xm_menu_state_current->buffer_index, i * 0x20 + 0x78, 0x5a, 0x1000);
+            xm_menu_set_rect_verts(xm_menu_state_current->detail->tabsAt[i],
+                          xm_menu_state_current->detail->tabs[i * 2 + xm_menu_state_current->buffer_index].x0,
+                          xm_menu_state_current->detail->tabs[i * 2 + xm_menu_state_current->buffer_index].y0,
+                          xm_menu_state_current->detail->tabs[i * 2 + xm_menu_state_current->buffer_index].x1 -
+                              xm_menu_state_current->detail->tabs[i * 2 + xm_menu_state_current->buffer_index].x0,
+                          xm_menu_state_current->detail->tabs[i * 2 + xm_menu_state_current->buffer_index].y3 -
+                              xm_menu_state_current->detail->tabs[i * 2 + xm_menu_state_current->buffer_index].y0);
+        }
+        dim = second * 2;
+        xm_menu_quad_set_semi_transparent(xm_menu_state_current->detail->tabs + (dim + xm_menu_state_current->buffer_index));
+        xm_menu_state_current->detail->tabs[dim + xm_menu_state_current->buffer_index].tpage |= 0x20;
+        (xm_menu_state_current->detail->tabs + (dim + xm_menu_state_current->buffer_index))->r0 = 0x20;
+        (xm_menu_state_current->detail->tabs + (dim + xm_menu_state_current->buffer_index))->g0 = 0x20;
+        (xm_menu_state_current->detail->tabs + (dim + xm_menu_state_current->buffer_index))->b0 = 0x20;
+        xm_menu_state_current->detail->tabBuffer = xm_menu_state_current->buffer_index;
+        xm_menu_state_current->detail->tabCount = 2;
+    }
+}
+#endif
 #else
 void func_801D7CFC(s32 arg0, s32 arg1, s32 arg2) {
     void* pMenu;
@@ -10841,7 +11440,67 @@ void func_801D7CFC(s32 arg0, s32 arg1, s32 arg2) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D7F50);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): menu_equip_panel_layout_stat_names (src/decomp/src/slot39/menu_framework.c:5932). */
+#ifndef XM_S_menu_equip_panel_layout_stat_names
+#define XM_S_menu_equip_panel_layout_stat_names
+void xm_menu_equip_panel_layout_stat_names(s32 x, s32 y, u8 first) __asm__("func_801D7F50");
+#endif
+#ifndef XM_S_sprite_sheet_get_texture
+#define XM_S_sprite_sheet_get_texture
+void xm_sprite_sheet_get_texture(u16 *sheet, s32 id, s32 *first, s32 *mode, s32 *clut_x, s32 *clut_y, s32 *x, s32 *y) __asm__("func_80026338");
+#endif
+#ifndef XM_S_menu_stat_name_images
+#define XM_S_menu_stat_name_images
+extern s32 xm_menu_stat_name_images[14] __asm__("D_801EA45C");
+#endif
+#ifndef XM_S_menu_stat_name_x_table
+#define XM_S_menu_stat_name_x_table
+extern s32 xm_menu_stat_name_x_table[7] __asm__("D_801E9D40");
+#endif
+#ifndef XM_S_menu_stat_name_y_table
+#define XM_S_menu_stat_name_y_table
+extern s32 xm_menu_stat_name_y_table[7] __asm__("D_801E9D5C");
+#endif
+void xm_menu_equip_panel_layout_stat_names(s32 x, s32 y, u8 first) __asm__("func_801D7F50");
+void xm_menu_equip_panel_layout_stat_names(s32 x, s32 y, u8 first) {
+    s32 clutX;
+    s32 clutY;
+    s32 pageX;
+    s32 pageY;
+    s32 u;
+    s32 v;
+    s32 i;
+    s32 start;
+    s32 part;
+
+    xm_sprite_sheet_get_texture(xm_menu_state_current->sheet, 0xe0, &clutX, &clutY, &pageX, &pageY, &u, &v);
+    xm_menu_state_current->equip_panel->kind = 0;
+    for (i = 0; i < 7 - first; i++) {
+        start = xm_menu_state_current->equip_panel->kind;
+        xm_menu_state_current->equip_panel->kind += xm_sprite_sheet_draw_scaled(xm_menu_state_current->sheet, xm_menu_stat_name_images[first * 7 + i],
+                                                    &xm_menu_state_current->equip_panel->polys[start * 2], xm_menu_state_current->buffer_index,
+                                                    x + xm_menu_stat_name_x_table[i], y + xm_menu_stat_name_y_table[i], 0x1000);
+        if (i & 1) {
+            for (part = start; part < xm_menu_state_current->equip_panel->kind; part++) {
+                xm_SetShadeTex(&xm_menu_state_current->equip_panel->polys[part * 2 + xm_menu_state_current->buffer_index], 0);
+                (xm_menu_state_current->equip_panel->polys + (part * 2 + xm_menu_state_current->buffer_index))->r0 = 0x40;
+                (xm_menu_state_current->equip_panel->polys + (part * 2 + xm_menu_state_current->buffer_index))->g0 = 0x40;
+                (xm_menu_state_current->equip_panel->polys + (part * 2 + xm_menu_state_current->buffer_index))->b0 = 0x40;
+            }
+        }
+    }
+    for (i = 0; i < xm_menu_state_current->equip_panel->kind; i++) {
+        xm_menu_set_rect_verts(&xm_menu_state_current->equip_panel->verts[i * 4],
+                      xm_menu_state_current->equip_panel->polys[i * 2 + xm_menu_state_current->buffer_index].x0,
+                      xm_menu_state_current->equip_panel->polys[i * 2 + xm_menu_state_current->buffer_index].y0,
+                      xm_menu_state_current->equip_panel->polys[i * 2 + xm_menu_state_current->buffer_index].x1 -
+                          xm_menu_state_current->equip_panel->polys[i * 2 + xm_menu_state_current->buffer_index].x0,
+                      xm_menu_state_current->equip_panel->polys[i * 2 + xm_menu_state_current->buffer_index].y3 -
+                          xm_menu_state_current->equip_panel->polys[i * 2 + xm_menu_state_current->buffer_index].y0);
+    }
+}
+#endif
 #else
 extern s32 D_801E9D40[];
 extern s32 D_801E9D5C[];
@@ -11748,14 +12407,6 @@ void xm_menu_item_screen_build_list(s32 row) __asm__("func_801DA5BC");
 #define XM_S_text_get_item_name
 u8 *xm_text_get_item_name(s32 index) __asm__("GetItemName");
 #endif
-#ifndef XM_S_text_decode_codes
-#define XM_S_text_decode_codes
-void xm_text_decode_codes(void *codes, u8 *out, s32 count) __asm__("func_80033B34");
-#endif
-#ifndef XM_S_menu_state_screen_parameter
-#define XM_S_menu_state_screen_parameter
-extern u8 xm_menu_state_screen_parameter __asm__("D_80059171");
-#endif
 void func_801DA5BC(s32 row) {
     u8 codes[4];
     u8 text[8];
@@ -12214,20 +12865,6 @@ void func_801DB39C(s32 mode) {
 #ifndef XENO_PC_PORT
 #ifndef XENO_PC_PORT
 /* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): menu_target_panels_build (src/decomp/src/slot39/menu_framework.c:6965). */
-#ifndef XM_T_MenuAnchor
-#define XM_T_MenuAnchor
-typedef struct MenuAnchor {
-    s32 parts[9]; 
-    s32 face; 
-    s32 base; 
-    s32 unk2C; 
-    s32 hp; 
-    s32 hpMax; 
-    s32 ep; 
-    s32 epMax; 
-    s32 label; 
-} MenuAnchor;
-#endif
 #ifndef XM_S_menu_target_panels_build
 #define XM_S_menu_target_panels_build
 void xm_menu_target_panels_build(u8 mode) __asm__("func_801DB5E4");
@@ -14590,10 +15227,6 @@ void xm_menu_deathblow_screen_open(void) __asm__("func_801E1014");
 #define XM_S_menu_load_or_release_data_set
 void xm_menu_load_or_release_data_set(u8 code) __asm__("func_801C72BC");
 #endif
-#ifndef XM_S_menu_label_render_table
-#define XM_S_menu_label_render_table
-void xm_menu_label_render_table(u8 count, MenuLabel *labels, u8 *table, u8 *flags) __asm__("func_801E8018");
-#endif
 #ifndef XM_S_menu_deathblow_screen_label_ids
 #define XM_S_menu_deathblow_screen_label_ids
 extern u8 xm_menu_deathblow_screen_label_ids[] __asm__("D_801EA564");
@@ -14606,10 +15239,6 @@ void xm_menu_label_place(u8 count, MenuLabel *labels, u8 *table, s32 *offsets, u
 #ifndef XM_S_menu_file_command_label_x_offsets
 #define XM_S_menu_file_command_label_x_offsets
 extern s32 xm_menu_file_command_label_x_offsets[] __asm__("D_801E9EA0");
-#endif
-#ifndef XM_S_menu_member_marks_show
-#define XM_S_menu_member_marks_show
-void xm_menu_member_marks_show(u8 row, u8 fighters) __asm__("func_801D3488");
 #endif
 #ifndef XM_S_SetPolyG4
 #define XM_S_SetPolyG4
@@ -15224,7 +15853,458 @@ void func_801E3A80(void* pCtx, u8 charIdx) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E3C2C);
+#ifndef XENO_PC_PORT
+/* Adopted from EtherAura xenogears (GPL-3.0, github.com/EtherAura/xenogears @e54f35a): computeGearStatusStats (src/menu/m_801E3088.c). */
+#ifndef XM_T_xm_MenuWeaponStats
+#define XM_T_xm_MenuWeaponStats
+typedef struct {
+     u16 m0_equipMask;  
+     u8 m2[2];
+     u16 m4_price;      
+     u8 m6_slotType[2];
+     u16 m8_statusMask;
+     u8 mA_statusChance;
+     u8 mB_statusType;
+     u8 mC_power;
+     u8 mD[3];
+} xm_MenuWeaponStats;
+#endif
+#ifndef XM_T_xm_MenuAccessoryStats
+#define XM_T_xm_MenuAccessoryStats
+typedef struct {
+     u16 m0_equipMask;  
+     u16 m2_price;      
+     u8 m4[4];
+     u8 m8_defence;
+     u8 m9_type;
+     s16 mA_value;   
+     s16 mC_flags;   
+     u16 mE_exclusiveGroup;         
+} xm_MenuAccessoryStats;
+#endif
+#ifndef XM_T_xm_MenuGearFrame
+#define XM_T_xm_MenuGearFrame
+typedef struct {
+     u32 m0_gearMask;  
+     s32 m4_hp;
+     u16 m8_weight;           
+     u16 mA_price;     
+     u8 mC[0x14 - 0x0C];
+     u8 m14_agility;
+     u8 m15_etherAmp;
+     u8 m16;
+     u8 m17_response;
+} xm_MenuGearFrame;
+#endif
+#ifndef XM_T_xm_MenuGearEngine
+#define XM_T_xm_MenuGearEngine
+typedef struct {
+     u32 m0_gearMask;  
+     u8 m4[2];
+     u16 m6_fuel;
+     u8 m8[2];
+     u16 mA_price;     
+     u8 mC_output;
+     u8 mD;
+     u8 mE_attackMultiplier;
+     u8 mF;
+} xm_MenuGearEngine;
+#endif
+#ifndef XM_T_xm_MenuGearArmor
+#define XM_T_xm_MenuGearArmor
+typedef struct {
+     u32 m0_gearMask;  
+     u16 m4_price;     
+     u8 m6[2];
+     u16 m8_defence;
+     u16 mA_etherDefence;
+     u8 mC[0x14 - 0x0C];
+} xm_MenuGearArmor;
+#endif
+#ifndef XM_T_xm_MenuGearAccessory
+#define XM_T_xm_MenuGearAccessory
+typedef struct {
+     u32 m0_gearMask;  
+     u16 m4_price;     
+     u16 m6_weight;
+     u16 m8_exclusiveGroup;           
+     u8 mA[0xD - 0xA];
+     u8 mD_defence;            
+     u8 mE_etherDefence;
+     u8 mF;
+     u8 m10_terrainAgility[4];
+     u8 m14_response;
+     u8 m15_type;
+     u16 m16_value;
+     u8 m18;
+     u8 m19;
+     u8 m1A_resistanceAmount;
+     u8 m1B_etherAmp;
+} xm_MenuGearAccessory;
+#endif
+#ifndef XM_T_xm_MenuGearWeapon
+#define XM_T_xm_MenuGearWeapon
+typedef struct {
+     u8 m0_extraFileIndex;
+     u8 m1_weaponAnimOffset0;
+     u8 m2_weaponAnimOffset1;
+     u8 m3_weaponAnimOffset2;
+     u32 m4_gearMask;  
+     u16 m8_price;     
+     u8 mA[0xE - 0xA];
+     u8 mE_power;
+     u8 mF_slotType;
+     u8 m10_statusChance;
+     u8 m11_statusType;
+     u16 m12_statusMask;
+} xm_MenuGearWeapon;
+#endif
+#ifndef XM_T_xm_MenuUsableItem
+#define XM_T_xm_MenuUsableItem
+typedef struct {
+     u8 m0[2];
+     u16 m2_price;      
+     u16 m4_target;  
+     u8 m6_flags;    
+     u8 m7;
+     u8 m8_amount;
+     u8 m9;
+     s16 mA_flags;   
+     s16 mC_flags;
+     u8 mE[2];
+} xm_MenuUsableItem;
+#endif
+#ifndef XM_T_xm_MenuEtherData
+#define XM_T_xm_MenuEtherData
+typedef struct {
+     u8 m0[0x11];
+     u8 m11_power;
+     u8 m12[5];
+     u8 m17_glyph;   
+     u8 m18[0x28 - 0x18];
+} xm_MenuEtherData;
+#endif
+#ifndef XM_T_xm_MenuGearDataSub
+#define XM_T_xm_MenuGearDataSub
+typedef struct {
+     u8 m0[0x24];
+     u16 m24_fuelCost;
+} xm_MenuGearDataSub;
+#endif
+#ifndef XM_T_xm_MenuGearData
+#define XM_T_xm_MenuGearData
+typedef struct {
+     u8 m0[0x5C8];
+     xm_MenuGearDataSub m5C8_firstSkill;
+} xm_MenuGearData;
+#endif
+#ifndef XM_T_xm_MenuGearStats
+#define XM_T_xm_MenuGearStats
+typedef struct {
+     s32 m0_hp;
+     s32 m4_maxHp;
+     u16 m8_defence;
+     u16 mA_etherDefence;
+     u16 mC_totalWeight;
+     u16 mE;
+     u16 m10_fuel;
+     u16 m12_maxFuel;
+     u16 m14_attack;
+     u8 m16_response;
+     u8 m17_agility;
+     u8 m18_etherAmp;
+     u8 m19;
+     u8 m1A;
+     u8 m1B;
+} xm_MenuGearStats;
+#endif
+#ifndef XM_T_xm_MenuContext_330
+#define XM_T_xm_MenuContext_330
+typedef struct xm_MenuContext_330 {
+     xm_MenuWeaponStats* m0_weaponStats;
+     xm_MenuAccessoryStats* m4_accessoryData;
+     xm_MenuGearFrame* m8_gearFrames;
+     xm_MenuGearEngine* mC_gearEngines;
+     xm_MenuGearArmor* m10_gearArmors;
+     xm_MenuGearAccessory* m14_gearAccessories;
+     xm_MenuGearWeapon* m18_gearWeapons;
+     xm_MenuUsableItem* m1C_usableItems;
+     xm_MenuEtherData* m20_perCharacter[11];
+     xm_MenuGearData* m4C_perGear[20];
+     xm_MenuGearStats m9C_gearStats;
+     u16 mB8_computedStats[9]; 
+
+     u8 mCA[2];
+} xm_MenuContext_330;
+#endif
+#ifndef XM_T_xm_GameStateGearSlot
+#define XM_T_xm_GameStateGearSlot
+typedef struct {
+     u8 m0_weaponPower;             
+     u8 m1_weaponStatusChance;
+     u8 m2_weaponStatusType;             
+     u8 m3_weaponId;
+     u8 m4[2];
+     u16 m6_nextWeaponStatusMask; 
+} xm_GameStateGearSlot;
+#endif
+#ifndef XM_T_xm_GameStateGear
+#define XM_T_xm_GameStateGear
+typedef struct {
+     u8 m0[2];
+     u8 m2_frame;           
+     u8 m3_engine;          
+     u8 m4_slotItem[4];     
+     u8 m8_armor;           
+     u8 m9_accessorySlots[3];
+     u8 mC_weapon[4];       
+
+     s16 m10_weaponStatusMask;
+     xm_GameStateGearSlot m12_slots[4]; 
+     u8 m32[0x38 - 0x32];
+     u16 m38_fuel;    
+     u16 m3A_maxFuel;
+     u8 m3C_engineOutput;
+     u8 m3D[2];
+     u8 m3F_attackMultiplier;
+     u16 m40_accessoryDefence;               
+     u16 m42_accessoryEtherDefence;
+     u16 m44_accessoryWeight;
+     u16 m46;               
+     u16 m48;
+     u8 m4A_agilityPenalty;
+     u8 m4B;
+     u8 m4C;
+     u8 m4D_accessoryResponse;
+     u8 m4E_accessoryAgility;
+     u8 m4F_frameRepairLevel;
+     u8 m50_terrainAgility[4];
+     u8 m54_accessoryEtherAmp;
+     u8 m55_accessoryBonuses[3];             
+     u8 m58[0x5C - 0x58];
+     u8 m5C_extraFileIndex;
+     u8 m5D_weaponAnimOffsets[3];
+     s32 m60_hp;
+     s32 m64_maxHp;
+     u16 m68_weight;
+     u16 m6A;
+     u16 m6C;
+     u16 m6E_elementResistanceMask;
+     u16 m70_defence;
+     u16 m72_etherDefence;
+     u8 m74_baseAttackMultiplier;
+     u8 m75_weightAllowance;
+     u8 m76[0x7C - 0x76];
+     u16 m7C_statusFlags;         
+     u16 m7E_statusFlags1;
+     u16 m80_statusFlags2;
+     u16 m82_statusFlags3;
+     u16 m84_statusFlags4;
+     u16 m86_statusFlags5;
+     u8 m88_elementResistances[0x98 - 0x88];   
+     u8 m98_agility;
+     u8 m99_defenceDown;
+     u8 m9A[2];
+     u8 m9C;
+     u8 m9D;
+     u8 m9E_etherAmp;
+     u8 m9F_response;
+     u8 mA0[0xA4 - 0xA0];
+} xm_GameStateGear;
+#endif
+#ifndef XM_T_xm_GameStateCharacterSub4
+#define XM_T_xm_GameStateCharacterSub4
+typedef struct {
+     u8 m0_weaponPower;             
+     u8 m1[3];
+     u16 m4_nextWeaponStatusMask;            
+     u8 m6_nextWeaponStatusChance;             
+     u8 m7_nextWeaponStatusType;             
+} xm_GameStateCharacterSub4;
+#endif
+#ifndef XM_T_xm_GameStateCharacter
+#define XM_T_xm_GameStateCharacter
+typedef struct {
+     u16 m0_weaponStatusMask;
+     u8 m2_weaponStatusChance;
+     u8 m3_weaponStatusType;
+     xm_GameStateCharacterSub4 m4_weaponSlots[4];
+     u8 m24[4];
+     u8 m28_attackBonus;
+     u8 m29_defenceBonus;
+     u8 m2A_agilityBonus;
+     u8 m2B_etherBonus;
+     u8 m2C_etherDefenceBonus;
+     u8 m2D_accessoryDefence;
+     u8 m2E_hitBonus;
+     u8 m2F_evadeBonus;
+     u8 m30_maxHpBonus;
+     u8 m31_maxMpBonus;
+     u16 m32_accessoryFlags;
+     u16 m34_monsterFlags;          
+     u16 m36_monsterFlags2;
+     u16 m38_weaknessFlags;
+     s16 m3A_killCount;
+     s32 m3C_experience;
+     s32 m40_experience2;
+     s32 m44_expToNextLevel;
+     s32 m48_expToNextLevel2;
+     u16 m4C_HP;
+     u16 m4E_MaxHP;
+     u16 m50_MP;
+     u16 m52_MaxMP;
+     u8 m54_infinityCharge;
+     u8 m55_deathblowLearnRate;
+     u8 m56_battleCommandLoadout;
+     u8 m57;
+     u8 m58_attack;
+     u8 m59_defence;
+     u8 m5A_agility;
+     u8 m5B_ether;
+     u8 m5C_etherDefence;
+     u8 m5D;
+     u8 m5E_hitPercentage;
+     u8 m5F_evadePercentage;
+     u8 m60_effectChance;
+     u8 m61;
+     u8 m62_Level;
+     u8 m63_Level2;
+     u8 m64;
+     u8 m65;
+     u8 m66;
+     u8 m67;
+     u8 m68[2];
+     u8 m6A_weaponModifier[5]; 
+     u8 m6F_equipment[5];      
+     u8 m74_accessorySlots[3];
+     u8 m77_baseWeight;
+     u8 m78_weightGain;
+     u8 m79_weightTenths;
+     u16 m7A_commandEnabledBF;
+     u16 m7C_statusFlags[4];       
+
+     u16 m84_statusFlags2[6];       
+     u16 m90_deathblowProgress[8];
+     u8 mA0_gearNum;
+     u8 mA1_deathblowLearnBonus;
+     u8 mA2[2];
+} xm_GameStateCharacter;
+#endif
+#ifndef XM_T_xm_GameStateSize20
+#define XM_T_xm_GameStateSize20
+typedef struct {
+     u16 m0_unlockedAbilitiesBitField[8];
+     u8 m10[0x17 - 0x10];
+     u8 m17_energyPerTurn; 
+     u8 m18[2];
+     u16 m1A_unlockedGearAbilities;
+     u8 m1C[4];
+} xm_GameStateSize20;
+#endif
+#ifndef XM_T_xm_GameState
+#define XM_T_xm_GameState
+typedef struct {
+     u8 m0_names[31][0x14];
+     xm_GameStateCharacter m26C_party[11];
+     xm_GameStateGear m978_gears[20];
+     u8 m1648[0x16C0 - 0x1648];
+     xm_GameStateSize20 m16C0_abilities[11];
+     u16 m1820_worldmapPosition[6]; 
+     u16 m182C_vehiclePosition[4];  
+     u16 m1834_vehicleMode;
+     u16 m1836_restoreWorldmapPosition;      
+     u8 m1838[0x183C - 0x1838];
+     u16 m183C_isOnGearBackup[3]; 
+     u16 m1842_disableWorldmapMinimap;
+     u16 m1844_waypointShipPosition[2];
+     u16 m1848_waypointShipWaypoint;
+     u16 m184A_waypointShipPlaced;
+     u16 m184C_flyingShipXLow;
+     u16 m184E_flyingShipPosition[5];  
+     u8 m1858[0x1924 - 0x1858];
+     s32 m1924_gold;
+     u8 m1928[0x1930 - 0x1928];
+     u16 m1930_fieldVarsBackup[512];
+     u16 m1D30_partyMemberBitField;
+     u16 m1D32_partyFrameMask;
+     u8 m1D34_currentParty[3];
+     u8 m1D37;
+    
+
+     u8 m1D38_inventory1Counts[100];
+     u8 m1D9C_inventory1Ids[100];
+     u8 m1E00_inventory2Counts[200];
+     u8 m1EC8_inventory2Ids[200];
+     u8 m1F90_inventory0Counts[150];
+     u8 m2026_inventory0Ids[150];
+     u8 m20BC_inventory3Counts[100];
+     u8 m2120_inventory3Ids[100];
+     u8 m2184_inventory4Counts[150];
+     u8 m221A_inventory4Ids[150];
+     u8 m22B0;
+     u8 m22B1_isOnGear[3];  
+     u8 m22B4[0x22B6 - 0x22B4];
+     u16 m22B6_gameFlags;
+     u8 m22B8_ammoCounts[0x2318 - 0x22B8]; 
+
+     u16 m2318_partyFrameLock;
+     u16 m231A_fieldID;
+     u16 m231C_cameraYaw;
+     s16 m231E_worldmapInitialPositionIndex;
+     u16 m2320_worldmapMode;
+     u16 m2322_previouslyPlayingMusic;
+     u16 m2324_battleScriptVars[16]; 
+     u8 m2344[0x2358 - 0x2344];
+} xm_GameState;
+#endif
+#ifndef XM_S_computeGearStatusStats
+#define XM_S_computeGearStatusStats
+void xm_computeGearStatusStats(xm_MenuContext_330* ctx, u8 gearId) __asm__("func_801E3C2C");
+#endif
+#ifndef XM_S_gameState
+#define XM_S_gameState
+extern xm_GameState xm_gameState __asm__("g_GameState");
+#endif
+#ifndef XM_S_gearPilotIds
+#define XM_S_gearPilotIds
+extern u8 xm_gearPilotIds[20] __asm__("D_801E9808");
+#endif
+void xm_computeGearStatusStats(xm_MenuContext_330* ctx, u8 gearId) __asm__("func_801E3C2C");
+void xm_computeGearStatusStats(xm_MenuContext_330* ctx, u8 gearId) {
+    xm_GameStateGear* gear;
+    xm_GameStateCharacter* pilot;
+    s32 power;
+
+    if (xm_gameState.m22B6_gameFlags & 0x1000) {
+        xm_gearPilotIds[9] = 10;
+    }
+    if (gearId == 7) {
+        xm_gameState.m978_gears[7].m60_hp = xm_gameState.m26C_party[7].m4C_HP * 50;
+        xm_gameState.m978_gears[7].m64_maxHp = xm_gameState.m26C_party[7].m4E_MaxHP * 50;
+        xm_gameState.m978_gears[7].m3C_engineOutput = xm_gameState.m26C_party[7].m58_attack + xm_gameState.m26C_party[7].m28_attackBonus;
+        xm_gameState.m978_gears[7].m70_defence = (xm_gameState.m26C_party[7].m59_defence + xm_gameState.m26C_party[7].m29_defenceBonus) * 12;
+        xm_gameState.m978_gears[7].m72_etherDefence = (xm_gameState.m26C_party[7].m5C_etherDefence + xm_gameState.m26C_party[7].m2C_etherDefenceBonus) * 6;
+        xm_gameState.m978_gears[7].m98_agility = xm_gameState.m26C_party[7].m5A_agility + xm_gameState.m26C_party[7].m2A_agilityBonus;
+    }
+    gear = &xm_gameState.m978_gears[gearId];
+    pilot = &xm_gameState.m26C_party[xm_gearPilotIds[gearId]];
+    ctx->m9C_gearStats.m0_hp = gear->m60_hp;
+    ctx->m9C_gearStats.m4_maxHp = gear->m64_maxHp;
+    ctx->m9C_gearStats.m8_defence = gear->m70_defence + gear->m40_accessoryDefence;
+    ctx->m9C_gearStats.mA_etherDefence = pilot->m5C_etherDefence + pilot->m2C_etherDefenceBonus + gear->m42_accessoryEtherDefence + gear->m72_etherDefence;
+    ctx->m9C_gearStats.mC_totalWeight = gear->m68_weight + gear->m44_accessoryWeight;
+    ctx->m9C_gearStats.mE = gear->m6A;
+    ctx->m9C_gearStats.m10_fuel = gear->m38_fuel;
+    ctx->m9C_gearStats.m12_maxFuel = gear->m3A_maxFuel;
+    power = gear->m3C_engineOutput * (gear->m74_baseAttackMultiplier + gear->m55_accessoryBonuses[1]);
+    ctx->m9C_gearStats.m14_attack = ((gearId == 5 || gearId == 13) ? (gear->m12_slots[0].m0_weaponPower + gear->m12_slots[2].m0_weaponPower) * 6 / 10 : gear->m12_slots[0].m0_weaponPower) + power;
+    ctx->m9C_gearStats.m16_response = gear->m9F_response + gear->m4D_accessoryResponse;
+    ctx->m9C_gearStats.m17_agility = gear->m98_agility - gear->m4A_agilityPenalty;
+    ctx->m9C_gearStats.m18_etherAmp = gear->m9E_etherAmp + gear->m54_accessoryEtherAmp;
+    ctx->m9C_gearStats.m19 = gear->m9D;
+    ctx->m9C_gearStats.m1A = gear->m9C;
+}
+#endif
 #else
 extern u8 D_801E9808[];
 /* Gear preview aggregate. Resource offsets 0x9C..0xB6 are inside the

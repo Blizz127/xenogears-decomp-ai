@@ -148,7 +148,201 @@ extern int FieldScriptArgument5(int index, int mask);
 extern int FieldScriptArgument6(int index, int mask);
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80091BBC);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_event_vram_rectangle (src/decomp/src/field/field_event.c:4479). */
+#ifndef XM_T_xm_Fixed
+#define XM_T_xm_Fixed
+typedef union {
+    s32 value;
+    struct {
+        u16 fraction;
+        s16 whole;
+    } part;
+} xm_Fixed;
+#endif
+#ifndef XM_T_xm_ScriptSlot
+#define XM_T_xm_ScriptSlot
+typedef struct xm_ScriptSlot {
+    u16 resume_pc;      
+    u8 countdown;       
+    u8 tag;             
+    u32 value : 16;     
+    u32 unk16 : 2;
+    u32 priority : 4;   
+    u32 unk22 : 1;
+    u32 move_mode : 2;  
+    u32 unk25 : 7;
+} xm_ScriptSlot;
+#endif
+#ifndef XM_T_xm_PlatformLink
+#define XM_T_xm_PlatformLink
+typedef struct xm_PlatformLink {
+    SVECTOR rotation; 
+    s16 radius;       
+    s16 unkA;
+} xm_PlatformLink;
+#endif
+#ifndef XM_T_xm_ActorState
+#define XM_T_xm_ActorState
+typedef struct {
+    u32 mode : 2;   
+    u32 unk2 : 3;   
+    u32 unk5 : 1;   
+    u32 depth : 3;  
+    u32 octant : 3; 
+    u32 unk12 : 1;  
+    u32 layer : 3;  
+    u32 unk16 : 2;  
+    u32 unk18 : 10; 
+    u32 unk28 : 4;
+} xm_ActorState;
+#endif
+#ifndef XM_T_xm_FieldActor
+#define XM_T_xm_FieldActor
+typedef struct xm_FieldActor {
+    u32 flags;           
+    u32 layer_flags;     
+    s16 triangle[4];     
+    s16 layer;           
+    u8 unk012[2];
+    u32 floor_attribute; 
+    s16 unk18;           
+    s16 height;          
+    xm_Fixed gravity;       
+    s32 position[3];     
+    u8 unk02C[4];
+    s32 unk030[3];       
+    u8 unk03C[4];
+    s32 unk40[3];        
+    u8 unk04C[4];
+    s32 unk50[3];        
+    u8 unk05C[4];
+    s16 unk60;           
+    s16 unk62;           
+    s16 unk64;           
+    u8 unk066[2];
+    s16 last_position[3]; 
+    u16 stuck;           
+    s16 unk70;           
+    s16 unk72;           
+    u8 ridden_actor;     
+    u8 unk075;           
+    s16 unk76;           
+    u16 call_stack[4];   
+    u8 character;        
+    u8 unk081;
+    u8 unk82;            
+    u8 unk83;            
+    s32 unk84;           
+    s16 unk88;           
+    s16 unk8A;           
+    xm_ScriptSlot slots[8]; 
+    u16 pc;              
+    u8 slot;             
+    u8 unk0CF;
+    s32 target[3];       
+    u8 unk0DC[0xE2 - 0xDC];
+    u8 unkE2;            
+    u8 unk0E3;
+    s16 unkE4;           
+    s16 unkE6;           
+    s16 unkE8;           
+    s16 unk0EA;          
+    s16 unkEC;           
+    s16 unkEE;           
+    s32 unkF0;           
+    s16 scale[3];        
+    u8 unk0FA[2];
+    u8 color0[3];        
+    u8 color1[3];        
+    u16 unk102;          
+    s16 heading;         
+    s16 heading_goal;    
+    s16 unk108;          
+    u16 sound;           
+    u8 sound_volume;     
+    u8 sound_mode;       
+    u8 unk10E[0x110 - 0x10E];
+    struct xm_PlatformLink *link; 
+    void *unk114;        
+    s32 *list;           
+    u16 unk11C;          
+    s16 unk11E;          
+    void *unk120;        
+    s16 unk124;          
+    u8 unk126;           
+    u8 unk127;           
+    u16 unk128;          
+    u8 unk12A[2];
+    union {
+        u32 word;
+        xm_ActorState bits;
+    } state;             
+    u32 unk130 : 9;      
+    u32 unk130_9 : 10;   
+    u32 unk130_19 : 9;   
+    u32 sprite_kind : 2; 
+    u32 unk130_30 : 2;
+    u32 unk134;          
+} xm_FieldActor;
+#endif
+#ifndef XM_T_EVENT_OPERAND_BYTE
+#define XM_T_EVENT_OPERAND_BYTE
+#define EVENT_OPERAND_BYTE(offset) (xm_field_event_bytecode[xm_field_current_event_actor->pc + (offset)])
+#endif
+#ifndef XM_S_field_event_vram_rectangle
+#define XM_S_field_event_vram_rectangle
+void xm_field_event_vram_rectangle(void) __asm__("func_80091BBC");
+#endif
+#ifndef XM_S_field_event_read_selected_operand_80
+#define XM_S_field_event_read_selected_operand_80
+s32 xm_field_event_read_selected_operand_80(s32 offset, s32 flags) __asm__("FieldScriptArgument1");
+#endif
+#ifndef XM_S_field_event_bytecode
+#define XM_S_field_event_bytecode
+extern u8 *xm_field_event_bytecode __asm__("g_FieldScriptVMCurScriptData");
+#endif
+#ifndef XM_S_field_current_event_actor
+#define XM_S_field_current_event_actor
+extern xm_FieldActor *xm_field_current_event_actor __asm__("g_FieldScriptVMCurActor");
+#endif
+#ifndef XM_S_field_event_read_selected_operand_40
+#define XM_S_field_event_read_selected_operand_40
+s32 xm_field_event_read_selected_operand_40(s32 offset, s32 flags) __asm__("FieldScriptArgument2");
+#endif
+#ifndef XM_S_field_event_read_selected_operand_20
+#define XM_S_field_event_read_selected_operand_20
+s32 xm_field_event_read_selected_operand_20(s32 offset, s32 flags) __asm__("FieldScriptArgument3");
+#endif
+#ifndef XM_S_field_event_read_selected_operand_10
+#define XM_S_field_event_read_selected_operand_10
+s32 xm_field_event_read_selected_operand_10(s32 offset, s32 flags) __asm__("FieldScriptArgument4");
+#endif
+#ifndef XM_S_field_event_read_selected_operand_08
+#define XM_S_field_event_read_selected_operand_08
+s32 xm_field_event_read_selected_operand_08(s32 offset, s32 flags) __asm__("FieldScriptArgument5");
+#endif
+#ifndef XM_S_field_event_read_selected_operand_04
+#define XM_S_field_event_read_selected_operand_04
+s32 xm_field_event_read_selected_operand_04(s32 offset, s32 flags) __asm__("FieldScriptArgument6");
+#endif
+void func_80091BBC(void) {
+    s32 x;
+    s32 y;
+    RECT unused; 
+
+    x = xm_field_event_read_selected_operand_80(1, EVENT_OPERAND_BYTE(0xD));
+    y = xm_field_event_read_selected_operand_40(3, EVENT_OPERAND_BYTE(0xD));
+    if (x == 0 && y == 0) {
+        xm_field_vram_move_or_clear_rect(xm_field_event_read_selected_operand_20(5, EVENT_OPERAND_BYTE(0xD)), xm_field_event_read_selected_operand_10(7, EVENT_OPERAND_BYTE(0xD)),
+                      xm_field_event_read_selected_operand_08(9, EVENT_OPERAND_BYTE(0xD)), xm_field_event_read_selected_operand_04(0xB, EVENT_OPERAND_BYTE(0xD)), 0, 0, 1);
+    } else {
+        xm_field_vram_move_or_clear_rect(x, y, xm_field_event_read_selected_operand_20(5, EVENT_OPERAND_BYTE(0xD)), xm_field_event_read_selected_operand_10(7, EVENT_OPERAND_BYTE(0xD)),
+                      xm_field_event_read_selected_operand_08(9, EVENT_OPERAND_BYTE(0xD)), xm_field_event_read_selected_operand_04(0xB, EVENT_OPERAND_BYTE(0xD)), 0);
+    }
+    xm_field_current_event_actor->pc += 0xE;
+}
+#endif
 #else
 void func_80091BBC(void) {
     u8 mask;
@@ -315,7 +509,60 @@ void func_800920D8(void) {
 extern s16 D_800AFFAC[];
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80092148);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_event_set_scroll_byte (src/decomp/src/field/field_event.c:4561). */
+#ifndef XM_T_xm_TextureScroll
+#define XM_T_xm_TextureScroll
+typedef struct xm_TextureScroll {
+    u16 x, y;          
+    u16 w, h;
+    u16 step;          
+    u16 count;         
+    u16 source_x;      
+    u16 source_y;      
+    s8 *speeds;        
+    u16 *phases;
+} xm_TextureScroll;
+#endif
+#ifndef XM_T_xm_WindowList
+#define XM_T_xm_WindowList
+typedef struct xm_WindowList {
+    s16 count;
+    xm_TextureScroll *scrolls[32];
+    u8 *buffers[32];
+    s16 lengths[32];
+} xm_WindowList;
+#endif
+#ifndef XM_S_field_event_set_scroll_byte
+#define XM_S_field_event_set_scroll_byte
+void xm_field_event_set_scroll_byte(void) __asm__("func_80092148");
+#endif
+#ifndef XM_S_field_event_read_imm_or_var
+#define XM_S_field_event_read_imm_or_var
+s32 xm_field_event_read_imm_or_var(s32 offset) __asm__("FieldScriptVMGetArgument");
+#endif
+#ifndef XM_S_field_event_read_u16
+#define XM_S_field_event_read_u16
+s32 xm_field_event_read_u16(s32 offset) __asm__("FieldScriptVMGetInstructionArgument");
+#endif
+#ifndef XM_S_field_texture_scrolls
+#define XM_S_field_texture_scrolls
+extern xm_WindowList xm_field_texture_scrolls __asm__("D_800AFEA8");
+#endif
+void func_80092148(void) {
+    s32 table;
+    s32 index;
+    s32 value;
+
+    table = xm_field_event_read_imm_or_var(1);
+    index = xm_field_event_read_imm_or_var(3);
+    value = xm_field_event_read_u16(5) & 0xFFFF;
+    if (index < xm_field_texture_scrolls.lengths[table]) {
+        xm_field_texture_scrolls.buffers[table][index] = value;
+    }
+    xm_field_current_event_actor->pc += 7;
+}
+#endif
 #else
 /* Retail reaches the line-scroll table through D_800AFFAC (== D_800AFEA8+0x104,
  * the s16 size[] table) and D_800AFFAC-0x80 (== D_800AFEA8+0x84, the u32
@@ -342,7 +589,56 @@ extern s32 D_800ADB8C;
 extern s16 D_800AFEA8;
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_800921E8);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_event_add_texture_scroll (src/decomp/src/field/field_event.c:4579). */
+#ifndef XM_S_field_event_add_texture_scroll
+#define XM_S_field_event_add_texture_scroll
+void xm_field_event_add_texture_scroll(void) __asm__("func_800921E8");
+#endif
+#ifndef XM_S_field_party_rebuilding
+#define XM_S_field_party_rebuilding
+extern s32 xm_field_party_rebuilding __asm__("D_800ADB8C");
+#endif
+#ifndef XM_S_heap_alloc
+#define XM_S_heap_alloc
+void *xm_heap_alloc(s32 size, s32 mode) __asm__("HeapAlloc");
+#endif
+#ifndef XM_S_gpu_init_texture_scroll
+#define XM_S_gpu_init_texture_scroll
+void xm_gpu_init_texture_scroll(xm_TextureScroll *scroll, s16 x, s16 y, s16 w, s16 h, s16 count, s16 source_x, s16 source_y,
+                   u8 *speeds) __asm__("GfxLineScrollInitialize");
+#endif
+void func_800921E8(void) {
+    s32 length;
+    s32 fill;
+    s32 i;
+    s32 x;
+    s32 y;
+    s32 width;
+    s32 height;
+    s32 a;
+
+    if (xm_field_party_rebuilding == 0 && xm_field_texture_scrolls.count < 32) {
+        length = xm_field_event_read_u16(9) & 0xFFFF;
+        xm_field_texture_scrolls.lengths[xm_field_texture_scrolls.count] = length;
+        xm_field_texture_scrolls.buffers[xm_field_texture_scrolls.count] = xm_heap_alloc(length + 1, 0);
+        xm_field_texture_scrolls.scrolls[xm_field_texture_scrolls.count] = xm_heap_alloc(0x18, 0);
+        fill = xm_field_event_read_u16(15) & 0xFFFF;
+        for (i = 0; i < length; i++) {
+            xm_field_texture_scrolls.buffers[xm_field_texture_scrolls.count][i] = fill;
+        }
+        x = (s16)xm_field_event_read_u16(1);
+        y = (s16)xm_field_event_read_u16(3);
+        width = (s16)xm_field_event_read_u16(5);
+        height = (s16)xm_field_event_read_u16(7);
+        a = (s16)xm_field_event_read_u16(11);
+        xm_gpu_init_texture_scroll(xm_field_texture_scrolls.scrolls[xm_field_texture_scrolls.count], x, y, width, height, length, a,
+                      xm_field_event_read_u16(13), xm_field_texture_scrolls.buffers[xm_field_texture_scrolls.count]);
+        xm_field_texture_scrolls.count++;
+    }
+    xm_field_current_event_actor->pc += 17;
+}
+#endif
 #else
 /* Retail table at D_800AFEA8: s16 count @+0, u32 lineScroll[32] @+4,
  * u32 buffer[32] @+0x84, s16 size[32] @+0x104 (== D_800AFFAC).  The pointer

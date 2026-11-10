@@ -208,7 +208,50 @@ void func_8009631C(void) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc10", func_8009635C);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_inventory_add_item (src/decomp/src/field/field_event.c:6231). */
+#ifndef XM_S_field_inventory_add_item
+#define XM_S_field_inventory_add_item
+s32 xm_field_inventory_add_item(s32 item) __asm__("func_8009635C");
+#endif
+#ifndef XM_S_field_inventory_find_slot
+#define XM_S_field_inventory_find_slot
+s32 xm_field_inventory_find_slot(s32 item) __asm__("func_80095124");
+#endif
+#ifndef XM_S_field_inventory_get_count_array
+#define XM_S_field_inventory_get_count_array
+u8 *xm_field_inventory_get_count_array(s32 item) __asm__("func_800950A0");
+#endif
+#ifndef XM_S_field_inventory_get_id_array
+#define XM_S_field_inventory_get_id_array
+u8 *xm_field_inventory_get_id_array(s32 item) __asm__("func_8009501C");
+#endif
+#ifndef XM_S_field_inventory_find_free_slot
+#define XM_S_field_inventory_find_free_slot
+s32 xm_field_inventory_find_free_slot(s32 item) __asm__("func_800951B8");
+#endif
+s32 xm_field_inventory_add_item(s32 item) __asm__("func_8009635C");
+s32 xm_field_inventory_add_item(s32 item) {
+    s32 slot;
+    u8 *counts;
+    u8 *ids;
+
+    slot = xm_field_inventory_find_slot(item);
+    counts = xm_field_inventory_get_count_array(item);
+    ids = xm_field_inventory_get_id_array(item);
+    if (slot != -1) {
+        if (counts[slot] < 99) {
+            counts[slot]++;
+        }
+    } else {
+        slot = xm_field_inventory_find_free_slot(item);
+        if (slot != -1) {
+            ids[slot] = item;
+            counts[slot] = 1;
+        }
+    }
+}
+#endif
 #else
 void func_8009635C(s32 itemId) {
     s32 slot = func_80095124(itemId);

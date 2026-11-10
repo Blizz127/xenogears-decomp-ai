@@ -65,7 +65,35 @@ void GfxLoadImageAccelerated(void) {
 }
 #endif
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/graphics", GfxLoadClutsAccelerated);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): sprite_upload_images_side_by_side (src/decomp/src/resident/sprite_construction.c:302). */
+#ifndef XM_S_sprite_upload_images_side_by_side
+#define XM_S_sprite_upload_images_side_by_side
+void xm_sprite_upload_images_side_by_side(s32 *list, s32 x, s16 y) __asm__("GfxLoadClutsAccelerated");
+#endif
+void GfxLoadClutsAccelerated(s32 *list, s32 x, s16 y) {
+    RECT rect;
+    s32 *offsets;
+    s32 count;
+    s32 column;
+    u16 *image;
+
+    offsets = list;
+    count = *offsets++;
+    column = 0;
+    rect.y = y;
+    while (count-- > 0) {
+        image = (u16 *)(*offsets++ + (s32)list);
+        rect.w = *image++;
+        rect.h = *image++;
+        rect.x = x + column;
+        column += 0x40;
+        xm_sprite_load_image_rect = &rect;
+        xm_sprite_load_image_pixels = (u_long *)image;
+        xm_sprite_load_image_on_own_stack();
+    }
+}
+#endif
 #else
 /*
 Matches on ASPSX 2.56, GCC 2.6.0

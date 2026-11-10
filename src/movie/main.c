@@ -732,7 +732,68 @@ void func_80072F98(u_long* ot, POLY_G4* p, s16 x, s16 y, s32 w, s32 h)
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/movie/nonmatchings/main", func_80073328);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): movie_mode_init_menu_frame (src/decomp/src/movie/movie.c:1109). */
+#ifndef XM_S_movie_mode_init_menu_frame
+#define XM_S_movie_mode_init_menu_frame
+void xm_movie_mode_init_menu_frame(POLY_G4 *poly0, POLY_G4 *poly1, s32 x, s32 y, s32 w, s32 h) __asm__("func_80073328");
+#endif
+#ifndef XM_S_movie_mode_menu_frame_from_colors
+#define XM_S_movie_mode_menu_frame_from_colors
+extern CVECTOR xm_movie_mode_menu_frame_from_colors[4] __asm__("D_80076FCC");
+#endif
+#ifndef XM_S_movie_mode_menu_frame_to_colors
+#define XM_S_movie_mode_menu_frame_to_colors
+extern CVECTOR xm_movie_mode_menu_frame_to_colors[4] __asm__("D_80076FDC");
+#endif
+#ifndef XM_S_movie_mode_menu_frame_fade_elapsed
+#define XM_S_movie_mode_menu_frame_fade_elapsed
+extern s32 xm_movie_mode_menu_frame_fade_elapsed[4] __asm__("D_80076FEC");
+#endif
+#ifndef XM_S_movie_mode_menu_frame_fade_durations
+#define XM_S_movie_mode_menu_frame_fade_durations
+extern s32 xm_movie_mode_menu_frame_fade_durations[4] __asm__("D_80076FFC");
+#endif
+#ifndef XM_S_SetPolyG4
+#define XM_S_SetPolyG4
+void xm_SetPolyG4(POLY_G4 *p) __asm__("SetPolyG4");
+#endif
+void xm_movie_mode_init_menu_frame(POLY_G4 *poly0, POLY_G4 *poly1, s32 x, s32 y, s32 w, s32 h) __asm__("func_80073328");
+void xm_movie_mode_init_menu_frame(POLY_G4 *poly0, POLY_G4 *poly1, s32 x, s32 y, s32 w, s32 h) {
+    s32 i;
+
+    for (i = 0; i < 4; i++) {
+        xm_movie_mode_menu_frame_from_colors[i].r = 0xFF;
+        xm_movie_mode_menu_frame_from_colors[i].g = 0xFF;
+        xm_movie_mode_menu_frame_from_colors[i].b = (xm_movie_mode_next_random() & 0x3F) - 0x42;
+        xm_movie_mode_menu_frame_to_colors[i].r = 0xFF;
+        xm_movie_mode_menu_frame_to_colors[i].g = 0xFF;
+        xm_movie_mode_menu_frame_to_colors[i].b = (xm_movie_mode_next_random() & 0x3F) - 0x42;
+    }
+    for (i = 0; i < 4; i++) {
+        xm_movie_mode_menu_frame_fade_elapsed[i] = 0;
+        xm_movie_mode_menu_frame_fade_durations[i] = (xm_movie_mode_next_random() & 0xFF) + 32;
+    }
+    xm_SetPolyG4(poly0);
+    poly0->x0 = x;
+    poly0->y0 = y;
+    poly0->x1 = x + w;
+    poly0->y1 = y;
+    poly0->x2 = x;
+    poly0->y2 = y + h;
+    poly0->x3 = x + w;
+    poly0->y3 = y + h;
+    xm_SetPolyG4(poly1);
+    poly1->x0 = x;
+    poly1->y0 = y;
+    poly1->x1 = x + w;
+    poly1->y1 = y;
+    poly1->x2 = x;
+    poly1->y2 = y + h;
+    poly1->x3 = x + w;
+    poly1->y3 = y + h;
+}
+#endif
 #else
 void func_80073328(POLY_G4* p0, POLY_G4* p1, s16 x, s16 y, s32 w, s32 h)
 {
@@ -1698,7 +1759,115 @@ void func_80075D8C(void)
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/movie/nonmatchings/main", func_8007625C);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): movie_mode_run_movie_test (src/decomp/src/movie/movie.c:2225). */
+#ifndef XM_T_MovieBuffer
+#define XM_T_MovieBuffer
+typedef struct MovieBuffer {
+    DRAWENV draw;
+    DISPENV disp;
+    u_long ot[32];
+    u8 box[0x24];
+    u8 frame[0x24];
+} MovieBuffer;
+#endif
+#ifndef XM_S_movie_mode_run_movie_test
+#define XM_S_movie_mode_run_movie_test
+void xm_movie_mode_run_movie_test(void) __asm__("func_8007625C");
+#endif
+#ifndef XM_S_movie_mode_screen_area
+#define XM_S_movie_mode_screen_area
+extern const RECT xm_movie_mode_screen_area __asm__("D_800704E0");
+#endif
+#ifndef XM_S_movie_mode_unskippable
+#define XM_S_movie_mode_unskippable
+extern s32 xm_movie_mode_unskippable __asm__("D_80077028");
+#endif
+#ifndef XM_S_movie_mode_movie_kind
+#define XM_S_movie_mode_movie_kind
+extern s32 xm_movie_mode_movie_kind __asm__("D_80077448");
+#endif
+#ifndef XM_S_cd_select_directory
+#define XM_S_cd_select_directory
+s32 xm_cd_select_directory(s32 group, s32 index) __asm__("ArchiveSetIndex");
+#endif
+#ifndef XM_S_movie_mode_movie_index
+#define XM_S_movie_mode_movie_index
+extern s32 xm_movie_mode_movie_index __asm__("D_8007711C");
+#endif
+#ifndef XM_S_cd_get_directory_file_count
+#define XM_S_cd_get_directory_file_count
+s16 xm_cd_get_directory_file_count(s32 file) __asm__("ArchiveDecodeSizeAbsolute");
+#endif
+#ifndef XM_S_SetDispMask
+#define XM_S_SetDispMask
+void xm_SetDispMask(int mask) __asm__("SetDispMask");
+#endif
+#ifndef XM_S_movie_mode_buffers
+#define XM_S_movie_mode_buffers
+extern MovieBuffer xm_movie_mode_buffers[2] __asm__("D_80077124");
+#endif
+#ifndef XM_S_movie_mode_library_output_mode
+#define XM_S_movie_mode_library_output_mode
+extern s32 xm_movie_mode_library_output_mode __asm__("D_80077454");
+#endif
+#ifndef XM_S_movie_mode_play_movie
+#define XM_S_movie_mode_play_movie
+s32 xm_movie_mode_play_movie(void) __asm__("func_80076488");
+#endif
+#ifndef XM_S_VSync
+#define XM_S_VSync
+int xm_VSync(int mode) __asm__("Vsync");
+#endif
+#ifndef XM_S_ClearImage
+#define XM_S_ClearImage
+int xm_ClearImage(RECT *rect, u_char r, u_char g, u_char b) __asm__("ClearImage");
+#endif
+#ifndef XM_S_DrawSync
+#define XM_S_DrawSync
+int xm_DrawSync(int mode) __asm__("DrawSync");
+#endif
+void func_8007625C(void) {
+    u8 unused[0x18];
+    RECT screen;
+
+    screen = xm_movie_mode_screen_area;
+    xm_movie_mode_unskippable = 0;
+    xm_movie_mode_buttons = -1;
+    if (xm_movie_mode_movie_kind == 0) {
+        xm_cd_select_directory(0x18, 0);
+        if (xm_movie_mode_movie_index >= xm_cd_get_directory_file_count(2)) {
+            return;
+        }
+        xm_SetDispMask(0);
+    } else if (xm_movie_mode_movie_kind == 1) {
+        xm_cd_select_directory(0x18, 1);
+        if (xm_movie_mode_movie_index >= xm_cd_get_directory_file_count(1)) {
+            return;
+        }
+        xm_SetDispMask(0);
+    } else if (xm_movie_mode_movie_kind == 2) {
+        return;
+    }
+    xm_movie_mode_buffers[0].draw.isbg = 0;
+    xm_movie_mode_buffers[1].draw.isbg = 0;
+    if (xm_movie_mode_library_output_mode != 0) {
+        xm_movie_mode_buffers[0].disp.isrgb24 = 1;
+        xm_movie_mode_buffers[1].disp.isrgb24 = 1;
+    }
+    xm_movie_mode_play_movie();
+    xm_VSync(0);
+    xm_ClearImage(&screen, 0, 0, 0);
+    xm_DrawSync(0);
+    xm_VSync(0);
+    xm_movie_mode_buffers[0].draw.isbg = 1;
+    xm_movie_mode_buffers[1].draw.isbg = 1;
+    if (xm_movie_mode_library_output_mode != 0) {
+        xm_movie_mode_buffers[0].disp.isrgb24 = 0;
+        xm_movie_mode_buffers[1].disp.isrgb24 = 0;
+    }
+}
+#endif
 #else
 void func_8007625C(void)
 {
@@ -1748,7 +1917,38 @@ void func_8007625C(void)
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/movie/nonmatchings/main", func_800763BC);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): movie_mode_play_requested_movie (src/decomp/src/movie/movie.c:2269). */
+#ifndef XM_S_movie_mode_play_requested_movie
+#define XM_S_movie_mode_play_requested_movie
+s32 xm_movie_mode_play_requested_movie(u8 keep) __asm__("func_800763BC");
+#endif
+s32 xm_movie_mode_play_requested_movie(u8 keep) __asm__("func_800763BC");
+s32 xm_movie_mode_play_requested_movie(u8 keep) {
+    u8 unused[0x18];
+
+    xm_movie_mode_unskippable = keep;
+    xm_movie_mode_buttons = -1;
+    if (xm_movie_mode_movie_kind == 0) {
+        xm_cd_select_directory(0x18, 0);
+        if (xm_movie_mode_movie_index >= xm_cd_get_directory_file_count(2)) {
+            return;
+        }
+    } else if (xm_movie_mode_movie_kind == 1) {
+        xm_cd_select_directory(0x18, 1);
+        if (xm_movie_mode_movie_index >= xm_cd_get_directory_file_count(1)) {
+            return;
+        }
+    } else if (xm_movie_mode_movie_kind == 2) {
+        return;
+    }
+    xm_movie_mode_buffers[0].draw.isbg = 0;
+    xm_movie_mode_buffers[1].draw.isbg = 0;
+    xm_movie_mode_buffers[0].disp.isrgb24 = 1;
+    xm_movie_mode_buffers[1].disp.isrgb24 = 1;
+    xm_movie_mode_play_movie();
+}
+#endif
 #else
 void func_800763BC(u8 noSkip)
 {

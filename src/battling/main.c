@@ -135,7 +135,42 @@ s32 func_800891C0(s32 arg0) {
     return temp_v0;
 }
 
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_80089210);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_display_set_screen_scale (src/decomp/src/menu/arena_scene_graph_and_opponent.c:206). */
+#ifndef XM_T_MATRIX
+#define XM_T_MATRIX
+typedef struct {
+    short m[3][3];
+    long t[3];
+} MATRIX;
+#endif
+#ifndef XM_S_arena_display_set_screen_scale
+#define XM_S_arena_display_set_screen_scale
+void xm_arena_display_set_screen_scale(s32 width, s32 height) __asm__("func_80089210");
+#endif
+#ifndef XM_S_arena_display_unread_identity
+#define XM_S_arena_display_unread_identity
+extern MATRIX xm_arena_display_unread_identity __asm__("D_8009A2D8");
+#endif
+#ifndef XM_S_arena_identity_matrix
+#define XM_S_arena_identity_matrix
+extern MATRIX xm_arena_identity_matrix __asm__("D_80091C0C");
+#endif
+#ifndef XM_S_arena_display_screen_scale
+#define XM_S_arena_display_screen_scale
+extern MATRIX xm_arena_display_screen_scale __asm__("D_80096FE0");
+#endif
+void xm_arena_display_set_screen_scale(s32 width, s32 height) __asm__("func_80089210");
+void xm_arena_display_set_screen_scale(s32 width, s32 height) {
+    s32 sx = ((width << 12) / 320) * height / width;
+    s32 sy = ((height << 12) / 240) * height / width;
+
+    xm_arena_display_unread_identity = xm_arena_identity_matrix;
+    xm_arena_display_screen_scale = xm_arena_identity_matrix;
+    xm_arena_display_screen_scale.m[0][0] = sx;
+    xm_arena_display_screen_scale.m[1][1] = sy;
+}
+#endif
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_80089330);
 void *SetDefDrawEnv();
 void func_80045534(void *, void *);
@@ -279,13 +314,6 @@ void func_800897AC(OtPair *layer, s32 x, s32 y, s32 w, s32 h, s32 second) {
 #endif
 #ifndef XENO_PC_PORT
 /* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_look_at_build_matrix (src/decomp/src/menu/arena_scene_graph_and_opponent.c:332). */
-#ifndef XM_T_MATRIX
-#define XM_T_MATRIX
-typedef struct {
-    short m[3][3];
-    long t[3];
-} MATRIX;
-#endif
 #ifndef XM_T_SVECTOR
 #define XM_T_SVECTOR
 typedef struct {
@@ -333,10 +361,6 @@ VECTOR *xm_ApplyMatrix(MATRIX *m, SVECTOR *v0, VECTOR *v1) __asm__("ApplyMatrix"
 #ifndef XM_S_MulMatrix2
 #define XM_S_MulMatrix2
 MATRIX *xm_MulMatrix2(MATRIX *m0, MATRIX *m1) __asm__("MulMatrix2");
-#endif
-#ifndef XM_S_arena_display_screen_scale
-#define XM_S_arena_display_screen_scale
-extern MATRIX xm_arena_display_screen_scale __asm__("D_80096FE0");
 #endif
 void func_800898BC(MATRIX *m, SVECTOR *eye, SVECTOR *at, SVECTOR *up) {
     xm_arena_look_at_forward.vx = at->vx - eye->vx;
@@ -424,7 +448,35 @@ void func_80089A98(LightRig *view, VECTOR *position, VECTOR *focus) {
     xm_arena_look_at_build_matrix(&view->camera->view, &from, &origin, &up);
 }
 #endif
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_80089B44);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_node_reset (src/decomp/src/menu/arena_scene_graph_and_opponent.c:383). */
+#ifndef XM_S_arena_node_reset
+#define XM_S_arena_node_reset
+Node *xm_arena_node_reset(Node *node) __asm__("func_80089B44");
+#endif
+Node *xm_arena_node_reset(Node *node) __asm__("func_80089B44");
+Node *xm_arena_node_reset(Node *node) {
+    node->type = 0;
+    node->parent = NULL;
+    node->child = NULL;
+    node->next = NULL;
+    node->callback = NULL;
+    node->data = NULL;
+    node->position.vz = 0;
+    node->position.vy = 0;
+    node->position.vx = 0;
+    node->angles.vz = 0;
+    node->angles.vy = 0;
+    node->angles.vx = 0;
+    node->offset.vz = 0;
+    node->offset.vy = 0;
+    node->offset.vx = 0;
+    node->unk6C = xm_arena_identity_matrix;
+    node->unk4C = node->unk6C;
+    node->view = node->unk4C;
+    return node;
+}
+#endif
 
 void *func_80089C54(void) {
     HeapSetCurrentContentType(8);
@@ -1468,7 +1520,38 @@ s16 func_8008B5FC(s32 arg0, s32 arg1, s32 arg2) {
     return var_v0;
 }
 
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008B650);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_angle_turn_toward (src/decomp/src/menu/arena_scene_graph_and_opponent.c:1178). */
+#ifndef XM_S_arena_angle_turn_toward
+#define XM_S_arena_angle_turn_toward
+s32 xm_arena_angle_turn_toward(s32 from, s32 to, s32 step) __asm__("func_8008B650");
+#endif
+#ifndef XM_S_rand
+#define XM_S_rand
+int xm_rand(void) __asm__("rand");
+#endif
+s32 xm_arena_angle_turn_toward(s32 from, s32 to, s32 step) __asm__("func_8008B650");
+s32 xm_arena_angle_turn_toward(s32 from, s32 to, s32 step) {
+    s16 angle = from;
+    s16 target = to;
+    s32 diff = (from - to) & 0xFFF;
+
+    if (diff != 0) {
+        if (diff == 0x800 ? (xm_rand() & 1) : diff < 0x800) {
+            angle -= step;
+            if (((angle - target) & 0xFFF) > 0x800) {
+                angle = target;
+            }
+        } else {
+            angle += step;
+            if (((angle - target) & 0xFFF) < 0x800) {
+                angle = target;
+            }
+        }
+    }
+    return angle;
+}
+#endif
 #ifndef XENO_PC_PORT
 /* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_node_step_anim_player (src/decomp/src/menu/arena_scene_graph_and_opponent.c:1206). */
 #ifndef XM_S_arena_node_step_anim_player
@@ -1645,9 +1728,8 @@ void func_8008BCC8(void *arg0, s32 arg1) {
     func_8008C3A8(*(s32 *)((u8 *)arg0 + 8), arg1, *(u16 *)((u8 *)arg0 + 2));
 }
 
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008BD70);
 #ifndef XENO_PC_PORT
-/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_mesh_build_packets (src/decomp/src/menu/arena_scene_graph_and_opponent.c:1365). */
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_mesh_draw_groups (src/decomp/src/menu/arena_scene_graph_and_opponent.c:1341). */
 #ifndef XM_T_ModelPrim
 #define XM_T_ModelPrim
 typedef struct {
@@ -1656,6 +1738,70 @@ typedef struct {
     u8 unk8[0xC];
 } ModelPrim;
 #endif
+#ifndef XM_T_PrimitiveGroup
+#define XM_T_PrimitiveGroup
+typedef struct PrimitiveGroup {
+    u8 type;
+    u8 unk1;
+    s16 count;
+} PrimitiveGroup;
+#endif
+#ifndef XM_S_arena_mesh_draw_groups
+#define XM_S_arena_mesh_draw_groups
+void xm_arena_mesh_draw_groups(SpriteModel *mesh, ModelPrim *prims, u32 *ot, u8 *work) __asm__("func_8008BD70");
+#endif
+#ifndef XM_S_model_current_primitive_group
+#define XM_S_model_current_primitive_group
+extern PrimitiveGroup *xm_model_current_primitive_group __asm__("D_80059528");
+#endif
+#ifndef XM_S_model_current_packet
+#define XM_S_model_current_packet
+extern RenderPacket *xm_model_current_packet __asm__("D_80059424");
+#endif
+#ifndef XM_S_model_ot
+#define XM_S_model_ot
+extern u32 *xm_model_ot __asm__("D_80059568");
+#endif
+#ifndef XM_S_model_current_vertices
+#define XM_S_model_current_vertices
+extern SVECTOR *xm_model_current_vertices __asm__("D_8005953C");
+#endif
+#ifndef XM_S_model_submitted_primitive_count
+#define XM_S_model_submitted_primitive_count
+extern s32 xm_model_submitted_primitive_count __asm__("D_800595C0");
+#endif
+#ifndef XM_S_arena_mesh_draw_flat_quads
+#define XM_S_arena_mesh_draw_flat_quads
+void xm_arena_mesh_draw_flat_quads(u8 *prims, s32 count) __asm__("func_8008C620");
+#endif
+#ifndef XM_S_arena_mesh_draw_flat_triangles
+#define XM_S_arena_mesh_draw_flat_triangles
+void xm_arena_mesh_draw_flat_triangles(u8 *prims, s32 count) __asm__("func_8008C4B0");
+#endif
+void xm_arena_mesh_draw_groups(SpriteModel *mesh, ModelPrim *prims, u32 *ot, u8 *work) __asm__("func_8008BD70");
+void xm_arena_mesh_draw_groups(SpriteModel *mesh, ModelPrim *prims, u32 *ot, u8 *work) {
+    PrimitiveGroup *group;
+    s32 groups = mesh->group_count;
+
+    xm_model_current_primitive_group = (PrimitiveGroup *)mesh->unk10;
+    xm_model_current_packet = (RenderPacket *)prims;
+    xm_model_ot = ot;
+    xm_model_current_vertices = (SVECTOR *)work;
+    xm_model_submitted_primitive_count += mesh->primitive_count;
+    while (--groups != -1) {
+        group = xm_model_current_primitive_group;
+        xm_model_current_primitive_group = group + 1;
+        if (group->type & 8) {
+            xm_arena_mesh_draw_flat_quads((u8 *)xm_model_current_primitive_group, group->count);
+        } else {
+            xm_arena_mesh_draw_flat_triangles((u8 *)xm_model_current_primitive_group, group->count);
+        }
+        xm_model_current_primitive_group = (PrimitiveGroup *)((u8 *)xm_model_current_primitive_group + group->count * 8);
+    }
+}
+#endif
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_mesh_build_packets (src/decomp/src/menu/arena_scene_graph_and_opponent.c:1365). */
 #ifndef XM_T_ModelPrims
 #define XM_T_ModelPrims
 typedef struct {
@@ -1667,21 +1813,9 @@ typedef struct {
     ModelPrim *prims[2]; 
 } ModelPrims;
 #endif
-#ifndef XM_T_PrimitiveGroup
-#define XM_T_PrimitiveGroup
-typedef struct PrimitiveGroup {
-    u8 type;
-    u8 unk1;
-    s16 count;
-} PrimitiveGroup;
-#endif
 #ifndef XM_S_arena_mesh_build_packets
 #define XM_S_arena_mesh_build_packets
 void xm_arena_mesh_build_packets(ModelPrims *prims, SpriteModel *mesh) __asm__("func_8008BE4C");
-#endif
-#ifndef XM_S_model_current_primitive_group
-#define XM_S_model_current_primitive_group
-extern PrimitiveGroup *xm_model_current_primitive_group __asm__("D_80059528");
 #endif
 #ifndef XM_S_arena_copy_words
 #define XM_S_arena_copy_words
@@ -3689,10 +3823,6 @@ void xm_arena_brain_command_run_away(Actor *actor, Brain *brain) __asm__("func_8
 #define XM_S_arena_actors_flat_distance
 extern s32 xm_arena_actors_flat_distance __asm__("D_8009284C");
 #endif
-#ifndef XM_S_rand
-#define XM_S_rand
-int xm_rand(void) __asm__("rand");
-#endif
 void func_8008F094(Actor *actor, Brain *brain) {
     if (xm_arena_actors_flat_distance > 0x800) {
         brain->timer = 1;
@@ -3756,42 +3886,8 @@ s32 func_8008F580(void *arg0) {
     return temp_a1 >= temp_v1;
 }
 
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008F5B4);
-
-s32 func_8008F720(void *arg0, s32 arg1) {
-    s32 var_v0;
-    void *temp_s1;
-
-    temp_s1 = *(void **)((s8*)(arg0) + 0x15FC);
-    if ((arg1 == 0) || ((rand() & 0xFF) >= *(s32 *)((s8*)(temp_s1) + 0x10)) || (var_v0 = 0, ((D_8009284C < 0x600) == 0))) {
-        if (func_8008F580(arg0) == 0) {
-            return (rand() & 0xFF) < *(s32 *)((s8*)(temp_s1) + 0x1C);
-        }
-        var_v0 = 1;
-        /* Duplicate return node #6. Try simplifying control flow for better match */
-        return var_v0;
-    }
-    return var_v0;
-}
-
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008F7B8);
-
-void func_8008F900(void *arg0) {
-    if (((*(s32 *)((s8*)(*(void **)((s8*)(arg0) + 0xD8)) + 0xD0) & 0x60000000) != 0x20000000) || !(rand() & 3)) {
-        if (D_80092884 != 0) {
-            func_800767C8(arg0);
-            goto block_5;
-        }
-        if ((*(s32 *)((s8*)(arg0) + 0xD0) & 0x60000000) == 0x20000000) {
-block_5:
-            func_8007639C(arg0, 4);
-        }
-        func_8007639C(arg0, 3);
-    }
-}
-
 #ifndef XENO_PC_PORT
-/* Adopted from EtherAura xenogears (GPL-3.0, github.com/EtherAura/xenogears @e54f35a): isBattlingGearInWater (src/battling/bl_8008C7C0.c). */
+/* Adopted from EtherAura xenogears (GPL-3.0, github.com/EtherAura/xenogears @e54f35a): shouldBattlingAiFireEther (src/battling/bl_8008C7C0.c). */
 #ifndef XM_T_BattlingMove
 #define XM_T_BattlingMove
 typedef struct BattlingMove {
@@ -4144,6 +4240,106 @@ typedef struct BattlingGear {
      u8 m166A_pad[0x2];
 } BattlingGear;
 #endif
+#ifndef XM_S_shouldBattlingAiFireEther
+#define XM_S_shouldBattlingAiFireEther
+s32 xm_shouldBattlingAiFireEther(BattlingGear* gear, s32 arg1) __asm__("func_8008F5B4");
+#endif
+#ifndef XM_S_canBattlingGearUseEther
+#define XM_S_canBattlingGearUseEther
+s32 xm_canBattlingGearUseEther(BattlingGear* gear, s32 arg1) __asm__("func_8008F530");
+#endif
+#ifndef XM_S_isBattlingGearHpAbove
+#define XM_S_isBattlingGearHpAbove
+s32 xm_isBattlingGearHpAbove(BattlingGear* gear, s32 percent) __asm__("func_8008F4F4");
+#endif
+s32 xm_shouldBattlingAiFireEther(BattlingGear* gear, s32 arg1) __asm__("func_8008F5B4");
+s32 xm_shouldBattlingAiFireEther(BattlingGear* gear, s32 arg1) {
+    BattlingAiState* ai;
+
+    ai = gear->m15FC_ai;
+    if ((xm_rand() & 0xFF) < (ai->m10_aiParam0 * 320) >> 4) {
+        if (!(xm_canBattlingGearUseEther(gear, 0) != 0 || xm_isBattlingGearHpAbove(gear, 0xC0) != 0 ||
+              (xm_rand() & 0xFF) < (ai->m1C_aiParam3 * 192) >> 4 ||
+              (xm_isBattlingGearHpAbove(gear, 0x80) != 0 && gear->mD8_opponent->mB4_hp < gear->mB4_hp))) {
+            return 0;
+        }
+    } else if ((xm_rand() & 0xFF) >= (ai->m1C_aiParam3 * 320) >> 4) {
+        return 0;
+    }
+    if ((xm_rand() & 0xFF) < ai->m18_aiParam2) {
+        if (gear->mD8_opponent->mC4_moveState == 4) {
+            return 0;
+        }
+        if (xm_isBattlingGearHpAbove(gear->mD8_opponent, 0x20) != 0) {
+            return 1;
+        }
+        if (gear->mD8_opponent->mB4_hp < gear->mB4_hp) {
+            return 0;
+        }
+    }
+    return 1;
+}
+#endif
+
+s32 func_8008F720(void *arg0, s32 arg1) {
+    s32 var_v0;
+    void *temp_s1;
+
+    temp_s1 = *(void **)((s8*)(arg0) + 0x15FC);
+    if ((arg1 == 0) || ((rand() & 0xFF) >= *(s32 *)((s8*)(temp_s1) + 0x10)) || (var_v0 = 0, ((D_8009284C < 0x600) == 0))) {
+        if (func_8008F580(arg0) == 0) {
+            return (rand() & 0xFF) < *(s32 *)((s8*)(temp_s1) + 0x1C);
+        }
+        var_v0 = 1;
+        /* Duplicate return node #6. Try simplifying control flow for better match */
+        return var_v0;
+    }
+    return var_v0;
+}
+
+#ifndef XENO_PC_PORT
+/* Adopted from EtherAura xenogears (GPL-3.0, github.com/EtherAura/xenogears @e54f35a): rollBattlingAiDecisions (src/battling/bl_8008C7C0.c). */
+#ifndef XM_S_rollBattlingAiDecisions
+#define XM_S_rollBattlingAiDecisions
+void xm_rollBattlingAiDecisions(BattlingAiState* ai) __asm__("func_8008F7B8");
+#endif
+void xm_rollBattlingAiDecisions(BattlingAiState* ai) __asm__("func_8008F7B8");
+void xm_rollBattlingAiDecisions(BattlingAiState* ai) {
+    s32 b;
+    s32 r;
+
+    ai->m2C_b9 = (xm_rand() & 0xFF) < ai->m10_aiParam0;
+    b = 0;
+    ai->m2C_b10 = (xm_rand() & 0xFF) < ai->m14_aiParam1;
+    ai->m2C_b12 = xm_rand();
+    ai->m2C_b11 = (xm_rand() & 0xFF) < ai->m18_aiParam2;
+    if ((xm_rand() & 0xFF) < ai->m10_aiParam0) {
+        r = xm_rand();
+        r %= 10;
+        b = r < 3;
+    }
+    ai->m2C_b8 = b;
+    ai->m2C_b0_7 = xm_rand();
+    ai->m30_hitsTaken = ai->m0_gear->m1668_hitsTaken;
+}
+#endif
+
+void func_8008F900(void *arg0) {
+    if (((*(s32 *)((s8*)(*(void **)((s8*)(arg0) + 0xD8)) + 0xD0) & 0x60000000) != 0x20000000) || !(rand() & 3)) {
+        if (D_80092884 != 0) {
+            func_800767C8(arg0);
+            goto block_5;
+        }
+        if ((*(s32 *)((s8*)(arg0) + 0xD0) & 0x60000000) == 0x20000000) {
+block_5:
+            func_8007639C(arg0, 4);
+        }
+        func_8007639C(arg0, 3);
+    }
+}
+
+#ifndef XENO_PC_PORT
+/* Adopted from EtherAura xenogears (GPL-3.0, github.com/EtherAura/xenogears @e54f35a): isBattlingGearInWater (src/battling/bl_8008C7C0.c). */
 #ifndef XM_S_isBattlingGearInWater
 #define XM_S_isBattlingGearInWater
 s32 xm_isBattlingGearInWater(BattlingGear* gear) __asm__("func_8008F9B0");
@@ -4164,8 +4360,78 @@ s32 func_8008F9B0(BattlingGear* gear) {
     return (xm_getBattlingMapCell(&gear->m0_position) & 0x3000000) == 0x1000000;
 }
 #endif
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008FA2C);
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008FACC);
+#ifndef XENO_PC_PORT
+/* Adopted from EtherAura xenogears (GPL-3.0, github.com/EtherAura/xenogears @e54f35a): steerBattlingAiOutOfWater (src/battling/bl_8008C7C0.c). */
+#ifndef XM_S_steerBattlingAiOutOfWater
+#define XM_S_steerBattlingAiOutOfWater
+s32 xm_steerBattlingAiOutOfWater(BattlingGear* gear, BattlingAiState* st) __asm__("func_8008FA2C");
+#endif
+#ifndef XM_S_ratan2
+#define XM_S_ratan2
+s32 xm_ratan2(s32 y, s32 x) __asm__("ratan2");
+#endif
+#ifndef XM_S_battlingGearAngle
+#define XM_S_battlingGearAngle
+extern s32 xm_battlingGearAngle __asm__("D_80092934");
+#endif
+s32 func_8008FA2C(BattlingGear* gear, BattlingAiState* st) {
+    VECTOR v;
+
+    v = gear->m0_position;
+    v.vx -= 0x3F80;
+    v.vz -= 0x3F80;
+    if ((xm_ratan2(v.vx, v.vz) & 0xFFF) > 0x200) {
+        st->mA_turn = 0x800 - xm_battlingGearAngle;
+    } else {
+        st->mA_turn = 0xC00 - xm_battlingGearAngle;
+    }
+    st->mC_speed = 0xFF;
+    return 0;
+}
+#endif
+#ifndef XENO_PC_PORT
+/* Adopted from EtherAura xenogears (GPL-3.0, github.com/EtherAura/xenogears @e54f35a): avoidBattlingAiWater (src/battling/bl_8008C7C0.c). */
+#ifndef XM_S_avoidBattlingAiWater
+#define XM_S_avoidBattlingAiWater
+s32 xm_avoidBattlingAiWater(BattlingGear* gear, BattlingAiState* st) __asm__("func_8008FACC");
+#endif
+#ifndef XM_S_battlingEventFight
+#define XM_S_battlingEventFight
+extern u8 xm_battlingEventFight __asm__("D_800928C4");
+#endif
+s32 func_8008FACC(BattlingGear* gear, BattlingAiState* st) {
+    if (xm_battlingEventFight == 0 || !(gear->mD0_status.flags & 0x8000000)) {
+        return 0;
+    }
+    if (xm_isBattlingGearInWater(gear) != 0) {
+        xm_steerBattlingAiOutOfWater(gear, st);
+        return 1;
+    }
+    if (xm_isBattlingGearInWater(gear->mD8_opponent) != 0) {
+        if (gear->mD8_opponent->m8F4_nearestProjectileDist < 0x800) {
+            gear->mD0_status.flags |= 0x8000;
+            st->mE_boost = 1;
+            st->mC_speed = 0xFF;
+            st->mA_turn = 0x800;
+            gear->m58_targetRotation = 0x800;
+            return 1;
+        }
+        if (gear->mD8_opponent->m8F4_nearestProjectileDist > 0x1000) {
+            gear->mD0_status.flags &= ~0x8000;
+            st->mE_boost = 0;
+            st->mC_speed = 0;
+            gear->m58_targetRotation = 0x800;
+            return 1;
+        }
+#ifdef PLATFORM_PC
+        return 1; 
+#endif
+    }
+#ifdef PLATFORM_PC
+    return 0; 
+#endif
+}
+#endif
 void func_80076424(void *arg0);
 
 void func_8008FBD8(void *arg0, void *arg1) {
@@ -4388,7 +4654,92 @@ void func_80090504(void *arg0) {
     *(s8 *)((s8*)(temp_s0) + 0x2E) = 0;
 }
 
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_80090580);
+#ifndef XENO_PC_PORT
+/* Adopted from EtherAura xenogears (GPL-3.0, github.com/EtherAura/xenogears @e54f35a): updateBattlingAiApproach (src/battling/bl_8008C7C0.c). */
+#ifndef XM_T_BL_NEAREST_SHOT_MOVE
+#define XM_T_BL_NEAREST_SHOT_MOVE
+#define BL_NEAREST_SHOT_MOVE(g) ((g)->m8F8_nearestProjectile->m33_moveType)
+#endif
+#ifndef XM_S_updateBattlingAiApproach
+#define XM_S_updateBattlingAiApproach
+void xm_updateBattlingAiApproach(BattlingGear* gear, BattlingAiState* st) __asm__("func_80090580");
+#endif
+#ifndef XM_S_enterBattlingAiWait
+#define XM_S_enterBattlingAiWait
+void xm_enterBattlingAiWait(BattlingGear* gear) __asm__("func_8008FC7C");
+#endif
+#ifndef XM_S_pushBattlingGearInput
+#define XM_S_pushBattlingGearInput
+void xm_pushBattlingGearInput(BattlingGear* g, u8 v) __asm__("func_8007639C");
+#endif
+#ifndef XM_S_fireBattlingAiEther
+#define XM_S_fireBattlingAiEther
+void xm_fireBattlingAiEther(BattlingGear* gear) __asm__("func_8008F900");
+#endif
+#ifndef XM_S_battlingGearDistance
+#define XM_S_battlingGearDistance
+extern s32 xm_battlingGearDistance __asm__("D_8009284C");
+#endif
+#ifndef XM_S_enterBattlingAiMelee
+#define XM_S_enterBattlingAiMelee
+void xm_enterBattlingAiMelee(BattlingGear* gear) __asm__("func_80090174");
+#endif
+#ifndef XM_S_getBattlingAiGaugeRoom
+#define XM_S_getBattlingAiGaugeRoom
+s32 xm_getBattlingAiGaugeRoom(BattlingGear* gear) __asm__("func_8008F580");
+#endif
+#ifndef XM_S_tryBattlingAiSpecialOrEther
+#define XM_S_tryBattlingAiSpecialOrEther
+s32 xm_tryBattlingAiSpecialOrEther(BattlingGear* gear, BattlingAiState* st) __asm__("func_80090258");
+#endif
+void func_80090580(BattlingGear* gear, BattlingAiState* st) {
+    s32 r;
+
+    if (xm_isBattlingGearInWater(gear->mD8_opponent) != 0 && xm_battlingEventFight != 0 && (gear->mD0_status.flags & 0x8000000)) {
+        xm_enterBattlingAiWait(gear);
+        return;
+    }
+    if (BL_NEAREST_SHOT_MOVE(gear->mD8_opponent) == 1 && gear->mD8_opponent->m8F4_nearestProjectileDist < 0x500 && st->mF_comLevel != 0) {
+        st->mE_boost = 1;
+        st->mA_turn = st->m2C_b12 ? 0x400 : -0x400;
+        if (st->mF_comLevel >= 2 && (xm_rand() & 0xFF) < st->m14_aiParam1 && xm_shouldBattlingAiFireEther(gear, 0) != 0 && st->m2C_b12) {
+            if ((xm_rand() & 3) == 0) {
+                xm_pushBattlingGearInput(gear, 4);
+            }
+            xm_fireBattlingAiEther(gear);
+            st->m2C_b16_23 = 0;
+        }
+        st->m2C_b16_23++;
+    }
+    if (xm_battlingGearDistance < 0x180) {
+        if ((xm_rand() & 3) == 0) {
+            xm_pushBattlingGearInput(gear, 4);
+        }
+        xm_enterBattlingAiMelee(gear);
+    }
+    if (xm_getBattlingAiGaugeRoom(gear) == 0) {
+        st->mE_boost = 0;
+    }
+    if (st->m4_timer < 0) {
+        st->mA_turn = xm_rand() % 0x600 - 0x300;
+        r = xm_rand();
+        st->m4_timer = (st->m2C_b10 ? r % 120 : r % 100) + 10;
+        st->mC_speed = 0xFF;
+        if (st->m9_repeatCount != 0) {
+            st->m9_repeatCount--;
+        } else {
+            if ((xm_rand() & 3) == 0) {
+                xm_pushBattlingGearInput(gear, 4);
+            }
+            if (xm_tryBattlingAiSpecialOrEther(gear, st) != 0) {
+                xm_enterBattlingAiWait(gear);
+            }
+            st->m9_repeatCount = xm_rand() % 4 + 1;
+        }
+    }
+    st->m4_timer--;
+}
+#endif
 #ifndef XENO_PC_PORT
 /* Adopted from EtherAura xenogears (GPL-3.0, github.com/EtherAura/xenogears @e54f35a): enterBattlingAiRetreat (src/battling/bl_8008C7C0.c). */
 #ifndef XM_S_enterBattlingAiRetreat
@@ -4398,10 +4749,6 @@ void xm_enterBattlingAiRetreat(BattlingGear* gear, s32 arg1) __asm__("func_80090
 #ifndef XM_S_tryBattlingGearBackDash
 #define XM_S_tryBattlingGearBackDash
 s32 xm_tryBattlingGearBackDash(BattlingGear* g) __asm__("func_800767C8");
-#endif
-#ifndef XM_S_rollBattlingAiDecisions
-#define XM_S_rollBattlingAiDecisions
-void xm_rollBattlingAiDecisions(BattlingAiState* ai) __asm__("func_8008F7B8");
 #endif
 #ifndef XM_S_shouldBattlingAiBoost
 #define XM_S_shouldBattlingAiBoost
@@ -4423,7 +4770,70 @@ void func_80090894(BattlingGear* gear, s32 arg1) {
     ai->m2C_b16_23 = 0;
 }
 #endif
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_80090990);
+#ifndef XENO_PC_PORT
+/* Adopted from EtherAura xenogears (GPL-3.0, github.com/EtherAura/xenogears @e54f35a): updateBattlingAiRetreat (src/battling/bl_8008C7C0.c). */
+#ifndef XM_S_updateBattlingAiRetreat
+#define XM_S_updateBattlingAiRetreat
+void xm_updateBattlingAiRetreat(BattlingGear* gear, BattlingAiState* st) __asm__("func_80090990");
+#endif
+#ifndef XM_S_battlingRubberBandMode
+#define XM_S_battlingRubberBandMode
+extern u8 xm_battlingRubberBandMode __asm__("D_80092884");
+#endif
+#ifndef XM_S_battlingGearDistance3D
+#define XM_S_battlingGearDistance3D
+extern s32 xm_battlingGearDistance3D __asm__("D_80092850");
+#endif
+#ifndef XM_S_queueBattlingAiSpecialMove
+#define XM_S_queueBattlingAiSpecialMove
+s32 xm_queueBattlingAiSpecialMove(BattlingGear* gear, BattlingAiState* st) __asm__("func_8008FFEC");
+#endif
+void func_80090990(BattlingGear* gear, BattlingAiState* st) {
+    s32 r;
+
+    if (xm_avoidBattlingAiWater(gear, st) != 0) {
+        return;
+    }
+    if (BL_NEAREST_SHOT_MOVE(gear->mD8_opponent) == 1 && gear->mD8_opponent->m8F4_nearestProjectileDist < 0x500 && st->mF_comLevel != 0) {
+        st->mE_boost = 1;
+        st->mA_turn = st->m2C_b12 ? 0x400 : -0x400;
+        if (st->mF_comLevel >= 2 && xm_shouldBattlingAiFireEther(gear, 0) != 0 && st->m2C_b12) {
+            if ((xm_rand() & 3) == 0) {
+                xm_pushBattlingGearInput(gear, 4);
+            }
+            xm_fireBattlingAiEther(gear);
+            st->m2C_b16_23 = 0;
+        }
+        st->m2C_b16_23++;
+    }
+    if (xm_getBattlingAiGaugeRoom(gear) == 0) {
+        st->mE_boost = 0;
+    }
+    if (xm_battlingGearDistance > st->m28_retreatDistance || (xm_battlingRubberBandMode != 0 && xm_battlingGearDistance3D > 0x4B0)) {
+        if (xm_battlingRubberBandMode != 0) {
+            xm_pushBattlingGearInput(gear, 4);
+        }
+        xm_queueBattlingAiSpecialMove(gear, st);
+        xm_enterBattlingAiWait(gear);
+    }
+    if (st->m4_timer < 0 || st->mC_speed == 0) {
+        st->mA_turn = xm_rand() % 0x600 + 0x500;
+        r = xm_rand();
+        st->m4_timer = (st->m2C_b10 ? r % 40 : r % 60) + 10;
+        st->mC_speed = 0xFF;
+        if (st->m9_repeatCount != 0) {
+            st->m9_repeatCount--;
+        } else {
+            if (xm_shouldBattlingAiFireEther(gear, 0) != 0) {
+                xm_pushBattlingGearInput(gear, 4);
+                xm_fireBattlingAiEther(gear);
+            }
+            st->m9_repeatCount = xm_rand() % 5 + 3;
+        }
+    }
+    st->m4_timer--;
+}
+#endif
 
 void func_80090C88(void *arg0) {
     void *temp_a0;

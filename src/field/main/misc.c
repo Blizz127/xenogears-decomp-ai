@@ -245,7 +245,494 @@ void FieldScriptCopyGear(void) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008764C);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_event_copy_character (src/decomp/src/field/field_event.c:924). */
+#ifndef XM_T_xm_CharacterEntry
+#define XM_T_xm_CharacterEntry
+typedef struct {
+    u16 field0; 
+    u8 value2;
+    u8 value3;  
+    u8 value4;  
+    u8 pad5;
+    u8 id;      
+    u8 pad7;
+} xm_CharacterEntry;
+#endif
+#ifndef XM_T_xm_StatusPair
+#define XM_T_xm_StatusPair
+typedef union {
+    u32 word;
+    struct {
+        u16 active;
+        u16 permanent;
+    } half;
+} xm_StatusPair;
+#endif
+#ifndef XM_T_xm_CharacterRecord
+#define XM_T_xm_CharacterRecord
+typedef struct {
+    xm_CharacterEntry entries[4]; 
+    u8 pad20[0x28 - 0x20];
+    u8 equipAttack;       
+    u8 equipDefense;      
+    u8 equipSpeed;        
+    u8 equipEther;        
+    u8 equipEtherDefense; 
+    u8 bodyDefense;       
+    u8 equip5E;           
+    u8 equip5F;           
+    u8 hpBonus;           
+    u8 epBonus;           
+    u16 flags32;          
+    u16 flags34;          
+    u16 flags36;          
+    u16 weakness;         
+    u16 field3A;          
+    u32 expTotalA;        
+    u32 expTotalB;        
+    u32 expNextA;         
+    u32 expNextB;         
+    u16 hp;               
+    u16 maxHp;            
+    u16 ep;               
+    u16 maxEp;            
+    u8 field54;           
+    u8 field55;
+    u8 characterId;       
+    u8 pad57;
+    u8 attack;            
+    u8 defense;           
+    u8 speed;             
+    u8 ether;             
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    u8 etherDefense;      
+    u8 field5D;
+    u8 field5E;           
+    u8 field5F;           
+    u8 field60;           
+    u8 field61;
+    u8 level;             
+    u8 level2;            
+    u8 field64[4];        
+    u8 pad68[0x6A - 0x68];
+    u8 weapons[5];        
+    u8 entryItems[5];     
+
+    u8 accessories[3];    
+    u8 field77;           
+
+    u8 field78;           
+    u8 field79;           
+    u16 status7A;         
+
+    u16 status7C;         
+
+
+    u16 status7E;         
+    u16 status80;         
+    u16 status82;         
+    xm_StatusPair status84;  
+    xm_StatusPair status88;  
+    xm_StatusPair status8C;  
+    u16 useCounts[7];     
+    u8 pad9E[0xA0 - 0x9E];
+    u8 gearId;            
+    u8 fieldA1;           
+    u8 padA2[0xA4 - 0xA2];
+} xm_CharacterRecord;
+#endif
+#ifndef XM_T_xm_GearEntry
+#define XM_T_xm_GearEntry
+typedef struct {
+    u16 field0; 
+    u8 valueE;  
+    u8 value10; 
+    u8 value11; 
+    u8 id;      
+    u8 pad6[2];
+} xm_GearEntry;
+#endif
+#ifndef XM_T_xm_GearRecord
+#define XM_T_xm_GearRecord
+typedef struct xm_GearRecord {
+    u8 pad0[2];
+    u8 engine;            
+    u8 field3;            
+    u8 partItems[4];      
+
+    u8 frame;             
+    u8 parts[3];          
+    u8 weapons[4];        
+    xm_GearEntry entries[4]; 
+    u8 pad30[0x38 - 0x30];
+    u16 fuel;             
+    u16 maxFuel;          
+    u8 attack;            
+    u8 pad3D;
+    u8 field3E;
+    u8 attackScale;       
+    u16 equipBodyDefense; 
+    u16 equipArmor;       
+    u16 equip68a;         
+    u16 equip68b;         
+    u16 field48;          
+    u8 speedPenalty;      
+    u8 pad4B;
+    u8 equipGuard;        
+    u8 equipHitBonus;     
+    u8 equipSpeed;        
+    u8 field4F;           
+    u8 speedBonus[4];     
+    u8 equipFrameFactor;  
+    u8 pad55;
+    u8 equipAttackScale;  
+    u8 chargeRate;        
+    u8 pad58[0x5C - 0x58];
+    u8 fileVariant;       
+    u8 spriteVariants[3]; 
+    u32 hp;               
+    u32 maxHp;            
+    u16 field68;
+    u16 field6A;
+    u16 field6C;
+    u16 field6E;          
+    u16 bodyDefense;      
+    u16 armor;            
+    u8 field74;
+    u8 field75;
+    u8 pad76[0x7C - 0x76];
+    u16 status7C;         
+    u16 field7E;          
+    u16 status80;
+    u16 status82;         
+    xm_StatusPair status84;  
+    u8 resistances[16];   
+    u8 speed;             
+    u8 defense;           
+    u8 pad9A[0x9C - 0x9A];
+    u8 guard;             
+    u8 field9D;
+    u8 frameFactor;       
+    s8 hitBonus;          
+
+    u8 padA0[0xA4 - 0xA0];
+} xm_GearRecord;
+#endif
+#ifndef XM_T_xm_CharacterSkills
+#define XM_T_xm_CharacterSkills
+typedef struct {
+    u16 counterSkills; 
+    u16 levelSkills;   
+    u16 unlocksA;      
+    u16 unlocksB;      
+    u8 pad8[0x17 - 0x8];
+    u8 tier;           
+    u8 pad18[0x1A - 0x18];
+    u16 flags1A;       
+
+
+    u8 pad1C[0x20 - 0x1C];
+} xm_CharacterSkills;
+#endif
+#ifndef XM_T_xm_WorldmapReturn
+#define XM_T_xm_WorldmapReturn
+typedef struct {
+    u16 x;
+    u16 z;
+    u16 heading;
+    u16 unk5A;
+    u16 unk5C;
+    u16 unk5E;
+    u16 unk60;           
+    u16 unk62;
+    u16 unk64;
+    u16 vehicle_heading; 
+    u16 flags;           
+    s16 unk6A;
+    u16 unk6C;
+    u16 unk6E;
+    u16 unk70;
+    u16 unk72;
+    u16 unk74;
+    u16 unk76;           
+} xm_WorldmapReturn;
+#endif
+#ifndef XM_T_xm_FlightSave
+#define XM_T_xm_FlightSave
+typedef struct {
+    u16 x_frac;
+    s16 x;
+    u16 z_frac;
+    s16 z;
+    u16 count; 
+} xm_FlightSave;
+#endif
+#ifndef XM_T_xm_SystemOptions
+#define XM_T_xm_SystemOptions
+typedef struct {
+    u32 version : 4;   
+    u32 option4 : 1;
+    u32 option5 : 1;
+    u32 option6 : 7;
+    u32 option13 : 3;  
+    u32 complete : 1;  
+    u32 unused : 15;
+} xm_SystemOptions;
+#endif
+#ifndef XM_T_xm_GameData
+#define XM_T_xm_GameData
+typedef struct xm_GameData {
+    u8 names[31][0x14];           
+
+    xm_CharacterRecord characters[11]; 
+    xm_GearRecord gears[20];           
+    u8 unk1648[0x16C0 - 0x1648];
+    xm_CharacterSkills skills[11];     
+    xm_WorldmapReturn worldmap;        
+    u16 unk1844[3];                 
+    u16 unk184A;                    
+    xm_FlightSave flight;              
+    u16 unk1856;                    
+    u8 unk1858[0x1924 - 0x1858];
+    u32 gold;                       
+    u8 unk1928[0x1930 - 0x1928];
+    u16 vars[0x200];              
+
+    u16 joined;                   
+    u16 available;                
+    u8 party[3];                  
+    u8 unk1D37;
+    u8 weaponCounts[100];         
+    u8 weaponIds[100];            
+    u8 accessoryCounts[200];      
+    u8 accessoryIds[200];         
+    u8 itemCounts[150];           
+    u8 itemIds[150];              
+    u8 gearPartCounts[100];       
+    u8 gearPartIds[100];          
+    u8 gearAccessoryCounts[150];  
+    u8 gearAccessoryIds[150];     
+    u8 unk22B0;
+    u8 inGear[3];                 
+    u8 unk22B4[2];
+    u16 flags;                    
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+    u8 ammo[48];                  
+    u8 gearAmmo[48];              
+    u16 locked;                   
+    u16 map;                      
+    u16 entry[3];                 
+
+    u16 flagWords[17];            
+    u8 progress[8];               
+    xm_SystemOptions options;        
+    u8 unk2350[0x2355 - 0x2350];
+    u8 flags2355;                 
+    u8 unk2356[0x2358 - 0x2356];
+} xm_GameData;
+#endif
+#ifndef XM_T_xm_Fixed
+#define XM_T_xm_Fixed
+typedef union {
+    s32 value;
+    struct {
+        u16 fraction;
+        s16 whole;
+    } part;
+} xm_Fixed;
+#endif
+#ifndef XM_T_xm_ScriptSlot
+#define XM_T_xm_ScriptSlot
+typedef struct xm_ScriptSlot {
+    u16 resume_pc;      
+    u8 countdown;       
+    u8 tag;             
+    u32 value : 16;     
+    u32 unk16 : 2;
+    u32 priority : 4;   
+    u32 unk22 : 1;
+    u32 move_mode : 2;  
+    u32 unk25 : 7;
+} xm_ScriptSlot;
+#endif
+#ifndef XM_T_xm_PlatformLink
+#define XM_T_xm_PlatformLink
+typedef struct xm_PlatformLink {
+    SVECTOR rotation; 
+    s16 radius;       
+    s16 unkA;
+} xm_PlatformLink;
+#endif
+#ifndef XM_T_xm_ActorState
+#define XM_T_xm_ActorState
+typedef struct {
+    u32 mode : 2;   
+    u32 unk2 : 3;   
+    u32 unk5 : 1;   
+    u32 depth : 3;  
+    u32 octant : 3; 
+    u32 unk12 : 1;  
+    u32 layer : 3;  
+    u32 unk16 : 2;  
+    u32 unk18 : 10; 
+    u32 unk28 : 4;
+} xm_ActorState;
+#endif
+#ifndef XM_T_xm_FieldActor
+#define XM_T_xm_FieldActor
+typedef struct xm_FieldActor {
+    u32 flags;           
+    u32 layer_flags;     
+    s16 triangle[4];     
+    s16 layer;           
+    u8 unk012[2];
+    u32 floor_attribute; 
+    s16 unk18;           
+    s16 height;          
+    xm_Fixed gravity;       
+    s32 position[3];     
+    u8 unk02C[4];
+    s32 unk030[3];       
+    u8 unk03C[4];
+    s32 unk40[3];        
+    u8 unk04C[4];
+    s32 unk50[3];        
+    u8 unk05C[4];
+    s16 unk60;           
+    s16 unk62;           
+    s16 unk64;           
+    u8 unk066[2];
+    s16 last_position[3]; 
+    u16 stuck;           
+    s16 unk70;           
+    s16 unk72;           
+    u8 ridden_actor;     
+    u8 unk075;           
+    s16 unk76;           
+    u16 call_stack[4];   
+    u8 character;        
+    u8 unk081;
+    u8 unk82;            
+    u8 unk83;            
+    s32 unk84;           
+    s16 unk88;           
+    s16 unk8A;           
+    xm_ScriptSlot slots[8]; 
+    u16 pc;              
+    u8 slot;             
+    u8 unk0CF;
+    s32 target[3];       
+    u8 unk0DC[0xE2 - 0xDC];
+    u8 unkE2;            
+    u8 unk0E3;
+    s16 unkE4;           
+    s16 unkE6;           
+    s16 unkE8;           
+    s16 unk0EA;          
+    s16 unkEC;           
+    s16 unkEE;           
+    s32 unkF0;           
+    s16 scale[3];        
+    u8 unk0FA[2];
+    u8 color0[3];        
+    u8 color1[3];        
+    u16 unk102;          
+    s16 heading;         
+    s16 heading_goal;    
+    s16 unk108;          
+    u16 sound;           
+    u8 sound_volume;     
+    u8 sound_mode;       
+    u8 unk10E[0x110 - 0x10E];
+    struct xm_PlatformLink *link; 
+    void *unk114;        
+    s32 *list;           
+    u16 unk11C;          
+    s16 unk11E;          
+    void *unk120;        
+    s16 unk124;          
+    u8 unk126;           
+    u8 unk127;           
+    u16 unk128;          
+    u8 unk12A[2];
+    union {
+        u32 word;
+        xm_ActorState bits;
+    } state;             
+    u32 unk130 : 9;      
+    u32 unk130_9 : 10;   
+    u32 unk130_19 : 9;   
+    u32 sprite_kind : 2; 
+    u32 unk130_30 : 2;
+    u32 unk134;          
+} xm_FieldActor;
+#endif
+#ifndef XM_S_field_event_copy_character
+#define XM_S_field_event_copy_character
+void xm_field_event_copy_character(void) __asm__("func_8008764C");
+#endif
+#ifndef XM_S_field_event_read_imm_or_var
+#define XM_S_field_event_read_imm_or_var
+s32 xm_field_event_read_imm_or_var(s32 offset) __asm__("FieldScriptVMGetArgument");
+#endif
+#ifndef XM_S_game_current_data
+#define XM_S_game_current_data
+extern xm_GameData *xm_game_current_data __asm__("g_pGameState");
+#endif
+#ifndef XM_S_field_current_event_actor
+#define XM_S_field_current_event_actor
+extern xm_FieldActor *xm_field_current_event_actor __asm__("g_FieldScriptVMCurActor");
+#endif
+void func_8008764C(void) {
+    s32 from = xm_field_event_read_imm_or_var(1);
+    s32 to = xm_field_event_read_imm_or_var(3);
+
+    xm_game_current_data->characters[to] = xm_game_current_data->characters[from];
+    xm_game_current_data->skills[to] = xm_game_current_data->skills[from];
+    {
+        xm_GameData *state = xm_game_current_data;
+
+        if (to == 9) {
+            state->flags |= 0x2000;
+        }
+    }
+    if (to == 10) {
+        xm_game_current_data->flags |= 0x1000;
+    }
+    xm_field_current_event_actor->pc += 5;
+}
+#endif
 #else
 void func_8008764C(void) {
     s32 srcIdx = FieldScriptVMGetArgument(1);
@@ -401,7 +888,40 @@ void func_80087C0C(void) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_80087C34);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_event_set_vehicle_place (src/decomp/src/field/field_event.c:1037). */
+#ifndef XM_S_field_event_set_vehicle_place
+#define XM_S_field_event_set_vehicle_place
+void xm_field_event_set_vehicle_place(void) __asm__("func_80087C34");
+#endif
+#ifndef XM_S_field_event_read_selected_operand_80
+#define XM_S_field_event_read_selected_operand_80
+s32 xm_field_event_read_selected_operand_80(s32 offset, s32 flags) __asm__("FieldScriptArgument1");
+#endif
+#ifndef XM_S_field_event_bytecode
+#define XM_S_field_event_bytecode
+extern u8 *xm_field_event_bytecode __asm__("g_FieldScriptVMCurScriptData");
+#endif
+#ifndef XM_S_field_event_read_selected_operand_40
+#define XM_S_field_event_read_selected_operand_40
+s32 xm_field_event_read_selected_operand_40(s32 offset, s32 flags) __asm__("FieldScriptArgument2");
+#endif
+#ifndef XM_S_field_event_read_selected_operand_20
+#define XM_S_field_event_read_selected_operand_20
+s32 xm_field_event_read_selected_operand_20(s32 offset, s32 flags) __asm__("FieldScriptArgument3");
+#endif
+#ifndef XM_S_field_event_read_selected_operand_10
+#define XM_S_field_event_read_selected_operand_10
+s32 xm_field_event_read_selected_operand_10(s32 offset, s32 flags) __asm__("FieldScriptArgument4");
+#endif
+void func_80087C34(void) {
+    xm_game_current_data->worldmap.unk60 = xm_field_event_read_selected_operand_80(1, xm_field_event_bytecode[xm_field_current_event_actor->pc + 9]);
+    xm_game_current_data->worldmap.unk62 = xm_field_event_read_selected_operand_40(3, xm_field_event_bytecode[xm_field_current_event_actor->pc + 9]);
+    xm_game_current_data->worldmap.unk64 = xm_field_event_read_selected_operand_20(5, xm_field_event_bytecode[xm_field_current_event_actor->pc + 9]);
+    xm_game_current_data->worldmap.vehicle_heading = xm_field_event_read_selected_operand_10(7, xm_field_event_bytecode[xm_field_current_event_actor->pc + 9]);
+    xm_field_current_event_actor->pc += 10;
+}
+#endif
 #else
 void func_80087C34(void) {
     u8* pGS = (u8*)g_pGameState;
@@ -508,7 +1028,67 @@ void func_80087FD4(void) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008800C);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_event_transform_vector (src/decomp/src/field/field_event.c:1122). */
+#ifndef XM_T_EVENT_OPERAND_BYTE
+#define XM_T_EVENT_OPERAND_BYTE
+#define EVENT_OPERAND_BYTE(offset) (xm_field_event_bytecode[xm_field_current_event_actor->pc + (offset)])
+#endif
+#ifndef XM_S_field_event_transform_vector
+#define XM_S_field_event_transform_vector
+void xm_field_event_transform_vector(void) __asm__("func_8008800C");
+#endif
+#ifndef XM_S_gear_model_get_node_matrix
+#define XM_S_gear_model_get_node_matrix
+void xm_gear_model_get_node_matrix(MATRIX *out, MATRIX *unused, s32 index, s32 node) __asm__("func_801E72CC");
+#endif
+#ifndef XM_S_SetRotMatrix
+#define XM_S_SetRotMatrix
+void xm_SetRotMatrix(MATRIX *m) __asm__("SetRotMatrix");
+#endif
+#ifndef XM_S_SetTransMatrix
+#define XM_S_SetTransMatrix
+void xm_SetTransMatrix(MATRIX *m) __asm__("SetTransMatrix");
+#endif
+#ifndef XM_S_field_event_read_selected_operand_08
+#define XM_S_field_event_read_selected_operand_08
+s32 xm_field_event_read_selected_operand_08(s32 offset, s32 flags) __asm__("FieldScriptArgument5");
+#endif
+#ifndef XM_S_RotTransSV
+#define XM_S_RotTransSV
+void xm_RotTransSV(SVECTOR *v0, SVECTOR *v1, long *flag) __asm__("RotTransSV");
+#endif
+#ifndef XM_S_field_event_write_variable
+#define XM_S_field_event_write_variable
+void xm_field_event_write_variable(s32 reference, s32 value) __asm__("FieldScriptMemoryWriteU16");
+#endif
+#ifndef XM_S_field_event_read_u16
+#define XM_S_field_event_read_u16
+s32 xm_field_event_read_u16(s32 offset) __asm__("FieldScriptVMGetInstructionArgument");
+#endif
+void func_8008800C(void) {
+    MATRIX m;
+    MATRIX work;
+    SVECTOR in;
+    SVECTOR out;
+    long flag;
+    s32 a;
+
+    m.t[0] = m.t[1] = m.t[2] = 0;
+    a = xm_field_event_read_selected_operand_80(1, EVENT_OPERAND_BYTE(0xB));
+    xm_gear_model_get_node_matrix(&m, &work, a, xm_field_event_read_selected_operand_40(3, EVENT_OPERAND_BYTE(0xB)));
+    xm_SetRotMatrix(&m);
+    xm_SetTransMatrix(&m);
+    in.vx = xm_field_event_read_selected_operand_20(5, EVENT_OPERAND_BYTE(0xB));
+    in.vy = xm_field_event_read_selected_operand_10(7, EVENT_OPERAND_BYTE(0xB));
+    in.vz = xm_field_event_read_selected_operand_08(9, EVENT_OPERAND_BYTE(0xB));
+    xm_RotTransSV(&in, &out, &flag);
+    xm_field_event_write_variable(xm_field_event_read_u16(0xC) & 0xFFFF, out.vx);
+    xm_field_event_write_variable(xm_field_event_read_u16(0xE) & 0xFFFF, out.vy);
+    xm_field_event_write_variable(xm_field_event_read_u16(0x10) & 0xFFFF, out.vz);
+    xm_field_current_event_actor->pc += 0x12;
+}
+#endif
 #else
 /* Retail 8008800C: mtx.t is zeroed before func_801E72CC(&mtx, &scratch,
  * arg1, arg2) (scratch = retail sp+0x30); args 3..5 are read only after
@@ -2067,7 +2647,131 @@ extern void SoundFreeWdsEntry(s32 handle);
 extern void func_8003BDFC(s32 a0);
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008AACC);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_event_sound_bank (src/decomp/src/field/field_event.c:1969). */
+#ifndef XM_T_xm_SoundInstrument
+#define XM_T_xm_SoundInstrument
+typedef struct {
+    u32 start;         
+    u16 loop;          
+    s16 note;          
+    u32 envelope;      
+    u16 modes;         
+    u8 unkE[2];
+} xm_SoundInstrument;
+#endif
+#ifndef XM_T_xm_SoundSequence
+#define XM_T_xm_SoundSequence
+typedef struct xm_SoundSequence {
+    u8 unk0[0x10];
+    s32 header_size;   
+    s32 size;          
+    s32 offset;        
+    u8 unk1C[2];
+    u16 volume;
+    u16 key;
+    u8 unk22[6];
+    s32 address;       
+    struct xm_SoundSequence *next;
+    xm_SoundInstrument instrument[1];
+} xm_SoundSequence;
+#endif
+#ifndef XM_S_field_event_sound_bank
+#define XM_S_field_event_sound_bank
+void xm_field_event_sound_bank(void) __asm__("func_8008AACC");
+#endif
+#ifndef XM_S_field_music_is_stream_or_disc_busy
+#define XM_S_field_music_is_stream_or_disc_busy
+s32 xm_field_music_is_stream_or_disc_busy(void) __asm__("func_8008A558");
+#endif
+#ifndef XM_S_mode_wave_bank_slots
+#define XM_S_mode_wave_bank_slots
+extern s32 xm_mode_wave_bank_slots[4] __asm__("D_80062518");
+#endif
+#ifndef XM_S_field_sound_bank_load_slot
+#define XM_S_field_sound_bank_load_slot
+extern s32 xm_field_sound_bank_load_slot __asm__("D_800AFD18");
+#endif
+#ifndef XM_S_sound_load_wave_bank
+#define XM_S_sound_load_wave_bank
+xm_SoundSequence *xm_sound_load_wave_bank(xm_SoundSequence *bank, s32 mode) __asm__("SoundLoadWdsFile");
+#endif
+#ifndef XM_S_field_sound_bank_load_buffer
+#define XM_S_field_sound_bank_load_buffer
+extern void *xm_field_sound_bank_load_buffer __asm__("D_800AFD08");
+#endif
+#ifndef XM_S_sound_sync_transfer
+#define XM_S_sound_sync_transfer
+s16 xm_sound_sync_transfer(s32 wait) __asm__("func_8003BDFC");
+#endif
+#ifndef XM_S_heap_free
+#define XM_S_heap_free
+s32 xm_heap_free(void *data) __asm__("HeapFree");
+#endif
+#ifndef XM_S_mode_wave_bank_5
+#define XM_S_mode_wave_bank_5
+extern struct xm_SoundSequence *xm_mode_wave_bank_5 __asm__("D_800595AC");
+#endif
+#ifndef XM_S_field_event_yield_requested
+#define XM_S_field_event_yield_requested
+extern s32 xm_field_event_yield_requested __asm__("D_800B00C0");
+#endif
+#ifndef XM_S_sound_release_wave_bank
+#define XM_S_sound_release_wave_bank
+void xm_sound_release_wave_bank(xm_SoundSequence *bank) __asm__("SoundFreeWdsEntry");
+#endif
+#ifndef XM_S_field_sound_bank_load_file
+#define XM_S_field_sound_bank_load_file
+extern s32 xm_field_sound_bank_load_file __asm__("D_800AFD0C");
+#endif
+#ifndef XM_S_mode_field_standalone
+#define XM_S_mode_field_standalone
+extern s32 xm_mode_field_standalone __asm__("D_8004F370");
+#endif
+void func_8008AACC(void) {
+    s32 file;
+    s32 slot;
+    void *data;
+
+    if (xm_field_music_is_stream_or_disc_busy() == 0) {
+        if (EVENT_OPERAND_BYTE(1) == 1) {
+            xm_mode_wave_bank_slots[xm_field_sound_bank_load_slot] = (s32)xm_sound_load_wave_bank(xm_field_sound_bank_load_buffer, 0);
+            xm_sound_sync_transfer(0x10);
+            xm_heap_free(xm_field_sound_bank_load_buffer);
+            if (xm_field_sound_bank_load_slot == 3) {
+                xm_mode_wave_bank_5 = (xm_SoundSequence *)xm_mode_wave_bank_slots[3];
+            }
+            xm_field_event_yield_requested = 1;
+            xm_field_current_event_actor->pc += 2;
+        } else {
+            slot = xm_field_event_read_imm_or_var(2);
+            xm_field_sound_bank_load_slot = slot;
+            xm_sound_release_wave_bank((xm_SoundSequence *)xm_mode_wave_bank_slots[slot]);
+            file = xm_field_event_read_imm_or_var(4);
+            xm_field_sound_bank_load_file = file;
+            if (!(file & 0x80)) {
+            standard:
+                xm_cd_select_directory(0x1C, 0);
+                xm_field_sound_bank_load_file += 2;
+            } else if (xm_mode_field_standalone == 1) {
+                xm_field_sound_bank_load_file = 4;
+                goto standard;
+            } else {
+                xm_field_sound_bank_load_file = (file & 0x7F) + 0x1F;
+                xm_cd_select_directory(0x2C, 1);
+            }
+            data = xm_heap_alloc(xm_cd_get_aligned_file_size(xm_field_sound_bank_load_file), 0);
+            xm_field_sound_bank_load_buffer = data;
+            xm_cd_read_file(xm_field_sound_bank_load_file, data, 0, 0x80);
+            xm_cd_select_directory(4, 0);
+            xm_field_current_event_actor->pc += 6;
+        }
+    } else {
+        xm_field_event_yield_requested = 1;
+        xm_field_current_event_actor->pc -= 1;
+    }
+}
+#endif
 #else
 /* Retail 8008AACC: the slot table receives SoundLoadWdsFile's return value
  * (32-bit retail word); bit-7 file ids use directory 0x2C/1 with (id & 0x7F)
@@ -2170,7 +2874,128 @@ void func_8008AE5C(void) {
 extern s16 D_800B221C[];
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008AEC8);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_event_set_layer_light_row (src/decomp/src/field/field_event.c:2061). */
+#ifndef XM_T_xm_FadeChannel
+#define XM_T_xm_FadeChannel
+typedef struct {
+    DR_MODE modes[2]; 
+    TILE tiles[2];   
+    s32 level[3];
+    s32 step[3];
+    u16 abr;
+    s16 active;
+    s16 steps;
+    u16 pad;
+} xm_FadeChannel;
+#endif
+#ifndef XM_T_xm_FieldWork
+#define XM_T_xm_FieldWork
+typedef struct xm_FieldWork {
+    s16 unk2078;               
+    s16 unk207A;               
+    s16 effect_steps;          
+    u8 unk207E[2];
+    s32 effect_value[6];       
+    s32 effect_step[6];        
+    s16 unk20B0[2];            
+    void *effect_buffers[4];   
+    xm_FadeChannel fades[2];      
+    u16 open_windows;          
+
+    s16 encounter_inhibition;  
+    s16 terrain_angle;         
+    u16 input_mask;            
+    s32 unk217C;               
+    s32 unk2180;               
+    SVECTOR sprite_angles;     
+    s16 scale;                 
+    s16 sprite_gate;           
+    u8 fog_color[4];           
+    u8 far_color[4];           
+    s16 fog_range[2];          
+    u8 clear_color[3];         
+    u8 party_bits;             
+    s16 unk21A0[6];            
+    s16 emitter_range;         
+    s16 piece_drift[3];        
+    s16 unk21B4;               
+    u8 unk21B6[2];
+    s32 last_sound_effect;     
+    s32 unk21BC[3];            
+    u8 unk21C8[0x21CC - 0x21C8];
+    u8 party_processing_mode;  
+    u8 camera_floor_fixed;     
+    u8 preserve_nonplayer_motion; 
+    u8 forced_position;        
+    u8 script_control[2];      
+    u8 piece_drift_mode;       
+    u8 unk21D3;
+    s16 unk21D4;               
+    s16 text_speed;            
+    s32 camera_counter;        
+    s16 unk21DC[4];            
+    s16 unk21E4[4];            
+    SVECTOR layer_positions[4]; 
+    s32 layer_scales[4];       
+    s16 unk221C[5][3];         
+    u8 unk223A[2];
+    s16 unk223C[3][3];         
+    u8 unk224E[0x225C - 0x224E];
+    u8 unk225C[3];             
+    u8 unk225F[0x2264 - 0x225F]; 
+    s32 unk2264;               
+    s32 unk2268;               
+    s32 controlled;            
+    u16 encounter_music[16];   
+    s16 battle_music;          
+    u8 unk2292[2];
+    s32 unk2294;               
+    s32 unk2298;               
+    s32 unk229C;               
+    u16 unk22A0[32];           
+    s16 unk22E0;               
+    s16 emitter_descriptor[3]; 
+    s16 unk22E8[3][4];         
+    s16 unk2300[3][4];         
+    s32 unk2318[3];            
+    s16 emitter_position[3][4]; 
+    u16 effects_kept;          
+    u16 unk233E;               
+    s16 repeat_delay;          
+    s16 repeat_remaining;      
+    s16 jump_mode;             
+    s16 animation_mode;        
+    u16 unk2348;               
+    s16 unk234A;               
+    s16 gear_riding_lock_override; 
+    s16 followers_idle;        
+    u32 unk2350;               
+    u8 unk2354;                
+    u8 unk2355;                
+    u8 unk2356;                
+    u8 unk2357;                
+    u8 unk2358;                
+    u8 unk2359[0x235C - 0x2359];
+} xm_FieldWork;
+#endif
+#ifndef XM_S_field_event_set_layer_light_row
+#define XM_S_field_event_set_layer_light_row
+void xm_field_event_set_layer_light_row(void) __asm__("func_8008AEC8");
+#endif
+#ifndef XM_S_field_work
+#define XM_S_field_work
+extern xm_FieldWork xm_field_work __asm__("g_FieldEffects");
+#endif
+void func_8008AEC8(void) {
+    s32 index = xm_field_event_read_selected_operand_80(1, xm_field_event_bytecode[xm_field_current_event_actor->pc + 9]);
+
+    xm_field_work.unk221C[index][0] = xm_field_event_read_selected_operand_40(3, xm_field_event_bytecode[xm_field_current_event_actor->pc + 9]);
+    xm_field_work.unk221C[index][1] = xm_field_event_read_selected_operand_20(5, xm_field_event_bytecode[xm_field_current_event_actor->pc + 9]);
+    xm_field_work.unk221C[index][2] = xm_field_event_read_selected_operand_10(7, xm_field_event_bytecode[xm_field_current_event_actor->pc + 9]);
+    xm_field_current_event_actor->pc += 10;
+}
+#endif
 #else
 void func_8008AEC8(void) {
     u8 mask;
@@ -2625,7 +3450,51 @@ void func_8008B978(s32 charId) {
  * (+0x22B1+slot), write the roster, kick the skin load, IP+3.  Already a
  * member / party full: set the roster bit (+0x1D30), IP+5. */
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008BC80);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_event_join_party (src/decomp/src/field/field_event.c:2378). */
+#ifndef XM_S_field_event_join_party
+#define XM_S_field_event_join_party
+void xm_field_event_join_party(void) __asm__("func_8008BC80");
+#endif
+#ifndef XM_S_field_music_stream_running
+#define XM_S_field_music_stream_running
+extern s32 xm_field_music_stream_running __asm__("D_800ADB2C");
+#endif
+#ifndef XM_S_field_party_find_free_slot
+#define XM_S_field_party_find_free_slot
+s32 xm_field_party_find_free_slot(s32 id, s32 *slot) __asm__("func_8008A790");
+#endif
+#ifndef XM_S_mode_party_members
+#define XM_S_mode_party_members
+extern s32 xm_mode_party_members[3] __asm__("g_GamePartyMembers");
+#endif
+void func_8008BC80(void) {
+    s32 pending = xm_field_party_sprite_load_pending;
+    s32 member;
+    s32 slot;
+
+    if (pending == 0xFF && xm_field_music_stream_running == 0 && xm_field_music_is_stream_or_disc_busy() == 0) {
+        xm_cd_sync_reads(0);
+        member = xm_field_event_read_imm_or_var(1);
+        if (member != pending) {
+            if (xm_field_party_find_free_slot(member, &slot) == 0) {
+                xm_game_current_data->inGear[slot] = 0;
+                xm_mode_party_members[slot] = member;
+                xm_field_party_read_member_sprite(member, slot);
+                xm_field_current_event_actor->pc += 3;
+                return;
+            }
+            xm_game_current_data->joined |= 1 << member;
+            xm_field_current_event_actor->pc += 5;
+            return;
+        }
+        xm_field_current_event_actor->pc += 5;
+        return;
+    }
+    xm_field_event_yield_requested = 1;
+    xm_field_current_event_actor->pc--;
+}
+#endif
 #else
 void func_8008BC80(void) {
     s32 pending = D_800ADBC4;
@@ -3973,7 +4842,82 @@ extern s16 D_800C3A30, D_800C3A32, D_800C3A34, D_800C3A36, D_800C3A38, D_800C3A3
 extern s32 D_800ADB80, D_800ADB74, D_800ADB70;
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008EA58);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_event_play_movie_sound (src/decomp/src/field/field_event.c:3399). */
+#ifndef XM_T_xm_FieldMovieRequest
+#define XM_T_xm_FieldMovieRequest
+typedef struct xm_FieldMovieRequest {
+    s16 file;        
+    u16 x;           
+    u16 y;           
+    u16 source_x;    
+    u16 source_y;    
+    u16 unk2A;       
+    u16 sound_start; 
+    u16 unk2E;       
+    u16 mode;        
+    u16 width;       
+    u16 height;      
+    u16 depth24;     
+    s16 sound_bank;  
+    u16 unk3A;       
+} xm_FieldMovieRequest;
+#endif
+#ifndef XM_T_FIELD_MOVIE
+#define XM_T_FIELD_MOVIE
+#define FIELD_MOVIE xm_field_movie_request
+#endif
+#ifndef XM_S_field_event_play_movie_sound
+#define XM_S_field_event_play_movie_sound
+void xm_field_event_play_movie_sound(void) __asm__("func_8008EA58");
+#endif
+#ifndef XM_S_field_battle_not_requested
+#define XM_S_field_battle_not_requested
+extern s32 xm_field_battle_not_requested __asm__("D_800ADBDC");
+#endif
+#ifndef XM_S_field_movie_request
+#define XM_S_field_movie_request
+extern xm_FieldMovieRequest xm_field_movie_request __asm__("D_800C3A20");
+#endif
+#ifndef XM_S_field_movie_fade_bits
+#define XM_S_field_movie_fade_bits
+extern s32 xm_field_movie_fade_bits __asm__("D_800ADB80");
+#endif
+#ifndef XM_S_field_movie_mode
+#define XM_S_field_movie_mode
+extern s32 xm_field_movie_mode __asm__("D_800ADB74");
+#endif
+#ifndef XM_S_field_movie_requested
+#define XM_S_field_movie_requested
+extern s32 xm_field_movie_requested __asm__("D_800ADB70");
+#endif
+void func_8008EA58(void) {
+    if (xm_field_battle_not_requested == 0) {
+        xm_field_event_yield_requested = 1;
+        xm_field_current_event_actor->pc -= 1;
+        return;
+    }
+    FIELD_MOVIE.file = xm_field_event_read_selected_operand_80(1, EVENT_OPERAND_BYTE(0xB));
+    FIELD_MOVIE.unk2A = xm_field_event_read_selected_operand_40(3, EVENT_OPERAND_BYTE(0xB));
+    FIELD_MOVIE.sound_start = xm_field_event_read_selected_operand_20(5, EVENT_OPERAND_BYTE(0xB));
+    FIELD_MOVIE.unk2E = xm_field_event_read_selected_operand_10(7, EVENT_OPERAND_BYTE(0xB));
+    FIELD_MOVIE.sound_bank = xm_field_event_read_selected_operand_08(9, EVENT_OPERAND_BYTE(0xB));
+    FIELD_MOVIE.width = 0x140;
+    xm_field_movie_fade_bits = 0x40;
+    FIELD_MOVIE.height = 0x100;
+    FIELD_MOVIE.source_x = 0;
+    FIELD_MOVIE.depth24 = 1;
+    FIELD_MOVIE.y = 0;
+    FIELD_MOVIE.x = 0;
+    FIELD_MOVIE.source_y = 0x100;
+    FIELD_MOVIE.unk3A = 0;
+    FIELD_MOVIE.mode &= 0xF;
+    xm_field_movie_mode = 0;
+    xm_field_movie_requested = 1;
+    xm_field_event_yield_requested = 1;
+    xm_field_current_event_actor->pc += 0xC;
+}
+#endif
 #else
 void func_8008EA58(void) {
     if (D_800ADBDC == 0) {
@@ -4352,7 +5296,65 @@ void func_8008F76C(void) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008F7B8);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_event_select_music_track (src/decomp/src/field/field_event.c:3744). */
+#ifndef XM_S_field_event_select_music_track
+#define XM_S_field_event_select_music_track
+void xm_field_event_select_music_track(void) __asm__("func_8008F7B8");
+#endif
+#ifndef XM_S_field_music_release_cached_seq
+#define XM_S_field_music_release_cached_seq
+void xm_field_music_release_cached_seq(void) __asm__("func_80085EEC");
+#endif
+#ifndef XM_S_mode_music_selected_track
+#define XM_S_mode_music_selected_track
+extern s32 xm_mode_music_selected_track __asm__("D_8004F324");
+#endif
+#ifndef XM_S_mode_stop_music
+#define XM_S_mode_stop_music
+void xm_mode_stop_music(void) __asm__("func_8001B66C");
+#endif
+#ifndef XM_S_mode_music_load_pending
+#define XM_S_mode_music_load_pending
+extern s32 xm_mode_music_load_pending __asm__("D_8004F308");
+#endif
+#ifndef XM_S_mode_music_wave_streaming
+#define XM_S_mode_music_wave_streaming
+extern s32 xm_mode_music_wave_streaming __asm__("D_8004F354");
+#endif
+#ifndef XM_S_field_music_change_track
+#define XM_S_field_music_change_track
+void xm_field_music_change_track(s32 music, s32 unused) __asm__("func_80085B20");
+#endif
+void func_8008F7B8(void) {
+    s32 track;
+
+    track = xm_field_event_read_imm_or_var(1);
+    if (xm_field_event_runs_per_frame == 0) {
+        xm_field_music_release_cached_seq();
+        if (track != xm_mode_music_selected_track) {
+            xm_mode_stop_music();
+            xm_mode_music_load_pending = -1;
+        }
+        xm_mode_music_selected_track = track;
+        xm_field_current_event_actor->pc += 3;
+    } else if (xm_field_music_is_stream_or_disc_busy() != 0 || xm_field_battle_not_requested == 0) {
+        xm_field_event_yield_requested = 1;
+    } else if (xm_mode_music_wave_streaming == 1) {
+        xm_field_event_yield_requested = 1;
+    } else if (xm_mode_music_load_pending != -1) {
+        if (track != xm_mode_music_selected_track) {
+            xm_mode_stop_music();
+            xm_mode_music_selected_track = track;
+            xm_mode_music_load_pending = -1;
+            xm_field_music_change_track(track, 0);
+        }
+        xm_field_current_event_actor->pc += 3;
+    } else {
+        xm_field_event_yield_requested = 1;
+    }
+}
+#endif
 #else
 void func_8008F7B8(void) {
     s32 fieldId = FieldScriptVMGetArgument(1);

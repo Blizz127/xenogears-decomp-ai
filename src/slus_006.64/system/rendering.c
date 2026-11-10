@@ -171,7 +171,348 @@ extern void func_800234AC(void* pSpriteData);
 extern void func_8001F530(void* arg0, s32 arg1);
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001D53C);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): sprite_build_cell_frame (src/decomp/src/resident/sprite.c:477). */
+#ifndef XM_T_SpritePart
+#define XM_T_SpritePart
+typedef struct {
+    s16 x, y;              
+    u8 u, v;               
+    u8 w, h;               
+    u8 byte8, byte9;       
+    u16 tpage;             
+    u16 clut;              
+    u8 unknowne[2];
+    u32 colour;            
+    u32 flags;             
+} SpritePart;
+#endif
+#ifndef XM_T_SpriteRendererEntry
+#define XM_T_SpriteRendererEntry
+typedef struct {
+    s8 byte0;              
+    s8 byte1;              
+    s16 half2;
+    s16 half4;
+    s16 half6;
+} SpriteRendererEntry;
+#endif
+#ifndef XM_T_SpriteOffset
+#define XM_T_SpriteOffset
+typedef struct {
+    s8 x, y;
+} SpriteOffset;
+#endif
+#ifndef XM_T_SpriteRenderer
+#define XM_T_SpriteRenderer
+typedef struct {
+    s16 angle_x, angle_y, angle_z; 
+    s16 scale_x, scale_y, scale_z; 
+    MATRIX matrix;                 
+    SpritePart *parts[2];          
+    SpriteRendererEntry *pointer34; 
+    struct Sprite *next_pending;   
+    SpriteOffset offset;           
+    u8 unknown3e[2];
+    s32 word40;                    
+    SVECTOR light_angles;          
+    u16 light_colour[3];           
+} SpriteRenderer;
+#endif
+#ifndef XM_T_Sprite
+#define XM_T_Sprite
+typedef struct Sprite {
+    s32 x, y, z;                
+    s32 speed_x, speed_y, speed_z; 
+    s32 speed;                  
+    s32 gravity;                
+    SpriteRenderer *renderer;   
+    void *image;                
+    u8 red, green, blue;     
+    u8 colour_flags;         
+    s16 scale;               
+    s16 depth;               
+    s16 half30;              
+    s16 direction;           
+    u16 frame;               
+    u16 height;              
+    u16 extent_depth;        
+    u16 rate;                
+    union {
+        u32 word;
+        struct {
+        unsigned sides : 2;      
+        unsigned unknown2 : 1;
+        unsigned flip : 1;       
+        unsigned flip_y : 1;
+        unsigned blend : 3;      
+        unsigned unknown8 : 8;
+        unsigned field16 : 4;
+        unsigned mode : 4;       
+        unsigned no_view : 1;    
+        unsigned unknown25 : 3;
+        unsigned dirty : 1;      
+        unsigned unknown29 : 3;
+        } bits;
+        u8 bytes[4];         
+    } render;                
+    u32 flags;               
+    s32 *resource_block;     
+    s32 *animations;         
+    s32 resource;            
+    s32 word50;              
+    u16 *frame_table;        
+    u16 *animation;          
+    u16 *facings;            
+    u16 *word60;             
+    u8 *script;              
+    void (*callback)(struct Sprite *sprite); 
+    void *block;             
+    struct Sprite *parent;   
+    struct Sprite *partner;  
+    s32 word78;              
+    void *sequencer;         
+    u16 word80;              
+    u16 word82;              
+    s16 ground;              
+    u16 size;                
+    u8 *frames;              
+    s8 stack_top;            
+    u8 unknown8d;
+    u8 stack[0x10];          
+    s16 countdown;           
+    s16 target_x, target_y, target_z; 
+    u8 unknowna6[2];
+    struct {
+        unsigned sequencer_owned : 1; 
+        unsigned bounce : 10;    
+        unsigned frame : 6;      
+        unsigned step : 3;       
+        unsigned phase : 2;      
+        unsigned field22 : 6;    
+        unsigned field28 : 2;
+        unsigned unknown30 : 2;
+    } frame_bits;            
+    union {
+        u32 word;
+        struct {
+        unsigned unknown0 : 2;
+        unsigned mirror : 1;     
+        unsigned frame_flip : 1; 
+        unsigned unknown4 : 1;
+        unsigned owns_children : 1; 
+        unsigned double_step : 1;
+        unsigned divisor : 12;   
+        unsigned unknown19 : 13;
+        } bits;
+        u8 bytes[4];
+    } motion;                
+    union {
+        u32 wordb0;          
+        u8 byteb0;
+        struct {
+            unsigned unknown0 : 8;
+            unsigned passive_children : 1; 
+            unsigned share_rate : 1;       
+            unsigned unknown10 : 22;
+        } bits;
+    } b0;                    
+} Sprite;
+#endif
+#ifndef XM_T_SpriteSource
+#define XM_T_SpriteSource
+typedef struct {
+    u16 *frames;           
+    DVECTOR origin;        
+    s16 clut_x;            
+    s16 clut_y;            
+    u16 *palette;          
+    u16 *animations;       
+} SpriteSource;
+#endif
+#ifndef XM_T_TexturePosition
+#define XM_T_TexturePosition
+typedef struct {
+    s16 x, y;
+} TexturePosition;
+#endif
+#ifndef XM_T_SpriteImageSize
+#define XM_T_SpriteImageSize
+typedef struct {
+    u16 width;
+    u16 height;
+} SpriteImageSize;
+#endif
+#ifndef XM_T_SpriteSequencer
+#define XM_T_SpriteSequencer
+typedef struct {
+    s32 word0;
+    s32 word4;
+    s32 word8;
+    s16 halfc;
+    SpriteImageSize size;  
+    u8 unknown12[2];
+    s16 actor;             
+    u8 unknown16[2];
+    u16 *buffer;           
+} SpriteSequencer;
+#endif
+#ifndef XM_S_sprite_build_cell_frame
+#define XM_S_sprite_build_cell_frame
+void xm_sprite_build_cell_frame(Sprite *sprite, s32 frame, SpriteSource *source) __asm__("func_8001D53C");
+#endif
+#ifndef XM_S_heap_alloc
+#define XM_S_heap_alloc
+void *xm_heap_alloc(s32 size, s32 mode) __asm__("HeapAlloc");
+#endif
+#ifndef XM_S_sprite_clear_group_entries
+#define XM_S_sprite_clear_group_entries
+void xm_sprite_clear_group_entries(Sprite *sprite) __asm__("func_800234AC");
+#endif
+#ifndef XM_S_sprite_cell_page_positions
+#define XM_S_sprite_cell_page_positions
+extern TexturePosition xm_sprite_cell_page_positions[8] __asm__("D_8004FAB8");
+#endif
+#ifndef XM_S_GetTPage
+#define XM_S_GetTPage
+u_short xm_GetTPage(int tp, int abr, int x, int y) __asm__("GetTPage");
+#endif
+#ifndef XM_S_GetClut
+#define XM_S_GetClut
+u_short xm_GetClut(int x, int y) __asm__("GetClut");
+#endif
+void func_8001D53C(Sprite *sprite, s32 frame, SpriteSource *source) {
+    u16 *table;
+    u8 *record;
+    u16 *cells;
+    u16 v_base;
+    u16 blend;
+    u32 colour;
+    s32 count;
+    u8 wide;
+    Sprite *self;
+    u8 *p;
+    SpritePart *parts;
+    s32 group;
+    s32 i;
+    u8 control;
+    u8 *cell;
+    s32 kind;
+    u16 u_base;
+    s16 rate;
+    s32 palette;
+    TexturePosition *page;
+    TexturePosition *pages;
+
+    table = source->frames;
+    record = (u8 *)(table[frame] + (s32)table);
+    cells = (u16 *)(record + 4);
+    wide = *record & 0x80;
+    count = *record & 0x3F;
+    p = record + (count * 2 + 4);
+    parts = sprite->renderer->parts[1];
+    self = sprite;
+    sprite->height = record[3] * sprite->scale / 4096;
+    sprite->extent_depth = record[1] * sprite->scale / 4096;
+    v_base = source->origin.vy & 0xFF;
+    blend = sprite->render.bits.blend;
+    group = 4;
+    colour = *(u32 *)&sprite->red;
+    for (i = 0; i != count; i++, p += 3) {
+        parts[i].byte9 = 0;
+        parts[i].byte8 = 0;
+        parts[i].flags &= ~0x20;
+    next:
+        control = *p;
+        if (control & 0x80) {
+            p++;
+            if (control & 0x40) {
+                group = control & 7;
+                if (sprite->renderer->pointer34 == NULL) {
+                    sprite->renderer->pointer34 = xm_heap_alloc(0x40, 0);
+                    xm_sprite_clear_group_entries(sprite);
+                }
+                if (control & 0x20) {
+                    sprite->renderer->pointer34[group].byte0 = *p++;
+                    sprite->renderer->pointer34[group].byte1 = *p++;
+                }
+                if (control & 0x10) {
+                    s16 depth = *p++ << 4;
+
+                    sprite->renderer->pointer34[group].half6 = depth;
+                } else {
+                    sprite->renderer->pointer34[group].half6 = 0;
+                }
+            } else {
+                if (control & 4) {
+                    parts[i].flags |= 0x20;
+                }
+                if (control & 1) {
+                    parts[i].byte8 = *p++;
+                }
+                if (control & 2) {
+                    parts[i].byte9 = *p++;
+                }
+            }
+            goto next;
+        }
+        cell = (u8 *)(*cells + (s32)table);
+        kind = *cell;
+        cells++;
+        if (kind & 1) {
+            parts[i].flags |= 8;
+            u_base = (source->origin.vx & 0x3F) >> 1;
+        } else {
+            parts[i].flags &= ~8;
+            u_base = (source->origin.vx & 0x3F) >> 2;
+        }
+        rate = (*p >> 4) & 3;
+        palette = *p & 0xF;
+        parts[i].colour = colour;
+        if (rate != 0 || (rate = blend) != 0) {
+            rate--;
+            ((u8 *)&parts[i].colour)[3] |= 2;
+        }
+        if ((kind >> 4) & 1) {
+            TexturePosition *resident_pages;
+            TexturePosition *resident_page;
+
+            cell++;
+            kind |= *cell << 8;
+            resident_pages = xm_sprite_cell_page_positions;
+            resident_page = (TexturePosition *)(((kind << 1) & 0x1C) + (s32)resident_pages);
+            parts[i].tpage = xm_GetTPage(kind & 1, rate, resident_page->x, resident_page->y);
+            parts[i].clut = xm_GetClut((kind >> 1) & 0xF0, ((kind >> 9) & 0xF) + 0x1CC);
+        } else {
+            if (self->frame_bits.sequencer_owned == 1 &&
+                (pages = (TexturePosition *)((SpriteSequencer *)self->sequencer)->buffer) != NULL) {
+                page = (TexturePosition *)((kind << 1 & 0x1C) + (s32)pages);
+                v_base = page->y & 0xFF;
+                u_base = (page->x & 0x3F) >> 2;
+                parts[i].tpage = getTPage(kind & 1, rate, page->x, page->y);
+            } else {
+                parts[i].tpage = getTPage(kind & 1, rate, source->origin.vx + ((kind << 5) & 0x1C0), source->origin.vy);
+            }
+            parts[i].clut = getClut(source->clut_x + palette * 16, source->clut_y);
+        }
+        parts[i].flags = (parts[i].flags & ~7) | group;
+        parts[i].u = u_base + cell[1];
+        parts[i].v = v_base + cell[2];
+        parts[i].w = cell[3];
+        parts[i].h = cell[4];
+        parts[i].flags = (parts[i].flags & ~0x10) | ((*p >> 2) & 0x10);
+        if (wide) {
+            parts[i].x = p[1] | ((s8)p[2] << 8);
+            parts[i].y = p[3] | ((s8)p[4] << 8);
+            p += 2;
+        } else {
+            parts[i].x = (s8)p[1];
+            parts[i].y = (s8)p[2];
+        }
+    }
+    sprite->flags = (sprite->flags & ~0xFC) | ((i & 0x3F) << 2);
+}
+#endif
 #else
 void func_8001D53C(void* pSpriteData, u16 frameIndex, void* pAnimPackage) {
     u8* pData = pSpriteData;
@@ -1292,7 +1633,42 @@ void func_8001F5BC(void* pSpriteData, s32 arg1, s32* outZ, s32* outX, s32* outY)
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001F6B0);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): sprite_recolor_parts (src/decomp/src/resident/sprite.c:1368). */
+#ifndef XM_T_SpriteImage
+#define XM_T_SpriteImage
+typedef struct {
+    u8 unknown0[4];
+    SpriteImageSize size;  
+} SpriteImage;
+#endif
+#ifndef XM_S_sprite_recolor_parts
+#define XM_S_sprite_recolor_parts
+void xm_sprite_recolor_parts(Sprite *sprite) __asm__("func_8001F6B0");
+#endif
+void func_8001F6B0(Sprite *sprite) {
+    SpriteImageSize size; 
+    SpritePart *part;
+    u32 colour;
+    s32 blend;
+    s32 i;
+
+    if ((sprite->render.word & 3) != 1) {
+        return;
+    }
+    blend = sprite->render.bits.blend;
+    if (blend != 0) {
+        blend--;
+    }
+    size = ((SpriteImage *)sprite->image)->size;
+    part = sprite->renderer->parts[1];
+    colour = *(u32 *)&sprite->red;
+    for (i = 0; i != (u8)sprite->flags >> 2; i++) {
+        part[i].colour = colour;
+        part[i].tpage = (part[i].tpage & 0xFF9F) | (blend << 5);
+    }
+}
+#endif
 #else
 void func_8001F6B0(void* pSpriteData) {
     u8* pData = pSpriteData;
@@ -1330,7 +1706,61 @@ void func_8001F6B0(void* pSpriteData) {
 extern void func_800234AC(void* pSpriteData);
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001F750);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): sprite_apply_cell_frame_controls (src/decomp/src/resident/sprite.c:1396). */
+#ifndef XM_S_sprite_apply_cell_frame_controls
+#define XM_S_sprite_apply_cell_frame_controls
+void xm_sprite_apply_cell_frame_controls(Sprite *sprite, s32 frame, SpriteSource *source) __asm__("func_8001F750");
+#endif
+void func_8001F750(Sprite *sprite, s32 frame, SpriteSource *source) {
+    u16 *frames = source->frames;
+    u8 *record = (u8 *)(frames[frame] + (s32)frames);
+    u8 wide = *record & 0x80;
+    s32 count = *record & 0x3F;
+    u8 *p = record + (count * 2 + 4);
+    s32 i;
+    u8 control;
+    s32 slot;
+
+    for (i = 0; i != count; i++) {
+    next:
+        control = *p;
+        if (control & 0x80) {
+            p++;
+            if (control & 0x40) {
+                slot = control & 7;
+                if (sprite->renderer->pointer34 == NULL) {
+                    sprite->renderer->pointer34 = xm_heap_alloc(0x40, 0);
+                    xm_sprite_clear_group_entries(sprite);
+                }
+                if (control & 0x20) {
+                    sprite->renderer->pointer34[slot].byte0 = *p++;
+                    sprite->renderer->pointer34[slot].byte1 = *p++;
+                }
+                if (control & 0x10) {
+                    s16 depth = *p++ << 4;
+
+                    sprite->renderer->pointer34[slot].half6 = depth;
+                } else {
+                    sprite->renderer->pointer34[slot].half6 = 0;
+                }
+            } else {
+                if (control & 1) {
+                    p++;
+                }
+                if (control & 2) {
+                    p++;
+                }
+            }
+            goto next;
+        }
+        if (wide) {
+            p += 2;
+        }
+        p += 3;
+    }
+}
+#endif
 #else
 void func_8001F750(void* pSpriteData, u16 frameIndex, void* pAnimPackage) {
     u8* pData = pSpriteData;
@@ -1391,7 +1821,73 @@ void func_8001F750(void* pSpriteData, u16 frameIndex, void* pAnimPackage) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/rendering", func_8001F8E8);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): sprite_apply_frame_controls (src/decomp/src/resident/sprite.c:1449). */
+#ifndef XM_S_sprite_apply_frame_controls
+#define XM_S_sprite_apply_frame_controls
+void xm_sprite_apply_frame_controls(Sprite *sprite, s32 frame, SpriteSource *source) __asm__("func_8001F8E8");
+#endif
+void func_8001F8E8(Sprite *sprite, s32 frame, SpriteSource *source) {
+    u16 *frames = source->frames;
+    u8 *record;
+    u8 wide;
+    s32 count;
+    u8 *p;
+    s32 i;
+    u8 control;
+    s32 slot;
+    s32 unused[4]; 
+
+    if (frame >= (*frames & 0x1FF) + 1) {
+        return;
+    }
+    if (*frames & 0x8000) {
+        xm_sprite_apply_cell_frame_controls(sprite, frame, source);
+        return;
+    }
+    record = (u8 *)(frames[frame] + (s32)frames);
+    wide = *record & 0x80;
+    count = *record & 0x3F;
+    p = record + (count * 4 + 6);
+    for (i = 0; i != count; i++) {
+    next:
+        control = *p;
+        if (control & 0x80) {
+            p++;
+            if (control & 0x40) {
+                if (sprite->renderer->pointer34 == NULL) {
+                    sprite->renderer->pointer34 = xm_heap_alloc(0x40, 0);
+                    xm_sprite_clear_group_entries(sprite);
+                }
+                slot = control & 7;
+                if (control & 0x20) {
+                    sprite->renderer->pointer34[slot].byte0 = *p++;
+                    sprite->renderer->pointer34[slot].byte1 = *p++;
+                }
+                if (control & 0x10) {
+                    s16 depth = *p++ << 4;
+
+                    sprite->renderer->pointer34[slot].half6 = depth;
+                } else {
+                    sprite->renderer->pointer34[slot].half6 = 0;
+                }
+            } else {
+                if (control & 1) {
+                    p++;
+                }
+                if (control & 2) {
+                    p++;
+                }
+            }
+            goto next;
+        }
+        if (wide) {
+            p += 2;
+        }
+        p += 3;
+    }
+}
+#endif
 #else
 // Animation frame and tile data stuff
 void func_8001F8E8(void* pSpriteData, u16 frameIndex, u32 animPackageAddr) {

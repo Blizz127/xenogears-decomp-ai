@@ -35,13 +35,21 @@ build_variables = {
 paths = [ "{binary}/psyq" ]
 
 [[build_preset]]
+name = "XenoSound263"
+# sound.c compiles byte-identically under gcc-2.6.0-psx and gcc-2.6.3-psx; 2.6.3 is
+# what ex-machina records and it additionally matches func_8003D53C.
+build_variables = {
+    gcc = "gcc-2.6.3-psx"
+}
+paths = [ "{binary}/system/sound." ]
+
+[[build_preset]]
 name = "XenoLibrary"
 build_variables = {
     gcc = "gcc-2.6.0-psx"
 }
 paths = [
     "{binary}/system/libarchive.",
-    "{binary}/system/sound.",
     "member_change_menu/main/misc.",
     "shop_menu/main/misc.",
     # The shop overlay's retail code interleaves unmatched regions with C runs,
@@ -139,7 +147,12 @@ name = "SdataSmallLiteral"
 # SdataSmall's -G handling, plus the literal `li` flavour: retail work_list,
 # rendering and graphics never use the lui/ori `li` expansion (every small
 # constant load is `addiu $r,$zero,K`, 0 `ori $r,$zero,K` in their asm).
+# gcc-2.7.2-cdk-psx: the compiler the ex-machina project records for these units.
+# Byte-identical to gcc-2.7.2-psx on everything already matched here (verified per
+# TU against the base build), and it matches func_8001F6B0/func_8001D53C/
+# GfxLoadClutsAccelerated, which 2.7.2-psx does not.
 build_variables = {
+    gcc = "gcc-2.7.2-cdk-psx",
     maspsx_flags = "--dont-expand-li --dont-force-G0 --use-comm-section --run-assembler",
 }
 paths = [
@@ -185,6 +198,16 @@ build_variables = {
 paths = [
     "{binary}/system/temp1.",
     "{binary}/system/temp1b.",
+]
+
+[[build_preset]]
+name = "XenoLiteralCdk"
+# XenoLiteral, but gcc-2.7.2-cdk-psx for temp1f and work_list (see SdataSmallLiteral).
+build_variables = {
+    gcc = "gcc-2.7.2-cdk-psx",
+    maspsx_flags = "--dont-expand-li --use-comm-section --run-assembler",
+}
+paths = [
     "{binary}/system/temp1f.",
     "{binary}/system/work_list.",
 ]

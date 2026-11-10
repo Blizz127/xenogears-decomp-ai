@@ -908,7 +908,734 @@ extern void* D_801E8670[];
  * Divisions are guarded against moveSpeed==0 for host safety (PSX tolerates
  * div-by-zero; the guard is a no-op whenever moveSpeed != 0). */
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80081F80);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_actor_set_planar_velocity (src/decomp/src/field/field_motion.c:2681). */
+#ifndef XM_T_xm_SpritePart
+#define XM_T_xm_SpritePart
+typedef struct {
+    s16 x, y;              
+    u8 u, v;               
+    u8 w, h;               
+    u8 byte8, byte9;       
+    u16 tpage;             
+    u16 clut;              
+    u8 unknowne[2];
+    u32 colour;            
+    u32 flags;             
+} xm_SpritePart;
+#endif
+#ifndef XM_T_xm_SpriteRendererEntry
+#define XM_T_xm_SpriteRendererEntry
+typedef struct {
+    s8 byte0;              
+    s8 byte1;              
+    s16 half2;
+    s16 half4;
+    s16 half6;
+} xm_SpriteRendererEntry;
+#endif
+#ifndef XM_T_xm_SpriteOffset
+#define XM_T_xm_SpriteOffset
+typedef struct {
+    s8 x, y;
+} xm_SpriteOffset;
+#endif
+#ifndef XM_T_xm_SpriteRenderer
+#define XM_T_xm_SpriteRenderer
+typedef struct {
+    s16 angle_x, angle_y, angle_z; 
+    s16 scale_x, scale_y, scale_z; 
+    MATRIX matrix;                 
+    xm_SpritePart *parts[2];          
+    xm_SpriteRendererEntry *pointer34; 
+    struct xm_Sprite *next_pending;   
+    xm_SpriteOffset offset;           
+    u8 unknown3e[2];
+    s32 word40;                    
+    SVECTOR light_angles;          
+    u16 light_colour[3];           
+} xm_SpriteRenderer;
+#endif
+#ifndef XM_T_xm_Sprite
+#define XM_T_xm_Sprite
+typedef struct xm_Sprite {
+    s32 x, y, z;                
+    s32 speed_x, speed_y, speed_z; 
+    s32 speed;                  
+    s32 gravity;                
+    xm_SpriteRenderer *renderer;   
+    void *image;                
+    u8 red, green, blue;     
+    u8 colour_flags;         
+    s16 scale;               
+    s16 depth;               
+    s16 half30;              
+    s16 direction;           
+    u16 frame;               
+    u16 height;              
+    u16 extent_depth;        
+    u16 rate;                
+    union {
+        u32 word;
+        struct {
+        unsigned sides : 2;      
+        unsigned unknown2 : 1;
+        unsigned flip : 1;       
+        unsigned flip_y : 1;
+        unsigned blend : 3;      
+        unsigned unknown8 : 8;
+        unsigned field16 : 4;
+        unsigned mode : 4;       
+        unsigned no_view : 1;    
+        unsigned unknown25 : 3;
+        unsigned dirty : 1;      
+        unsigned unknown29 : 3;
+        } bits;
+        u8 bytes[4];         
+    } render;                
+    u32 flags;               
+    s32 *resource_block;     
+    s32 *animations;         
+    s32 resource;            
+    s32 word50;              
+    u16 *frame_table;        
+    u16 *animation;          
+    u16 *facings;            
+    u16 *word60;             
+    u8 *script;              
+    void (*callback)(struct xm_Sprite *sprite); 
+    void *block;             
+    struct xm_Sprite *parent;   
+    struct xm_Sprite *partner;  
+    s32 word78;              
+    void *sequencer;         
+    u16 word80;              
+    u16 word82;              
+    s16 ground;              
+    u16 size;                
+    u8 *frames;              
+    s8 stack_top;            
+    u8 unknown8d;
+    u8 stack[0x10];          
+    s16 countdown;           
+    s16 target_x, target_y, target_z; 
+    u8 unknowna6[2];
+    struct {
+        unsigned sequencer_owned : 1; 
+        unsigned bounce : 10;    
+        unsigned frame : 6;      
+        unsigned step : 3;       
+        unsigned phase : 2;      
+        unsigned field22 : 6;    
+        unsigned field28 : 2;
+        unsigned unknown30 : 2;
+    } frame_bits;            
+    union {
+        u32 word;
+        struct {
+        unsigned unknown0 : 2;
+        unsigned mirror : 1;     
+        unsigned frame_flip : 1; 
+        unsigned unknown4 : 1;
+        unsigned owns_children : 1; 
+        unsigned double_step : 1;
+        unsigned divisor : 12;   
+        unsigned unknown19 : 13;
+        } bits;
+        u8 bytes[4];
+    } motion;                
+    union {
+        u32 wordb0;          
+        u8 byteb0;
+        struct {
+            unsigned unknown0 : 8;
+            unsigned passive_children : 1; 
+            unsigned share_rate : 1;       
+            unsigned unknown10 : 22;
+        } bits;
+    } b0;                    
+} xm_Sprite;
+#endif
+#ifndef XM_T_xm_MorphDelta
+#define XM_T_xm_MorphDelta
+typedef struct {
+    s16 dx, dy, dz;
+    s16 index;
+} xm_MorphDelta;
+#endif
+#ifndef XM_T_xm_MorphTarget
+#define XM_T_xm_MorphTarget
+typedef struct {
+    s32 count;
+    void *deltas;
+    xm_MorphDelta *normals;
+} xm_MorphTarget;
+#endif
+#ifndef XM_T_xm_MorphTable
+#define XM_T_xm_MorphTable
+typedef struct {
+    s32 count;
+    xm_MorphTarget targets[1];
+} xm_MorphTable;
+#endif
+#ifndef XM_T_xm_SpriteModel
+#define XM_T_xm_SpriteModel
+typedef struct {
+    u16 flags;          
+    u16 vertex_count;
+    u16 primitive_count;
+    u16 group_count;    
+    SVECTOR *vertices;
+    SVECTOR *normals;
+    u8 *unk10;          
+    u8 *unk14;
+    u8 *unk18;
+    xm_MorphTable *morphs; 
+    SVECTOR box_min;    
+    SVECTOR box_max;
+    s32 aux_size;       
+    s32 packet_size;    
+} xm_SpriteModel;
+#endif
+#ifndef XM_T_xm_MorphChannel
+#define XM_T_xm_MorphChannel
+typedef struct xm_MorphChannel {
+    s32 (*update)(struct xm_MorphChannel *channel);
+    s32 target;
+    s32 weight;
+    s32 step;
+    u8 unk10[0x10];
+} xm_MorphChannel;
+#endif
+#ifndef XM_T_xm_MorphState
+#define XM_T_xm_MorphState
+typedef struct {
+    xm_SpriteModel *model;
+    SVECTOR *vertices;
+    SVECTOR *normals;
+    s32 count;
+    xm_MorphChannel *channels;
+} xm_MorphState;
+#endif
+#ifndef XM_T_xm_FieldInstance
+#define XM_T_xm_FieldInstance
+typedef struct {
+    u8 unk00[4];
+    xm_SpriteModel *mesh; 
+    void *packets[2]; 
+    u8 unk10[2];
+    s16 mode;        
+    xm_MorphState *anims; 
+    s16 center[3];   
+    s16 unk1E;
+    s16 radius;      
+} xm_FieldInstance;
+#endif
+#ifndef XM_T_xm_FieldMarker
+#define XM_T_xm_FieldMarker
+typedef struct xm_FieldMarker {
+    SVECTOR v[4];
+    POLY_FT4 poly[2];
+} xm_FieldMarker;
+#endif
+#ifndef XM_T_xm_Fixed
+#define XM_T_xm_Fixed
+typedef union {
+    s32 value;
+    struct {
+        u16 fraction;
+        s16 whole;
+    } part;
+} xm_Fixed;
+#endif
+#ifndef XM_T_xm_ScriptSlot
+#define XM_T_xm_ScriptSlot
+typedef struct xm_ScriptSlot {
+    u16 resume_pc;      
+    u8 countdown;       
+    u8 tag;             
+    u32 value : 16;     
+    u32 unk16 : 2;
+    u32 priority : 4;   
+    u32 unk22 : 1;
+    u32 move_mode : 2;  
+    u32 unk25 : 7;
+} xm_ScriptSlot;
+#endif
+#ifndef XM_T_xm_PlatformLink
+#define XM_T_xm_PlatformLink
+typedef struct xm_PlatformLink {
+    SVECTOR rotation; 
+    s16 radius;       
+    s16 unkA;
+} xm_PlatformLink;
+#endif
+#ifndef XM_T_xm_ActorState
+#define XM_T_xm_ActorState
+typedef struct {
+    u32 mode : 2;   
+    u32 unk2 : 3;   
+    u32 unk5 : 1;   
+    u32 depth : 3;  
+    u32 octant : 3; 
+    u32 unk12 : 1;  
+    u32 layer : 3;  
+    u32 unk16 : 2;  
+    u32 unk18 : 10; 
+    u32 unk28 : 4;
+} xm_ActorState;
+#endif
+#ifndef XM_T_xm_FieldActor
+#define XM_T_xm_FieldActor
+typedef struct xm_FieldActor {
+    u32 flags;           
+    u32 layer_flags;     
+    s16 triangle[4];     
+    s16 layer;           
+    u8 unk012[2];
+    u32 floor_attribute; 
+    s16 unk18;           
+    s16 height;          
+    xm_Fixed gravity;       
+    s32 position[3];     
+    u8 unk02C[4];
+    s32 unk030[3];       
+    u8 unk03C[4];
+    s32 unk40[3];        
+    u8 unk04C[4];
+    s32 unk50[3];        
+    u8 unk05C[4];
+    s16 unk60;           
+    s16 unk62;           
+    s16 unk64;           
+    u8 unk066[2];
+    s16 last_position[3]; 
+    u16 stuck;           
+    s16 unk70;           
+    s16 unk72;           
+    u8 ridden_actor;     
+    u8 unk075;           
+    s16 unk76;           
+    u16 call_stack[4];   
+    u8 character;        
+    u8 unk081;
+    u8 unk82;            
+    u8 unk83;            
+    s32 unk84;           
+    s16 unk88;           
+    s16 unk8A;           
+    xm_ScriptSlot slots[8]; 
+    u16 pc;              
+    u8 slot;             
+    u8 unk0CF;
+    s32 target[3];       
+    u8 unk0DC[0xE2 - 0xDC];
+    u8 unkE2;            
+    u8 unk0E3;
+    s16 unkE4;           
+    s16 unkE6;           
+    s16 unkE8;           
+    s16 unk0EA;          
+    s16 unkEC;           
+    s16 unkEE;           
+    s32 unkF0;           
+    s16 scale[3];        
+    u8 unk0FA[2];
+    u8 color0[3];        
+    u8 color1[3];        
+    u16 unk102;          
+    s16 heading;         
+    s16 heading_goal;    
+    s16 unk108;          
+    u16 sound;           
+    u8 sound_volume;     
+    u8 sound_mode;       
+    u8 unk10E[0x110 - 0x10E];
+    struct xm_PlatformLink *link; 
+    void *unk114;        
+    s32 *list;           
+    u16 unk11C;          
+    s16 unk11E;          
+    void *unk120;        
+    s16 unk124;          
+    u8 unk126;           
+    u8 unk127;           
+    u16 unk128;          
+    u8 unk12A[2];
+    union {
+        u32 word;
+        xm_ActorState bits;
+    } state;             
+    u32 unk130 : 9;      
+    u32 unk130_9 : 10;   
+    u32 unk130_19 : 9;   
+    u32 sprite_kind : 2; 
+    u32 unk130_30 : 2;
+    u32 unk134;          
+} xm_FieldActor;
+#endif
+#ifndef XM_T_xm_FieldDescriptor
+#define XM_T_xm_FieldDescriptor
+typedef struct xm_FieldDescriptor {
+    xm_FieldInstance *instance; 
+    xm_Sprite *model;           
+    struct xm_FieldMarker *shadow; 
+    MATRIX matrix;           
+    MATRIX transform;        
+    xm_FieldActor *actor;       
+    SVECTOR rotation;        
+    u16 flags;               
+    u16 unk5A;               
+} xm_FieldDescriptor;
+#endif
+#ifndef XM_T_xm_ModelTable
+#define XM_T_xm_ModelTable
+typedef struct xm_ModelTable {
+    xm_SpriteModel **models;
+    u32 count;
+} xm_ModelTable;
+#endif
+#ifndef XM_T_xm_EffectEntry
+#define XM_T_xm_EffectEntry
+typedef struct {
+    u8 used;
+    u8 field1;     
+    u8 kind;       
+    u8 tag;        
+    u16 params[6]; 
+    u16 time;      
+    u16 duration;  
+} xm_EffectEntry;
+#endif
+#ifndef XM_T_xm_ModelPart
+#define XM_T_xm_ModelPart
+typedef struct xm_ModelPart {
+    struct xm_ModelPart *parent; 
+    u8 dirty;         
+    u8 rotate;        
+    u8 yxz;           
+    u8 visible;       
+    u16 modelId;      
+    u16 index;        
+    MATRIX transform; 
+    MATRIX world;     
+    s16 scale[3];     
+    u16 field52;      
+
+
+    SVECTOR rotation;        
+    s32 translation[3];      
+    void *packets[2];        
+    xm_EffectEntry *effects[3]; 
+} xm_ModelPart;
+#endif
+#ifndef XM_T_xm_EntryTable
+#define XM_T_xm_EntryTable
+typedef struct xm_EntryTable {
+    s32 count;
+    s32 *entries;
+} xm_EntryTable;
+#endif
+#ifndef XM_T_xm_SoundBank
+#define XM_T_xm_SoundBank
+typedef struct xm_SoundBank {
+    u8 unk0[0x10];
+    u16 flags;
+    u8 unk12[2];
+    u16 id;
+    u16 unk16;         
+    u16 volumes;       
+    u8 unk1A[2];
+    struct xm_SoundBank *next;
+    u16 effect[1];     
+} xm_SoundBank;
+#endif
+#ifndef XM_T_xm_SoundOwner
+#define XM_T_xm_SoundOwner
+typedef struct xm_SoundOwner {
+    u8 pad0[8];
+    xm_SoundBank *bank;        
+    void *end;              
+} xm_SoundOwner;
+#endif
+#ifndef XM_T_xm_EffectSprite
+#define XM_T_xm_EffectSprite
+typedef struct {
+    s16 x0, y0, z0, pad06;
+    s16 x1, y1, z1;
+    s16 projected; 
+    s16 x2, y2, z2;
+    s16 age;       
+    s16 x3, y3, z3;
+    s16 lifetime;  
+    u16 color[3];  
+    s16 fade[3];   
+    POLY_FT4 packets[2]; 
+} xm_EffectSprite;
+#endif
+#ifndef XM_T_xm_SpritePool
+#define XM_T_xm_SpritePool
+typedef struct xm_SpritePool {
+    xm_EffectSprite *records;
+    s16 count;
+    s16 next;
+} xm_SpritePool;
+#endif
+#ifndef XM_T_xm_ColorFade
+#define XM_T_xm_ColorFade
+typedef struct xm_ColorFade {
+    s16 id;           
+    u8 solid;         
+    u8 semiTrans;     
+    xm_SpritePool *pool; 
+    xm_EffectSprite *sprite; 
+    SVECTOR ends[2];  
+    union {
+        struct {
+            DVECTOR first[8];
+            DVECTOR second[8];
+        } screen;
+        struct {
+            VECTOR first[2];
+            VECTOR second[2];
+        } world;
+    } history; 
+    s16 time;     
+    s16 count;    
+    s16 max;      
+    s16 duration; 
+    s16 color[3]; 
+    s16 step[3];  
+} xm_ColorFade;
+#endif
+#ifndef XM_T_xm_SurfaceEntry
+#define XM_T_xm_SurfaceEntry
+typedef struct {
+    s16 h0, h2, h4, h6, h8, hA, hC, hE;
+} xm_SurfaceEntry;
+#endif
+#ifndef XM_T_xm_SurfacePoint
+#define XM_T_xm_SurfacePoint
+typedef struct {
+    s16 length;
+    s16 sag;
+    s16 pos[3];
+    u16 normalCount; 
+    s32 normal[3];   
+} xm_SurfacePoint;
+#endif
+#ifndef XM_T_xm_SurfacePoly
+#define XM_T_xm_SurfacePoly
+typedef struct {
+    s16 index[3];
+    u8 pad6[2];
+    POLY_GT3 prim[2];
+} xm_SurfacePoly;
+#endif
+#ifndef XM_T_xm_Surface
+#define XM_T_xm_Surface
+typedef struct xm_Surface {
+    u16 h0;
+    u8 pad2[2];
+    s16 rings;              
+    s16 polys;              
+    s16 points;             
+    s16 entryCount;         
+    u8 b[6];                
+    u8 pad12[2];
+    SVECTOR *centres;       
+    xm_SurfaceEntry *entries;  
+    xm_SurfacePoint **strands; 
+    xm_SurfacePoly *polyList;  
+} xm_Surface;
+#endif
+#ifndef XM_T_xm_ColorRow
+#define XM_T_xm_ColorRow
+typedef struct {
+    u16 c[3];
+} xm_ColorRow;
+#endif
+#ifndef XM_T_xm_FrameCurve
+#define XM_T_xm_FrameCurve
+typedef s16 (*xm_FrameCurve)();
+#endif
+#ifndef XM_T_xm_ImageAnim
+#define XM_T_xm_ImageAnim
+typedef struct xm_ImageAnim {
+    struct xm_ImageAnim *target; 
+    u16 *pixels;              
+    u16 *pixels2;             
+    u16 *work;                
+    u8 mode;                  
+    u8 dirty;                 
+    s16 size;                 
+    u16 time;                 
+    u16 speed;                
+    u16 frame;                
+    u16 active;               
+    xm_ColorRow *colors;         
+    s16 divisor;              
+    s16 base;                 
+    xm_FrameCurve curve;         
+    RECT rect;                
+} xm_ImageAnim;
+#endif
+#ifndef XM_T_xm_Actor
+#define XM_T_xm_Actor
+typedef struct xm_Actor {
+    xm_ModelTable *models;     
+    xm_ModelPart *parts;       
+    s32 *entries;           
+    xm_EntryTable *shared;     
+    s32 pc;                 
+    s32 *locals;            
+    s32 *globals;           
+    s16 scale;              
+    s16 h1E;                
+    u8 index;               
+    u8 b21;                 
+    u8 b22;                 
+    u8 b23;                 
+    s16 size[3];            
+    u8 reference;           
+    u8 depth;               
+    u8 queue_source[4];     
+    u8 queue_entry[4];      
+    u8 active;              
+    u8 b35;                 
+    u8 b36;                 
+    u8 scaled;              
+    u8 b38;                 
+    u8 b39;                 
+    s16 h3A;                
+    u16 h3C;                
+    s16 h3E;                
+    u16 h40;                
+    u16 h42;                
+    u16 h44;                
+    u16 h46;                
+    s16 h48;                
+    u16 flags;              
+
+
+
+    s32 w4C;                
+    s32 w50;                
+    s32 w54;                
+    s16 aim_actor;          
+    s16 aim_node;           
+    u8 parent;              
+    u8 inherit;             
+    s16 parent_node;        
+    s16 groundY;            
+
+
+    u8 b62;                 
+    u8 b63;                 
+    s16 aim_offset[3];      
+    s16 offset[3];          
+    s16 spin[3];            
+    s16 spin_accel[3];      
+    s16 drift[3];           
+    s16 drift_accel[3];     
+    s16 target[3];          
+    s16 h8E;                
+    s16 h90;                
+    s16 h92;                
+    u16 shift_x;            
+    u16 shift_y;            
+    s16 anim_state;         
+    s16 anim_loop;          
+    s16 anim_frame;         
+    s16 anim_frames;        
+    u8 *anim_pos;           
+    u8 *anim_start;         
+    void *group;            
+    void *blockAC;          
+    xm_SoundOwner *ownerB0;    
+    xm_SoundOwner *ownerB4;    
+    POLY_FT4 prims[2];      
+    u8 pad108[2];
+    u16 mask;               
+    u8 channel_count;       
+    u8 surfaceCount;        
+    u8 imageCount;          
+    u8 pad10F;
+    struct xm_ColorFade *channels; 
+    struct xm_Surface *surfaces;   
+    struct xm_ImageAnim *images;   
+    s32 previous[3];        
+    s32 moved[3];           
+
+} xm_Actor;
+#endif
+#ifndef XM_S_field_actor_set_planar_velocity
+#define XM_S_field_actor_set_planar_velocity
+void xm_field_actor_set_planar_velocity(xm_Sprite *sprite, s16 heading, xm_FieldDescriptor *descriptor) __asm__("func_80081F80");
+#endif
+#ifndef XM_S_gpu_get_cos
+#define XM_S_gpu_get_cos
+s32 xm_gpu_get_cos(s32 angle) __asm__("rsin");
+#endif
+#ifndef XM_S_gpu_get_sin
+#define XM_S_gpu_get_sin
+s32 xm_gpu_get_sin(s32 angle) __asm__("rcos");
+#endif
+#ifndef XM_S_sprite_set_direction
+#define XM_S_sprite_set_direction
+void xm_sprite_set_direction(xm_Sprite *sprite, s32 direction) __asm__("func_80021FE0");
+#endif
+#ifndef XM_S_gear_model_actors
+#define XM_S_gear_model_actors
+extern xm_Actor *xm_gear_model_actors[10] __asm__("D_801E8670");
+#endif
+void xm_field_actor_set_planar_velocity(xm_Sprite *sprite, s16 heading, xm_FieldDescriptor *descriptor) __asm__("func_80081F80");
+void xm_field_actor_set_planar_velocity(xm_Sprite *sprite, s16 heading, xm_FieldDescriptor *descriptor) {
+    xm_FieldActor *actor;
+    s32 layer;
+    s32 speed;
+    s32 angle;
+
+    if (!(descriptor->flags & 0x40)) {
+        speed = ((0x40000 / (u16)descriptor->actor->unk76) >> 8) << 5;
+        angle = heading & 0xFFF;
+        if (!(heading & 0x8000)) {
+            sprite->speed_x = ((xm_gpu_get_cos(angle) * speed) >> 12) * descriptor->actor->scale[0];
+            sprite->speed_z = (-(xm_gpu_get_sin(angle) * speed) >> 12) * descriptor->actor->scale[2];
+        } else {
+            sprite->speed_x = 0;
+            sprite->speed_z = 0;
+        }
+    } else if (!(heading & 0x8000)) {
+        actor = descriptor->actor;
+        if (!(actor->layer_flags & 0x2000)) {
+            if (!(actor->layer_flags & 0x80000)) {
+                xm_sprite_set_direction(sprite, heading);
+            } else {
+                speed = ((0x40000 / (u16)actor->unk76) >> 8) << 5;
+                angle = heading & 0xFFF;
+                sprite->speed_x = ((xm_gpu_get_cos(angle) * speed) >> 12) * descriptor->actor->scale[0];
+                sprite->speed_z = (-(xm_gpu_get_sin(angle) * speed) >> 12) * descriptor->actor->scale[2];
+                sprite->speed = 0x4000000 / (u16)descriptor->actor->unk76;
+            }
+        } else if (!(actor->layer_flags & 0x20000)) {
+            speed = ((0x80000 / (u16)actor->unk76) >> 8) << 5;
+            angle = heading & 0xFFF;
+            sprite->speed_x = ((xm_gpu_get_cos(angle) * speed) >> 12) * descriptor->actor->scale[0];
+            sprite->speed_z = (-(xm_gpu_get_sin(angle) * speed) >> 12) * descriptor->actor->scale[2];
+        } else {
+            layer = actor->state.bits.layer;
+            sprite->speed_x = -xm_gear_model_actors[layer]->moved[0] << 16;
+            sprite->speed_z = -xm_gear_model_actors[layer]->moved[2] << 16;
+        }
+    } else {
+        sprite->speed_x = 0;
+        sprite->speed_z = 0;
+    }
+    sprite->speed_x &= ~0xFFF;
+    sprite->speed_z &= ~0xFFF;
+}
+#endif
 #else
 void func_80081F80(void* pSpriteData, s16 angle, void* pFieldActor) {
     u8* pSprite = (u8*)pSpriteData;
@@ -1689,7 +2416,34 @@ void func_800831D0(SVECTOR* out, s32* in) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800831F4);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_actor_turn_quarter (src/decomp/src/field/field_motion.c:3153). */
+#ifndef XM_S_field_actor_turn_quarter
+#define XM_S_field_actor_turn_quarter
+void xm_field_actor_turn_quarter(void *owner, xm_FieldActor *actor, xm_FieldDescriptor *descriptor, s32 flags) __asm__("func_800831F4");
+#endif
+void func_800831F4(void *owner, xm_FieldActor *actor, xm_FieldDescriptor *descriptor, s32 flags) {
+    s16 heading;
+    s16 turned;
+
+    if (actor->unk030[0] != 0 || actor->unk030[2] != 0) {
+        heading = actor->heading_goal;
+        if (!(heading & 0x8000)) {
+            if (flags & 1) {
+                turned = heading - 0x400;
+                actor->heading = turned & 0xFFF;
+                actor->heading_goal = turned & 0xFFF;
+            } else {
+                turned = heading + 0x400;
+                actor->heading = turned & 0xFFF;
+                actor->heading_goal = turned & 0xFFF;
+            }
+            xm_field_actor_set_planar_velocity(owner, actor->heading, descriptor);
+            actor->heading_goal = actor->heading = actor->heading_goal | 0x8000;
+        }
+    }
+}
+#endif
 #else
 void func_800831F4(void* pSpriteData, u8* pActor, void* pFieldActor, s32 flags) {
     u32 val30 = *(u32*)(pActor + 0x30);
@@ -2501,7 +3255,37 @@ extern s32 D_800ADB98;
 extern s32 D_800ADC0C;
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_8008492C);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_actor_has_pending_motion (src/decomp/src/field/field_motion.c:3679). */
+#ifndef XM_S_field_actor_has_pending_motion
+#define XM_S_field_actor_has_pending_motion
+s32 xm_field_actor_has_pending_motion(xm_FieldActor *actor) __asm__("func_8008492C");
+#endif
+#ifndef XM_S_field_ground_override_enabled
+#define XM_S_field_ground_override_enabled
+extern s32 xm_field_ground_override_enabled __asm__("D_800ADB98");
+#endif
+#ifndef XM_S_field_update_ran
+#define XM_S_field_update_ran
+extern s32 xm_field_update_ran __asm__("D_800ADC0C");
+#endif
+s32 func_8008492C(xm_FieldActor *actor) {
+    if (!(actor->floor_attribute & 0x420000) && xm_field_ground_override_enabled == 0 && actor->unk030[0] == 0 && actor->unk030[1] == 0 &&
+        actor->unk030[2] == 0 && xm_field_update_ran == 1 && actor->ridden_actor == 0xFF && !(actor->flags & 0x401800)) {
+        if ((actor->layer_flags & 1) && actor->layer == 0) {
+            return -1;
+        }
+        if ((actor->layer_flags & 2) && actor->layer == 1) {
+            return -1;
+        }
+        if ((actor->layer_flags & 4) && actor->layer == 2) {
+            return -1;
+        }
+        return 0;
+    }
+    return -1;
+}
+#endif
 #else
 s32 func_8008492C(u8* actorData) {
     if (*(u32*)(actorData + 0x14) & 0x00420000) {
@@ -3076,7 +3860,129 @@ extern void func_8003BDFC(s32);
 extern void SoundAddSedsEntry(void* pData);
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80085788);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_movie_load_sound_bank (src/decomp/src/field/field_event.c:167). */
+#ifndef XM_T_FieldMovieRequest
+#define XM_T_FieldMovieRequest
+typedef struct FieldMovieRequest {
+    s16 file;        
+    u16 x;           
+    u16 y;           
+    u16 source_x;    
+    u16 source_y;    
+    u16 unk2A;       
+    u16 sound_start; 
+    u16 unk2E;       
+    u16 mode;        
+    u16 width;       
+    u16 height;      
+    u16 depth24;     
+    s16 sound_bank;  
+    u16 unk3A;       
+} FieldMovieRequest;
+#endif
+#ifndef XM_T_FIELD_MOVIE
+#define XM_T_FIELD_MOVIE
+#define FIELD_MOVIE xm_field_movie_request
+#endif
+#ifndef XM_T_SoundBank
+#define XM_T_SoundBank
+typedef struct SoundBank {
+    u8 unk0[0x10];
+    u16 flags;
+    u8 unk12[2];
+    u16 id;
+    u16 unk16;         
+    u16 volumes;       
+    u8 unk1A[2];
+    struct SoundBank *next;
+    u16 effect[1];     
+} SoundBank;
+#endif
+#ifndef XM_S_field_movie_load_sound_bank
+#define XM_S_field_movie_load_sound_bank
+void xm_field_movie_load_sound_bank(void) __asm__("func_80085788");
+#endif
+#ifndef XM_S_field_movie_request
+#define XM_S_field_movie_request
+extern FieldMovieRequest xm_field_movie_request __asm__("D_800C3A20");
+#endif
+#ifndef XM_S_sound_stop_all_effects
+#define XM_S_sound_stop_all_effects
+void xm_sound_stop_all_effects(void) __asm__("func_80039FF8");
+#endif
+#ifndef XM_S_cd_select_directory
+#define XM_S_cd_select_directory
+s32 xm_cd_select_directory(s32 group, s32 index) __asm__("ArchiveSetIndex");
+#endif
+#ifndef XM_S_field_movie_sound_bank
+#define XM_S_field_movie_sound_bank
+extern SoundBank *xm_field_movie_sound_bank __asm__("D_800B235C");
+#endif
+#ifndef XM_S_heap_alloc
+#define XM_S_heap_alloc
+void *xm_heap_alloc(s32 size, s32 mode) __asm__("HeapAlloc");
+#endif
+#ifndef XM_S_cd_get_aligned_file_size
+#define XM_S_cd_get_aligned_file_size
+s32 xm_cd_get_aligned_file_size(s32 file) __asm__("ArchiveDecodeAlignedSize");
+#endif
+#ifndef XM_S_cd_read_file
+#define XM_S_cd_read_file
+s32 xm_cd_read_file(s32 file, void *destination, s32 mode, s32 flags) __asm__("ArchiveReadFileToBuffer");
+#endif
+#ifndef XM_S_cd_sync_reads
+#define XM_S_cd_sync_reads
+s32 xm_cd_sync_reads(s32 mode) __asm__("ArchiveCdDataSync");
+#endif
+#ifndef XM_S_sound_add_effect_bank
+#define XM_S_sound_add_effect_bank
+void xm_sound_add_effect_bank(SoundBank *bank) __asm__("SoundAddSedsEntry");
+#endif
+#ifndef XM_S_sound_sync_transfer
+#define XM_S_sound_sync_transfer
+s16 xm_sound_sync_transfer(s32 wait) __asm__("func_8003BDFC");
+#endif
+#ifndef XM_S_field_movie_sound_timelines
+#define XM_S_field_movie_sound_timelines
+extern u16 xm_field_movie_sound_timelines[][2] __asm__("D_800AE060");
+#endif
+#ifndef XM_S_field_movie_sound_timeline_index
+#define XM_S_field_movie_sound_timeline_index
+extern s32 xm_field_movie_sound_timeline_index __asm__("D_800C3A64");
+#endif
+void func_80085788(void) {
+    s32 bank;
+    s32 file;
+    s32 pos;
+    s32 i;
+
+    file = FIELD_MOVIE.sound_bank;
+    if (file != 0xFF) {
+        bank = file;
+        xm_sound_stop_all_effects();
+        xm_cd_select_directory(0x1C, 0);
+        file = bank + 0x115;
+        xm_field_movie_sound_bank = xm_heap_alloc(xm_cd_get_aligned_file_size(file), 1);
+        xm_cd_read_file(file, xm_field_movie_sound_bank, 0, 0x80);
+        xm_cd_sync_reads(0);
+        xm_sound_add_effect_bank(xm_field_movie_sound_bank);
+        xm_sound_sync_transfer(0x10);
+        xm_cd_select_directory(4, 0);
+        pos = 0;
+        for (i = 0; i < bank + 1; i++) {
+            while (1) {
+                if (((u16 *)xm_field_movie_sound_timelines)[pos * 2] == 0xFFFF) {
+                    break;
+                }
+                pos++;
+            }
+            pos++;
+            xm_field_movie_sound_timeline_index = pos;
+        }
+    }
+}
+#endif
 #else
 void func_80085788(void) {
     s32 musicId = D_800C3A38;
@@ -3209,10 +4115,6 @@ typedef struct {
 #define XM_S_field_music_change_track
 void xm_field_music_change_track(s32 music, s32 unused) __asm__("func_80085B20");
 #endif
-#ifndef XM_S_cd_sync_reads
-#define XM_S_cd_sync_reads
-s32 xm_cd_sync_reads(s32 mode) __asm__("ArchiveCdDataSync");
-#endif
 #ifndef XM_S_mode_stop_music
 #define XM_S_mode_stop_music
 void xm_mode_stop_music(void) __asm__("func_8001B66C");
@@ -3220,10 +4122,6 @@ void xm_mode_stop_music(void) __asm__("func_8001B66C");
 #ifndef XM_S_mode_music_load_pending
 #define XM_S_mode_music_load_pending
 extern s32 xm_mode_music_load_pending __asm__("D_8004F308");
-#endif
-#ifndef XM_S_cd_select_directory
-#define XM_S_cd_select_directory
-s32 xm_cd_select_directory(s32 group, s32 index) __asm__("ArchiveSetIndex");
 #endif
 #ifndef XM_S_field_music_wave_table
 #define XM_S_field_music_wave_table
@@ -3256,10 +4154,6 @@ extern s32 xm_field_music_chunk_count __asm__("D_800B2370");
 #ifndef XM_S_field_music_gather_buffer
 #define XM_S_field_music_gather_buffer
 extern void *xm_field_music_gather_buffer __asm__("D_800C3A1C");
-#endif
-#ifndef XM_S_heap_alloc
-#define XM_S_heap_alloc
-void *xm_heap_alloc(s32 size, s32 mode) __asm__("HeapAlloc");
 #endif
 #ifndef XM_S_field_music_seq_read_pending
 #define XM_S_field_music_seq_read_pending
@@ -3671,7 +4565,63 @@ void FieldActorWorldToScreenPosition(s32 actorIndex, s32* outX, s32* outY);
 
 /* Update an already-bound positional SFX slot's volume/pan. */
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800860F0);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_sound_update_emitter_voices (src/decomp/src/field/field_event.c:423). */
+#ifndef XM_T_EmitterSlot
+#define XM_T_EmitterSlot
+typedef struct EmitterSlot {
+    u16 actor;  
+    u16 sound;  
+    u16 unk4;
+} EmitterSlot;
+#endif
+#ifndef XM_S_field_sound_update_emitter_voices
+#define XM_S_field_sound_update_emitter_voices
+void xm_field_sound_update_emitter_voices(s32 unused0, s32 volume, s32 unused2, s32 distance, s32 id) __asm__("func_800860F0");
+#endif
+#ifndef XM_S_field_sound_emitter_slots
+#define XM_S_field_sound_emitter_slots
+extern EmitterSlot xm_field_sound_emitter_slots[3] __asm__("D_800AFE88");
+#endif
+#ifndef XM_S_field_sound_get_descriptor_screen_xy
+#define XM_S_field_sound_get_descriptor_screen_xy
+void xm_field_sound_get_descriptor_screen_xy(s32 index, s32 *x, s32 *y) __asm__("FieldActorWorldToScreenPosition");
+#endif
+#ifndef XM_S_sound_set_effect_volume_on_channel
+#define XM_S_sound_set_effect_volume_on_channel
+void xm_sound_set_effect_volume_on_channel(s32 sound, s32 volume) __asm__("func_8003A344");
+#endif
+#ifndef XM_S_sound_set_effect_pan_on_channel
+#define XM_S_sound_set_effect_pan_on_channel
+void xm_sound_set_effect_pan_on_channel(s32 sound, s32 pan) __asm__("func_8003A55C");
+#endif
+void xm_field_sound_update_emitter_voices(s32 unused0, s32 volume, s32 unused2, s32 distance, s32 id) __asm__("func_800860F0");
+void xm_field_sound_update_emitter_voices(s32 unused0, s32 volume, s32 unused2, s32 distance, s32 id) {
+    s32 i;
+    s32 voice;
+    s32 pan;
+    u32 level;
+    s32 x;
+    s32 y;
+
+    for (i = 0; i < 3; i++) {
+        if (xm_field_sound_emitter_slots[i].actor == id) {
+            voice = i * 2;
+            xm_field_sound_compute_emitter_volume(distance, &level, volume);
+            xm_field_sound_get_descriptor_screen_xy(id, &x, &y);
+            if (x > 0x140) {
+                x = 0x13F;
+            }
+            if (x < 0) {
+                x = 0;
+            }
+            pan = (x * 0x6666) >> 16;
+            xm_sound_set_effect_volume_on_channel(voice, level);
+            xm_sound_set_effect_pan_on_channel(voice, pan);
+        }
+    }
+}
+#endif
 #else
 void func_800860F0(s32 soundId, s32 mode, s16 deltaX, s32 distance, s32 actorIndex) {
     s32 i;
@@ -3805,21 +4755,9 @@ void func_800862CC(s32 soundId, s32 mode, s16 deltaX, s32 distance, s32 actorInd
 #ifndef XENO_PC_PORT
 #ifndef XENO_PC_PORT
 /* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_sound_stop_emitter (src/decomp/src/field/field_event.c:500). */
-#ifndef XM_T_EmitterSlot
-#define XM_T_EmitterSlot
-typedef struct EmitterSlot {
-    u16 actor;  
-    u16 sound;  
-    u16 unk4;
-} EmitterSlot;
-#endif
 #ifndef XM_S_field_sound_stop_emitter
 #define XM_S_field_sound_stop_emitter
 void xm_field_sound_stop_emitter(s32 id) __asm__("func_800863E8");
-#endif
-#ifndef XM_S_field_sound_emitter_slots
-#define XM_S_field_sound_emitter_slots
-extern EmitterSlot xm_field_sound_emitter_slots[3] __asm__("D_800AFE88");
 #endif
 #ifndef XM_S_sound_stop_effect_on_channel
 #define XM_S_sound_stop_effect_on_channel

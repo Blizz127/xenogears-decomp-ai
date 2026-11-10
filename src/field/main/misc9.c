@@ -477,7 +477,362 @@ void func_800AB378(s8 color) {
  * 0x20/0x40 and share .L800AB7CC (bit ? 0 : -1). Case 4 andi 0x80 inverts
  * (bit ? -1 : 0). Slot >= 5 returns -1. */
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800AB748);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_picture_is_piece_flag_off (src/decomp/src/field/field_effect.c:850). */
+#ifndef XM_T_CharacterEntry
+#define XM_T_CharacterEntry
+typedef struct {
+    u16 field0; 
+    u8 value2;
+    u8 value3;  
+    u8 value4;  
+    u8 pad5;
+    u8 id;      
+    u8 pad7;
+} CharacterEntry;
+#endif
+#ifndef XM_T_StatusPair
+#define XM_T_StatusPair
+typedef union {
+    u32 word;
+    struct {
+        u16 active;
+        u16 permanent;
+    } half;
+} StatusPair;
+#endif
+#ifndef XM_T_CharacterRecord
+#define XM_T_CharacterRecord
+typedef struct {
+    CharacterEntry entries[4]; 
+    u8 pad20[0x28 - 0x20];
+    u8 equipAttack;       
+    u8 equipDefense;      
+    u8 equipSpeed;        
+    u8 equipEther;        
+    u8 equipEtherDefense; 
+    u8 bodyDefense;       
+    u8 equip5E;           
+    u8 equip5F;           
+    u8 hpBonus;           
+    u8 epBonus;           
+    u16 flags32;          
+    u16 flags34;          
+    u16 flags36;          
+    u16 weakness;         
+    u16 field3A;          
+    u32 expTotalA;        
+    u32 expTotalB;        
+    u32 expNextA;         
+    u32 expNextB;         
+    u16 hp;               
+    u16 maxHp;            
+    u16 ep;               
+    u16 maxEp;            
+    u8 field54;           
+    u8 field55;
+    u8 characterId;       
+    u8 pad57;
+    u8 attack;            
+    u8 defense;           
+    u8 speed;             
+    u8 ether;             
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    u8 etherDefense;      
+    u8 field5D;
+    u8 field5E;           
+    u8 field5F;           
+    u8 field60;           
+    u8 field61;
+    u8 level;             
+    u8 level2;            
+    u8 field64[4];        
+    u8 pad68[0x6A - 0x68];
+    u8 weapons[5];        
+    u8 entryItems[5];     
+
+    u8 accessories[3];    
+    u8 field77;           
+
+    u8 field78;           
+    u8 field79;           
+    u16 status7A;         
+
+    u16 status7C;         
+
+
+    u16 status7E;         
+    u16 status80;         
+    u16 status82;         
+    StatusPair status84;  
+    StatusPair status88;  
+    StatusPair status8C;  
+    u16 useCounts[7];     
+    u8 pad9E[0xA0 - 0x9E];
+    u8 gearId;            
+    u8 fieldA1;           
+    u8 padA2[0xA4 - 0xA2];
+} CharacterRecord;
+#endif
+#ifndef XM_T_GearEntry
+#define XM_T_GearEntry
+typedef struct {
+    u16 field0; 
+    u8 valueE;  
+    u8 value10; 
+    u8 value11; 
+    u8 id;      
+    u8 pad6[2];
+} GearEntry;
+#endif
+#ifndef XM_T_GearRecord
+#define XM_T_GearRecord
+typedef struct GearRecord {
+    u8 pad0[2];
+    u8 engine;            
+    u8 field3;            
+    u8 partItems[4];      
+
+    u8 frame;             
+    u8 parts[3];          
+    u8 weapons[4];        
+    GearEntry entries[4]; 
+    u8 pad30[0x38 - 0x30];
+    u16 fuel;             
+    u16 maxFuel;          
+    u8 attack;            
+    u8 pad3D;
+    u8 field3E;
+    u8 attackScale;       
+    u16 equipBodyDefense; 
+    u16 equipArmor;       
+    u16 equip68a;         
+    u16 equip68b;         
+    u16 field48;          
+    u8 speedPenalty;      
+    u8 pad4B;
+    u8 equipGuard;        
+    u8 equipHitBonus;     
+    u8 equipSpeed;        
+    u8 field4F;           
+    u8 speedBonus[4];     
+    u8 equipFrameFactor;  
+    u8 pad55;
+    u8 equipAttackScale;  
+    u8 chargeRate;        
+    u8 pad58[0x5C - 0x58];
+    u8 fileVariant;       
+    u8 spriteVariants[3]; 
+    u32 hp;               
+    u32 maxHp;            
+    u16 field68;
+    u16 field6A;
+    u16 field6C;
+    u16 field6E;          
+    u16 bodyDefense;      
+    u16 armor;            
+    u8 field74;
+    u8 field75;
+    u8 pad76[0x7C - 0x76];
+    u16 status7C;         
+    u16 field7E;          
+    u16 status80;
+    u16 status82;         
+    StatusPair status84;  
+    u8 resistances[16];   
+    u8 speed;             
+    u8 defense;           
+    u8 pad9A[0x9C - 0x9A];
+    u8 guard;             
+    u8 field9D;
+    u8 frameFactor;       
+    s8 hitBonus;          
+
+    u8 padA0[0xA4 - 0xA0];
+} GearRecord;
+#endif
+#ifndef XM_T_CharacterSkills
+#define XM_T_CharacterSkills
+typedef struct {
+    u16 counterSkills; 
+    u16 levelSkills;   
+    u16 unlocksA;      
+    u16 unlocksB;      
+    u8 pad8[0x17 - 0x8];
+    u8 tier;           
+    u8 pad18[0x1A - 0x18];
+    u16 flags1A;       
+
+
+    u8 pad1C[0x20 - 0x1C];
+} CharacterSkills;
+#endif
+#ifndef XM_T_WorldmapReturn
+#define XM_T_WorldmapReturn
+typedef struct {
+    u16 x;
+    u16 z;
+    u16 heading;
+    u16 unk5A;
+    u16 unk5C;
+    u16 unk5E;
+    u16 unk60;           
+    u16 unk62;
+    u16 unk64;
+    u16 vehicle_heading; 
+    u16 flags;           
+    s16 unk6A;
+    u16 unk6C;
+    u16 unk6E;
+    u16 unk70;
+    u16 unk72;
+    u16 unk74;
+    u16 unk76;           
+} WorldmapReturn;
+#endif
+#ifndef XM_T_FlightSave
+#define XM_T_FlightSave
+typedef struct {
+    u16 x_frac;
+    s16 x;
+    u16 z_frac;
+    s16 z;
+    u16 count; 
+} FlightSave;
+#endif
+#ifndef XM_T_SystemOptions
+#define XM_T_SystemOptions
+typedef struct {
+    u32 version : 4;   
+    u32 option4 : 1;
+    u32 option5 : 1;
+    u32 option6 : 7;
+    u32 option13 : 3;  
+    u32 complete : 1;  
+    u32 unused : 15;
+} SystemOptions;
+#endif
+#ifndef XM_T_GameData
+#define XM_T_GameData
+typedef struct GameData {
+    u8 names[31][0x14];           
+
+    CharacterRecord characters[11]; 
+    GearRecord gears[20];           
+    u8 unk1648[0x16C0 - 0x1648];
+    CharacterSkills skills[11];     
+    WorldmapReturn worldmap;        
+    u16 unk1844[3];                 
+    u16 unk184A;                    
+    FlightSave flight;              
+    u16 unk1856;                    
+    u8 unk1858[0x1924 - 0x1858];
+    u32 gold;                       
+    u8 unk1928[0x1930 - 0x1928];
+    u16 vars[0x200];              
+
+    u16 joined;                   
+    u16 available;                
+    u8 party[3];                  
+    u8 unk1D37;
+    u8 weaponCounts[100];         
+    u8 weaponIds[100];            
+    u8 accessoryCounts[200];      
+    u8 accessoryIds[200];         
+    u8 itemCounts[150];           
+    u8 itemIds[150];              
+    u8 gearPartCounts[100];       
+    u8 gearPartIds[100];          
+    u8 gearAccessoryCounts[150];  
+    u8 gearAccessoryIds[150];     
+    u8 unk22B0;
+    u8 inGear[3];                 
+    u8 unk22B4[2];
+    u16 flags;                    
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+    u8 ammo[48];                  
+    u8 gearAmmo[48];              
+    u16 locked;                   
+    u16 map;                      
+    u16 entry[3];                 
+
+    u16 flagWords[17];            
+    u8 progress[8];               
+    SystemOptions options;        
+    u8 unk2350[0x2355 - 0x2350];
+    u8 flags2355;                 
+    u8 unk2356[0x2358 - 0x2356];
+} GameData;
+#endif
+#ifndef XM_S_field_picture_is_piece_flag_off
+#define XM_S_field_picture_is_piece_flag_off
+s32 xm_field_picture_is_piece_flag_off(u32 which) __asm__("func_800AB748");
+#endif
+#ifndef XM_S_game_current_data
+#define XM_S_game_current_data
+extern GameData *xm_game_current_data __asm__("g_pGameState");
+#endif
+s32 func_800AB748(u32 which) {
+    switch (which) {
+    case 0:
+        if (xm_game_current_data->vars[0x73] & 8) {
+            return 0;
+        }
+        break;
+    case 1:
+        if (xm_game_current_data->vars[0x73] & 0x10) {
+            return 0;
+        }
+        break;
+    case 2:
+        if (xm_game_current_data->vars[0x73] & 0x20) {
+            return 0;
+        }
+        break;
+    case 3:
+        if (xm_game_current_data->vars[0x73] & 0x40) {
+            return 0;
+        }
+        break;
+    case 4:
+        if (!(xm_game_current_data->vars[0x73] & 0x80)) {
+            return 0;
+        }
+        break;
+    }
+    return -1;
+}
+#endif
 #else
 s32 func_800AB748(s32 slot) {
     s32 ret;

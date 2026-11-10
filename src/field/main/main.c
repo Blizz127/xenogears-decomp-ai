@@ -180,63 +180,8 @@ static inline void FieldSetArchiveQueueEntry(s32 index, u16 archiveIndex, void* 
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/main", func_80077884);
-#else
-void func_80077884(void) {
-    s32 i;
-    s16* archiveIds;
-    s32 size;
-
-    if (D_800B2264 == 0) {
-        return;
-    }
-
-    func_8008A520();
-    ArchiveSetIndex(4, 0);
-    func_800A90B4(0);
-
-#ifdef XENO_PC_PORT
-    /* Retail's D_8004F370==0 branch sizes this buffer as the fixed-map gap
-     * [0x801DC008, D_800ADB30) -- meaningless host-pointer arithmetic in the
-     * port (bogus ~5MB -> HeapAlloc failure -> GameHandleError(130) spin,
-     * MAP3 repro).  Size by the archive's decoded size instead -- the same
-     * derivation retail's own else-branch uses for the same buffer.  Same
-     * pattern as the menu-overlay fix in misc4.c (func_80078E90). */
-    size = ArchiveDecodeAlignedSize(0x6B9);
-#else
-    if (D_8004F370 == 0) {
-        size = ((u32)(unsigned long)D_800ADB30 & 0xFFFFFF) + (s32)0xFFE23FF8;
-    } else {
-        size = ArchiveDecodeAlignedSize(0x6B9);
-    }
-#endif
-    D_800ADB20 = HeapAlloc(size, 1);
-
-    func_800A90B4(1);
-
-    archiveIds = (s16*)((u8*)&D_800B2264 - 0x88);
-    for (i = 0; i < D_800B2264; i++) {
-        s32 archiveIndex = (u16)archiveIds[i] + 0x6BB;
-        D_8005A450[i] = HeapAlloc(ArchiveDecodeAlignedSize(archiveIndex), 1);
-        FieldSetArchiveQueueEntry(i * 2 + 1, archiveIndex, D_8005A450[i]);
-    }
-
-    for (i = 0; i < D_800B2264; i++) {
-        s32 archiveIndex = (u16)archiveIds[i] + 0x6BA;
-        D_8005A420[i] = HeapAlloc(ArchiveDecodeAlignedSize(archiveIndex), 0);
-        FieldSetArchiveQueueEntry(i * 2, archiveIndex, D_8005A420[i]);
-    }
-
-    FieldSetArchiveQueueEntry(D_800B2264 * 2, 0x6B9, D_800ADB20);
-    FieldSetArchiveQueueEntry(D_800B2264 * 2 + 1, 0, NULL);
-    func_8008A520();
-    func_80029AFC((StreamDataQueueEntry*)&D_800B2394, 0, 0);
-}
-#endif /* XENO_PC_PORT */
-
 #ifndef XENO_PC_PORT
-#ifndef XENO_PC_PORT
-/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_layer_start (src/decomp/src/field/field.c:2792). */
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_layer_load (src/decomp/src/field/field.c:2755). */
 #ifndef XM_T_FadeChannel
 #define XM_T_FadeChannel
 typedef struct {
@@ -340,6 +285,159 @@ typedef struct FieldWork {
     u8 unk2359[0x235C - 0x2359];
 } FieldWork;
 #endif
+#ifndef XM_T_FileRequest
+#define XM_T_FileRequest
+typedef struct FileRequest {
+    u16 file;
+    void *destination;
+} FileRequest;
+#endif
+#ifndef XM_S_field_layer_load
+#define XM_S_field_layer_load
+void xm_field_layer_load(void) __asm__("func_80077884");
+#endif
+#ifndef XM_S_field_work
+#define XM_S_field_work
+extern FieldWork xm_field_work __asm__("g_FieldEffects");
+#endif
+#ifndef XM_S_field_music_wait_stream_and_disc_idle
+#define XM_S_field_music_wait_stream_and_disc_idle
+void xm_field_music_wait_stream_and_disc_idle(void) __asm__("func_8008A520");
+#endif
+#ifndef XM_S_cd_select_directory
+#define XM_S_cd_select_directory
+s32 xm_cd_select_directory(s32 group, s32 index) __asm__("ArchiveSetIndex");
+#endif
+#ifndef XM_S_field_vram_column_relocate
+#define XM_S_field_vram_column_relocate
+void xm_field_vram_column_relocate(s32 flags) __asm__("func_800A90B4");
+#endif
+#ifndef XM_S_field_heap_top
+#define XM_S_field_heap_top
+extern u32 xm_field_heap_top __asm__("D_800ADB30");
+#endif
+#ifndef XM_S_mode_field_standalone
+#define XM_S_mode_field_standalone
+extern s32 xm_mode_field_standalone __asm__("D_8004F370");
+#endif
+#ifndef XM_S_field_layer_module
+#define XM_S_field_layer_module
+extern void *xm_field_layer_module __asm__("D_800ADB20");
+#endif
+#ifndef XM_S_heap_alloc
+#define XM_S_heap_alloc
+void *xm_heap_alloc(s32 size, s32 mode) __asm__("HeapAlloc");
+#endif
+#ifndef XM_S_cd_get_aligned_file_size
+#define XM_S_cd_get_aligned_file_size
+s32 xm_cd_get_aligned_file_size(s32 file) __asm__("ArchiveDecodeAlignedSize");
+#endif
+#ifndef XM_S_field_layer_file_requests
+#define XM_S_field_layer_file_requests
+extern FileRequest xm_field_layer_file_requests[10] __asm__("D_800B2394");
+#endif
+#ifndef XM_S_mode_field_layer_model_files
+#define XM_S_mode_field_layer_model_files
+extern void *xm_mode_field_layer_model_files[4] __asm__("D_8005A450");
+#endif
+#ifndef XM_S_mode_field_layer_script_files
+#define XM_S_mode_field_layer_script_files
+extern void *xm_mode_field_layer_script_files[4] __asm__("D_8005A420");
+#endif
+#ifndef XM_S_cd_read_file_list
+#define XM_S_cd_read_file_list
+s32 xm_cd_read_file_list(FileRequest *list, s32 mode, s32 unused) __asm__("func_80029AFC");
+#endif
+void func_80077884(void) {
+    u32 end;
+    s32 i;
+
+    if (xm_field_work.unk2264 != 0) {
+        xm_field_music_wait_stream_and_disc_idle();
+        xm_cd_select_directory(4, 0);
+        xm_field_vram_column_relocate(0);
+        end = xm_field_heap_top;
+        if (xm_mode_field_standalone == 0) {
+            xm_field_layer_module = xm_heap_alloc((end & 0xFFFFFF) - 0x1DC008, 1);
+        } else {
+            xm_field_layer_module = xm_heap_alloc(xm_cd_get_aligned_file_size(0x6B9), 1);
+        }
+        xm_field_vram_column_relocate(1);
+        for (i = 0; i < xm_field_work.unk2264; i++) {
+            xm_field_layer_file_requests[i * 2 + 1].file = xm_field_work.unk21DC[i] + 0x6BB;
+            xm_mode_field_layer_model_files[i] = xm_heap_alloc(xm_cd_get_aligned_file_size(xm_field_work.unk21DC[i] + 0x6BB), 1);
+            xm_field_layer_file_requests[i * 2 + 1].destination = xm_mode_field_layer_model_files[i];
+        }
+        for (i = 0; i < xm_field_work.unk2264; i++) {
+            xm_field_layer_file_requests[i * 2].file = xm_field_work.unk21DC[i] + 0x6BA;
+            xm_mode_field_layer_script_files[i] = xm_heap_alloc(xm_cd_get_aligned_file_size(xm_field_work.unk21DC[i] + 0x6BA), 0);
+            xm_field_layer_file_requests[i * 2].destination = xm_mode_field_layer_script_files[i];
+        }
+        xm_field_layer_file_requests[i * 2].file = 0x6B9;
+        xm_field_layer_file_requests[i * 2].destination = xm_field_layer_module;
+        xm_field_layer_file_requests[i * 2 + 1].file = 0;
+        xm_field_layer_file_requests[i * 2 + 1].destination = 0;
+        xm_field_music_wait_stream_and_disc_idle();
+        xm_cd_read_file_list(xm_field_layer_file_requests, 0, 0);
+    }
+}
+#endif
+#else
+void func_80077884(void) {
+    s32 i;
+    s16* archiveIds;
+    s32 size;
+
+    if (D_800B2264 == 0) {
+        return;
+    }
+
+    func_8008A520();
+    ArchiveSetIndex(4, 0);
+    func_800A90B4(0);
+
+#ifdef XENO_PC_PORT
+    /* Retail's D_8004F370==0 branch sizes this buffer as the fixed-map gap
+     * [0x801DC008, D_800ADB30) -- meaningless host-pointer arithmetic in the
+     * port (bogus ~5MB -> HeapAlloc failure -> GameHandleError(130) spin,
+     * MAP3 repro).  Size by the archive's decoded size instead -- the same
+     * derivation retail's own else-branch uses for the same buffer.  Same
+     * pattern as the menu-overlay fix in misc4.c (func_80078E90). */
+    size = ArchiveDecodeAlignedSize(0x6B9);
+#else
+    if (D_8004F370 == 0) {
+        size = ((u32)(unsigned long)D_800ADB30 & 0xFFFFFF) + (s32)0xFFE23FF8;
+    } else {
+        size = ArchiveDecodeAlignedSize(0x6B9);
+    }
+#endif
+    D_800ADB20 = HeapAlloc(size, 1);
+
+    func_800A90B4(1);
+
+    archiveIds = (s16*)((u8*)&D_800B2264 - 0x88);
+    for (i = 0; i < D_800B2264; i++) {
+        s32 archiveIndex = (u16)archiveIds[i] + 0x6BB;
+        D_8005A450[i] = HeapAlloc(ArchiveDecodeAlignedSize(archiveIndex), 1);
+        FieldSetArchiveQueueEntry(i * 2 + 1, archiveIndex, D_8005A450[i]);
+    }
+
+    for (i = 0; i < D_800B2264; i++) {
+        s32 archiveIndex = (u16)archiveIds[i] + 0x6BA;
+        D_8005A420[i] = HeapAlloc(ArchiveDecodeAlignedSize(archiveIndex), 0);
+        FieldSetArchiveQueueEntry(i * 2, archiveIndex, D_8005A420[i]);
+    }
+
+    FieldSetArchiveQueueEntry(D_800B2264 * 2, 0x6B9, D_800ADB20);
+    FieldSetArchiveQueueEntry(D_800B2264 * 2 + 1, 0, NULL);
+    func_8008A520();
+    func_80029AFC((StreamDataQueueEntry*)&D_800B2394, 0, 0);
+}
+#endif /* XENO_PC_PORT */
+
+#ifndef XENO_PC_PORT
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_layer_start (src/decomp/src/field/field.c:2792). */
 #ifndef XM_T_ScriptBlock
 #define XM_T_ScriptBlock
 typedef struct ScriptBlock {
@@ -725,14 +823,6 @@ typedef struct Actor {
 #define XM_S_field_layer_start
 void xm_field_layer_start(void) __asm__("func_80077AB4");
 #endif
-#ifndef XM_S_field_work
-#define XM_S_field_work
-extern FieldWork xm_field_work __asm__("g_FieldEffects");
-#endif
-#ifndef XM_S_field_music_wait_stream_and_disc_idle
-#define XM_S_field_music_wait_stream_and_disc_idle
-void xm_field_music_wait_stream_and_disc_idle(void) __asm__("func_8008A520");
-#endif
 #ifndef XM_S_field_sync_and_flush_cache
 #define XM_S_field_sync_and_flush_cache
 void xm_field_sync_and_flush_cache(void) __asm__("FieldRenderSyncAndFlush");
@@ -753,14 +843,6 @@ void xm_SetBackColor(long rbk, long gbk, long bbk) __asm__("SetBackColor");
 #define XM_S_gear_model_create_actor
 void xm_gear_model_create_actor(s32 index, u16 flags, ActorScript *script, ObjectModelFile *file, s16 x, s16 y,
                    s16 z, s16 w, s16 *pos) __asm__("func_801E742C");
-#endif
-#ifndef XM_S_mode_field_layer_script_files
-#define XM_S_mode_field_layer_script_files
-extern void *xm_mode_field_layer_script_files[4] __asm__("D_8005A420");
-#endif
-#ifndef XM_S_mode_field_layer_model_files
-#define XM_S_mode_field_layer_model_files
-extern void *xm_mode_field_layer_model_files[4] __asm__("D_8005A450");
 #endif
 #ifndef XM_S_heap_free
 #define XM_S_heap_free

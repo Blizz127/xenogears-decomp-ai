@@ -71,7 +71,330 @@ void func_8009BB0C(void) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/dialogue/text_box", func_8009BC98);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_event_start_choice (src/decomp/src/field/field_event.c:8236). */
+#ifndef XM_T_xm_WindowLine
+#define XM_T_xm_WindowLine
+typedef struct {
+    SPRT sprite[2][2];
+    RECT rect;       
+    s16 width;       
+    u8 plane;        
+    u8 slot;
+    u8 row;          
+    u8 unk5D;
+    u16 clut;
+} xm_WindowLine;
+#endif
+#ifndef XM_T_xm_WindowQueue
+#define XM_T_xm_WindowQueue
+typedef struct xm_WindowQueue {
+    struct xm_WindowQueue *next;
+    s32 message;
+} xm_WindowQueue;
+#endif
+#ifndef XM_T_xm_Window
+#define XM_T_xm_Window
+typedef struct xm_Window {
+    s16 x;          
+    s16 y;          
+    s16 unk4;
+    s16 unk6;
+    s16 unk8;
+    s16 width;
+    s16 lines;
+    s16 unkE;
+    u16 flags;
+    s16 stride;
+    s16 unk14;
+    s16 unk16;
+    s16 unk18;      
+    u8 unk1A[2];
+    u8 *text;
+    u8 *resume;     
+    u8 unk24[4];
+    xm_WindowLine *layout;
+    void *image;
+    u8 unk30[0xC];  
+    u8 unk3C[0xC];  
+    TILE tile[2];   
+    u8 unk68;
+    u8 unk69;
+    u8 unk6A;
+    u8 unk6B;
+    u8 unk6C;
+    u8 unk6D;
+    u8 unk6E;
+    u8 unk6F;
+    s32 values[4];  
+    s16 selection; 
+    s16 queued;
+    s16 unk84;      
+    s16 unk86;      
+    s16 unk88;      
+    u8 unk8A[2];
+    xm_WindowQueue *queue;
+} xm_Window;
+#endif
+#ifndef XM_T_xm_DialogueFrame
+#define XM_T_xm_DialogueFrame
+typedef struct {
+    RECT rect;                  
+    u8 unk08[0x18 - 0x08];
+    DR_MODE back_modes[2];      
+    TILE back[2];               
+    DR_MODE border_modes[2][10]; 
+    SPRT border[2][10];         
+} xm_DialogueFrame;
+#endif
+#ifndef XM_T_xm_DialogueChoice
+#define XM_T_xm_DialogueChoice
+typedef struct {
+    s16 status;       
+    s16 first;        
+    s16 count;        
+    s16 index;        
+    DR_MODE modes[2]; 
+    SPRT cursor[2];   
+} xm_DialogueChoice;
+#endif
+#ifndef XM_T_xm_DialoguePrompt
+#define XM_T_xm_DialoguePrompt
+typedef struct {
+    s16 status;       
+    u8 unk02[2];
+    DR_MODE modes[2]; 
+    SPRT sprite[2];   
+} xm_DialoguePrompt;
+#endif
+#ifndef XM_T_xm_Fixed
+#define XM_T_xm_Fixed
+typedef union {
+    s32 value;
+    struct {
+        u16 fraction;
+        s16 whole;
+    } part;
+} xm_Fixed;
+#endif
+#ifndef XM_T_xm_DialogueWindow
+#define XM_T_xm_DialogueWindow
+typedef struct xm_DialogueWindow {
+    DR_MODE modes[2]; 
+    xm_Window text;     
+    s32 message;     
+    xm_DialogueFrame frame; 
+    xm_DialogueChoice choice; 
+    xm_DialoguePrompt prompt; 
+    s16 timer;       
+    s16 prompt_delay; 
+    u16 style;       
+
+    s16 busy;        
+    u16 age;         
+    s16 unk412;      
+    s16 cleared;     
+    s16 owner;       
+    s16 unk418;      
+    u8 unk41A[2];
+    xm_Fixed slide[2];  
+    s32 slide_step[2]; 
+    DR_MODE icon_modes[2]; 
+    POLY_FT4 icon[2];  
+    u8 unk494;       
+    u8 unk495;       
+    u8 unk496[0x498 - 0x496];
+} xm_DialogueWindow;
+#endif
+#ifndef XM_T_xm_ScriptSlot
+#define XM_T_xm_ScriptSlot
+typedef struct xm_ScriptSlot {
+    u16 resume_pc;      
+    u8 countdown;       
+    u8 tag;             
+    u32 value : 16;     
+    u32 unk16 : 2;
+    u32 priority : 4;   
+    u32 unk22 : 1;
+    u32 move_mode : 2;  
+    u32 unk25 : 7;
+} xm_ScriptSlot;
+#endif
+#ifndef XM_T_xm_PlatformLink
+#define XM_T_xm_PlatformLink
+typedef struct xm_PlatformLink {
+    SVECTOR rotation; 
+    s16 radius;       
+    s16 unkA;
+} xm_PlatformLink;
+#endif
+#ifndef XM_T_xm_ActorState
+#define XM_T_xm_ActorState
+typedef struct {
+    u32 mode : 2;   
+    u32 unk2 : 3;   
+    u32 unk5 : 1;   
+    u32 depth : 3;  
+    u32 octant : 3; 
+    u32 unk12 : 1;  
+    u32 layer : 3;  
+    u32 unk16 : 2;  
+    u32 unk18 : 10; 
+    u32 unk28 : 4;
+} xm_ActorState;
+#endif
+#ifndef XM_T_xm_FieldActor
+#define XM_T_xm_FieldActor
+typedef struct xm_FieldActor {
+    u32 flags;           
+    u32 layer_flags;     
+    s16 triangle[4];     
+    s16 layer;           
+    u8 unk012[2];
+    u32 floor_attribute; 
+    s16 unk18;           
+    s16 height;          
+    xm_Fixed gravity;       
+    s32 position[3];     
+    u8 unk02C[4];
+    s32 unk030[3];       
+    u8 unk03C[4];
+    s32 unk40[3];        
+    u8 unk04C[4];
+    s32 unk50[3];        
+    u8 unk05C[4];
+    s16 unk60;           
+    s16 unk62;           
+    s16 unk64;           
+    u8 unk066[2];
+    s16 last_position[3]; 
+    u16 stuck;           
+    s16 unk70;           
+    s16 unk72;           
+    u8 ridden_actor;     
+    u8 unk075;           
+    s16 unk76;           
+    u16 call_stack[4];   
+    u8 character;        
+    u8 unk081;
+    u8 unk82;            
+    u8 unk83;            
+    s32 unk84;           
+    s16 unk88;           
+    s16 unk8A;           
+    xm_ScriptSlot slots[8]; 
+    u16 pc;              
+    u8 slot;             
+    u8 unk0CF;
+    s32 target[3];       
+    u8 unk0DC[0xE2 - 0xDC];
+    u8 unkE2;            
+    u8 unk0E3;
+    s16 unkE4;           
+    s16 unkE6;           
+    s16 unkE8;           
+    s16 unk0EA;          
+    s16 unkEC;           
+    s16 unkEE;           
+    s32 unkF0;           
+    s16 scale[3];        
+    u8 unk0FA[2];
+    u8 color0[3];        
+    u8 color1[3];        
+    u16 unk102;          
+    s16 heading;         
+    s16 heading_goal;    
+    s16 unk108;          
+    u16 sound;           
+    u8 sound_volume;     
+    u8 sound_mode;       
+    u8 unk10E[0x110 - 0x10E];
+    struct xm_PlatformLink *link; 
+    void *unk114;        
+    s32 *list;           
+    u16 unk11C;          
+    s16 unk11E;          
+    void *unk120;        
+    s16 unk124;          
+    u8 unk126;           
+    u8 unk127;           
+    u16 unk128;          
+    u8 unk12A[2];
+    union {
+        u32 word;
+        xm_ActorState bits;
+    } state;             
+    u32 unk130 : 9;      
+    u32 unk130_9 : 10;   
+    u32 unk130_19 : 9;   
+    u32 sprite_kind : 2; 
+    u32 unk130_30 : 2;
+    u32 unk134;          
+} xm_FieldActor;
+#endif
+#ifndef XM_T_EVENT_OPERAND_BYTE
+#define XM_T_EVENT_OPERAND_BYTE
+#define EVENT_OPERAND_BYTE(offset) (xm_field_event_bytecode[xm_field_current_event_actor->pc + (offset)])
+#endif
+#ifndef XM_S_field_event_start_choice
+#define XM_S_field_event_start_choice
+void xm_field_event_start_choice(void) __asm__("func_8009BC98");
+#endif
+#ifndef XM_S_field_event_find_own_window
+#define XM_S_field_event_find_own_window
+s32 xm_field_event_find_own_window(s32 *window) __asm__("func_8009CD18");
+#endif
+#ifndef XM_S_field_event_batch_limit
+#define XM_S_field_event_batch_limit
+extern s32 xm_field_event_batch_limit __asm__("g_FieldScriptMaxInstructionCount");
+#endif
+#ifndef XM_S_window_get_wait_state
+#define XM_S_window_get_wait_state
+s32 xm_window_get_wait_state(xm_Window *window) __asm__("func_80033CD0");
+#endif
+#ifndef XM_S_field_dialogue_windows
+#define XM_S_field_dialogue_windows
+extern xm_DialogueWindow xm_field_dialogue_windows[4] __asm__("g_FieldTextBoxes");
+#endif
+#ifndef XM_S_field_current_event_actor
+#define XM_S_field_current_event_actor
+extern xm_FieldActor *xm_field_current_event_actor __asm__("g_FieldScriptVMCurActor");
+#endif
+#ifndef XM_S_field_event_bytecode
+#define XM_S_field_event_bytecode
+extern u8 *xm_field_event_bytecode __asm__("g_FieldScriptVMCurScriptData");
+#endif
+#ifndef XM_S_window_set_color
+#define XM_S_window_set_color
+void xm_window_set_color(xm_Window *window, s32 r, s32 g, s32 b) __asm__("func_80034800");
+#endif
+#ifndef XM_S_field_event_yield_requested
+#define XM_S_field_event_yield_requested
+extern s32 xm_field_event_yield_requested __asm__("D_800B00C0");
+#endif
+void func_8009BC98(void) {
+    s32 window;
+    u32 first;
+
+    if (xm_field_event_find_own_window(&window) == 0) {
+        xm_field_event_batch_limit += 8;
+        if (xm_window_get_wait_state(&xm_field_dialogue_windows[window].text) == 1 ||
+            ((&xm_field_dialogue_windows[window].text)->unk84 != 0 && (&xm_field_dialogue_windows[window].text)->unk6C != 0)) {
+            xm_field_dialogue_windows[window].choice.status = 0;
+            xm_field_current_event_actor->unk081 = 0xFF;
+            first = EVENT_OPERAND_BYTE(1) >> 4;
+            xm_field_dialogue_windows[window].choice.first = first;
+            xm_field_dialogue_windows[window].choice.count = (EVENT_OPERAND_BYTE(1) & 0xF) - first + 1;
+            xm_field_dialogue_windows[window].choice.index = 0;
+            xm_window_set_color(&xm_field_dialogue_windows[window].text, 0xEF, 0x1E, 0xF0);
+            xm_field_current_event_actor->pc += 2;
+        }
+    } else {
+        xm_field_current_event_actor->pc += 2;
+    }
+    xm_field_event_yield_requested = 1;
+}
+#endif
 #else
 void func_8009BC98(void) {
     s32 textBoxIndex;
@@ -206,7 +529,177 @@ int func_8009C538(int targetId);
 
 // https://decomp.me/scratch/tL6mE
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/dialogue/text_box", func_8009C154);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_dialogue_show_portrait (src/decomp/src/field/field_event.c:8366). */
+#ifndef XM_T_xm_FieldSlot6
+#define XM_T_xm_FieldSlot6
+typedef struct xm_FieldSlot6 {
+    s16 a;
+    s16 b;
+    s16 c;
+} xm_FieldSlot6;
+#endif
+#ifndef XM_T_xm_PortraitPlace
+#define XM_T_xm_PortraitPlace
+typedef struct {
+    s16 x;
+    s16 y;
+    s16 clut_x;
+    s16 clut_y;
+} xm_PortraitPlace;
+#endif
+#ifndef XM_T_PLACE
+#define XM_T_PLACE
+#define PLACE(i, k) (((s16 *)xm_field_dialogue_portrait_places)[(i) * 8 + (k)])
+#endif
+#ifndef XM_T_FILES
+#define XM_T_FILES
+#define FILES(c, k) (((u8 *)xm_field_dialogue_portrait_files)[(c) * 2 + (k)])
+#endif
+#ifndef XM_T_xm_FileRequest
+#define XM_T_xm_FileRequest
+typedef struct xm_FileRequest {
+    u16 file;
+    void *destination;
+} xm_FileRequest;
+#endif
+#ifndef XM_S_field_dialogue_show_portrait
+#define XM_S_field_dialogue_show_portrait
+s32 xm_field_dialogue_show_portrait(s32 character) __asm__("func_8009C154");
+#endif
+#ifndef XM_S_field_dialogue_portrait_slots
+#define XM_S_field_dialogue_portrait_slots
+extern xm_FieldSlot6 xm_field_dialogue_portrait_slots[3] __asm__("D_800B06A4");
+#endif
+#ifndef XM_S_cd_sync_reads
+#define XM_S_cd_sync_reads
+s32 xm_cd_sync_reads(s32 mode) __asm__("ArchiveCdDataSync");
+#endif
+#ifndef XM_S_field_load_tim_at
+#define XM_S_field_load_tim_at
+void xm_field_load_tim_at(u32 *tim, s16 x, s16 y, s16 clut_x, s16 clut_y, s16 clut_w, s16 clut_h) __asm__("FieldLoadTIMWithClut");
+#endif
+#ifndef XM_S_field_dialogue_portrait_first_image
+#define XM_S_field_dialogue_portrait_first_image
+extern void *xm_field_dialogue_portrait_first_image __asm__("D_800ADB10");
+#endif
+#ifndef XM_S_field_dialogue_portrait_places
+#define XM_S_field_dialogue_portrait_places
+extern xm_PortraitPlace xm_field_dialogue_portrait_places[4][2] __asm__("D_800AEAE4");
+#endif
+#ifndef XM_S_field_dialogue_portrait_second_image
+#define XM_S_field_dialogue_portrait_second_image
+extern void *xm_field_dialogue_portrait_second_image __asm__("D_800ADB14");
+#endif
+#ifndef XM_S_heap_free
+#define XM_S_heap_free
+s32 xm_heap_free(void *data) __asm__("HeapFree");
+#endif
+#ifndef XM_S_field_dialogue_portrait_last_slot
+#define XM_S_field_dialogue_portrait_last_slot
+extern s32 xm_field_dialogue_portrait_last_slot __asm__("D_800ADB0C");
+#endif
+#ifndef XM_S_field_dialogue_is_portrait_shown
+#define XM_S_field_dialogue_is_portrait_shown
+s32 xm_field_dialogue_is_portrait_shown(s32 id) __asm__("func_8009C538");
+#endif
+#ifndef XM_S_cd_select_directory
+#define XM_S_cd_select_directory
+s32 xm_cd_select_directory(s32 group, s32 index) __asm__("ArchiveSetIndex");
+#endif
+#ifndef XM_S_field_dialogue_portrait_files
+#define XM_S_field_dialogue_portrait_files
+extern u8 xm_field_dialogue_portrait_files[90][2] __asm__("D_800AE1E0");
+#endif
+#ifndef XM_S_field_dialogue_portrait_file_requests
+#define XM_S_field_dialogue_portrait_file_requests
+extern xm_FileRequest xm_field_dialogue_portrait_file_requests[3] __asm__("D_800B00C8");
+#endif
+#ifndef XM_S_heap_alloc
+#define XM_S_heap_alloc
+void *xm_heap_alloc(s32 size, s32 mode) __asm__("HeapAlloc");
+#endif
+#ifndef XM_S_cd_get_aligned_file_size
+#define XM_S_cd_get_aligned_file_size
+s32 xm_cd_get_aligned_file_size(s32 file) __asm__("ArchiveDecodeAlignedSize");
+#endif
+#ifndef XM_S_cd_read_file_list
+#define XM_S_cd_read_file_list
+s32 xm_cd_read_file_list(xm_FileRequest *list, s32 mode, s32 unused) __asm__("func_80029AFC");
+#endif
+s32 func_8009C154(s32 character) {
+    s32 i;
+    s32 found;
+    s32 file;
+
+    for (i = 0; i < 3; i++) {
+        if (xm_field_dialogue_portrait_slots[i].b == 1) {
+            if (xm_cd_sync_reads(1) == 0) {
+                xm_field_dialogue_portrait_slots[i].b = 2;
+                xm_field_load_tim_at(xm_field_dialogue_portrait_first_image, PLACE(i, 0), PLACE(i, 1), PLACE(i, 2),
+                              PLACE(i, 3), 0x100, 1);
+                if (xm_field_dialogue_portrait_slots[i].c == 0) {
+                    xm_field_load_tim_at(xm_field_dialogue_portrait_first_image, PLACE(i, 4), PLACE(i, 5), PLACE(i, 6),
+                                  PLACE(i, 7), 0x100, 1);
+                } else {
+                    xm_field_load_tim_at(xm_field_dialogue_portrait_second_image, PLACE(i, 4), PLACE(i, 5), PLACE(i, 6),
+                                  PLACE(i, 7), 0x100, 1);
+                }
+            }
+            return -1;
+        }
+        if (xm_field_dialogue_portrait_slots[i].b == 2) {
+            xm_field_dialogue_portrait_slots[i].b = 0;
+            xm_heap_free(xm_field_dialogue_portrait_first_image);
+            if (xm_field_dialogue_portrait_slots[i].c == 1) {
+                xm_heap_free(xm_field_dialogue_portrait_second_image);
+            }
+            return -1;
+        }
+    }
+    for (i = 0; i < 3; i++) {
+        if (xm_field_dialogue_portrait_slots[i].a == character) {
+            xm_field_current_event_actor->state.bits.unk2 = i;
+            return 0;
+        }
+    }
+    found = 0;
+    for (i = 0; i < 3; i++) {
+        xm_field_dialogue_portrait_last_slot++;
+        if (xm_field_dialogue_portrait_last_slot >= 3) {
+            xm_field_dialogue_portrait_last_slot = 0;
+        }
+        if (xm_field_dialogue_is_portrait_shown(xm_field_dialogue_portrait_slots[xm_field_dialogue_portrait_last_slot].a) == 0) {
+            found++;
+            break;
+        }
+    }
+    if (found == 0) {
+        return -1;
+    }
+    xm_field_current_event_actor->state.bits.unk2 = xm_field_dialogue_portrait_last_slot;
+    xm_cd_select_directory(4, 0);
+    xm_field_dialogue_portrait_slots[xm_field_dialogue_portrait_last_slot].a = character;
+    xm_field_dialogue_portrait_slots[xm_field_dialogue_portrait_last_slot].b = 1;
+    xm_field_dialogue_portrait_slots[xm_field_dialogue_portrait_last_slot].c = 0;
+    i = 0;
+    file = FILES(character, 0);
+    xm_field_dialogue_portrait_file_requests[i].file = file + 0x46;
+    xm_field_dialogue_portrait_file_requests[i].destination = xm_field_dialogue_portrait_first_image = xm_heap_alloc(xm_cd_get_aligned_file_size(file + 0x46), 0);
+    i++;
+    if (FILES(character, 1) != FILES(character, 0)) {
+        xm_field_dialogue_portrait_slots[xm_field_dialogue_portrait_last_slot].c = 1;
+        file = FILES(character, 1);
+        xm_field_dialogue_portrait_file_requests[i].file = file + 0x46;
+        xm_field_dialogue_portrait_file_requests[i].destination = xm_field_dialogue_portrait_second_image = xm_heap_alloc(xm_cd_get_aligned_file_size(file + 0x46), 0);
+        i++;
+    }
+    xm_field_dialogue_portrait_file_requests[i].file = 0;
+    xm_field_dialogue_portrait_file_requests[i].destination = NULL;
+    xm_cd_read_file_list(xm_field_dialogue_portrait_file_requests, 0, 0);
+    return -1;
+}
+#endif
 #else
 s32 func_8009C154(s32 faceId) {
     s32 slot;

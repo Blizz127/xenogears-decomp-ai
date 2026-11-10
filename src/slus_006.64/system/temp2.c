@@ -1924,7 +1924,67 @@ s32 func_8002D180(void *arg0, void *arg1) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002D244);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): model_prepare_gt4_lit (src/decomp/src/resident/model_renderer.c:571). */
+#ifndef XM_T_RenderPacket
+#define XM_T_RenderPacket
+typedef struct RenderPacket {
+    u8 unk0[3];
+    u8 code;
+    s32 value;
+} RenderPacket;
+#endif
+#ifndef XM_S_model_prepare_gt4_lit
+#define XM_S_model_prepare_gt4_lit
+s32 xm_model_prepare_gt4_lit(u16 *command, s16 *vertices) __asm__("func_8002D244");
+#endif
+#ifndef XM_S_model_apply_override_command
+#define XM_S_model_apply_override_command
+s32 xm_model_apply_override_command(u8 *command) __asm__("func_8002CD64");
+#endif
+#ifndef XM_S_model_current_packet
+#define XM_S_model_current_packet
+extern RenderPacket *xm_model_current_packet __asm__("D_80059424");
+#endif
+#ifndef XM_S_NormalColor3
+#define XM_S_NormalColor3
+void xm_NormalColor3(SVECTOR *v0, SVECTOR *v1, SVECTOR *v2, CVECTOR *v3, CVECTOR *v4, CVECTOR *v5) __asm__("NormalColor3");
+#endif
+#ifndef XM_S_model_current_normals
+#define XM_S_model_current_normals
+extern SVECTOR *xm_model_current_normals __asm__("D_8005952C");
+#endif
+#ifndef XM_S_NormalColor
+#define XM_S_NormalColor
+void xm_NormalColor(SVECTOR *v0, CVECTOR *v1) __asm__("NormalColor");
+#endif
+#ifndef XM_S_model_effective_clut
+#define XM_S_model_effective_clut
+extern u16 xm_model_effective_clut __asm__("D_8005930C");
+#endif
+#ifndef XM_S_model_effective_tpage
+#define XM_S_model_effective_tpage
+extern u16 xm_model_effective_tpage __asm__("D_80059308");
+#endif
+s32 func_8002D244(u16 *command, s16 *vertices) {
+    POLY_GT4 *poly;
+
+    if (xm_model_apply_override_command((u8 *)command) == 0) {
+        return 0;
+    }
+    poly = (POLY_GT4 *)xm_model_current_packet;
+    setlen(poly, 12);
+    xm_NormalColor3(&xm_model_current_normals[vertices[0]], &xm_model_current_normals[vertices[1]], &xm_model_current_normals[vertices[2]],
+                 (CVECTOR *)&poly->r0, (CVECTOR *)&poly->r1, (CVECTOR *)&poly->r2);
+    xm_NormalColor(&xm_model_current_normals[vertices[3]], (CVECTOR *)&poly->r3);
+    *(s32 *)&poly->u0 = command[2] | (xm_model_effective_clut << 16);
+    *(s32 *)&poly->u1 = command[3] | (xm_model_effective_tpage << 16);
+    *(u16 *)&poly->u2 = command[4];
+    *(u16 *)&poly->u3 = command[5];
+    poly->code = ((u8 *)command)[3];
+    return 1;
+}
+#endif
 #else
 s32 func_8002D244(u8* pColor, s16* pIndices) {
     if (func_8002CD64(pColor) == 0) return 0;
@@ -1967,7 +2027,31 @@ s32 func_8002D354(u8* pColor, s16* pIndices) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002D420);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): model_prepare_gt4_lit_unreferenced (src/decomp/src/resident/model_renderer.c:605). */
+#ifndef XM_S_model_prepare_gt4_lit_unreferenced
+#define XM_S_model_prepare_gt4_lit_unreferenced
+s32 xm_model_prepare_gt4_lit_unreferenced(u16 *command, s16 *vertices) __asm__("func_8002D420");
+#endif
+s32 func_8002D420(u16 *command, s16 *vertices) {
+    POLY_GT4 *poly;
+
+    if (xm_model_apply_override_command((u8 *)command) == 0) {
+        return 0;
+    }
+    poly = (POLY_GT4 *)xm_model_current_packet;
+    setlen(poly, 12);
+    xm_NormalColor3(&xm_model_current_normals[vertices[0]], &xm_model_current_normals[vertices[1]], &xm_model_current_normals[vertices[2]],
+                 (CVECTOR *)&poly->r0, (CVECTOR *)&poly->r1, (CVECTOR *)&poly->r2);
+    xm_NormalColor(&xm_model_current_normals[vertices[3]], (CVECTOR *)&poly->r3);
+    *(s32 *)&poly->u0 = command[2] | (xm_model_effective_clut << 16);
+    *(s32 *)&poly->u1 = command[3] | (xm_model_effective_tpage << 16);
+    *(u16 *)&poly->u2 = command[4];
+    *(u16 *)&poly->u3 = command[5];
+    poly->code = ((u8 *)command)[3];
+    return 1;
+}
+#endif
 #else
 s32 func_8002D420(u8* pColor, s16* pIndices) {
     if (func_8002CD64(pColor) == 0) return 0;
@@ -2060,7 +2144,54 @@ s32 func_8002D77C(u8* pColor, s16* pIndices) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002D814);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): model_prepare_ft3_lit (src/decomp/src/resident/model_renderer.c:689). */
+#ifndef XM_S_model_prepare_ft3_lit
+#define XM_S_model_prepare_ft3_lit
+s32 xm_model_prepare_ft3_lit(u16 *command, s16 *vertices, s32 flags) __asm__("func_8002D814");
+#endif
+#ifndef XM_S_model_compute_face_normal
+#define XM_S_model_compute_face_normal
+void xm_model_compute_face_normal(SVECTOR *v0, SVECTOR *v1, SVECTOR *v2, SVECTOR *normal) __asm__("func_8002DB84");
+#endif
+#ifndef XM_S_model_current_vertices
+#define XM_S_model_current_vertices
+extern SVECTOR *xm_model_current_vertices __asm__("D_8005953C");
+#endif
+#ifndef XM_S_model_lit_color_cache
+#define XM_S_model_lit_color_cache
+extern s32 *xm_model_lit_color_cache __asm__("D_80059498");
+#endif
+s32 func_8002D814(u16 *command, s16 *vertices, s32 flags) {
+    POLY_FT3 *poly;
+    SVECTOR normal;
+
+    if (xm_model_apply_override_command((u8 *)command) == 0) {
+        return 0;
+    }
+    poly = (POLY_FT3 *)xm_model_current_packet;
+    setlen(poly, 7);
+    *(s32 *)&poly->u0 = command[2] | (xm_model_effective_clut << 16);
+    *(s32 *)&poly->u1 = command[3] | (xm_model_effective_tpage << 16);
+    *(u16 *)&poly->u2 = command[0];
+    if (flags & 1) {
+        if (flags & 2) {
+            xm_model_compute_face_normal(&xm_model_current_vertices[vertices[0]], &xm_model_current_vertices[vertices[1]],
+                          &xm_model_current_vertices[vertices[2]], (SVECTOR *)xm_model_lit_color_cache);
+            xm_NormalColor((SVECTOR *)xm_model_lit_color_cache, (CVECTOR *)&poly->r0);
+        } else {
+            xm_model_compute_face_normal(&xm_model_current_vertices[vertices[0]], &xm_model_current_vertices[vertices[1]],
+                          &xm_model_current_vertices[vertices[2]], &normal);
+            xm_NormalColor(&normal, (CVECTOR *)&poly->r0);
+        }
+    } else if (flags & 4) {
+        xm_NormalColor((SVECTOR *)xm_model_lit_color_cache, (CVECTOR *)&poly->r0);
+    }
+    xm_model_lit_color_cache += 2;
+    poly->code = ((u8 *)command)[3];
+    return 1;
+}
+#endif
 #else
 s32 func_8002D814(u8* pColor, s16* pIndices, s32 flags) {
     u8* pPoly;
@@ -2129,7 +2260,29 @@ extern u16 D_80059308;
 extern u16 D_8005930C;
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002DA14);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): model_prepare_gt3_lit (src/decomp/src/resident/model_renderer.c:736). */
+#ifndef XM_S_model_prepare_gt3_lit
+#define XM_S_model_prepare_gt3_lit
+s32 xm_model_prepare_gt3_lit(u16 *command, s16 *vertices) __asm__("func_8002DA14");
+#endif
+s32 func_8002DA14(u16 *command, s16 *vertices) {
+    POLY_GT3 *poly;
+
+    if (xm_model_apply_override_command((u8 *)command) == 0) {
+        return 0;
+    }
+    poly = (POLY_GT3 *)xm_model_current_packet;
+    setlen(poly, 9);
+    xm_NormalColor3(&xm_model_current_normals[vertices[0]], &xm_model_current_normals[vertices[1]], &xm_model_current_normals[vertices[2]],
+                 (CVECTOR *)&poly->r0, (CVECTOR *)&poly->r1, (CVECTOR *)&poly->r2);
+    *(s32 *)&poly->u0 = command[2] | (xm_model_effective_clut << 16);
+    *(s32 *)&poly->u1 = command[3] | (xm_model_effective_tpage << 16);
+    *(u16 *)&poly->u2 = command[0];
+    poly->code = ((u8 *)command)[3];
+    return 1;
+}
+#endif
 #else
 s32 func_8002DA14(u8* pColor, s16* pIndices) {
     if (func_8002CD64(pColor) == 0) return 0;
@@ -2199,10 +2352,6 @@ s32 func_8002DC9C(s32 x, s32 y, s32 z);
 #ifndef XENO_PC_PORT
 #ifndef XENO_PC_PORT
 /* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): model_compute_face_normal (src/decomp/src/resident/model_renderer.c:766). */
-#ifndef XM_S_model_compute_face_normal
-#define XM_S_model_compute_face_normal
-void xm_model_compute_face_normal(SVECTOR *v0, SVECTOR *v1, SVECTOR *v2, SVECTOR *normal) __asm__("func_8002DB84");
-#endif
 #ifndef XM_S_OuterProduct0
 #define XM_S_OuterProduct0
 void xm_OuterProduct0(VECTOR *v0, VECTOR *v1, VECTOR *v2) __asm__("OuterProduct0");
