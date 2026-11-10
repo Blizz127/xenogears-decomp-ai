@@ -162,7 +162,7 @@ def pick(entries,kinds,pref_file=None):
             if x!=y: break
             n+=1
         return -n
-    c.sort(key=lambda e:(cp(e) if a.pos else 0, not e['src'].lstrip().startswith('extern'), e['file'].endswith('.c')))
+    c.sort(key=lambda e:('__' in e['src'].split('\n')[0] and e['kind']=='typedef', cp(e) if a.pos else 0, not e['src'].lstrip().startswith('extern'), e['file'].endswith('.c')))
     return c[0] if c else None
 def pick_var(es,n,src,pf):
     c=[e for e in es if e['kind']=='var']

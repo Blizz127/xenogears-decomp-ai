@@ -5379,7 +5379,281 @@ void func_8007C260(void) {
 #endif
 
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8007C36C);
+#ifndef XENO_PC_PORT
+/* Adopted from EtherAura xenogears (GPL-3.0, github.com/EtherAura/xenogears @e54f35a): worldmapMode12_taskDirector_init (src/worldmap/w_8007BF50.c). */
+#ifndef XM_T_FP_VEC3
+#define XM_T_FP_VEC3
+typedef struct {
+    s32 vx, vy, vz;
+} FP_VEC3;
+#endif
+#ifndef XM_T_SubSprite
+#define XM_T_SubSprite
+typedef struct {
+     s16 m0_offsetX;
+     s16 m2_offsetY;
+     u8 m4_texcoordX;
+     u8 m5_texcoordY;
+     u8 m6_width;
+     u8 m7_height;
+     s8 m8_widthAdjust;
+     s8 m9_heightAdjust;
+     u16 mA_tpage;
+     u16 mC_clut;
+     u16 mE;
+     u32 m10_colorAndCode;
+     union {                     
+                   u32 raw;
+                   struct {
+                       u32 x0_transformId : 3;
+                       u32 x3_8bit : 1;         
+                       u32 x4_tileFlipX : 1;
+                       u32 x5_tileFlipY : 1;
+                       u32 x6 : 26;
+                   } bits;
+               } m14_attrs;
+} SubSprite;
+#endif
+#ifndef XM_T_SubgroupTransform
+#define XM_T_SubgroupTransform
+typedef struct {
+     s8 m0_translateX;
+     s8 m1_translateY;
+     s16 m2_rotateX;
+     s16 m4_rotateY;
+     s16 m6_rotateZ;
+} SubgroupTransform;
+#endif
+#ifndef XM_T_SpriteObject
+#define XM_T_SpriteObject
+typedef struct SpriteObject {
+     s16 m0_rotation[3];
+     s16 m6_scale[3];
+     MATRIX mC_matrix;
+     SubSprite* m2C_subSpriteBuffer;
+     SubSprite* m30_subSprites;
+     SubgroupTransform* m34_perSubgroupTransform; 
+     struct SpriteActorCore* m38_pNext;
+     s8 m3C_anchorX;
+     s8 m3D_anchorY;                          
+} SpriteObject;
+#endif
+#ifndef XM_T_uptr
+#define XM_T_uptr
+typedef u32 uptr;
+#endif
+#ifndef XM_T_Vec2s16
+#define XM_T_Vec2s16
+typedef struct {
+    s16 vx, vy;
+} Vec2s16;
+#endif
+#ifndef XM_T_SpriteVramData
+#define XM_T_SpriteVramData
+typedef struct {
+     uptr m0_spriteData;
+     Vec2s16 m4_vramLocation;
+     Vec2s16 m8_clut;
+     u8* mC_clutData;
+     uptr m10_startOfAnimationContainer;
+} SpriteVramData;
+#endif
+#ifndef XM_T_SpriteActorExtra
+#define XM_T_SpriteActorExtra
+typedef struct {
+     s32 m0;
+     s32 m4_gravityOverride;
+     s32 m8;
+     u16 mC_animationSignal;                    
+     Vec2s16 mE_vramLocation;
+     s16 m12;
+     s16 m14_actorId;
+     s16 m16;
+     s16* m18_vramLocations;
+} SpriteActorExtra;
+#endif
+#ifndef XM_T_SpriteActorCore
+#define XM_T_SpriteActorCore
+typedef struct SpriteActorCore {
+     FP_VEC3 m0_position;
+     FP_VEC3 mC_step;
+     s32 m18_moveSpeed;
+     s32 m1C_gravity;
+     SpriteObject* m20_object;
+     SpriteVramData* m24_vramData;
+     u8 m28_r;
+     u8 m29_g;
+     u8 m2A_b;
+     u8 m2B_code;                   
+     s16 m2C_scale;
+     s16 m2E_otIndex;
+     s16 m30_otOffset;
+     s16 m32_direction;
+     s16 m34_currentSpriteFrame;
+     s16 m36_height;
+     s16 m38_centerHeight;
+     s16 m3A_scaleModifier;
+     u32 m3C_x0_type : 2;           
+               u32 m3C_x2 : 1;
+               u32 m3C_x3_flipX : 1;
+               u32 m3C_x4 : 1;
+               u32 m3C_x5_blendMode : 3;      
+               u32 m3C_x8 : 8;
+               u32 m3C_x10 : 4;
+               u32 m3C_x14 : 4;
+               u32 m3C_x18 : 1;
+               u32 m3C_x19 : 1;
+               u32 m3C_x1A : 1;                
+               u32 m3C_x1B : 1;
+               u32 m3C_x1C_matrixDirty : 1;
+               u32 m3C_x1D : 1;
+               u32 m3C_x1E_bundleChanged : 1;
+               u32 m3C_x1F : 1;
+     union {                     
+                   u32 raw;
+                   struct {
+                       u32 x0 : 1;
+                       u32 x1 : 1;
+                       u32 x2_subSpriteCount : 6;
+                       u32 x8 : 5;
+                       u32 xD_mode : 4;          
+                       u32 x11 : 1;
+                       u32 x12 : 1;              
+                       u32 x13 : 1;
+                       u32 x14 : 1;              
+                       u32 x15 : 11;
+                   } bits;
+               } m40_draw;
+     void* m44_currentAnimationBundle;
+     void* m48_defaultAnimationBundle;
+     void* m4C_specialAnimation;
+     u8* m50_soundEffectSeq;
+     u16* m54_frameTable;
+     u8* m58_startOfCurrentAnimation;
+     u8* m5C;
+     u8* m60_endOfAnimationContainer;
+     u8* m64_spriteByteCode;
+     void (*m68)(struct SpriteActorCore*);
+     void* m6C_owner;
+     struct SpriteActorCore* m70_parent;
+     struct SpriteActorCore* m74_targetEntitySprite;
+     u32 m78_terrainTriangle;
+     SpriteActorExtra* m7C_extra;
+     s16 m80_angle;
+     s16 m82_entityScale;
+     s16 m84_maxY;
+     u16 m86_thisSize;
+     u8* m88_stack2;
+     s8 m8C_stackPosition;
+     s8 m8D_parentAnimationId;
+     u8 m8E_stack[16];
+     s16 m9E_wait;
+     SVECTOR mA0_destination;
+     u32 mA8_x0 : 1;
+               u32 mA8_x1_bounce : 10;
+               u32 mA8_xB_frame : 6;
+               u32 mA8_x11 : 3;
+               u32 mA8_x14 : 2;
+               u32 mA8_x16_bytecodeStep : 6;
+               u32 mA8_x1C : 2;
+               u32 mA8_x1E : 2;
+#if VERSION_JP
+     u32 mAC_x0 : 4;                
+#else
+     u32 mAC_x0 : 2;
+#endif
+               u32 mAC_x2_facing : 1;
+               u32 mAC_x3 : 1;
+               u32 mAC_x4 : 1;
+               u32 mAC_x5 : 1;
+               u32 mAC_x6 : 1;
+               u32 mAC_x7_timeScale : 12;
+#if VERSION_JP
+               u32 mAC_x13 : 3;
+#else
+               u32 mAC_x13 : 5;
+#endif
+     u8 mAF_animationId;            
+     s32 mB0_x0_animationId : 8;
+               u32 mB0_x8 : 1;
+               u32 mB0_x9 : 1;
+               u32 mB0_xA : 1;
+               u32 mB0_xB : 1;
+               u32 mB0_xC : 20;
+} SpriteActorCore;
+#endif
+#ifndef XM_T_sptr
+#define XM_T_sptr
+typedef s32 sptr;
+#endif
+#ifndef XM_T_sWorldmapStateEntry
+#define XM_T_sWorldmapStateEntry
+typedef struct sWorldmapStateEntry {
+     s16 m0_state;
+     s16 m2_waitTimer;
+     s16 m4_request;
+     s16 m6_targetEntity;
+     s32 m8;           
+     s32 mC;
+     s32 m10;
+     s32 m14;
+     s32 (*m18_init)(s32 index);
+     s32 (*m1C_update)(s32 index);
+     s16 m20_subState;
+     s16 m22_timer;
+     s16 m24_hidden;
+     s16 m26;
+     VECTOR m28_position;
+     VECTOR m38_step;
+     s16 m48_direction;
+     s16 m4A_stepScale;
+     SpriteActorCore* m4C_sprite; 
+     sptr m50;         
+     sptr m54;         
+     sptr m58;         
+     s32 m5C;
+     s32 m60;
+     sptr m64;         
+     sptr m68;         
+     s32 m6C;
+     s32 m70;
+     s32 m74;          
+     s32 m78;
+     s32 m7C;
+} sWorldmapStateEntry;
+#endif
+#ifndef XM_T_sWorldmapState
+#define XM_T_sWorldmapState
+typedef struct sWorldmapState {
+     sWorldmapStateEntry m0_entries[64];
+} sWorldmapState;
+#endif
+#ifndef XM_S_worldmapMode12_taskDirector_init
+#define XM_S_worldmapMode12_taskDirector_init
+s32 xm_worldmapMode12_taskDirector_init(s32) __asm__("func_8007C36C");
+#endif
+#ifndef XM_S_gWorldmapState
+#define XM_S_gWorldmapState
+extern sWorldmapState * xm_gWorldmapState __asm__("D_8009BE24");
+#endif
+#ifndef XM_S_worldmapMode12DirectorStates
+#define XM_S_worldmapMode12DirectorStates
+extern u16 xm_worldmapMode12DirectorStates[] __asm__("D_8009A4D8");
+#endif
+#ifndef XM_S_worldmapMode12DirectorTimers
+#define XM_S_worldmapMode12DirectorTimers
+extern u16 xm_worldmapMode12DirectorTimers[] __asm__("D_8009A4E8");
+#endif
+s32 func_8007C36C(s32 index) {
+    sWorldmapStateEntry* e = &xm_gWorldmapState->m0_entries[index];
+
+    e->m50 = 0;
+    e->m20_subState = xm_worldmapMode12DirectorStates[0];
+    e->m22_timer = xm_worldmapMode12DirectorTimers[e->m50];
+    e->m50++;
+    return 1;
+}
+#endif
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8007C3B8);
 
@@ -5927,7 +6201,112 @@ s32 func_8007F8AC(s32 index) {
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8007F968);
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8007FC8C);
+#ifndef XENO_PC_PORT
+/* Adopted from EtherAura xenogears (GPL-3.0, github.com/EtherAura/xenogears @e54f35a): worldmapMode15_taskImpactRings_init (src/worldmap/w_8007CC6C.c). */
+#ifndef XM_T_DynVertOffset
+#define XM_T_DynVertOffset
+typedef struct {
+     s16 m0_offset[3];
+     s16 m6_index;
+} DynVertOffset;
+#endif
+#ifndef XM_T_ModelDynVertEntry
+#define XM_T_ModelDynVertEntry
+typedef struct {
+     s32 m0_count;
+     DynVertOffset* m4_positions;
+     DynVertOffset* m8_normals;
+} ModelDynVertEntry;
+#endif
+#ifndef XM_T_ModelDynVerts
+#define XM_T_ModelDynVerts
+typedef struct {
+     s32 m0_count;
+     ModelDynVertEntry m4_entries[1];
+} ModelDynVerts;
+#endif
+#ifndef XM_T_ModelBlock
+#define XM_T_ModelBlock
+typedef struct {
+     u16 m0_flags;
+     u16 m2_numVertices;
+     u16 m4_numPrims;
+     u16 m6_numMeshBlocks;
+     SVECTOR* m8_vertices;
+     SVECTOR* mC_normals;
+     u8* m10_meshBlocks;
+     u8* m14_displayList;
+     u8* m18_instanceData;
+     ModelDynVerts* m1C_dynamicVertices;
+     s16 m20_boundingBox[8];
+     s32 m30_instanceDataSize;
+     s32 m34_primBufferSize;
+} ModelBlock;
+#endif
+#ifndef XM_T_sWorldmapCollisionTri
+#define XM_T_sWorldmapCollisionTri
+typedef struct sWorldmapCollisionTri {
+     s16 m0_vertices[3];
+     s16 m6_neighbors[3];
+     u16 mC_type;
+} sWorldmapCollisionTri;
+#endif
+#ifndef XM_T_sWorldmapCollisionMesh
+#define XM_T_sWorldmapCollisionMesh
+typedef struct sWorldmapCollisionMesh {
+     s32 m0_numTriangles;
+#ifndef PLATFORM_PC
+     SVECTOR* m4_vertices;
+#else
+     u32 m4_vertices; 
+#endif
+     sWorldmapCollisionTri m8_triangles[1];
+} sWorldmapCollisionMesh;
+#endif
+#ifndef XM_T_sWorldmapModel
+#define XM_T_sWorldmapModel
+typedef struct sWorldmapModel {
+     s16 m0_hidden;          
+     s16 m2_modelBlockIndex; 
+     s16 m4_flags;
+     s16 m6;
+     VECTOR m8_position;         
+     SVECTOR m18_rotation;
+     MATRIX m20_rotationMatrix;
+     ModelBlock* m40_modelBlock;
+     sWorldmapCollisionMesh* m44_collisionMesh;
+     u8* m48_primBuffers[2];        
+     struct sWorldmapModel* m50_parentModel;
+} sWorldmapModel;
+#endif
+#ifndef XM_S_worldmapMode15_taskImpactRings_init
+#define XM_S_worldmapMode15_taskImpactRings_init
+s32 xm_worldmapMode15_taskImpactRings_init(s32) __asm__("func_8007FC8C");
+#endif
+#ifndef XM_S_worldmapModels
+#define XM_S_worldmapModels
+extern sWorldmapModel * xm_worldmapModels __asm__("D_8009C620");
+#endif
+#ifndef XM_S_setWorldmapModelSemiTransGrey
+#define XM_S_setWorldmapModelSemiTransGrey
+s32 xm_setWorldmapModelSemiTransGrey(sWorldmapModel* model, POLY_FT4* poly, s32 count) __asm__("func_8007A06C");
+#endif
+s32 func_8007FC8C(s32 index) {
+    sWorldmapModel* models = xm_worldmapModels;
+    sWorldmapStateEntry* e = &xm_gWorldmapState->m0_entries[index];
+
+    xm_setWorldmapModelSemiTransGrey(&models[9], (POLY_FT4*)models[9].m48_primBuffers[0], models[9].m40_modelBlock->m4_numPrims);
+    xm_setWorldmapModelSemiTransGrey(&models[10], (POLY_FT4*)models[10].m48_primBuffers[0], models[10].m40_modelBlock->m4_numPrims);
+    e->m28_position.vx = 0x1498000;
+    e->m28_position.vy = -0x80000;
+    e->m54 = -0x800;
+    e->m20_subState = 0;
+    e->m28_position.vz = 0x4AF2000;
+    e->m50 = 0;
+    e->m58 = 0x80;
+    return 3;
+}
+#endif
 
 #ifndef XENO_PC_PORT
 /* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_scene15_grow_objects_9_10_update (src/decomp/src/worldmap/worldmap_scene15.c:913). */
@@ -6029,7 +6408,115 @@ s32 func_8008032C(s32 arg0) {
 #endif
 
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80080370);
+#ifndef XENO_PC_PORT
+/* Adopted from EtherAura xenogears (GPL-3.0, github.com/EtherAura/xenogears @e54f35a): worldmapMode13_taskDirector_update (src/worldmap/w_8007FD30.c). */
+#ifndef XM_T_sWorldmapSeqHeader
+#define XM_T_sWorldmapSeqHeader
+typedef struct {
+     u8 m0[0x14];
+     u16 m14_id;
+} sWorldmapSeqHeader;
+#endif
+#ifndef XM_S_worldmapMode13_taskDirector_update
+#define XM_S_worldmapMode13_taskDirector_update
+s32 xm_worldmapMode13_taskDirector_update(s32) __asm__("func_80080370");
+#endif
+#ifndef XM_S_worldmapMode13DirectorStates
+#define XM_S_worldmapMode13DirectorStates
+extern u16 xm_worldmapMode13DirectorStates[] __asm__("D_8009A698");
+#endif
+#ifndef XM_S_worldmapMode13DirectorTimers
+#define XM_S_worldmapMode13DirectorTimers
+extern u16 xm_worldmapMode13DirectorTimers[] __asm__("D_8009A6AC");
+#endif
+#ifndef XM_S_changeWorldmapEntityState
+#define XM_S_changeWorldmapEntityState
+s32 xm_changeWorldmapEntityState(s32 index, s32 state) __asm__("func_80097770");
+#endif
+#ifndef XM_S_worldmapFadePolyAbr
+#define XM_S_worldmapFadePolyAbr
+extern s32 xm_worldmapFadePolyAbr __asm__("D_8009CCA4");
+#endif
+#ifndef XM_S_worldmapFadePolyStep
+#define XM_S_worldmapFadePolyStep
+extern s32 xm_worldmapFadePolyStep __asm__("D_8009D3CC");
+#endif
+#ifndef XM_S_playSoundEffectInFreeSlot
+#define XM_S_playSoundEffectInFreeSlot
+void xm_playSoundEffectInFreeSlot(s32) __asm__("func_80039E60");
+#endif
+#ifndef XM_S_fieldSeq
+#define XM_S_fieldSeq
+extern sWorldmapSeqHeader * xm_fieldSeq __asm__("D_8006259C");
+#endif
+#ifndef XM_S_continueWorldmapLoop
+#define XM_S_continueWorldmapLoop
+extern s32 xm_continueWorldmapLoop __asm__("D_8009D554");
+#endif
+#ifndef XM_S_exitWorldMapMode
+#define XM_S_exitWorldMapMode
+extern s32 xm_exitWorldMapMode __asm__("D_8009D7CC");
+#endif
+s32 func_80080370(s32 index) {
+    sWorldmapStateEntry* e = &xm_gWorldmapState->m0_entries[index];
+
+    switch (e->m20_subState) {
+    case 0:
+        break;
+    case 1:
+        e->m22_timer--;
+        if (e->m22_timer < 0) {
+            e->m20_subState = xm_worldmapMode13DirectorStates[e->m50];
+            e->m22_timer = xm_worldmapMode13DirectorTimers[e->m50];
+            e->m50++;
+        }
+        break;
+    case 2:
+        xm_changeWorldmapEntityState(3, 1);
+        e->m20_subState = 1;
+        break;
+    case 3:
+        xm_changeWorldmapEntityState(2, 2);
+        e->m20_subState = 1;
+        break;
+    case 4:
+        xm_changeWorldmapEntityState(0, 0xD);
+        xm_worldmapFadePolyAbr = 1;
+        xm_worldmapFadePolyStep = 0x80;
+        e->m20_subState = 1;
+        break;
+    case 5:
+        xm_changeWorldmapEntityState(0, 0xC);
+        xm_changeWorldmapEntityState(4, 1);
+        xm_worldmapFadePolyAbr = 1;
+        xm_worldmapFadePolyStep = 0x80;
+        e->m20_subState = 1;
+        break;
+    case 6:
+        xm_changeWorldmapEntityState(2, 3);
+        e->m20_subState = 1;
+        break;
+    case 7:
+        xm_changeWorldmapEntityState(0, 0xD);
+        xm_worldmapFadePolyAbr = 2;
+        xm_worldmapFadePolyStep = 4;
+        e->m20_subState = 1;
+        break;
+    case 8:
+        xm_playSoundEffectInFreeSlot((xm_fieldSeq->m14_id << 16) | 0x16);
+        xm_playSoundEffectInFreeSlot((xm_fieldSeq->m14_id << 16) | 0x17);
+        xm_playSoundEffectInFreeSlot((xm_fieldSeq->m14_id << 16) | 0x18);
+        e->m20_subState = 1;
+        break;
+    case 64:
+        xm_continueWorldmapLoop = 0;
+        xm_exitWorldMapMode = 0;
+        e->m20_subState = 0;
+        break;
+    }
+    return 1;
+}
+#endif
 
 
 #ifndef XENO_PC_PORT
@@ -8829,7 +9316,296 @@ s32 func_8008C6EC(s32 arg0) {
 #endif
 
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8008C75C);
+#ifndef XENO_PC_PORT
+/* Adopted from EtherAura xenogears (GPL-3.0, github.com/EtherAura/xenogears @e54f35a): worldmapMode0_taskPlayerGear_initSaved (src/worldmap/w_8008BD1C.c). */
+#ifndef XM_T_SpriteActor
+#define XM_T_SpriteActor
+typedef struct {
+     SpriteActorCore m0_spriteActorCore;
+     SpriteObject mB4_spriteObject;
+     SpriteActorExtra mF4_extra;
+     SpriteVramData m110_vramData;
+     SubgroupTransform m124_subgroupTransforms[8];
+} SpriteActor;
+#endif
+#ifndef XM_T_AnimationBundle
+#define XM_T_AnimationBundle
+typedef struct {
+     s32 m0;
+     s32 m4_animationsOffset;
+     s32 m8_spriteDataOffset;
+     s32 mC_offset;
+} AnimationBundle;
+#endif
+#ifndef XM_T_GameStateCharacterSub4
+#define XM_T_GameStateCharacterSub4
+typedef struct {
+     u8 m0_weaponPower;             
+     u8 m1[3];
+     u16 m4_nextWeaponStatusMask;            
+     u8 m6_nextWeaponStatusChance;             
+     u8 m7_nextWeaponStatusType;             
+} GameStateCharacterSub4;
+#endif
+#ifndef XM_T_GameStateCharacter
+#define XM_T_GameStateCharacter
+typedef struct {
+     u16 m0_weaponStatusMask;
+     u8 m2_weaponStatusChance;
+     u8 m3_weaponStatusType;
+     GameStateCharacterSub4 m4_weaponSlots[4];
+     u8 m24[4];
+     u8 m28_attackBonus;
+     u8 m29_defenceBonus;
+     u8 m2A_agilityBonus;
+     u8 m2B_etherBonus;
+     u8 m2C_etherDefenceBonus;
+     u8 m2D_accessoryDefence;
+     u8 m2E_hitBonus;
+     u8 m2F_evadeBonus;
+     u8 m30_maxHpBonus;
+     u8 m31_maxMpBonus;
+     u16 m32_accessoryFlags;
+     u16 m34_monsterFlags;          
+     u16 m36_monsterFlags2;
+     u16 m38_weaknessFlags;
+     s16 m3A_killCount;
+     s32 m3C_experience;
+     s32 m40_experience2;
+     s32 m44_expToNextLevel;
+     s32 m48_expToNextLevel2;
+     u16 m4C_HP;
+     u16 m4E_MaxHP;
+     u16 m50_MP;
+     u16 m52_MaxMP;
+     u8 m54_infinityCharge;
+     u8 m55_deathblowLearnRate;
+     u8 m56_battleCommandLoadout;
+     u8 m57;
+     u8 m58_attack;
+     u8 m59_defence;
+     u8 m5A_agility;
+     u8 m5B_ether;
+     u8 m5C_etherDefence;
+     u8 m5D;
+     u8 m5E_hitPercentage;
+     u8 m5F_evadePercentage;
+     u8 m60_effectChance;
+     u8 m61;
+     u8 m62_Level;
+     u8 m63_Level2;
+     u8 m64;
+     u8 m65;
+     u8 m66;
+     u8 m67;
+     u8 m68[2];
+     u8 m6A_weaponModifier[5]; 
+     u8 m6F_equipment[5];      
+     u8 m74_accessorySlots[3];
+     u8 m77_baseWeight;
+     u8 m78_weightGain;
+     u8 m79_weightTenths;
+     u16 m7A_commandEnabledBF;
+     u16 m7C_statusFlags[4];       
+
+     u16 m84_statusFlags2[6];       
+     u16 m90_deathblowProgress[8];
+     u8 mA0_gearNum;
+     u8 mA1_deathblowLearnBonus;
+     u8 mA2[2];
+} GameStateCharacter;
+#endif
+#ifndef XM_T_GameStateGearSlot
+#define XM_T_GameStateGearSlot
+typedef struct {
+     u8 m0_weaponPower;             
+     u8 m1_weaponStatusChance;
+     u8 m2_weaponStatusType;             
+     u8 m3_weaponId;
+     u8 m4[2];
+     u16 m6_nextWeaponStatusMask; 
+} GameStateGearSlot;
+#endif
+#ifndef XM_T_GameStateGear
+#define XM_T_GameStateGear
+typedef struct {
+     u8 m0[2];
+     u8 m2_frame;           
+     u8 m3_engine;          
+     u8 m4_slotItem[4];     
+     u8 m8_armor;           
+     u8 m9_accessorySlots[3];
+     u8 mC_weapon[4];       
+
+     s16 m10_weaponStatusMask;
+     GameStateGearSlot m12_slots[4]; 
+     u8 m32[0x38 - 0x32];
+     u16 m38_fuel;    
+     u16 m3A_maxFuel;
+     u8 m3C_engineOutput;
+     u8 m3D[2];
+     u8 m3F_attackMultiplier;
+     u16 m40_accessoryDefence;               
+     u16 m42_accessoryEtherDefence;
+     u16 m44_accessoryWeight;
+     u16 m46;               
+     u16 m48;
+     u8 m4A_agilityPenalty;
+     u8 m4B;
+     u8 m4C;
+     u8 m4D_accessoryResponse;
+     u8 m4E_accessoryAgility;
+     u8 m4F_frameRepairLevel;
+     u8 m50_terrainAgility[4];
+     u8 m54_accessoryEtherAmp;
+     u8 m55_accessoryBonuses[3];             
+     u8 m58[0x5C - 0x58];
+     u8 m5C_extraFileIndex;
+     u8 m5D_weaponAnimOffsets[3];
+     s32 m60_hp;
+     s32 m64_maxHp;
+     u16 m68_weight;
+     u16 m6A;
+     u16 m6C;
+     u16 m6E_elementResistanceMask;
+     u16 m70_defence;
+     u16 m72_etherDefence;
+     u8 m74_baseAttackMultiplier;
+     u8 m75_weightAllowance;
+     u8 m76[0x7C - 0x76];
+     u16 m7C_statusFlags;         
+     u16 m7E_statusFlags1;
+     u16 m80_statusFlags2;
+     u16 m82_statusFlags3;
+     u16 m84_statusFlags4;
+     u16 m86_statusFlags5;
+     u8 m88_elementResistances[0x98 - 0x88];   
+     u8 m98_agility;
+     u8 m99_defenceDown;
+     u8 m9A[2];
+     u8 m9C;
+     u8 m9D;
+     u8 m9E_etherAmp;
+     u8 m9F_response;
+     u8 mA0[0xA4 - 0xA0];
+} GameStateGear;
+#endif
+#ifndef XM_T_GameStateSize20
+#define XM_T_GameStateSize20
+typedef struct {
+     u16 m0_unlockedAbilitiesBitField[8];
+     u8 m10[0x17 - 0x10];
+     u8 m17_energyPerTurn; 
+     u8 m18[2];
+     u16 m1A_unlockedGearAbilities;
+     u8 m1C[4];
+} GameStateSize20;
+#endif
+#ifndef XM_T_GameState
+#define XM_T_GameState
+typedef struct {
+     u8 m0_names[31][0x14];
+     GameStateCharacter m26C_party[11];
+     GameStateGear m978_gears[20];
+     u8 m1648[0x16C0 - 0x1648];
+     GameStateSize20 m16C0_abilities[11];
+     u16 m1820_worldmapPosition[6]; 
+     u16 m182C_vehiclePosition[4];  
+     u16 m1834_vehicleMode;
+     u16 m1836_restoreWorldmapPosition;      
+     u8 m1838[0x183C - 0x1838];
+     u16 m183C_isOnGearBackup[3]; 
+     u16 m1842_disableWorldmapMinimap;
+     u16 m1844_waypointShipPosition[2];
+     u16 m1848_waypointShipWaypoint;
+     u16 m184A_waypointShipPlaced;
+     u16 m184C_flyingShipXLow;
+     u16 m184E_flyingShipPosition[5];  
+     u8 m1858[0x1924 - 0x1858];
+     s32 m1924_gold;
+     u8 m1928[0x1930 - 0x1928];
+     u16 m1930_fieldVarsBackup[512];
+     u16 m1D30_partyMemberBitField;
+     u16 m1D32_partyFrameMask;
+     u8 m1D34_currentParty[3];
+     u8 m1D37;
+    
+
+     u8 m1D38_inventory1Counts[100];
+     u8 m1D9C_inventory1Ids[100];
+     u8 m1E00_inventory2Counts[200];
+     u8 m1EC8_inventory2Ids[200];
+     u8 m1F90_inventory0Counts[150];
+     u8 m2026_inventory0Ids[150];
+     u8 m20BC_inventory3Counts[100];
+     u8 m2120_inventory3Ids[100];
+     u8 m2184_inventory4Counts[150];
+     u8 m221A_inventory4Ids[150];
+     u8 m22B0;
+     u8 m22B1_isOnGear[3];  
+     u8 m22B4[0x22B6 - 0x22B4];
+     u16 m22B6_gameFlags;
+     u8 m22B8_ammoCounts[0x2318 - 0x22B8]; 
+
+     u16 m2318_partyFrameLock;
+     u16 m231A_fieldID;
+     u16 m231C_cameraYaw;
+     s16 m231E_worldmapInitialPositionIndex;
+     u16 m2320_worldmapMode;
+     u16 m2322_previouslyPlayingMusic;
+     u16 m2324_battleScriptVars[16]; 
+     u8 m2344[0x2358 - 0x2344];
+} GameState;
+#endif
+#ifndef XM_S_worldmapMode0_taskPlayerGear_initSaved
+#define XM_S_worldmapMode0_taskPlayerGear_initSaved
+s32 xm_worldmapMode0_taskPlayerGear_initSaved(s32 index) __asm__("func_8008C75C");
+#endif
+#ifndef XM_S_createSpriteActor
+#define XM_S_createSpriteActor
+SpriteActor* xm_createSpriteActor(AnimationBundle* bundle, s16 clutX, s16 clutY, s16 vramX, s16 vramY, s16 arg5) __asm__("func_80024524");
+#endif
+#ifndef XM_S_worldmapPartyGearSprites
+#define XM_S_worldmapPartyGearSprites
+extern AnimationBundle * xm_worldmapPartyGearSprites[3] __asm__("D_8009BDF8");
+#endif
+#ifndef XM_S_spriteActorSetPlayingAnimation
+#define XM_S_spriteActorSetPlayingAnimation
+void xm_spriteActorSetPlayingAnimation(SpriteActorCore* actor, s32 animationId) __asm__("func_800245D8");
+#endif
+#ifndef XM_S_setGraphicEntityScale
+#define XM_S_setGraphicEntityScale
+void xm_setGraphicEntityScale(SpriteActorCore* actor, s32 scale) __asm__("SpriteSetScale");
+#endif
+#ifndef XM_S_gameState
+#define XM_S_gameState
+extern GameState xm_gameState __asm__("g_GameState");
+#endif
+#ifndef XM_S_worldmapGetAltitudeFor2dPoint
+#define XM_S_worldmapGetAltitudeFor2dPoint
+s32 xm_worldmapGetAltitudeFor2dPoint(s32 x, s32 z) __asm__("func_80093978");
+#endif
+s32 func_8008C75C(s32 index) {
+    sWorldmapStateEntry* entry = &xm_gWorldmapState->m0_entries[index];
+    s16 direction;
+
+    entry->m4C_sprite = &xm_createSpriteActor(xm_worldmapPartyGearSprites[0], 0x100, 0x1FD, 0x140, 0x140, 0x40)->m0_spriteActorCore;
+    xm_spriteActorSetPlayingAnimation(entry->m4C_sprite, 0);
+    xm_setGraphicEntityScale(entry->m4C_sprite, 0x2000);
+    entry->m4C_sprite->m3C_x2 = 0;
+    entry->m28_position.vx = (u16)xm_gameState.m1930_fieldVarsBackup[0x16] << 12;
+    entry->m28_position.vz = (u16)xm_gameState.m1930_fieldVarsBackup[0x17] << 12;
+    entry->m28_position.vy = xm_worldmapGetAltitudeFor2dPoint(entry->m28_position.vx, entry->m28_position.vz);
+    direction = xm_gameState.m1820_worldmapPosition[3];
+    entry->m24_hidden = 1;
+    entry->m38_step.vz = 0;
+    entry->m38_step.vy = 0;
+    entry->m38_step.vx = 0;
+    entry->m4A_stepScale = 0xC;
+    entry->m48_direction = direction;
+    return 1;
+}
+#endif
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8008C844);
 
@@ -8897,7 +9673,33 @@ s32 func_8008D520(s32 arg0) {
 #endif
 
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8008D590);
+#ifndef XENO_PC_PORT
+/* Adopted from EtherAura xenogears (GPL-3.0, github.com/EtherAura/xenogears @e54f35a): worldmapMode0_task_partyGear1_initSaved (src/worldmap/w_8008BD1C.c). */
+#ifndef XM_S_worldmapMode0_task_partyGear1_initSaved
+#define XM_S_worldmapMode0_task_partyGear1_initSaved
+s32 xm_worldmapMode0_task_partyGear1_initSaved(s32 index) __asm__("func_8008D590");
+#endif
+s32 func_8008D590(s32 index) {
+    sWorldmapStateEntry* entry = &xm_gWorldmapState->m0_entries[index];
+    s16 direction;
+
+    entry->m4C_sprite = &xm_createSpriteActor(xm_worldmapPartyGearSprites[1], 0x100, 0x1FC, 0x160, 0x140, 0x40)->m0_spriteActorCore;
+    xm_spriteActorSetPlayingAnimation(entry->m4C_sprite, 0);
+    xm_setGraphicEntityScale(entry->m4C_sprite, 0x2000);
+    entry->m4C_sprite->m3C_x2 = 0;
+    entry->m28_position.vx = (u16)xm_gameState.m1930_fieldVarsBackup[1 * 3 + 0x16] << 12;
+    entry->m28_position.vz = (u16)xm_gameState.m1930_fieldVarsBackup[1 * 3 + 0x17] << 12;
+    entry->m28_position.vy = xm_worldmapGetAltitudeFor2dPoint(entry->m28_position.vx, entry->m28_position.vz);
+    direction = xm_gameState.m1820_worldmapPosition[3 + 1];
+    entry->m24_hidden = 1;
+    entry->m38_step.vz = 0;
+    entry->m38_step.vy = 0;
+    entry->m38_step.vx = 0;
+    entry->m4A_stepScale = 0xC;
+    entry->m48_direction = direction;
+    return 1;
+}
+#endif
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8008D678);
 
@@ -8961,7 +9763,33 @@ s32 func_8008DE9C(s32 arg0) {
 #endif
 
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8008DF0C);
+#ifndef XENO_PC_PORT
+/* Adopted from EtherAura xenogears (GPL-3.0, github.com/EtherAura/xenogears @e54f35a): worldmapMode0_task_partyGear2_initSaved (src/worldmap/w_8008BD1C.c). */
+#ifndef XM_S_worldmapMode0_task_partyGear2_initSaved
+#define XM_S_worldmapMode0_task_partyGear2_initSaved
+s32 xm_worldmapMode0_task_partyGear2_initSaved(s32 index) __asm__("func_8008DF0C");
+#endif
+s32 func_8008DF0C(s32 index) {
+    sWorldmapStateEntry* entry = &xm_gWorldmapState->m0_entries[index];
+    s16 direction;
+
+    entry->m4C_sprite = &xm_createSpriteActor(xm_worldmapPartyGearSprites[2], 0x100, 0x1FB, 0x280, 0x100, 0x40)->m0_spriteActorCore;
+    xm_spriteActorSetPlayingAnimation(entry->m4C_sprite, 0);
+    xm_setGraphicEntityScale(entry->m4C_sprite, 0x2000);
+    entry->m4C_sprite->m3C_x2 = 0;
+    entry->m28_position.vx = (u16)xm_gameState.m1930_fieldVarsBackup[2 * 3 + 0x16] << 12;
+    entry->m28_position.vz = (u16)xm_gameState.m1930_fieldVarsBackup[2 * 3 + 0x17] << 12;
+    entry->m28_position.vy = xm_worldmapGetAltitudeFor2dPoint(entry->m28_position.vx, entry->m28_position.vz);
+    direction = xm_gameState.m1820_worldmapPosition[3 + 2];
+    entry->m24_hidden = 1;
+    entry->m38_step.vz = 0;
+    entry->m38_step.vy = 0;
+    entry->m38_step.vx = 0;
+    entry->m4A_stepScale = 0xC;
+    entry->m48_direction = direction;
+    return 1;
+}
+#endif
 
 
 #ifndef XENO_PC_PORT
@@ -9055,7 +9883,41 @@ s32 func_8008E680(s32 index) {
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8008E76C);
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_800906E0);
+#ifndef XENO_PC_PORT
+/* Adopted from EtherAura xenogears (GPL-3.0, github.com/EtherAura/xenogears @e54f35a): worldmap_taskYggdrasilSubModels_init (src/worldmap/w_8008E034.c). */
+#ifndef XM_S_worldmap_taskYggdrasilSubModels_init
+#define XM_S_worldmap_taskYggdrasilSubModels_init
+s32 xm_worldmap_taskYggdrasilSubModels_init(s32 index) __asm__("func_800906E0");
+#endif
+#ifndef XM_S_attachWorldmapModels
+#define XM_S_attachWorldmapModels
+void xm_attachWorldmapModels(s32 parent, s32 child) __asm__("func_800848B4");
+#endif
+#ifndef XM_S_worldMapGearMode
+#define XM_S_worldMapGearMode
+extern s32 xm_worldMapGearMode __asm__("D_8009BE10");
+#endif
+s32 func_800906E0(s32 index) {
+    sWorldmapStateEntry* entry;
+
+    xm_attachWorldmapModels(0, 2);
+    xm_attachWorldmapModels(0, 3);
+    entry = &xm_gWorldmapState->m0_entries[index];
+    entry->m20_subState = 0;
+    entry->m28_position = xm_worldmapModels[2].m8_position;
+    entry->m38_step = xm_worldmapModels[3].m8_position;
+    entry->m50 = 0;
+    entry->m54 = 0x40;
+    if (xm_worldMapGearMode < 8) {
+        if (xm_worldMapGearMode >= 4) {
+            entry->m20_subState = 3;
+            entry->m5C = 0x80;
+            entry->m58 = 0x80;
+        }
+    }
+    return 1;
+}
+#endif
 
 
 #ifndef XENO_PC_PORT
@@ -9620,10 +10482,6 @@ INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80093740);
 
 #ifndef XENO_PC_PORT
 /* Adopted from EtherAura xenogears (GPL-3.0, github.com/EtherAura/xenogears @e54f35a): worldmapGetAltitudeFor2dPoint (src/worldmap/w_800907F4.c). */
-#ifndef XM_S_worldmapGetAltitudeFor2dPoint
-#define XM_S_worldmapGetAltitudeFor2dPoint
-s32 xm_worldmapGetAltitudeFor2dPoint(s32 x, s32 z) __asm__("func_80093978");
-#endif
 #ifndef XM_S_getWorldChunkForPosition
 #define XM_S_getWorldChunkForPosition
 u8* xm_getWorldChunkForPosition(s32 x, s32 z) __asm__("func_80093660");

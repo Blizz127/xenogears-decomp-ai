@@ -361,7 +361,343 @@ int func_80029AFC(StreamDataQueueEntry* pEntries, int arg1, int arg2) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/archive", func_80029EB0);
+#ifndef XENO_PC_PORT
+/* Adopted from EtherAura xenogears (GPL-3.0, github.com/EtherAura/xenogears @e54f35a): loadImageFileToVram (src/main/filesystem.c). */
+#ifndef XM_T_SectorSlot
+#define XM_T_SectorSlot
+typedef struct {
+     u16 m0_state;
+     u16 m2_sequence;
+     u16 m4_count;
+     u16 m6_size;
+} SectorSlot;
+#endif
+#ifndef XM_T_SectorBuffer
+#define XM_T_SectorBuffer
+typedef struct {
+     s32 m0_count;
+     SectorSlot m4_slots[1];
+} SectorBuffer;
+#endif
+#ifndef XM_T_LoadingBatchCommand
+#define XM_T_LoadingBatchCommand
+typedef struct {
+     u16 m0_fileIndex; 
+     s16 m2;
+     void* m4_loadPtr;
+} LoadingBatchCommand;
+#endif
+#ifndef XM_T_sptr
+#define XM_T_sptr
+typedef s32 sptr;
+#endif
+#ifndef XM_S_loadImageFileToVram
+#define XM_S_loadImageFileToVram
+s32 xm_loadImageFileToVram(s32 fileIndex, s32* buf, s32 channel, s32 flags, u16 arg4, u16 arg5, u16 arg6, u16 arg7, u16 arg8, u16 arg9) __asm__("func_80029EB0");
+#endif
+#ifndef XM_S_getFileSize
+#define XM_S_getFileSize
+s32 xm_getFileSize(s32 fileIndex) __asm__("ArchiveDecodeSize");
+#endif
+#ifndef XM_S_waitReadCompletion
+#define XM_S_waitReadCompletion
+s32 xm_waitReadCompletion(s32 mode) __asm__("ArchiveCdDataSync");
+#endif
+#ifndef XM_S_readDirectoryFileIndex
+#define XM_S_readDirectoryFileIndex
+extern s32 xm_readDirectoryFileIndex __asm__("D_8004FE18");
+#endif
+#ifndef XM_S_startOfDirectoryFileIndex
+#define XM_S_startOfDirectoryFileIndex
+extern s32 xm_startOfDirectoryFileIndex __asm__("g_CurArchiveOffset");
+#endif
+#ifndef XM_S_readSectorHeader
+#define XM_S_readSectorHeader
+extern u32 xm_readSectorHeader[3] __asm__("D_80059EF8");
+#endif
+#ifndef XM_S_setSectorBuffer
+#define XM_S_setSectorBuffer
+SectorBuffer* xm_setSectorBuffer(SectorBuffer* buffer) __asm__("ArchiveChangeStreamingFile");
+#endif
+#ifndef XM_S_currentReadFileIndex
+#define XM_S_currentReadFileIndex
+extern s32 xm_currentReadFileIndex __asm__("D_80059F0C");
+#endif
+#ifndef XM_S_readCurrentSector
+#define XM_S_readCurrentSector
+extern s32 xm_readCurrentSector __asm__("g_ArchiveCurFileSector");
+#endif
+#ifndef XM_S_getFileStartSector
+#define XM_S_getFileStartSector
+s32 xm_getFileStartSector(s32 fileIndex) __asm__("ArchiveDecodeSector");
+#endif
+#ifndef XM_S_remainingReadSize
+#define XM_S_remainingReadSize
+extern s32 xm_remainingReadSize __asm__("g_ArchiveCurFileSize");
+#endif
+#ifndef XM_S_getFileSizeAligned
+#define XM_S_getFileSizeAligned
+s32 xm_getFileSizeAligned(s32 fileIndex) __asm__("ArchiveDecodeAlignedSize");
+#endif
+#ifndef XM_S_readInProgress
+#define XM_S_readInProgress
+extern s32 xm_readInProgress __asm__("D_8004FDFC");
+#endif
+#ifndef XM_S_readDestination
+#define XM_S_readDestination
+extern u8 * xm_readDestination __asm__("D_8004FE08");
+#endif
+#ifndef XM_S_streamSectorSlots
+#define XM_S_streamSectorSlots
+extern SectorSlot * xm_streamSectorSlots __asm__("D_8004FE2C");
+#endif
+#ifndef XM_S_readNextSeekFile
+#define XM_S_readNextSeekFile
+extern s32 xm_readNextSeekFile __asm__("D_8004FE38");
+#endif
+#ifndef XM_S_readCursorIndex
+#define XM_S_readCursorIndex
+extern s32 xm_readCursorIndex __asm__("D_8004FE10");
+#endif
+#ifndef XM_S_streamSectorSlotCount
+#define XM_S_streamSectorSlotCount
+extern s32 xm_streamSectorSlotCount __asm__("D_8004FE40");
+#endif
+#ifndef XM_S_streamNextReadSequence
+#define XM_S_streamNextReadSequence
+extern u16 xm_streamNextReadSequence __asm__("D_8004FE26");
+#endif
+#ifndef XM_S_streamNextDataSequence
+#define XM_S_streamNextDataSequence
+extern u16 xm_streamNextDataSequence __asm__("D_8004FE28");
+#endif
+#ifndef XM_S_loadingBatchCommands
+#define XM_S_loadingBatchCommands
+extern LoadingBatchCommand * xm_loadingBatchCommands __asm__("D_8004FE0C");
+#endif
+#ifndef XM_S_readStopRequested
+#define XM_S_readStopRequested
+extern s32 xm_readStopRequested __asm__("D_8004FE34");
+#endif
+#ifndef XM_S_cdErrorCount
+#define XM_S_cdErrorCount
+extern s32 xm_cdErrorCount __asm__("D_8005A4DC");
+#endif
+#ifndef XM_S_imageFilePixelPosMode
+#define XM_S_imageFilePixelPosMode
+extern s16 xm_imageFilePixelPosMode __asm__("D_80059F24");
+#endif
+#ifndef XM_S_imageFilePixelX
+#define XM_S_imageFilePixelX
+extern u16 xm_imageFilePixelX __asm__("D_80059F28");
+#endif
+#ifndef XM_S_imageFilePixelY
+#define XM_S_imageFilePixelY
+extern u16 xm_imageFilePixelY __asm__("D_80059F2C");
+#endif
+#ifndef XM_S_imageFileClutPosMode
+#define XM_S_imageFileClutPosMode
+extern s16 xm_imageFileClutPosMode __asm__("D_80059F30");
+#endif
+#ifndef XM_S_imageFileClutX
+#define XM_S_imageFileClutX
+extern u16 xm_imageFileClutX __asm__("D_80059F34");
+#endif
+#ifndef XM_S_imageFileUnitsRemaining
+#define XM_S_imageFileUnitsRemaining
+extern s32 xm_imageFileUnitsRemaining __asm__("D_80059F3C");
+#endif
+#ifndef XM_S_imageFileUploadX
+#define XM_S_imageFileUploadX
+extern s16 xm_imageFileUploadX __asm__("D_80059F40");
+#endif
+#ifndef XM_S_imageFileUploadY
+#define XM_S_imageFileUploadY
+extern s16 xm_imageFileUploadY __asm__("D_80059F44");
+#endif
+#ifndef XM_S_imageFileUploadWidth
+#define XM_S_imageFileUploadWidth
+extern s16 xm_imageFileUploadWidth __asm__("D_80059F48");
+#endif
+#ifndef XM_S_imageFileRowsPerSector
+#define XM_S_imageFileRowsPerSector
+extern u16 * xm_imageFileRowsPerSector __asm__("D_80059F4C");
+#endif
+#ifndef XM_S_imageFileSectorsRemaining
+#define XM_S_imageFileSectorsRemaining
+extern s32 xm_imageFileSectorsRemaining __asm__("D_80059F50");
+#endif
+#ifndef XM_S_imageFileClutY
+#define XM_S_imageFileClutY
+extern u16 xm_imageFileClutY __asm__("D_80059F38");
+#endif
+#ifndef XM_S_clearSectorBuffer
+#define XM_S_clearSectorBuffer
+s32 xm_clearSectorBuffer(void) __asm__("ArchiveClearStreamFileSections");
+#endif
+#ifndef XM_S_cdReadLocation
+#define XM_S_cdReadLocation
+extern CdlLOC xm_cdReadLocation __asm__("g_ArchiveCdCurLocation");
+#endif
+#ifndef XM_S_CdIntToPos
+#define XM_S_CdIntToPos
+CdlLOC* xm_CdIntToPos(s32 i, CdlLOC* p) __asm__("CdIntToPos");
+#endif
+#ifndef XM_S_cdromFnd
+#define XM_S_cdromFnd
+extern sptr xm_cdromFnd __asm__("g_ArchiveDebugTable");
+#endif
+#ifndef XM_S_getFilenameFromPC
+#define XM_S_getFilenameFromPC
+char* xm_getFilenameFromPC(s32) __asm__("ArchiveGetFilePath");
+#endif
+#ifndef XM_S_pcImageFileFd
+#define XM_S_pcImageFileFd
+extern s32 xm_pcImageFileFd __asm__("D_80059F04");
+#endif
+#ifndef XM_S_PCopen
+#define XM_S_PCopen
+s32 xm_PCopen(char* name, s32 flags, s32 perms) __asm__("PCopen");
+#endif
+#ifndef XM_S_reportReadError
+#define XM_S_reportReadError
+void xm_reportReadError(s32, s32, s32, s32) __asm__("func_8002804C");
+#endif
+#ifndef XM_S_readImageFileSectorFromPc
+#define XM_S_readImageFileSectorFromPc
+void xm_readImageFileSectorFromPc(s32, s32) __asm__("func_8002B8B0");
+#endif
+#ifndef XM_S_processImageFileSectorPc
+#define XM_S_processImageFileSectorPc
+void xm_processImageFileSectorPc(s32, s32) __asm__("func_8002BF38");
+#endif
+#ifndef XM_S_PCclose
+#define XM_S_PCclose
+s32 xm_PCclose(s32) __asm__("PCclose");
+#endif
+#ifndef XM_S_cdCommandState
+#define XM_S_cdCommandState
+extern s32 xm_cdCommandState __asm__("g_ArchiveCdDriveState");
+#endif
+#ifndef XM_S_CdDataCallback
+#define XM_S_CdDataCallback
+void* xm_CdDataCallback(void (*func)()) __asm__("CdDataCallback");
+#endif
+#ifndef XM_S_imageFileDataCallback
+#define XM_S_imageFileDataCallback
+void xm_imageFileDataCallback() __asm__("func_8002BB50");
+#endif
+#ifndef XM_S_CdSyncCallback
+#define XM_S_CdSyncCallback
+CdlCB xm_CdSyncCallback(CdlCB func) __asm__("CdSyncCallback");
+#endif
+#ifndef XM_S_cdCommandSyncCallback
+#define XM_S_cdCommandSyncCallback
+void xm_cdCommandSyncCallback(u8 status, u8* result) __asm__("ArchiveCdDriveCommandHandler");
+#endif
+#ifndef XM_S_CdReadyCallback
+#define XM_S_CdReadyCallback
+CdlCB xm_CdReadyCallback(CdlCB func) __asm__("CdReadyCallback");
+#endif
+#ifndef XM_S_imageFileReadyCallback
+#define XM_S_imageFileReadyCallback
+void xm_imageFileReadyCallback(u8 status, u8* result) __asm__("func_8002B5D0");
+#endif
+#ifndef XM_S_cdReadSetlocCount
+#define XM_S_cdReadSetlocCount
+extern s32 xm_cdReadSetlocCount __asm__("D_8005A488");
+#endif
+#ifndef XM_S_CdControlF
+#define XM_S_CdControlF
+s32 xm_CdControlF(u8 com, u8* param) __asm__("CdControlF");
+#endif
+s32 func_80029EB0(s32 fileIndex, s32* buf, s32 channel, s32 flags, u16 arg4, u16 arg5, u16 arg6, u16 arg7, u16 arg8, u16 arg9) {
+    s16 i;
+    u32 n;
+    char* name;
+    CdlLOC* pos;
+
+    if (buf == NULL || (n = buf[0]) < 2) {
+        return -4;
+    }
+    if (fileIndex <= 0) {
+        return -3;
+    }
+    if (xm_getFileSize(fileIndex) <= 0) {
+        return -3;
+    }
+    xm_waitReadCompletion(0);
+    xm_readDirectoryFileIndex = xm_startOfDirectoryFileIndex;
+    for (i = 0; i < 3; i++) {
+        xm_readSectorHeader[i] = 0;
+    }
+    xm_setSectorBuffer(buf);
+    xm_currentReadFileIndex = fileIndex;
+    xm_readCurrentSector = xm_getFileStartSector(fileIndex);
+    xm_remainingReadSize = xm_getFileSizeAligned(fileIndex);
+    xm_readInProgress = 1;
+    xm_readDestination = (u8*)buf + n * 8 + 0x24;
+    xm_streamSectorSlots = (u16*)(buf + 1);
+    xm_readNextSeekFile = (u16)channel;
+    xm_readCursorIndex = 0;
+    xm_streamSectorSlotCount = n;
+    xm_streamNextReadSequence = 0;
+    xm_streamNextDataSequence = 0;
+    xm_loadingBatchCommands = 0;
+    xm_readStopRequested = 0;
+    xm_cdErrorCount = 0;
+    xm_imageFilePixelPosMode = arg4;
+    xm_imageFilePixelX = arg5;
+    xm_imageFilePixelY = arg6;
+    xm_imageFileClutPosMode = arg7;
+    xm_imageFileClutX = arg8;
+    xm_imageFileUnitsRemaining = 0;
+    xm_imageFileUploadX = 0;
+    xm_imageFileUploadY = 0;
+    xm_imageFileUploadWidth = 0;
+    xm_imageFileRowsPerSector = 0;
+    xm_imageFileSectorsRemaining = 0;
+    xm_imageFileClutY = arg9;
+    xm_clearSectorBuffer();
+    pos = &xm_cdReadLocation;
+    xm_CdIntToPos(xm_readCurrentSector, pos);
+    if (xm_cdromFnd != 0) {
+        name = xm_getFilenameFromPC(fileIndex);
+        for (i = 0; i < 4; i++) {
+            xm_pcImageFileFd = xm_PCopen(name, 0, 0);
+            if (xm_pcImageFileFd != -1) {
+                break;
+            }
+            xm_reportReadError(i, 0xFF, 0, 0);
+        }
+        do {
+            xm_readImageFileSectorFromPc(0, 0);
+            xm_processImageFileSectorPc(0, 0);
+        } while (xm_readInProgress > 0);
+        for (i = 0; i < 4; i++) {
+            i = xm_PCclose(xm_pcImageFileFd);
+            if (i == 0) {
+                break;
+            }
+            xm_reportReadError(i, 0, 0, 0xFF);
+        }
+        if (i != 0) {
+            return -6;
+        }
+        xm_readInProgress = 0;
+        xm_remainingReadSize = 0;
+        return 0;
+    } else {
+        xm_cdCommandState = 1;
+        xm_CdDataCallback(xm_imageFileDataCallback);
+        xm_CdSyncCallback(xm_cdCommandSyncCallback);
+        xm_CdReadyCallback(xm_imageFileReadyCallback);
+        xm_cdReadSetlocCount++;
+        xm_CdControlF(2, (u8*)pos);
+        return 0;
+    }
+}
+#endif
 #else
 /* Transcribed from asm/slus_006.64/nonmatchings/system/archive/func_80029EB0.s
  * (0x80029EB0-0x8002A260). Arms the streaming-section decoder for one archive

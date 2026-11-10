@@ -379,7 +379,105 @@ no_room:
 
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002B8B0);
+#ifndef XENO_PC_PORT
+/* Adopted from EtherAura xenogears (GPL-3.0, github.com/EtherAura/xenogears @e54f35a): readImageFileSectorFromPc (src/main/filesystem.c). */
+#ifndef XM_T_sptr
+#define XM_T_sptr
+typedef s32 sptr;
+#endif
+#ifndef XM_T_SectorSlot
+#define XM_T_SectorSlot
+typedef struct {
+     u16 m0_state;
+     u16 m2_sequence;
+     u16 m4_count;
+     u16 m6_size;
+} SectorSlot;
+#endif
+#ifndef XM_S_readImageFileSectorFromPc
+#define XM_S_readImageFileSectorFromPc
+void xm_readImageFileSectorFromPc(s32, s32) __asm__("func_8002B8B0");
+#endif
+#ifndef XM_S_remainingReadSize
+#define XM_S_remainingReadSize
+extern s32 xm_remainingReadSize __asm__("g_ArchiveCurFileSize");
+#endif
+#ifndef XM_S_streamSectorSlotCount
+#define XM_S_streamSectorSlotCount
+extern s32 xm_streamSectorSlotCount __asm__("D_8004FE40");
+#endif
+#ifndef XM_S_readCursorIndex
+#define XM_S_readCursorIndex
+extern s32 xm_readCursorIndex __asm__("D_8004FE10");
+#endif
+#ifndef XM_S_streamSectorSlots
+#define XM_S_streamSectorSlots
+extern SectorSlot * xm_streamSectorSlots __asm__("D_8004FE2C");
+#endif
+#ifndef XM_S_streamNextReadSequence
+#define XM_S_streamNextReadSequence
+extern u16 xm_streamNextReadSequence __asm__("D_8004FE26");
+#endif
+#ifndef XM_S_PCread
+#define XM_S_PCread
+s32 xm_PCread(s32 fd, char *buf, u32 len) __asm__("PCread");
+#endif
+#ifndef XM_S_pcImageFileFd
+#define XM_S_pcImageFileFd
+extern s32 xm_pcImageFileFd __asm__("D_80059F04");
+#endif
+#ifndef XM_S_readDestination
+#define XM_S_readDestination
+extern u8 * xm_readDestination __asm__("D_8004FE08");
+#endif
+#ifndef XM_S_reportReadError
+#define XM_S_reportReadError
+void xm_reportReadError(s32, s32, s32, s32) __asm__("func_8002804C");
+#endif
+#ifndef XM_S_readCurrentSector
+#define XM_S_readCurrentSector
+extern s32 xm_readCurrentSector __asm__("g_ArchiveCurFileSector");
+#endif
+void func_8002B8B0(s32 arg0, s32 arg1) {
+    s16 i;
+    s32 slot;
+    u16* s;
+
+    if (xm_remainingReadSize > 0) {
+        for (i = 0; i < xm_streamSectorSlotCount; i++) {
+            s = (u16*)((xm_readCursorIndex << 3) + (sptr)xm_streamSectorSlots);
+            slot = xm_readCursorIndex;
+            xm_readCursorIndex = slot + 1;
+            if (xm_readCursorIndex >= xm_streamSectorSlotCount) {
+                xm_readCursorIndex = 0;
+            }
+            if (s[0] == 0) {
+                break;
+            }
+        }
+        if (s[0] == 0) {
+            s[0] = 1;
+            s[1] = xm_streamNextReadSequence;
+            xm_streamNextReadSequence++;
+            for (i = 0; i < 4; i++) {
+                if (xm_PCread(xm_pcImageFileFd, (u8*)((slot << 11) + (sptr)xm_readDestination), 0x800)) {
+                    break;
+                }
+                xm_reportReadError(i, 0, 0xFF, 0);
+            }
+            xm_remainingReadSize -= 0x800;
+            xm_readCurrentSector++;
+        } else {
+            xm_remainingReadSize = 0;
+        }
+        if (xm_remainingReadSize <= 0) {
+            xm_remainingReadSize = 0;
+        }
+    } else {
+        xm_remainingReadSize = 0;
+    }
+}
+#endif
 #else
 /* Transcribed from asm/slus_006.64/nonmatchings/system/temp2/func_8002B8B0.s
  * (0x8002B8B0-0x8002BA40, frame 0x20). Queue one 0x800 sector from the open
@@ -469,34 +567,13 @@ extern s32 g_ArchiveCurFileSize;
 #ifndef XENO_PC_PORT
 #ifndef XENO_PC_PORT
 /* Adopted from EtherAura xenogears (GPL-3.0, github.com/EtherAura/xenogears @e54f35a): streamDataCallback (src/main/filesystem.c). */
-#ifndef XM_T_SectorSlot
-#define XM_T_SectorSlot
-typedef struct {
-     u16 m0_state;
-     u16 m2_sequence;
-     u16 m4_count;
-     u16 m6_size;
-} SectorSlot;
-#endif
 #ifndef XM_S_streamDataCallback
 #define XM_S_streamDataCallback
 void xm_streamDataCallback() __asm__("func_8002BA58");
 #endif
-#ifndef XM_S_streamSectorSlots
-#define XM_S_streamSectorSlots
-extern SectorSlot * xm_streamSectorSlots __asm__("D_8004FE2C");
-#endif
-#ifndef XM_S_streamSectorSlotCount
-#define XM_S_streamSectorSlotCount
-extern s32 xm_streamSectorSlotCount __asm__("D_8004FE40");
-#endif
 #ifndef XM_S_streamNextDataSequence
 #define XM_S_streamNextDataSequence
 extern u16 xm_streamNextDataSequence __asm__("D_8004FE28");
-#endif
-#ifndef XM_S_remainingReadSize
-#define XM_S_remainingReadSize
-extern s32 xm_remainingReadSize __asm__("g_ArchiveCurFileSize");
 #endif
 #ifndef XM_S_readInProgress
 #define XM_S_readInProgress

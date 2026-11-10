@@ -4396,7 +4396,51 @@ void func_8007EE08(s32 arg0) {
         D_800926F8 = unset;
     }
 }
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007EE68);
+#ifndef XENO_PC_PORT
+/* Adopted from EtherAura xenogears (GPL-3.0, github.com/EtherAura/xenogears @e54f35a): setBattlingTextBlinkBlue (src/battling/bl_8007E528.c). */
+#ifndef XM_S_setBattlingTextBlinkBlue
+#define XM_S_setBattlingTextBlinkBlue
+void xm_setBattlingTextBlinkBlue(s32 arg0) __asm__("func_8007EE68");
+#endif
+#ifndef XM_S_g_playTimeInVsync
+#define XM_S_g_playTimeInVsync
+extern volatile s32 xm_g_playTimeInVsync __asm__("D_80059488");
+#endif
+#ifndef XM_S_battlingTextB
+#define XM_S_battlingTextB
+extern u8 xm_battlingTextB __asm__("D_800926F8");
+#endif
+#ifndef XM_S_battlingTextR
+#define XM_S_battlingTextR
+extern u8 xm_battlingTextR __asm__("D_800926F0");
+#endif
+#ifndef XM_S_battlingTextG
+#define XM_S_battlingTextG
+extern u8 xm_battlingTextG __asm__("D_800926F4");
+#endif
+void func_8007EE68(s32 arg0) {
+    s32 c;
+    s32 t0;
+    s32 t1;
+    s32 r0;
+    s32 r1;
+
+    if (arg0 != 0) {
+        t0 = xm_g_playTimeInVsync;
+        t1 = xm_g_playTimeInVsync;
+        xm_battlingTextB = 0xFF;
+        r0 = 0xFF - t0 * 20; 
+        xm_battlingTextR = r0;
+        r1 = 0xFF - t1 * 20;
+        xm_battlingTextG = r1;
+    } else {
+        c = 0xFF;
+        xm_battlingTextR = c;
+        xm_battlingTextG = c;
+        xm_battlingTextB = c;
+    }
+}
+#endif
 #ifndef XENO_PC_PORT
 /* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_select_build_list (src/decomp/src/menu/arena_menu_screens.c:379). */
 #ifndef XM_T_CharacterEntry
