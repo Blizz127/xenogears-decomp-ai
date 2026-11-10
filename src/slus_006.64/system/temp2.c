@@ -3779,7 +3779,115 @@ void func_80030A30(s32 lightId, void* pLight) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80030B14);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): model_load_light_matrix (src/decomp/src/resident/model_renderer.c:1136). */
+#ifndef XM_T_gte_MulMatrix0
+#define XM_T_gte_MulMatrix0
+#define gte_MulMatrix0(r0, r1, r2)                                             \
+    {                                                                          \
+        gte_SetRotMatrix(r0);                                                  \
+        gte_ldclmv(r1);                                                        \
+        gte_rtir();                                                            \
+        gte_stclmv(r2);                                                        \
+        gte_ldclmv((char *)(r1) + 2);                                          \
+        gte_rtir();                                                            \
+        gte_stclmv((char *)(r2) + 2);                                          \
+        gte_ldclmv((char *)(r1) + 4);                                          \
+        gte_rtir();                                                            \
+        gte_stclmv((char *)(r2) + 4);                                          \
+    }
+#endif
+#ifndef XM_S_model_load_light_matrix
+#define XM_S_model_load_light_matrix
+void xm_model_load_light_matrix(MATRIX *rotation) __asm__("func_80030B14");
+#endif
+#pragma push_macro("gte_MulMatrix0")
+#undef gte_MulMatrix0
+#define gte_MulMatrix0(r0, r1, r2)                                             \
+    {                                                                          \
+        gte_SetRotMatrix(r0);                                                  \
+        gte_ldclmv(r1);                                                        \
+        gte_rtir();                                                            \
+        gte_stclmv(r2);                                                        \
+        gte_ldclmv((char *)(r1) + 2);                                          \
+        gte_rtir();                                                            \
+        gte_stclmv((char *)(r2) + 2);                                          \
+        gte_ldclmv((char *)(r1) + 4);                                          \
+        gte_rtir();                                                            \
+        gte_stclmv((char *)(r2) + 4);                                          \
+    }
+#pragma push_macro("gte_SetLightMatrix")
+#undef gte_SetLightMatrix
+#define gte_SetLightMatrix(r0)                                                 \
+    __asm__ volatile("lw $12, 0(%0);"                                          \
+                     "lw $13, 4(%0);"                                          \
+                     "ctc2 $12, $8;"                                           \
+                     "ctc2 $13, $9;"                                           \
+                     "lw $12, 8(%0);"                                          \
+                     "lw $13, 12(%0);"                                         \
+                     "lw $14, 16(%0);"                                         \
+                     "ctc2 $12, $10;"                                          \
+                     "ctc2 $13, $11;"                                          \
+                     "ctc2 $14, $12"                                           \
+                     :                                                         \
+                     : "r"(r0)                                                 \
+                     : "$12", "$13", "$14", "memory")
+#pragma push_macro("gte_SetRotMatrix")
+#undef gte_SetRotMatrix
+#define gte_SetRotMatrix(r0)                                                   \
+    __asm__ volatile("lw $12, 0(%0);"                                          \
+                     "lw $13, 4(%0);"                                          \
+                     "ctc2 $12, $0;"                                           \
+                     "ctc2 $13, $1;"                                           \
+                     "lw $12, 8(%0);"                                          \
+                     "lw $13, 12(%0);"                                         \
+                     "lw $14, 16(%0);"                                         \
+                     "ctc2 $12, $2;"                                           \
+                     "ctc2 $13, $3;"                                           \
+                     "ctc2 $14, $4"                                            \
+                     :                                                         \
+                     : "r"(r0)                                                 \
+                     : "$12", "$13", "$14", "memory")
+#pragma push_macro("gte_ldclmv")
+#undef gte_ldclmv
+#define gte_ldclmv(r0)                                                         \
+    __asm__ volatile("lhu $12, 0(%0);"                                         \
+                     "lhu $13, 6(%0);"                                         \
+                     "lhu $14, 12(%0);"                                        \
+                     "mtc2 $12, $9;"                                           \
+                     "mtc2 $13, $10;"                                          \
+                     "mtc2 $14, $11"                                           \
+                     :                                                         \
+                     : "r"(r0)                                                 \
+                     : "$12", "$13", "$14", "memory")
+#pragma push_macro("gte_rtir")
+#undef gte_rtir
+#define gte_rtir() __asm__ volatile("nop;nop;.word 0x4A49E012")
+#pragma push_macro("gte_stclmv")
+#undef gte_stclmv
+#define gte_stclmv(r0)                                                         \
+    __asm__ volatile("mfc2 $12, $9;"                                           \
+                     "mfc2 $13, $10;"                                          \
+                     "mfc2 $14, $11;"                                          \
+                     "sh $12, 0(%0);"                                          \
+                     "sh $13, 6(%0);"                                          \
+                     "sh $14, 12(%0)"                                          \
+                     :                                                         \
+                     : "r"(r0)                                                 \
+                     : "$12", "$13", "$14", "memory")
+void func_80030B14(MATRIX *rotation) {
+    MATRIX light;
+
+    gte_MulMatrix0(&xm_model_light_directions, rotation, &light);
+    gte_SetLightMatrix(&light);
+}
+#pragma pop_macro("gte_MulMatrix0")
+#pragma pop_macro("gte_SetLightMatrix")
+#pragma pop_macro("gte_SetRotMatrix")
+#pragma pop_macro("gte_ldclmv")
+#pragma pop_macro("gte_rtir")
+#pragma pop_macro("gte_stclmv")
+#endif
 #else
 void func_80030B14(MATRIX* pMatrix) {
     /* retail 0x80030B14 (hand-written GTE): load D_80059F64 as the GTE

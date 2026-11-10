@@ -17,7 +17,7 @@ for i,v in enumerate(vs):
     p=subprocess.run('cd %s; . ./.harvest_env.sh; nice -n 10 python3 %s/adopt.py %s --hand %s/vt.hand --pos --max-insns 400 --diag 2>&1 | tail -25'%(R,W,mod,W),shell=True,capture_output=True,text=True)
     out=p.stdout
     if "'ADOPTED'" in out: print('MATCH variant',i,v); sys.exit(0)
-    d=re.findall(r'^[+-][^+-].*',out,re.M)
+    d=[x for x in re.findall(r'^[+-][^+-].*',out,re.M) if not re.match(r'.[+-]?R_MIPS',x)]
     print('variant',i,'diff lines',len(d)); 
     for l in d[:6]: print('   ',l[:100])
 print('no match')

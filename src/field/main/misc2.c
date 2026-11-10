@@ -4584,7 +4584,268 @@ static int FieldActiveQuadOutsideRaster(const u8* pPrim) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_800764B4);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_draw_shadows (src/decomp/src/field/field.c:2401). */
+#ifndef XM_T_DESCRIPTOR_FLAGS_WORD
+#define XM_T_DESCRIPTOR_FLAGS_WORD
+#define DESCRIPTOR_FLAGS_WORD(d) (*(u32 *)&(d)->flags)
+#endif
+#ifndef XM_S_field_draw_shadows
+#define XM_S_field_draw_shadows
+void xm_field_draw_shadows(u_long *ot, s32 buffer) __asm__("func_800764B4");
+#endif
+#ifndef XM_S_mode_debug_hide_sprites
+#define XM_S_mode_debug_hide_sprites
+extern s32 xm_mode_debug_hide_sprites __asm__("D_8004F37C");
+#endif
+#ifndef XM_S_field_event_actor_count
+#define XM_S_field_event_actor_count
+extern s32 xm_field_event_actor_count __asm__("D_800ADBFC");
+#endif
+#ifndef XM_S_RotAverage4
+#define XM_S_RotAverage4
+long xm_RotAverage4(SVECTOR *v0, SVECTOR *v1, SVECTOR *v2, SVECTOR *v3, long *sxy0, long *sxy1,
+                 long *sxy2, long *sxy3, long *p, long *flag) __asm__("RotAverage4");
+#endif
+#ifndef XM_S_model_ot_depth_shift
+#define XM_S_model_ot_depth_shift
+extern s32 xm_model_ot_depth_shift __asm__("D_80050100");
+#endif
+void xm_field_draw_shadows(u_long *ot, s32 buffer) __asm__("func_800764B4");
+#pragma push_macro("gte_OuterProduct12")
+#undef gte_OuterProduct12
+#define gte_OuterProduct12(r1, r2, r3)                                         \
+    {                                                                          \
+        gte_ldopv1(r1);                                                        \
+        gte_ldopv2(r2);                                                        \
+        gte_op12();                                                            \
+        gte_stlvnl(r3);                                                        \
+    }
+#pragma push_macro("gte_CompMatrix")
+#undef gte_CompMatrix
+#define gte_CompMatrix(r1, r2, r3)                                             \
+    {                                                                          \
+        gte_MulMatrix0(r1, r2, r3);                                            \
+        gte_SetTransMatrix(r1);                                                \
+        gte_ldlv0((char *)(r2) + 20);                                          \
+        gte_rt();                                                              \
+        gte_stlvnl((char *)(r3) + 20);                                         \
+    }
+#pragma push_macro("gte_SetRotMatrix")
+#undef gte_SetRotMatrix
+#define gte_SetRotMatrix(r0)                                                   \
+    __asm__ volatile("lw $12, 0(%0);"                                          \
+                     "lw $13, 4(%0);"                                          \
+                     "ctc2 $12, $0;"                                           \
+                     "ctc2 $13, $1;"                                           \
+                     "lw $12, 8(%0);"                                          \
+                     "lw $13, 12(%0);"                                         \
+                     "lw $14, 16(%0);"                                         \
+                     "ctc2 $12, $2;"                                           \
+                     "ctc2 $13, $3;"                                           \
+                     "ctc2 $14, $4"                                            \
+                     :                                                         \
+                     : "r"(r0)                                                 \
+                     : "$12", "$13", "$14", "memory")
+#pragma push_macro("gte_SetTransMatrix")
+#undef gte_SetTransMatrix
+#define gte_SetTransMatrix(r0)                                                 \
+    __asm__ volatile("lw $12, 20(%0);"                                         \
+                     "lw $13, 24(%0);"                                         \
+                     "ctc2 $12, $5;"                                           \
+                     "lw $14, 28(%0);"                                         \
+                     "ctc2 $13, $6;"                                           \
+                     "ctc2 $14, $7"                                            \
+                     :                                                         \
+                     : "r"(r0)                                                 \
+                     : "$12", "$13", "$14", "memory")
+#pragma push_macro("gte_ldopv1")
+#undef gte_ldopv1
+#define gte_ldopv1(r0)                                                         \
+    __asm__ volatile("lw $12, 0(%0);"                                          \
+                     "lw $13, 4(%0);"                                          \
+                     "ctc2 $12, $0;"                                           \
+                     "lw $14, 8(%0);"                                          \
+                     "ctc2 $13, $2;"                                           \
+                     "ctc2 $14, $4"                                            \
+                     :                                                         \
+                     : "r"(r0)                                                 \
+                     : "$12", "$13", "$14", "memory")
+#pragma push_macro("gte_ldopv2")
+#undef gte_ldopv2
+#define gte_ldopv2(r0)                                                         \
+    __asm__ volatile("lwc2 $11, 8(%0);"                                        \
+                     "lwc2 $9, 0(%0);"                                         \
+                     "lwc2 $10, 4(%0)"                                         \
+                     :                                                         \
+                     : "r"(r0) : "memory")
+#pragma push_macro("gte_op12")
+#undef gte_op12
+#define gte_op12() __asm__ volatile("nop;nop;.word 0x4B78000C")
+#pragma push_macro("gte_stlvnl")
+#undef gte_stlvnl
+#define gte_stlvnl(r0)                                                         \
+    __asm__ volatile("swc2 $25, 0(%0);"                                        \
+                     "swc2 $26, 4(%0);"                                        \
+                     "swc2 $27, 8(%0)"                                         \
+                     :                                                         \
+                     : "r"(r0)                                                 \
+                     : "memory")
+#pragma push_macro("gte_MulMatrix0")
+#undef gte_MulMatrix0
+#define gte_MulMatrix0(r0, r1, r2)                                             \
+    {                                                                          \
+        gte_SetRotMatrix(r0);                                                  \
+        gte_ldclmv(r1);                                                        \
+        gte_rtir();                                                            \
+        gte_stclmv(r2);                                                        \
+        gte_ldclmv((char *)(r1) + 2);                                          \
+        gte_rtir();                                                            \
+        gte_stclmv((char *)(r2) + 2);                                          \
+        gte_ldclmv((char *)(r1) + 4);                                          \
+        gte_rtir();                                                            \
+        gte_stclmv((char *)(r2) + 4);                                          \
+    }
+#pragma push_macro("gte_ldlv0")
+#undef gte_ldlv0
+#define gte_ldlv0(r0)                                                          \
+    __asm__ volatile("lhu $13, 4(%0);"                                         \
+                     "lhu $12, 0(%0);"                                         \
+                     "sll $13, $13, 16;"                                       \
+                     "or $12, $12, $13;"                                       \
+                     "mtc2 $12, $0;"                                           \
+                     "lwc2 $1, 8(%0)"                                          \
+                     :                                                         \
+                     : "r"(r0)                                                 \
+                     : "$12", "$13", "memory")
+#pragma push_macro("gte_rt")
+#undef gte_rt
+#define gte_rt() __asm__ volatile("nop;nop;.word 0x4A480012")
+#pragma push_macro("gte_ldclmv")
+#undef gte_ldclmv
+#define gte_ldclmv(r0)                                                         \
+    __asm__ volatile("lhu $12, 0(%0);"                                         \
+                     "lhu $13, 6(%0);"                                         \
+                     "lhu $14, 12(%0);"                                        \
+                     "mtc2 $12, $9;"                                           \
+                     "mtc2 $13, $10;"                                          \
+                     "mtc2 $14, $11"                                           \
+                     :                                                         \
+                     : "r"(r0)                                                 \
+                     : "$12", "$13", "$14", "memory")
+#pragma push_macro("gte_rtir")
+#undef gte_rtir
+#define gte_rtir() __asm__ volatile("nop;nop;.word 0x4A49E012")
+#pragma push_macro("gte_stclmv")
+#undef gte_stclmv
+#define gte_stclmv(r0)                                                         \
+    __asm__ volatile("mfc2 $12, $9;"                                           \
+                     "mfc2 $13, $10;"                                          \
+                     "mfc2 $14, $11;"                                          \
+                     "sh $12, 0(%0);"                                          \
+                     "sh $13, 6(%0);"                                          \
+                     "sh $14, 12(%0)"                                          \
+                     :                                                         \
+                     : "r"(r0)                                                 \
+                     : "$12", "$13", "$14", "memory")
+void xm_field_draw_shadows(u_long *ot, s32 buffer) {
+    VECTOR up;
+    VECTOR side;
+    VECTOR cross;
+    MATRIX floor;
+    MATRIX placed;
+    MATRIX world;
+    VECTOR scale;
+    long interpolation;
+    long flag;
+    s32 depth;
+    xm_FieldDescriptor *descriptor;
+    xm_FieldActor *actor;
+    s32 i;
+    s32 sx;
+    s32 sy;
+    s32 sz;
+
+    world = xm_field_view.scaled_world; 
+    if (xm_mode_debug_hide_sprites != 0) {
+        return;
+    }
+    for (i = 0; i < xm_field_event_actor_count; i++) {
+        descriptor = &xm_field_view.components.descriptors[i];
+        if ((DESCRIPTOR_FLAGS_WORD(descriptor) & 0x60) != 0x40) {
+            continue;
+        }
+        actor = descriptor->actor;
+        if (actor->layer_flags & 0x102200) {
+            continue;
+        }
+        if (actor->layer_flags & 0x800) {
+            continue;
+        }
+        if (actor->flags & 0x10000) {
+            continue;
+        }
+        if (actor->floor_attribute & 0x200002) {
+            continue;
+        }
+        up.vx = 0;
+        up.vy = 0;
+        up.vz = 0x1000;
+        gte_OuterProduct12(&up, descriptor->actor->unk50, &cross);
+        xm_VectorNormal(&cross, &side);
+        gte_OuterProduct12(&side, descriptor->actor->unk50, &cross);
+        xm_VectorNormal(&cross, &up);
+        floor.m[0][0] = side.vx;
+        floor.m[0][1] = side.vy;
+        floor.m[0][2] = side.vz;
+        floor.m[1][0] = descriptor->actor->unk50[0];
+        floor.m[1][1] = descriptor->actor->unk50[1];
+        floor.m[1][2] = descriptor->actor->unk50[2];
+        floor.m[2][0] = up.vx;
+        floor.m[2][1] = up.vy;
+        floor.m[2][2] = up.vz;
+        floor.t[0] = descriptor->matrix.t[0];
+        floor.t[1] = descriptor->model->ground;
+        floor.t[2] = descriptor->matrix.t[2];
+        gte_CompMatrix(&xm_field_view.scaled_world, &floor, &placed);
+        sx = descriptor->actor->scale[0] * 0xC00;
+        scale.vx = sx >> 12;
+        sy = descriptor->actor->scale[1] * 0xC00;
+        scale.vy = sy >> 12;
+        sz = descriptor->actor->scale[2] * 0xC00;
+        scale.vz = sz >> 12;
+        if (xm_field_work.unk2268 != 0 && (descriptor->actor->flags & 0x400)) {
+            scale.vx = sx >> 14;
+            scale.vy = sy >> 14;
+            scale.vz = sz >> 14;
+        }
+        xm_ScaleMatrix(&placed, &scale);
+        gte_SetRotMatrix(&placed);
+        gte_SetTransMatrix(&placed);
+        depth = xm_RotAverage4(&descriptor->shadow->v[0], &descriptor->shadow->v[1], &descriptor->shadow->v[2],
+                            &descriptor->shadow->v[3],
+                        (long *)&descriptor->shadow->poly[buffer].x0, (long *)&descriptor->shadow->poly[buffer].x1,
+                        (long *)&descriptor->shadow->poly[buffer].x2, (long *)&descriptor->shadow->poly[buffer].x3,
+                        &interpolation, &flag);
+        depth >>= xm_model_ot_depth_shift;
+        addPrim(ot + depth, &descriptor->shadow->poly[buffer]);
+    }
+}
+#pragma pop_macro("gte_OuterProduct12")
+#pragma pop_macro("gte_CompMatrix")
+#pragma pop_macro("gte_SetRotMatrix")
+#pragma pop_macro("gte_SetTransMatrix")
+#pragma pop_macro("gte_ldopv1")
+#pragma pop_macro("gte_ldopv2")
+#pragma pop_macro("gte_op12")
+#pragma pop_macro("gte_stlvnl")
+#pragma pop_macro("gte_MulMatrix0")
+#pragma pop_macro("gte_ldlv0")
+#pragma pop_macro("gte_rt")
+#pragma pop_macro("gte_ldclmv")
+#pragma pop_macro("gte_rtir")
+#pragma pop_macro("gte_stclmv")
+#endif
 #else
 void func_800764B4(void* ot, s32 renderContextIndex) {
     s32 actorIndex;
@@ -4981,10 +5242,6 @@ void xm_field_party_place_at_controlled(void) __asm__("func_80077268");
 #ifndef XM_S_field_actor_update_position
 #define XM_S_field_actor_update_position
 s32 xm_field_actor_update_position() __asm__("func_80084A40");
-#endif
-#ifndef XM_S_field_event_actor_count
-#define XM_S_field_event_actor_count
-extern s32 xm_field_event_actor_count __asm__("D_800ADBFC");
 #endif
 #ifndef XM_S_field_party_find_character_slot
 #define XM_S_field_party_find_character_slot

@@ -307,6 +307,11 @@ def analyze(row,fe,mode=''):
         body=hd+' {'+body.split('{',1)[1]
         out.append('%s __asm__("%s");'%(hd,row['blizz_name']))
     um=[t for t in dict.fromkeys(ident_tokens(body)) if t in XMAC and not EA_MODE]
+    k_=0
+    while k_<len(um):
+        for t2 in ident_tokens(XMAC[um[k_]].split('\n',1)[0].split(')',1)[-1]+'\n'+'\n'.join(XMAC[um[k_]].split('\n')[1:])):
+            if t2 in XMAC and t2 not in um and t2!=um[k_]: um.append(t2)
+        k_+=1
     for t in um: out.append('#pragma push_macro("%s")\n#undef %s\n%s'%(t,t,XMAC[t]))
     out.append(body)
     for t in um: out.append('#pragma pop_macro("%s")'%t)

@@ -878,7 +878,101 @@ extern void* memcpy(void* dest, const void* src, int n);
 extern s16 D_800AF5C0[];
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800AB808);
+#ifndef XENO_PC_PORT
+/* Hand-matched (references: ex-machina/EtherAura/Noah, m2c). */
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_picture_add_flagged_pieces (src/decomp/src/field/field_effect.c:893). */
+#ifndef XM_S_field_picture_add_flagged_pieces
+#define XM_S_field_picture_add_flagged_pieces
+void xm_field_picture_add_flagged_pieces(void) __asm__("func_800AB808");
+#endif
+#ifndef XM_S_heap_alloc
+#define XM_S_heap_alloc
+void *xm_heap_alloc(s32 size, s32 mode) __asm__("HeapAlloc");
+#endif
+#ifndef XM_S_cd_get_aligned_file_size
+#define XM_S_cd_get_aligned_file_size
+s32 xm_cd_get_aligned_file_size(s32 file) __asm__("ArchiveDecodeAlignedSize");
+#endif
+#ifndef XM_S_cd_read_file
+#define XM_S_cd_read_file
+s32 xm_cd_read_file(s32 file, void *destination, s32 mode, s32 flags) __asm__("ArchiveReadFileToBuffer");
+#endif
+#ifndef XM_S_cd_sync_reads
+#define XM_S_cd_sync_reads
+s32 xm_cd_sync_reads(s32 mode) __asm__("ArchiveCdDataSync");
+#endif
+#ifndef XM_S_OpenTIM
+#define XM_S_OpenTIM
+int xm_OpenTIM(u_long *addr) __asm__("OpenTIM");
+#endif
+#ifndef XM_S_ReadTIM
+#define XM_S_ReadTIM
+TIM_IMAGE *xm_ReadTIM(TIM_IMAGE *timimg) __asm__("ReadTIM");
+#endif
+#ifndef XM_S_field_picture_flagged_piece_rects
+#define XM_S_field_picture_flagged_piece_rects
+extern RECT xm_field_picture_flagged_piece_rects[5] __asm__("D_800AF5C0");
+#endif
+#ifndef XM_S_memcpy
+#define XM_S_memcpy
+void *xm_memcpy(void *dest, void *src, int n) __asm__("memcpy");
+#endif
+#ifndef XM_S_LoadImage
+#define XM_S_LoadImage
+int xm_LoadImage(RECT *rect, u_long *p) __asm__("LoadImage");
+#endif
+#ifndef XM_S_DrawSync
+#define XM_S_DrawSync
+int xm_DrawSync(int mode) __asm__("DrawSync");
+#endif
+#ifndef XM_S_heap_free
+#define XM_S_heap_free
+s32 xm_heap_free(void *data) __asm__("HeapFree");
+#endif
+void func_800AB808(void) {
+    TIM_IMAGE tim;
+    u_long *file;
+    u8 *pixels;
+    u8 *row_pixels;
+    s32 i;
+    s32 row;
+    s32 column;
+    const s16 *height_base;
+
+    file = xm_heap_alloc(xm_cd_get_aligned_file_size(0x802), 0);
+    xm_cd_read_file(0x802, file, 0, 0x80);
+    xm_cd_sync_reads(0);
+    pixels = xm_heap_alloc(0xF20, 0);
+    xm_OpenTIM(file);
+    if (xm_ReadTIM(&tim) != NULL) {
+        height_base = &xm_field_picture_flagged_piece_rects[0].h;
+        for (i = 0; i < 5; i++) {
+            if (xm_field_picture_is_piece_flag_off(i) == -1 && tim.paddr != NULL) {
+                row_pixels = pixels;
+                row = 0;
+                if (row < height_base[i * 4]) {
+                    do {
+                        column = ((s16 *)xm_field_picture_flagged_piece_rects)[i * 4] / 4;
+                        xm_memcpy(
+                            row_pixels,
+                            (u_long*)(((((s16 *)xm_field_picture_flagged_piece_rects)[i * 4 + 1] + row) * 0x50 + column) * 4 + (s32)tim.paddr),
+                            ((s16 *)xm_field_picture_flagged_piece_rects)[i * 4 + 2]);
+                        row_pixels += ((s16 *)xm_field_picture_flagged_piece_rects)[i * 4 + 2] / 4 * 4;
+                    } while (++row < ((s16 *)xm_field_picture_flagged_piece_rects)[i * 4 + 3]);
+                }
+                tim.prect->x = ((s16 *)xm_field_picture_flagged_piece_rects)[i * 4] / 2 + 0x300;
+                tim.prect->y = ((s16 *)xm_field_picture_flagged_piece_rects)[i * 4 + 1] + 0x100;
+                tim.prect->w = ((s16 *)xm_field_picture_flagged_piece_rects)[i * 4 + 2] / 2;
+                tim.prect->h = height_base[i * 4];
+                xm_LoadImage(tim.prect, (u_long *)pixels);
+                xm_DrawSync(0);
+            }
+        }
+    }
+    xm_heap_free(file);
+    xm_heap_free(pixels);
+}
+#endif
 #else
 void func_800AB808(void) {
     TIM_IMAGE tim;
@@ -1051,45 +1145,17 @@ extern s32 xm_field_picture_marker_origin_x __asm__("D_800AFE78");
 #define XM_S_field_picture_marker_origin_y
 extern s32 xm_field_picture_marker_origin_y __asm__("D_800AFE7C");
 #endif
-#ifndef XM_S_heap_alloc
-#define XM_S_heap_alloc
-void *xm_heap_alloc(s32 size, s32 mode) __asm__("HeapAlloc");
-#endif
 #ifndef XM_S_StoreImage
 #define XM_S_StoreImage
 int xm_StoreImage(RECT *rect, u_long *p) __asm__("StoreImage");
-#endif
-#ifndef XM_S_DrawSync
-#define XM_S_DrawSync
-int xm_DrawSync(int mode) __asm__("DrawSync");
-#endif
-#ifndef XM_S_cd_sync_reads
-#define XM_S_cd_sync_reads
-s32 xm_cd_sync_reads(s32 mode) __asm__("ArchiveCdDataSync");
 #endif
 #ifndef XM_S_cd_select_directory
 #define XM_S_cd_select_directory
 s32 xm_cd_select_directory(s32 group, s32 index) __asm__("ArchiveSetIndex");
 #endif
-#ifndef XM_S_cd_get_aligned_file_size
-#define XM_S_cd_get_aligned_file_size
-s32 xm_cd_get_aligned_file_size(s32 file) __asm__("ArchiveDecodeAlignedSize");
-#endif
-#ifndef XM_S_cd_read_file
-#define XM_S_cd_read_file
-s32 xm_cd_read_file(s32 file, void *destination, s32 mode, s32 flags) __asm__("ArchiveReadFileToBuffer");
-#endif
 #ifndef XM_S_field_load_tim_at
 #define XM_S_field_load_tim_at
 void xm_field_load_tim_at(u32 *tim, s16 x, s16 y, s16 clut_x, s16 clut_y, s16 clut_w, s16 clut_h) __asm__("FieldLoadTIMWithClut");
-#endif
-#ifndef XM_S_heap_free
-#define XM_S_heap_free
-s32 xm_heap_free(void *data) __asm__("HeapFree");
-#endif
-#ifndef XM_S_field_picture_add_flagged_pieces
-#define XM_S_field_picture_add_flagged_pieces
-void xm_field_picture_add_flagged_pieces(void) __asm__("func_800AB808");
 #endif
 #ifndef XM_S_field_picture_init
 #define XM_S_field_picture_init
@@ -1122,10 +1188,6 @@ extern ScreenPieces *xm_field_picture_pieces __asm__("D_800C3A3C");
 #ifndef XM_S_field_picture_marker_sprites
 #define XM_S_field_picture_marker_sprites
 extern PictureMarks *xm_field_picture_marker_sprites __asm__("D_800B1DF0");
-#endif
-#ifndef XM_S_LoadImage
-#define XM_S_LoadImage
-int xm_LoadImage(RECT *rect, u_long *p) __asm__("LoadImage");
 #endif
 void func_800ABA98(void) {
     RECT rect;
