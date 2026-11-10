@@ -306,9 +306,20 @@ def analyze(row,fe,mode=''):
         hd=hd.replace(row['blizz_name']+'(','xm_'+name+'(',1)
         body=hd+' {'+body.split('{',1)[1]
         out.append('%s __asm__("%s");'%(hd,row['blizz_name']))
+    um=[t for t in dict.fromkeys(ident_tokens(body)) if t in XMAC and not EA_MODE]
+    for t in um: out.append('#pragma push_macro("%s")\n#undef %s\n%s'%(t,t,XMAC[t]))
     out.append(body)
+    for t in um: out.append('#pragma pop_macro("%s")'%t)
     out.append('#endif')
     return '\n'.join(out)+'\n'
+XMAC={}
+def _load_xmac():
+    p=WORK+'/ext/xem/src/decomp/include/psyq/inline_c.h'
+    try: t=open(p,errors='ignore').read()
+    except: return
+    for m in re.finditer(r'^#define (\w+)((?:[^\n]*\\\n)*[^\n]*)',t,re.M):
+        XMAC[m.group(1)]=m.group(0)
+_load_xmac()
 def run(cmd,**k):
     return subprocess.run(cmd,shell=True,capture_output=True,text=True,**k)
 N2A=globals().get("N2A",{})

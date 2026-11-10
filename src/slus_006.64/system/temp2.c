@@ -139,7 +139,206 @@ rearm:
 __attribute__((weak))
 #endif
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002B2F0);
+#ifndef XENO_PC_PORT
+/* Hand-matched (references: ex-machina/EtherAura/Noah, m2c). */
+/* Adopted from EtherAura xenogears (GPL-3.0, github.com/EtherAura/xenogears @e54f35a): streamReadyCallback (src/main/filesystem.c). */
+#ifndef XM_T_SectorSlot
+#define XM_T_SectorSlot
+typedef struct {
+     u16 m0_state;
+     u16 m2_sequence;
+     u16 m4_count;
+     u16 m6_size;
+} SectorSlot;
+#endif
+#ifndef XM_S_streamReadyCallback
+#define XM_S_streamReadyCallback
+void xm_streamReadyCallback(u8 status, u8* result) __asm__("func_8002B2F0");
+#endif
+#ifndef XM_S_readStopRequested
+#define XM_S_readStopRequested
+extern s32 xm_readStopRequested __asm__("D_8004FE34");
+#endif
+#ifndef XM_S_CdReadyCallback
+#define XM_S_CdReadyCallback
+CdlCB xm_CdReadyCallback(CdlCB func) __asm__("CdReadyCallback");
+#endif
+#ifndef XM_S_CdDataCallback
+#define XM_S_CdDataCallback
+void* xm_CdDataCallback(void (*func)()) __asm__("CdDataCallback");
+#endif
+#ifndef XM_S_remainingReadSize
+#define XM_S_remainingReadSize
+extern s32 xm_remainingReadSize __asm__("g_ArchiveCurFileSize");
+#endif
+#ifndef XM_S_seekToFileUnchecked
+#define XM_S_seekToFileUnchecked
+void xm_seekToFileUnchecked(s32 fileIndex) __asm__("ArchiveCdSeekToFile");
+#endif
+#ifndef XM_S_readNextSeekFile
+#define XM_S_readNextSeekFile
+extern s32 xm_readNextSeekFile __asm__("D_8004FE38");
+#endif
+#ifndef XM_S_readInProgress
+#define XM_S_readInProgress
+extern s32 xm_readInProgress __asm__("D_8004FDFC");
+#endif
+#ifndef XM_S_streamSectorSlotCount
+#define XM_S_streamSectorSlotCount
+extern s32 xm_streamSectorSlotCount __asm__("D_8004FE40");
+#endif
+#ifndef XM_S_streamSectorSlots
+#define XM_S_streamSectorSlots
+extern SectorSlot * xm_streamSectorSlots __asm__("D_8004FE2C");
+#endif
+#ifndef XM_S_readCursorIndex
+#define XM_S_readCursorIndex
+extern s32 xm_readCursorIndex __asm__("D_8004FE10");
+#endif
+#ifndef XM_S_CdGetSector
+#define XM_S_CdGetSector
+s32 xm_CdGetSector(void* madr, s32 size) __asm__("CdGetSector");
+#endif
+#ifndef XM_S_readSectorHeader
+#define XM_S_readSectorHeader
+extern u32 xm_readSectorHeader[3] __asm__("D_80059EF8");
+#endif
+#ifndef XM_S_CdPosToInt
+#define XM_S_CdPosToInt
+s32 xm_CdPosToInt(CdlLOC* p) __asm__("CdPosToInt");
+#endif
+#ifndef XM_S_readCurrentSector
+#define XM_S_readCurrentSector
+extern s32 xm_readCurrentSector __asm__("g_ArchiveCurFileSector");
+#endif
+#ifndef XM_S_streamReadErrorCount
+#define XM_S_streamReadErrorCount
+extern s32 xm_streamReadErrorCount __asm__("D_8004FDEC");
+#endif
+#ifndef XM_S_discardSectorBuffer
+#define XM_S_discardSectorBuffer
+extern u8 xm_discardSectorBuffer[0x800] __asm__("D_800596F8");
+#endif
+#ifndef XM_S_streamNextReadSequence
+#define XM_S_streamNextReadSequence
+extern u16 xm_streamNextReadSequence __asm__("D_8004FE26");
+#endif
+#ifndef XM_S_readDestination
+#define XM_S_readDestination
+extern u8 * xm_readDestination __asm__("D_8004FE08");
+#endif
+#ifndef XM_S_cdErrorCount
+#define XM_S_cdErrorCount
+extern s32 xm_cdErrorCount __asm__("D_8005A4DC");
+#endif
+#ifndef XM_S_savedCdReadyCallback
+#define XM_S_savedCdReadyCallback
+extern CdlCB xm_savedCdReadyCallback __asm__("D_80059F08");
+#endif
+#ifndef XM_S_CdIntToPos
+#define XM_S_CdIntToPos
+CdlLOC* xm_CdIntToPos(s32 i, CdlLOC* p) __asm__("CdIntToPos");
+#endif
+#ifndef XM_S_cdReadLocation
+#define XM_S_cdReadLocation
+extern CdlLOC xm_cdReadLocation __asm__("g_ArchiveCdCurLocation");
+#endif
+#ifndef XM_S_cdErrorRecoveryAction
+#define XM_S_cdErrorRecoveryAction
+extern s32 xm_cdErrorRecoveryAction __asm__("g_ArchiveCdDriveError");
+#endif
+#ifndef XM_S_cdStopRecoveryCount
+#define XM_S_cdStopRecoveryCount
+extern s32 xm_cdStopRecoveryCount __asm__("D_8005A4A4");
+#endif
+#ifndef XM_S_cdCommandState
+#define XM_S_cdCommandState
+extern s32 xm_cdCommandState __asm__("g_ArchiveCdDriveState");
+#endif
+#ifndef XM_S_CdSyncCallback
+#define XM_S_CdSyncCallback
+CdlCB xm_CdSyncCallback(CdlCB func) __asm__("CdSyncCallback");
+#endif
+#ifndef XM_S_cdCommandSyncCallback
+#define XM_S_cdCommandSyncCallback
+void xm_cdCommandSyncCallback(u8 status, u8* result) __asm__("ArchiveCdDriveCommandHandler");
+#endif
+#ifndef XM_S_CdControlF
+#define XM_S_CdControlF
+s32 xm_CdControlF(u8 com, u8* param) __asm__("CdControlF");
+#endif
+void func_8002B2F0(u8 status, u8* result) {
+    s32 i;
+    s32 j;
+    s32 idx;
+    u16* slot;
+
+    if (status == 1) {
+        if (xm_readStopRequested > 0) {
+            xm_CdReadyCallback(0);
+            xm_CdDataCallback(0);
+            xm_remainingReadSize = 0;
+            xm_seekToFileUnchecked(xm_readNextSeekFile);
+            xm_readInProgress = 0;
+            return;
+        }
+        if (xm_remainingReadSize > 0) {
+            for (i = 0; i < xm_streamSectorSlotCount; i++) {
+                slot = (u16*)(xm_readCursorIndex * 8 + (s32)xm_streamSectorSlots);
+                idx = xm_readCursorIndex;
+                xm_readCursorIndex = idx + 1;
+                if (xm_readCursorIndex >= xm_streamSectorSlotCount) {
+                    xm_readCursorIndex = 0;
+                }
+                if (slot[0] == 0) {
+                    break;
+                }
+            }
+            if (slot[0] != 0) {
+                goto retry;
+            }
+            xm_CdGetSector(xm_readSectorHeader, 3);
+            if (xm_CdPosToInt((CdlLOC*)xm_readSectorHeader) != xm_readCurrentSector) {
+                xm_streamReadErrorCount++;
+                xm_CdGetSector(xm_discardSectorBuffer, 0x200);
+                goto error;
+            }
+            slot[1] = xm_streamNextReadSequence;
+            slot[0] = 1;
+            xm_streamNextReadSequence++;
+            xm_CdGetSector((u8*)((idx << 11) + (s32)xm_readDestination), 0x200);
+            xm_remainingReadSize -= 0x800;
+            xm_readCurrentSector++;
+            if (xm_remainingReadSize > 0) {
+                return;
+            }
+        }
+        xm_CdReadyCallback(0);
+        xm_remainingReadSize = 0;
+        return;
+    }
+error:
+    xm_cdErrorCount++;
+retry:
+    xm_savedCdReadyCallback = xm_CdReadyCallback(0);
+    xm_CdIntToPos(xm_readCurrentSector, &xm_cdReadLocation);
+    if (xm_cdErrorCount < 3) {
+        xm_cdErrorRecoveryAction = 3;
+    } else {
+        s32 k, l;
+        for (k = 9999; k >= 0; k--) {
+            for (l = 1999; l >= 0; l--) {
+            }
+        }
+        xm_cdErrorCount = 0;
+        xm_cdErrorRecoveryAction = 4;
+        xm_cdStopRecoveryCount++;
+    }
+    xm_cdCommandState = 10;
+    xm_CdSyncCallback(xm_cdCommandSyncCallback);
+    xm_CdControlF(1, 0);
+}
+#endif
 #else
 s32 func_8002B2F0(u8 status) {
     u8* pSlot;
@@ -249,7 +448,85 @@ extern CdlLOC D_80059EF8;
 extern u8 D_800596F8[];
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002B5D0);
+#ifndef XENO_PC_PORT
+/* Hand-matched (references: ex-machina/EtherAura/Noah, m2c). */
+/* Adopted from EtherAura xenogears (GPL-3.0, github.com/EtherAura/xenogears @e54f35a): imageFileReadyCallback (src/main/filesystem.c). */
+#ifndef XM_S_imageFileReadyCallback
+#define XM_S_imageFileReadyCallback
+void xm_imageFileReadyCallback(u8 status, u8* result) __asm__("func_8002B5D0");
+#endif
+void func_8002B5D0(u8 status, u8* result) {
+    s32 i;
+    s32 j;
+    s32 idx;
+    u16* slot;
+
+    if (status == 1) {
+        if (xm_readStopRequested > 0) {
+            xm_CdReadyCallback(0);
+            xm_CdDataCallback(0);
+            xm_remainingReadSize = 0;
+            xm_seekToFileUnchecked(xm_readNextSeekFile);
+            xm_readInProgress = 0;
+            return;
+        }
+        if (xm_remainingReadSize > 0) {
+            for (i = 0; i < xm_streamSectorSlotCount; i++) {
+                slot = (u16*)(xm_readCursorIndex * 8 + (s32)xm_streamSectorSlots);
+                idx = xm_readCursorIndex;
+                xm_readCursorIndex = idx + 1;
+                if (xm_readCursorIndex >= xm_streamSectorSlotCount) {
+                    xm_readCursorIndex = 0;
+                }
+                if (slot[0] == 0) {
+                    break;
+                }
+            }
+            if (slot[0] != 0) {
+                goto retry;
+            }
+            xm_CdGetSector(xm_readSectorHeader, 3);
+            if (xm_CdPosToInt((CdlLOC*)xm_readSectorHeader) != xm_readCurrentSector) {
+                xm_streamReadErrorCount++;
+                xm_CdGetSector(xm_discardSectorBuffer, 0x200);
+                goto error;
+            }
+            slot[1] = xm_streamNextReadSequence;
+            slot[0] = 1;
+            xm_streamNextReadSequence++;
+            xm_CdGetSector((u8*)((idx << 11) + (s32)xm_readDestination), 0x200);
+            xm_remainingReadSize -= 0x800;
+            xm_readCurrentSector++;
+            if (xm_remainingReadSize > 0) {
+                return;
+            }
+        }
+        xm_CdReadyCallback(0);
+        xm_remainingReadSize = 0;
+        return;
+    }
+error:
+    xm_cdErrorCount++;
+retry:
+    xm_savedCdReadyCallback = xm_CdReadyCallback(0);
+    xm_CdIntToPos(xm_readCurrentSector, &xm_cdReadLocation);
+    if (xm_cdErrorCount < 3) {
+        xm_cdErrorRecoveryAction = 3;
+    } else {
+        s32 k, l;
+        for (k = 9999; k >= 0; k--) {
+            for (l = 1999; l >= 0; l--) {
+            }
+        }
+        xm_cdErrorCount = 0;
+        xm_cdErrorRecoveryAction = 4;
+        xm_cdStopRecoveryCount++;
+    }
+    xm_cdCommandState = 10;
+    xm_CdSyncCallback(xm_cdCommandSyncCallback);
+    xm_CdControlF(1, 0);
+}
+#endif
 #else
 /* Transcribed from asm/slus_006.64/nonmonmatchings/system/temp2/func_8002B5D0.s
  * (0x8002B5D0-0x8002B8B0, frame 0x28). CdReadyCallback handler for the
@@ -385,38 +662,9 @@ no_room:
 #define XM_T_sptr
 typedef s32 sptr;
 #endif
-#ifndef XM_T_SectorSlot
-#define XM_T_SectorSlot
-typedef struct {
-     u16 m0_state;
-     u16 m2_sequence;
-     u16 m4_count;
-     u16 m6_size;
-} SectorSlot;
-#endif
 #ifndef XM_S_readImageFileSectorFromPc
 #define XM_S_readImageFileSectorFromPc
 void xm_readImageFileSectorFromPc(s32, s32) __asm__("func_8002B8B0");
-#endif
-#ifndef XM_S_remainingReadSize
-#define XM_S_remainingReadSize
-extern s32 xm_remainingReadSize __asm__("g_ArchiveCurFileSize");
-#endif
-#ifndef XM_S_streamSectorSlotCount
-#define XM_S_streamSectorSlotCount
-extern s32 xm_streamSectorSlotCount __asm__("D_8004FE40");
-#endif
-#ifndef XM_S_readCursorIndex
-#define XM_S_readCursorIndex
-extern s32 xm_readCursorIndex __asm__("D_8004FE10");
-#endif
-#ifndef XM_S_streamSectorSlots
-#define XM_S_streamSectorSlots
-extern SectorSlot * xm_streamSectorSlots __asm__("D_8004FE2C");
-#endif
-#ifndef XM_S_streamNextReadSequence
-#define XM_S_streamNextReadSequence
-extern u16 xm_streamNextReadSequence __asm__("D_8004FE26");
 #endif
 #ifndef XM_S_PCread
 #define XM_S_PCread
@@ -426,17 +674,9 @@ s32 xm_PCread(s32 fd, char *buf, u32 len) __asm__("PCread");
 #define XM_S_pcImageFileFd
 extern s32 xm_pcImageFileFd __asm__("D_80059F04");
 #endif
-#ifndef XM_S_readDestination
-#define XM_S_readDestination
-extern u8 * xm_readDestination __asm__("D_8004FE08");
-#endif
 #ifndef XM_S_reportReadError
 #define XM_S_reportReadError
 void xm_reportReadError(s32, s32, s32, s32) __asm__("func_8002804C");
-#endif
-#ifndef XM_S_readCurrentSector
-#define XM_S_readCurrentSector
-extern s32 xm_readCurrentSector __asm__("g_ArchiveCurFileSector");
 #endif
 void func_8002B8B0(s32 arg0, s32 arg1) {
     s16 i;
@@ -574,22 +814,6 @@ void xm_streamDataCallback() __asm__("func_8002BA58");
 #ifndef XM_S_streamNextDataSequence
 #define XM_S_streamNextDataSequence
 extern u16 xm_streamNextDataSequence __asm__("D_8004FE28");
-#endif
-#ifndef XM_S_readInProgress
-#define XM_S_readInProgress
-extern s32 xm_readInProgress __asm__("D_8004FDFC");
-#endif
-#ifndef XM_S_CdDataCallback
-#define XM_S_CdDataCallback
-void* xm_CdDataCallback(void* func) __asm__("CdDataCallback");
-#endif
-#ifndef XM_S_seekToFileUnchecked
-#define XM_S_seekToFileUnchecked
-void xm_seekToFileUnchecked(s32 fileIndex) __asm__("ArchiveCdSeekToFile");
-#endif
-#ifndef XM_S_readNextSeekFile
-#define XM_S_readNextSeekFile
-extern s32 xm_readNextSeekFile __asm__("D_8004FE38");
 #endif
 void func_8002BA58(void) {
     s16 i;
@@ -3601,7 +3825,180 @@ void func_80030C78(u32 a, u32 b, u32 c) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80030C98);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): model_draw_f4_lit_unreferenced (src/decomp/src/resident/model_renderer.c:1157). */
+#ifndef XM_T_QuadFace
+#define XM_T_QuadFace
+typedef struct {
+    u32 v01;
+    u16 v2;
+    u16 v3;
+} QuadFace;
+#endif
+#ifndef XM_S_model_draw_f4_lit_unreferenced
+#define XM_S_model_draw_f4_lit_unreferenced
+void xm_model_draw_f4_lit_unreferenced(QuadFace *faces, s32 count) __asm__("func_80030C98");
+#endif
+#ifndef XM_S_model_ot_depth_shift
+#define XM_S_model_ot_depth_shift
+extern s32 xm_model_ot_depth_shift __asm__("D_80050100");
+#endif
+#ifndef XM_S_model_ot
+#define XM_S_model_ot
+extern u32 *xm_model_ot __asm__("D_80059568");
+#endif
+#ifndef XM_S_model_drawn_primitive_count
+#define XM_S_model_drawn_primitive_count
+extern s32 xm_model_drawn_primitive_count __asm__("D_80059578");
+#endif
+#pragma push_macro("gte_ldv3")
+#undef gte_ldv3
+#define gte_ldv3(r0, r1, r2)                                                   \
+    __asm__ volatile("lwc2 $0, 0(%0);"                                         \
+                     "lwc2 $1, 4(%0);"                                         \
+                     "lwc2 $2, 0(%1);"                                         \
+                     "lwc2 $3, 4(%1);"                                         \
+                     "lwc2 $4, 0(%2);"                                         \
+                     "lwc2 $5, 4(%2)"                                          \
+                     :                                                         \
+                     : "r"(r0), "r"(r1), "r"(r2)                               \
+                     : "memory")
+#pragma push_macro("gte_rtpt")
+#undef gte_rtpt
+#define gte_rtpt() __asm__ volatile("nop;nop;.word 0x4A280030")
+#pragma push_macro("gte_stflg")
+#undef gte_stflg
+#define gte_stflg(r0)                                                          \
+    __asm__ volatile("cfc2 $12, $31;"                                          \
+                     "nop;"                                                    \
+                     "sw $12, 0(%0)"                                           \
+                     :                                                         \
+                     : "r"(r0)                                                 \
+                     : "$12", "memory")
+#pragma push_macro("gte_nclip")
+#undef gte_nclip
+#define gte_nclip() __asm__ volatile("nop;nop;.word 0x4B400006")
+#pragma push_macro("gte_stopz")
+#undef gte_stopz
+#define gte_stopz(r0) __asm__ volatile("swc2 $24, 0(%0)" : : "r"(r0) : "memory")
+#pragma push_macro("gte_stsxy3")
+#undef gte_stsxy3
+#define gte_stsxy3(r0, r1, r2)                                                 \
+    __asm__ volatile("swc2 $12, 0(%0);"                                        \
+                     "swc2 $13, 0(%1);"                                        \
+                     "swc2 $14, 0(%2)"                                         \
+                     :                                                         \
+                     : "r"(r0), "r"(r1), "r"(r2)                               \
+                     : "memory")
+#pragma push_macro("gte_stsz3")
+#undef gte_stsz3
+#define gte_stsz3(r0, r1, r2)                                                  \
+    __asm__ volatile("swc2 $17, 0(%0);"                                        \
+                     "swc2 $18, 0(%1);"                                        \
+                     "swc2 $19, 0(%2)"                                         \
+                     :                                                         \
+                     : "r"(r0), "r"(r1), "r"(r2)                               \
+                     : "memory")
+#pragma push_macro("gte_ldv0")
+#undef gte_ldv0
+#define gte_ldv0(r0)                                                           \
+    __asm__ volatile("lwc2 $0, 0(%0);"                                         \
+                     "lwc2 $1, 4(%0)"                                          \
+                     :                                                         \
+                     : "r"(r0)                                                 \
+                     : "memory")
+#pragma push_macro("gte_rtps")
+#undef gte_rtps
+#define gte_rtps() __asm__ volatile("nop;nop;.word 0x4A180001")
+#pragma push_macro("gte_stsxy")
+#undef gte_stsxy
+#define gte_stsxy(r0) __asm__ volatile("swc2 $14, 0(%0)" : : "r"(r0) : "memory")
+#pragma push_macro("gte_stsz")
+#undef gte_stsz
+#define gte_stsz(r0) __asm__ volatile("swc2 $19, 0(%0)" : : "r"(r0) : "memory")
+#pragma push_macro("gte_ldsz4")
+#undef gte_ldsz4
+#define gte_ldsz4(r0, r1, r2, r3)                                              \
+    __asm__ volatile("mtc2 %0, $16;"                                           \
+                     "mtc2 %1, $17;"                                           \
+                     "mtc2 %2, $18;"                                           \
+                     "mtc2 %3, $19"                                            \
+                     :                                                         \
+                     : "r"(r0), "r"(r1), "r"(r2), "r"(r3))
+#pragma push_macro("gte_avsz4")
+#undef gte_avsz4
+#define gte_avsz4() __asm__ volatile("nop;nop;.word 0x4B68002E")
+#pragma push_macro("gte_stotz")
+#undef gte_stotz
+#define gte_stotz(r0) __asm__ volatile("swc2 $7, 0(%0)" : : "r"(r0) : "memory")
+#pragma push_macro("gte_ldrgb")
+#undef gte_ldrgb
+#define gte_ldrgb(r0) __asm__ volatile("lwc2 $6, 0(%0)" : : "r"(r0) : "memory")
+#pragma push_macro("gte_nccs")
+#undef gte_nccs
+#define gte_nccs() __asm__ volatile("nop;nop;.word 0x4B08041B")
+#pragma push_macro("gte_strgb")
+#undef gte_strgb
+#define gte_strgb(r0) __asm__ volatile("swc2 $22, 0(%0)" : : "r"(r0) : "memory")
+void func_80030C98(QuadFace *faces, s32 count) {
+    POLY_F4 *poly;
+    s32 flag;
+    s32 sz0, sz1, sz2, sz3;
+    s32 otz;
+
+    for (count--; count != -1; count--) {
+        poly = (POLY_F4 *)xm_model_current_packet;
+        gte_ldv3(&xm_model_current_vertices[faces->v01 & 0xFFFF], &xm_model_current_vertices[faces->v01 >> 16],
+                 &xm_model_current_vertices[(*(u32 *)&faces->v2 & 0xFFFF)]);
+        gte_rtpt();
+        gte_stflg(&flag);
+        if (flag >= 0) {
+            gte_nclip();
+            gte_stopz(&flag);
+            if (flag > 0) {
+                gte_stsxy3(&poly->x0, &poly->x1, &poly->x2);
+                gte_stsz3(&sz0, &sz1, &sz2);
+                gte_ldv0(&xm_model_current_vertices[(*(u32 *)&faces->v2 >> 16)]);
+                gte_rtps();
+                gte_stsxy(&poly->x3);
+                gte_stsz(&sz3);
+                gte_ldsz4(sz0, sz1, sz2, sz3);
+                gte_avsz4();
+                gte_stotz(&otz);
+                gte_ldrgb(xm_model_lit_color_cache);
+                gte_ldv0(xm_model_lit_color_cache + 1);
+                gte_nccs();
+                gte_strgb(&poly->r0);
+                setlen(poly, 5);
+                setcode(poly, 0x28);
+                otz >>= xm_model_ot_depth_shift;
+                addPrim(&xm_model_ot[otz], poly);
+                xm_model_drawn_primitive_count++;
+            }
+        }
+        faces++;
+        xm_model_current_packet = (RenderPacket *)((u8 *)xm_model_current_packet + sizeof(POLY_F4));
+        xm_model_lit_color_cache += 3;
+    }
+}
+#pragma pop_macro("gte_ldv3")
+#pragma pop_macro("gte_rtpt")
+#pragma pop_macro("gte_stflg")
+#pragma pop_macro("gte_nclip")
+#pragma pop_macro("gte_stopz")
+#pragma pop_macro("gte_stsxy3")
+#pragma pop_macro("gte_stsz3")
+#pragma pop_macro("gte_ldv0")
+#pragma pop_macro("gte_rtps")
+#pragma pop_macro("gte_stsxy")
+#pragma pop_macro("gte_stsz")
+#pragma pop_macro("gte_ldsz4")
+#pragma pop_macro("gte_avsz4")
+#pragma pop_macro("gte_stotz")
+#pragma pop_macro("gte_ldrgb")
+#pragma pop_macro("gte_nccs")
+#pragma pop_macro("gte_strgb")
+#endif
 #endif
 
 s32 func_80030EE8(void) {

@@ -1383,175 +1383,8 @@ void func_80073424(VECTOR *from, VECTOR *origin, Actor *actor, s32 kind, s32 pow
 }
 #endif
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80073644);
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80073B7C);
-void func_80073CA4(s32 arg0) {
-    s32 var_a1;
-    s32 var_a2;
-    void *temp_v1;
-
-    var_a2 = 0;
-    do {
-        var_a1 = var_a2 * 0x54 + 0x104;
-        temp_v1 = (void *)(arg0 + var_a1);
-        if (*(u8 *)((s8*)(temp_v1) + 0x45) == 2) {
-            *(u8 *)((s8*)(temp_v1) + 0x45) = 1U;
-        } else {
-            *(u8 *)((s8*)(temp_v1) + 0x45) = 0U;
-        }
-        var_a2 += 1;
-    } while (var_a2 < 0x10);
-}
-
 #ifndef XENO_PC_PORT
-/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_actor_record_trail (src/decomp/src/menu/arena_fighters_bout_and_effects.c:335). */
-#ifndef XM_T_HitSpec
-#define XM_T_HitSpec
-typedef struct {
-    u8 unk0; 
-    u8 type;
-    u8 part_a;
-    u8 part_b;
-    s16 vertex_a;
-    s16 vertex_b;
-} HitSpec;
-#endif
-#ifndef XM_S_arena_actor_record_trail
-#define XM_S_arena_actor_record_trail
-void xm_arena_actor_record_trail(VECTOR *a, VECTOR *b, s32 flip, HitSpec *hit, Trail *trail, s32 part, Actor *owner) __asm__("func_80073CEC");
-#endif
-#ifndef XM_S_arena_actor_unread_added_trail_count
-#define XM_S_arena_actor_unread_added_trail_count
-extern s32 xm_arena_actor_unread_added_trail_count __asm__("D_80092650");
-#endif
-void func_80073CEC(VECTOR *a, VECTOR *b, s32 flip, HitSpec *hit, Trail *trail, s32 part, Actor *owner) {
-    trail->a_prev = trail->a;
-    trail->b_prev = trail->b;
-    trail->a = *a;
-    trail->b = *b;
-    trail->unk43 = part;
-    trail->flip = flip & 1;
-    trail->state = 2;
-    trail->unk47 = owner->unk644;
-    trail->unk50 = owner->unk84;
-    trail->unk46 = hit->type;
-    xm_arena_actor_unread_added_trail_count++;
-}
-#endif
-s32 func_80073DE4(void *arg0, s32 arg1) {
-    s32 temp_a1;
-    register s32 var_v0 asm("$2");
-
-    temp_a1 = *(s16 *)((s8*)(arg0) + 0xB6) + arg1;
-    var_v0 = 1;
-    if (temp_a1 >= 0x1001) {
-        var_v0 = ((temp_a1 - 0xFF1) / 20) < *(s16 *)((s8*)(arg0) + 0xB4);
-    }
-    return var_v0;
-}
-
-s32 func_80073E2C(void *arg0, s32 arg1, s32 arg2) {
-    s32 q;
-
-    if (D_800928C8 == 4 || D_800928C8 == 6) {
-        return 1;
-    }
-    *(s16 *)((s8*)(arg0) + 0xB6) += arg1;
-    if (*(s16 *)((s8*)(arg0) + 0xB6) > 0x1000) {
-        q = (*(s16 *)((s8*)(arg0) + 0xB6) - 0x1000) / 20;
-        if (q >= *(s16 *)((s8*)(arg0) + 0xB4)) {
-            *(s16 *)((s8*)(arg0) + 0xB6) -= arg1;
-            *(s16 *)((s8*)(arg0) + 0xBA) = 0;
-            if (func_80083CD8() != 4) {
-                func_8008EB4C(0x2E);
-            }
-            return 0;
-        }
-        *(s16 *)((s8*)(arg0) + 0xB6) = 0x1000;
-        *(s16 *)((s8*)(arg0) + 0xBA) = q;
-        switch (arg2) {
-        case 1:
-            *(s32 *)((s8*)(arg0) + 0x1654) += *(s16 *)((s8*)(arg0) + 0xBA);
-            break;
-        case 2:
-            *(s32 *)((s8*)(arg0) + 0x1658) += *(s16 *)((s8*)(arg0) + 0xBA);
-            break;
-        }
-    }
-    return 1;
-}
-
-#ifndef XENO_PC_PORT
-/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_frame_event_effect (src/decomp/src/menu/arena_fighters_bout_and_effects.c:409). */
-#ifndef XM_S_arena_frame_event_effect
-#define XM_S_arena_frame_event_effect
-void xm_arena_frame_event_effect(Actor *actor, HitSpec *hit) __asm__("func_80073F34");
-#endif
-#ifndef XM_S_arena_effect_pack_trail_key
-#define XM_S_arena_effect_pack_trail_key
-u32 xm_arena_effect_pack_trail_key(s32 flag, s32 top, s32 middle, s32 low) __asm__("func_8007CD14");
-#endif
-#ifndef XM_S_arena_actor_get_part_point
-#define XM_S_arena_actor_get_part_point
-void xm_arena_actor_get_part_point(Actor *actor, s32 part, s32 vertex, VECTOR *out) __asm__("func_80073B7C");
-#endif
-#ifndef XM_S_arena_effect_is_two_point_type
-#define XM_S_arena_effect_is_two_point_type
-s32 xm_arena_effect_is_two_point_type(s32 code) __asm__("func_8007D25C");
-#endif
-#ifndef XM_S_arena_effect_start_line_sparkle
-#define XM_S_arena_effect_start_line_sparkle
-void xm_arena_effect_start_line_sparkle(s32 column, VECTOR *from, VECTOR *to, s32 key) __asm__("func_8007CD44");
-#endif
-#ifndef XM_S_arena_effect_queue_bolt_by_type
-#define XM_S_arena_effect_queue_bolt_by_type
-void xm_arena_effect_queue_bolt_by_type(VECTOR *from, VECTOR *to, s32 code) __asm__("func_8007D65C");
-#endif
-#ifndef XM_S_arena_effect_set_sparkle2_color
-#define XM_S_arena_effect_set_sparkle2_color
-void xm_arena_effect_set_sparkle2_color(CVECTOR *color) __asm__("func_8007C100");
-#endif
-#ifndef XM_S_arena_effect_start_trail_sparkle
-#define XM_S_arena_effect_start_trail_sparkle
-void xm_arena_effect_start_trail_sparkle(s32 column, VECTOR *pos, s32 key, s32 size) __asm__("func_8007C880");
-#endif
-#ifndef XM_S_arena_effect_spawn_sparkle
-#define XM_S_arena_effect_spawn_sparkle
-s32 xm_arena_effect_spawn_sparkle(VECTOR *pos, u32 kind) __asm__("func_8007D190");
-#endif
-void func_80073F34(Actor *actor, HitSpec *hit) {
-    VECTOR a;
-    VECTOR b;
-    s32 style;
-
-    style = xm_arena_effect_pack_trail_key((actor->flags >> 27) & 1, hit->part_a, hit->vertex_a, 1);
-    xm_arena_actor_get_part_point(actor, hit->part_a, hit->vertex_a, &a);
-    if (xm_arena_effect_is_two_point_type(hit->type) != 0) {
-        xm_arena_actor_get_part_point(actor, hit->part_b, hit->vertex_b, &b);
-        if (hit->type == 0x10) {
-            xm_arena_effect_start_line_sparkle((actor->flags >> 27) & 1, &a, &b, style);
-        } else {
-            xm_arena_effect_queue_bolt_by_type(&a, &b, hit->type);
-        }
-        return;
-    }
-    if (hit->part_a != hit->part_b || hit->vertex_a != hit->vertex_b) {
-        xm_arena_actor_get_part_point(actor, hit->part_b, hit->vertex_b, &b);
-        a.vx = (a.vx + b.vx) / 2;
-        a.vy = (a.vy + b.vy) / 2;
-        a.vz = (a.vz + b.vz) / 2;
-    }
-    xm_arena_effect_set_sparkle2_color(&actor->colour);
-    if (hit->type >= 0x20) {
-        xm_arena_effect_start_trail_sparkle((actor->flags >> 27) & 1, &a, style, hit->type - 0x20);
-    } else {
-        xm_arena_effect_spawn_sparkle(&a, hit->type);
-    }
-}
-#endif
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_800740E4);
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80074678);
-#ifndef XENO_PC_PORT
-/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_actor_apply_part_visibility (src/decomp/src/menu/arena_fighters_bout_and_effects.c:665). */
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_actor_get_part_point (src/decomp/src/menu/arena_fighters_bout_and_effects.c:300). */
 #ifndef XM_T_AnimRecord
 #define XM_T_AnimRecord
 typedef struct {
@@ -1697,6 +1530,250 @@ typedef struct {
     s32 unk1C;
 } NodeModel;
 #endif
+#ifndef XM_T_gte_rt
+#define XM_T_gte_rt
+#define gte_rt() __asm__ volatile("nop;nop;.word 0x4A480012")
+#endif
+#ifndef XM_S_arena_actor_get_part_point
+#define XM_S_arena_actor_get_part_point
+void xm_arena_actor_get_part_point(Actor *actor, s32 part, s32 vertex, VECTOR *out) __asm__("func_80073B7C");
+#endif
+#pragma push_macro("gte_SetRotMatrix")
+#undef gte_SetRotMatrix
+#define gte_SetRotMatrix(r0)                                                   \
+    __asm__ volatile("lw $12, 0(%0);"                                          \
+                     "lw $13, 4(%0);"                                          \
+                     "ctc2 $12, $0;"                                           \
+                     "ctc2 $13, $1;"                                           \
+                     "lw $12, 8(%0);"                                          \
+                     "lw $13, 12(%0);"                                         \
+                     "lw $14, 16(%0);"                                         \
+                     "ctc2 $12, $2;"                                           \
+                     "ctc2 $13, $3;"                                           \
+                     "ctc2 $14, $4"                                            \
+                     :                                                         \
+                     : "r"(r0)                                                 \
+                     : "$12", "$13", "$14", "memory")
+#pragma push_macro("gte_SetTransMatrix")
+#undef gte_SetTransMatrix
+#define gte_SetTransMatrix(r0)                                                 \
+    __asm__ volatile("lw $12, 20(%0);"                                         \
+                     "lw $13, 24(%0);"                                         \
+                     "ctc2 $12, $5;"                                           \
+                     "lw $14, 28(%0);"                                         \
+                     "ctc2 $13, $6;"                                           \
+                     "ctc2 $14, $7"                                            \
+                     :                                                         \
+                     : "r"(r0)                                                 \
+                     : "$12", "$13", "$14", "memory")
+#pragma push_macro("gte_ldv0")
+#undef gte_ldv0
+#define gte_ldv0(r0)                                                           \
+    __asm__ volatile("lwc2 $0, 0(%0);"                                         \
+                     "lwc2 $1, 4(%0)"                                          \
+                     :                                                         \
+                     : "r"(r0)                                                 \
+                     : "memory")
+#pragma push_macro("gte_rt")
+#undef gte_rt
+#define gte_rt() __asm__ volatile("nop;nop;.word 0x4A480012")
+#pragma push_macro("gte_stlvnl")
+#undef gte_stlvnl
+#define gte_stlvnl(r0)                                                         \
+    __asm__ volatile("swc2 $25, 0(%0);"                                        \
+                     "swc2 $26, 4(%0);"                                        \
+                     "swc2 $27, 8(%0)"                                         \
+                     :                                                         \
+                     : "r"(r0)                                                 \
+                     : "memory")
+void func_80073B7C(Actor *actor, s32 part, s32 vertex, VECTOR *out) {
+    Node *node = ((ModelSet *)actor->node->data)->nodes[part];
+
+    if (vertex != 0 && node->type == 1) {
+        gte_SetRotMatrix(&node->unk4C);
+        gte_SetTransMatrix(&node->unk4C);
+        gte_ldv0(&((NodeModel *)node->data)->file->vertices[vertex - 1]);
+        gte_rt();
+        gte_stlvnl(out);
+        out->vx += actor->pos.vx;
+        out->vy += actor->pos.vy;
+        out->vz += actor->pos.vz;
+    } else {
+        out->vx = node->unk4C.t[0] + actor->pos.vx;
+        out->vy = node->unk4C.t[1] + actor->pos.vy;
+        out->vz = node->unk4C.t[2] + actor->pos.vz;
+    }
+}
+#pragma pop_macro("gte_SetRotMatrix")
+#pragma pop_macro("gte_SetTransMatrix")
+#pragma pop_macro("gte_ldv0")
+#pragma pop_macro("gte_rt")
+#pragma pop_macro("gte_stlvnl")
+#endif
+void func_80073CA4(s32 arg0) {
+    s32 var_a1;
+    s32 var_a2;
+    void *temp_v1;
+
+    var_a2 = 0;
+    do {
+        var_a1 = var_a2 * 0x54 + 0x104;
+        temp_v1 = (void *)(arg0 + var_a1);
+        if (*(u8 *)((s8*)(temp_v1) + 0x45) == 2) {
+            *(u8 *)((s8*)(temp_v1) + 0x45) = 1U;
+        } else {
+            *(u8 *)((s8*)(temp_v1) + 0x45) = 0U;
+        }
+        var_a2 += 1;
+    } while (var_a2 < 0x10);
+}
+
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_actor_record_trail (src/decomp/src/menu/arena_fighters_bout_and_effects.c:335). */
+#ifndef XM_T_HitSpec
+#define XM_T_HitSpec
+typedef struct {
+    u8 unk0; 
+    u8 type;
+    u8 part_a;
+    u8 part_b;
+    s16 vertex_a;
+    s16 vertex_b;
+} HitSpec;
+#endif
+#ifndef XM_S_arena_actor_record_trail
+#define XM_S_arena_actor_record_trail
+void xm_arena_actor_record_trail(VECTOR *a, VECTOR *b, s32 flip, HitSpec *hit, Trail *trail, s32 part, Actor *owner) __asm__("func_80073CEC");
+#endif
+#ifndef XM_S_arena_actor_unread_added_trail_count
+#define XM_S_arena_actor_unread_added_trail_count
+extern s32 xm_arena_actor_unread_added_trail_count __asm__("D_80092650");
+#endif
+void func_80073CEC(VECTOR *a, VECTOR *b, s32 flip, HitSpec *hit, Trail *trail, s32 part, Actor *owner) {
+    trail->a_prev = trail->a;
+    trail->b_prev = trail->b;
+    trail->a = *a;
+    trail->b = *b;
+    trail->unk43 = part;
+    trail->flip = flip & 1;
+    trail->state = 2;
+    trail->unk47 = owner->unk644;
+    trail->unk50 = owner->unk84;
+    trail->unk46 = hit->type;
+    xm_arena_actor_unread_added_trail_count++;
+}
+#endif
+s32 func_80073DE4(void *arg0, s32 arg1) {
+    s32 temp_a1;
+    register s32 var_v0 asm("$2");
+
+    temp_a1 = *(s16 *)((s8*)(arg0) + 0xB6) + arg1;
+    var_v0 = 1;
+    if (temp_a1 >= 0x1001) {
+        var_v0 = ((temp_a1 - 0xFF1) / 20) < *(s16 *)((s8*)(arg0) + 0xB4);
+    }
+    return var_v0;
+}
+
+s32 func_80073E2C(void *arg0, s32 arg1, s32 arg2) {
+    s32 q;
+
+    if (D_800928C8 == 4 || D_800928C8 == 6) {
+        return 1;
+    }
+    *(s16 *)((s8*)(arg0) + 0xB6) += arg1;
+    if (*(s16 *)((s8*)(arg0) + 0xB6) > 0x1000) {
+        q = (*(s16 *)((s8*)(arg0) + 0xB6) - 0x1000) / 20;
+        if (q >= *(s16 *)((s8*)(arg0) + 0xB4)) {
+            *(s16 *)((s8*)(arg0) + 0xB6) -= arg1;
+            *(s16 *)((s8*)(arg0) + 0xBA) = 0;
+            if (func_80083CD8() != 4) {
+                func_8008EB4C(0x2E);
+            }
+            return 0;
+        }
+        *(s16 *)((s8*)(arg0) + 0xB6) = 0x1000;
+        *(s16 *)((s8*)(arg0) + 0xBA) = q;
+        switch (arg2) {
+        case 1:
+            *(s32 *)((s8*)(arg0) + 0x1654) += *(s16 *)((s8*)(arg0) + 0xBA);
+            break;
+        case 2:
+            *(s32 *)((s8*)(arg0) + 0x1658) += *(s16 *)((s8*)(arg0) + 0xBA);
+            break;
+        }
+    }
+    return 1;
+}
+
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_frame_event_effect (src/decomp/src/menu/arena_fighters_bout_and_effects.c:409). */
+#ifndef XM_S_arena_frame_event_effect
+#define XM_S_arena_frame_event_effect
+void xm_arena_frame_event_effect(Actor *actor, HitSpec *hit) __asm__("func_80073F34");
+#endif
+#ifndef XM_S_arena_effect_pack_trail_key
+#define XM_S_arena_effect_pack_trail_key
+u32 xm_arena_effect_pack_trail_key(s32 flag, s32 top, s32 middle, s32 low) __asm__("func_8007CD14");
+#endif
+#ifndef XM_S_arena_effect_is_two_point_type
+#define XM_S_arena_effect_is_two_point_type
+s32 xm_arena_effect_is_two_point_type(s32 code) __asm__("func_8007D25C");
+#endif
+#ifndef XM_S_arena_effect_start_line_sparkle
+#define XM_S_arena_effect_start_line_sparkle
+void xm_arena_effect_start_line_sparkle(s32 column, VECTOR *from, VECTOR *to, s32 key) __asm__("func_8007CD44");
+#endif
+#ifndef XM_S_arena_effect_queue_bolt_by_type
+#define XM_S_arena_effect_queue_bolt_by_type
+void xm_arena_effect_queue_bolt_by_type(VECTOR *from, VECTOR *to, s32 code) __asm__("func_8007D65C");
+#endif
+#ifndef XM_S_arena_effect_set_sparkle2_color
+#define XM_S_arena_effect_set_sparkle2_color
+void xm_arena_effect_set_sparkle2_color(CVECTOR *color) __asm__("func_8007C100");
+#endif
+#ifndef XM_S_arena_effect_start_trail_sparkle
+#define XM_S_arena_effect_start_trail_sparkle
+void xm_arena_effect_start_trail_sparkle(s32 column, VECTOR *pos, s32 key, s32 size) __asm__("func_8007C880");
+#endif
+#ifndef XM_S_arena_effect_spawn_sparkle
+#define XM_S_arena_effect_spawn_sparkle
+s32 xm_arena_effect_spawn_sparkle(VECTOR *pos, u32 kind) __asm__("func_8007D190");
+#endif
+void func_80073F34(Actor *actor, HitSpec *hit) {
+    VECTOR a;
+    VECTOR b;
+    s32 style;
+
+    style = xm_arena_effect_pack_trail_key((actor->flags >> 27) & 1, hit->part_a, hit->vertex_a, 1);
+    xm_arena_actor_get_part_point(actor, hit->part_a, hit->vertex_a, &a);
+    if (xm_arena_effect_is_two_point_type(hit->type) != 0) {
+        xm_arena_actor_get_part_point(actor, hit->part_b, hit->vertex_b, &b);
+        if (hit->type == 0x10) {
+            xm_arena_effect_start_line_sparkle((actor->flags >> 27) & 1, &a, &b, style);
+        } else {
+            xm_arena_effect_queue_bolt_by_type(&a, &b, hit->type);
+        }
+        return;
+    }
+    if (hit->part_a != hit->part_b || hit->vertex_a != hit->vertex_b) {
+        xm_arena_actor_get_part_point(actor, hit->part_b, hit->vertex_b, &b);
+        a.vx = (a.vx + b.vx) / 2;
+        a.vy = (a.vy + b.vy) / 2;
+        a.vz = (a.vz + b.vz) / 2;
+    }
+    xm_arena_effect_set_sparkle2_color(&actor->colour);
+    if (hit->type >= 0x20) {
+        xm_arena_effect_start_trail_sparkle((actor->flags >> 27) & 1, &a, style, hit->type - 0x20);
+    } else {
+        xm_arena_effect_spawn_sparkle(&a, hit->type);
+    }
+}
+#endif
+INCLUDE_ASM("asm/battling/nonmatchings/misc", func_800740E4);
+INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80074678);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_actor_apply_part_visibility (src/decomp/src/menu/arena_fighters_bout_and_effects.c:665). */
 #ifndef XM_S_arena_actor_apply_part_visibility
 #define XM_S_arena_actor_apply_part_visibility
 void xm_arena_actor_apply_part_visibility(Actor *actor) __asm__("func_80074998");
@@ -4122,7 +4199,84 @@ void func_8007E31C(void *arg0, void *arg1, void *arg2) {
         D_800926B0 += 1;
     }
 }
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007E3CC);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_effect_draw_lines (src/decomp/src/menu/arena_fighters_bout_and_effects.c:4231). */
+#ifndef XM_T_LINE_F2
+#define XM_T_LINE_F2
+typedef struct {
+    u_long tag;
+    u_char r0, g0, b0, code;
+    short x0, y0;
+    short x1, y1;
+} LINE_F2;
+#endif
+#ifndef XM_T_SceneLine
+#define XM_T_SceneLine
+typedef struct {
+    LINE_F2 line;
+    SVECTOR from; 
+    SVECTOR to;   
+} SceneLine;
+#endif
+#ifndef XM_S_arena_effect_lines
+#define XM_S_arena_effect_lines
+extern SceneLine xm_arena_effect_lines[100] __asm__("D_80094818");
+#endif
+void xm_arena_effect_draw_lines(u32 *ot) __asm__("func_8007E3CC");
+#pragma push_macro("gte_ldv01")
+#undef gte_ldv01
+#define gte_ldv01(r0, r1)                                                      \
+    __asm__ volatile("lwc2 $0, 0(%0);"                                         \
+                     "lwc2 $1, 4(%0);"                                         \
+                     "lwc2 $2, 0(%1);"                                         \
+                     "lwc2 $3, 4(%1)"                                          \
+                     :                                                         \
+                     : "r"(r0), "r"(r1) : "memory")
+#pragma push_macro("gte_rtpt")
+#undef gte_rtpt
+#define gte_rtpt() __asm__ volatile("nop;nop;.word 0x4A280030")
+#pragma push_macro("gte_stsxy01")
+#undef gte_stsxy01
+#define gte_stsxy01(r0, r1)                                                    \
+    __asm__ volatile("swc2 $12, 0(%0);"                                        \
+                     "swc2 $13, 0(%1)"                                         \
+                     :                                                         \
+                     : "r"(r0), "r"(r1)                                        \
+                     : "memory")
+void xm_arena_effect_draw_lines(u32 *ot) {
+    SceneScratch *scratch = SCENE_SCRATCH;
+    SceneLine *line = xm_arena_effect_lines;
+    s32 cx = scratch->camera.vx;
+    s32 cy = scratch->camera.vy;
+    s32 cz = scratch->camera.vz;
+    s32 i;
+    s32 z;
+    u32 prev;
+    u32 addr;
+
+    for (i = 0; i < xm_arena_effect_latched_line_count; i++, line++) {
+        scratch->from = line->from;
+        scratch->to = line->to;
+        scratch->from.vx -= cx;
+        scratch->from.vy -= cy;
+        scratch->from.vz -= cz;
+        scratch->to.vx -= cx;
+        scratch->to.vy -= cy;
+        scratch->to.vz -= cz;
+        gte_ldv01(&scratch->from, &scratch->to);
+        gte_rtpt();
+        gte_stsxy01(&line->line.x0, &line->line.x1);
+        gte_stsz2(&z);
+        prev = ot[z >> 4];
+        addr = (u32)line & 0xFFFFFF;
+        ot[z >> 4] = addr;
+        *(u32 *)addr = prev | 0x03000000;
+    }
+}
+#pragma pop_macro("gte_ldv01")
+#pragma pop_macro("gte_rtpt")
+#pragma pop_macro("gte_stsxy01")
+#endif
 extern u8 D_80092708;
 void func_8007E528(s32 arg0) {
     if (D_80092708 == 0 && arg0 == 0xA) {
@@ -6005,7 +6159,151 @@ void xm_arena_stage_keep_step_inside(VECTOR *pos, VECTOR *step, s32 radius) {
 #endif
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80082A70);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80082C4C);
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80082E60);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_stage_draw_wall (src/decomp/src/menu/arena_stage_views_and_hud.c:530). */
+#ifndef XM_T_gte_dpcs
+#define XM_T_gte_dpcs
+#define gte_dpcs() __asm__ volatile("nop;nop;.word 0x4A780010")
+#endif
+#ifndef XM_T_gte_strgb
+#define XM_T_gte_strgb
+#define gte_strgb(r0) __asm__ volatile("swc2 $22, 0(%0)" : : "r"(r0) : "memory")
+#endif
+#ifndef XM_S_arena_stage_draw_wall
+#define XM_S_arena_stage_draw_wall
+void xm_arena_stage_draw_wall(u32 *ot, VECTOR *pos) __asm__("func_80082E60");
+#endif
+#ifndef XM_S_arena_stage_wall_quads
+#define XM_S_arena_stage_wall_quads
+extern POLY_FT4 *xm_arena_stage_wall_quads[2] __asm__("D_80092788");
+#endif
+#pragma push_macro("gte_ldv3")
+#undef gte_ldv3
+#define gte_ldv3(r0, r1, r2)                                                   \
+    __asm__ volatile("lwc2 $0, 0(%0);"                                         \
+                     "lwc2 $1, 4(%0);"                                         \
+                     "lwc2 $2, 0(%1);"                                         \
+                     "lwc2 $3, 4(%1);"                                         \
+                     "lwc2 $4, 0(%2);"                                         \
+                     "lwc2 $5, 4(%2)"                                          \
+                     :                                                         \
+                     : "r"(r0), "r"(r1), "r"(r2)                               \
+                     : "memory")
+#pragma push_macro("gte_rtpt")
+#undef gte_rtpt
+#define gte_rtpt() __asm__ volatile("nop;nop;.word 0x4A280030")
+#pragma push_macro("gte_dpcs")
+#undef gte_dpcs
+#define gte_dpcs() __asm__ volatile("nop;nop;.word 0x4A780010")
+#pragma push_macro("gte_stsxy3")
+#undef gte_stsxy3
+#define gte_stsxy3(r0, r1, r2)                                                 \
+    __asm__ volatile("swc2 $12, 0(%0);"                                        \
+                     "swc2 $13, 0(%1);"                                        \
+                     "swc2 $14, 0(%2)"                                         \
+                     :                                                         \
+                     : "r"(r0), "r"(r1), "r"(r2)                               \
+                     : "memory")
+#pragma push_macro("gte_stsz3")
+#undef gte_stsz3
+#define gte_stsz3(r0, r1, r2)                                                  \
+    __asm__ volatile("swc2 $17, 0(%0);"                                        \
+                     "swc2 $18, 0(%1);"                                        \
+                     "swc2 $19, 0(%2)"                                         \
+                     :                                                         \
+                     : "r"(r0), "r"(r1), "r"(r2)                               \
+                     : "memory")
+#pragma push_macro("gte_stsxy")
+#undef gte_stsxy
+#define gte_stsxy(r0) __asm__ volatile("swc2 $14, 0(%0)" : : "r"(r0) : "memory")
+#pragma push_macro("gte_stsz")
+#undef gte_stsz
+#define gte_stsz(r0) __asm__ volatile("swc2 $19, 0(%0)" : : "r"(r0) : "memory")
+#pragma push_macro("gte_strgb")
+#undef gte_strgb
+#define gte_strgb(r0) __asm__ volatile("swc2 $22, 0(%0)" : : "r"(r0) : "memory")
+void func_80082E60(u32 *ot, VECTOR *pos) {
+    VECTOR centre;
+    SVECTOR base0;
+    SVECTOR base1;
+    SVECTOR mid0;
+    SVECTOR mid1;
+    SVECTOR top0;
+    SVECTOR top1;
+    s32 z[4];
+    POLY_FT4 *quad;
+    POLY_FT4 *next;
+    s32 angle;
+    s32 depth;
+    s32 i;
+
+    centre = *pos;
+    i = 0;
+    quad = xm_arena_stage_wall_quads[xm_arena_draw_buffer_index];
+    centre.vx -= 0x3F80;
+    centre.vz -= 0x3F80;
+    angle = xm_ratan2(centre.vx, centre.vz) & 0xFFF0;
+    angle -= 0x100;
+    mid0.vy = mid1.vy = -0x290;
+    base0.vy = base1.vy = 0;
+    top0.vy = top1.vy = -0x520;
+    base0.vx = ((xm_gpu_get_sin(angle) * 0x3F80) >> 12) - (s16)(xm_arena_view_origin.vx - 0x3F80);
+    base0.vz = ((xm_gpu_get_cos(angle) * 0x3F80) >> 12) - (s16)(xm_arena_view_origin.vz - 0x3F80);
+    angle += 0x10;
+    for (; i < 32; i++) {
+        top0.vx = mid0.vx = base0.vx;
+        top0.vz = mid0.vz = base0.vz;
+        top1.vx = mid1.vx = base1.vx = ((xm_gpu_get_sin(angle) * 0x3F80) >> 12) - (s16)(xm_arena_view_origin.vx - 0x3F80);
+        top1.vz = mid1.vz = base1.vz = ((xm_gpu_get_cos(angle) * 0x3F80) >> 12) - (s16)(xm_arena_view_origin.vz - 0x3F80);
+        gte_ldv3(&base0, &base1, &mid0);
+        gte_rtpt();
+        gte_dpcs();
+        gte_stsxy3(&quad[0].x0, &quad[0].x1, &quad[0].x2);
+        gte_stsz3(&z[0], &z[1], &z[2]);
+        gte_ldv3(&mid1, &top0, &top1);
+        gte_rtpt();
+        next = &quad[1];
+        depth = z[0];
+        if (depth < z[1]) {
+            depth = z[1];
+        }
+        if (depth <= z[2]) {
+            depth = z[2];
+        }
+        *(u32 *)&next->x0 = *(u32 *)&quad[0].x2;
+        gte_stsxy(&quad[0].x3);
+        gte_stsxy3(&quad[0].x3, &next->x2, &next->x3);
+        gte_stsz(&z[3]);
+        *(u32 *)&next->x1 = *(u32 *)&quad[0].x3;
+        if (depth <= z[3]) {
+            depth = z[3];
+        }
+        if (depth < 0x1C00) {
+            depth >>= 4;
+            gte_strgb(&quad[0].r0);
+            gte_strgb(&next->r0);
+            setlen(&quad[0], 9);
+            quad[0].code = 0x2C;
+            setlen(next, 9);
+            next->code = 0x2C;
+            xm_AddPrim(&ot[depth], &quad[0]);
+            xm_AddPrim(&ot[depth], next);
+        }
+        quad += 2;
+        angle += 0x10;
+        base0.vx = base1.vx;
+        base0.vz = base1.vz;
+    }
+}
+#pragma pop_macro("gte_ldv3")
+#pragma pop_macro("gte_rtpt")
+#pragma pop_macro("gte_dpcs")
+#pragma pop_macro("gte_stsxy3")
+#pragma pop_macro("gte_stsz3")
+#pragma pop_macro("gte_stsxy")
+#pragma pop_macro("gte_stsz")
+#pragma pop_macro("gte_strgb")
+#endif
 s32 rand(void);
 s32 rcos(s32);
 s32 rsin(s32);
@@ -6471,10 +6769,6 @@ void xm_arena_effect_emit_hit_sparks(u32 *ot, MATRIX *view) __asm__("func_800733
 #ifndef XM_S_arena_stage_apply_colors
 #define XM_S_arena_stage_apply_colors
 void xm_arena_stage_apply_colors(void) __asm__("func_80082A70");
-#endif
-#ifndef XM_S_arena_stage_draw_wall
-#define XM_S_arena_stage_draw_wall
-void xm_arena_stage_draw_wall(u32 *ot, VECTOR *pos) __asm__("func_80082E60");
 #endif
 #ifndef XM_S_arena_stage_draw_shadow
 #define XM_S_arena_stage_draw_shadow
@@ -8238,15 +8532,6 @@ void func_80087E38(void *arg0) {
 
 #ifndef XENO_PC_PORT
 /* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_debug_draw_path_markers (src/decomp/src/menu/arena_stage_views_and_hud.c:2270). */
-#ifndef XM_T_LINE_F2
-#define XM_T_LINE_F2
-typedef struct {
-    u_long tag;
-    u_char r0, g0, b0, code;
-    short x0, y0;
-    short x1, y1;
-} LINE_F2;
-#endif
 #ifndef XM_T_PathMarker
 #define XM_T_PathMarker
 typedef struct PathMarker {
