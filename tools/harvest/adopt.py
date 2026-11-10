@@ -8,7 +8,7 @@ ap.add_argument('module'); ap.add_argument('--max-insns',type=int,default=60); a
 ap.add_argument('--limit',type=int,default=0); ap.add_argument('--tu',default=''); ap.add_argument('--out',default='')
 ap.add_argument('--root',default=os.path.expanduser('~/dev/xenogears-decomp-public-harvest'))
 ap.add_argument('--work',default=os.path.expanduser('~/scratch/xeno-mit-harvest'))
-ap.add_argument('--source',default='xem'); ap.add_argument('--only',default=''); ap.add_argument('--diag',action='store_true'); ap.add_argument('--cc',default=''); ap.add_argument('--altcc',action='store_true'); ap.add_argument('--hand',default=''); ap.add_argument('--dump',default=''); ap.add_argument('--prelude',action='store_true'); ap.add_argument('--pos',action='store_true')
+ap.add_argument('--source',default='xem'); ap.add_argument('--only',default=''); ap.add_argument('--diag',action='store_true'); ap.add_argument('--cc',default=''); ap.add_argument('--altcc',action='store_true'); ap.add_argument('--hand',default=''); ap.add_argument('--dump',default=''); ap.add_argument('--prelude',action='store_true'); ap.add_argument('--pos',action='store_true'); ap.add_argument('--nojt',action='store_true')
 a=ap.parse_args()
 ROOT=a.root; WORK=a.work; MOD=a.module
 os.chdir(ROOT)
@@ -198,6 +198,28 @@ def has_ro(nm):
 CCMAP={'2.6.3':'gcc-2.6.3-psx','2.7.2':'gcc-2.7.2-psx','2.7.2-cdk':'gcc-2.7.2-cdk-psx','2.6.0':'gcc-2.6.0-psx'}
 cur_xcc=['']
 class Reject(Exception): pass
+JT=[None,0]   # [jt-aware? , rodata start of current TU]
+def jt_setup(tu):
+    JT[0]=False; JT[1]=0
+    cmds=run('ninja -t commands build/%s.s'%tu).stdout
+    if '-jt/cc1' not in cmds: return
+    try: mp=open(ROOT+'/build/out/%s.map'%MOD,errors='ignore').read().split('\n')
+    except: return
+    for i,l in enumerate(mp):
+        m=re.match(r'^ \.rodata\s+0x([0-9a-f]+)\s+0x([0-9a-f]+)\s+(\S+)$',l)
+        if not m and re.match(r'^ \.rodata\s*$',l) and i+1<len(mp): m=re.match(r'^\s+0x([0-9a-f]+)\s+0x([0-9a-f]+)\s+(\S+)$',mp[i+1])
+        if m and m.group(3)=='build/%s.o'%tu:
+            JT[0]=True; JT[1]=int(m.group(1),16); return
+def jt_markers(blizz_name):
+    """one .xeno_jt marker per jump table of the retail function (mode 4 = tight, 8 = natural .align 3)"""
+    if not JT[0]: return []
+    fs=glob.glob('asm/%s/nonmatchings/**/%s.s'%(MOD,blizz_name),recursive=True)
+    if not fs: return []
+    t=open(fs[0]).read(); out=[]
+    for m in re.finditer(r'dlabel jtbl_([0-9A-Fa-f]{8})\n(.*?)\.size jtbl_',t,re.S):
+        a=int(m.group(1),16); n=len(re.findall(r'\.word',m.group(2)))
+        out.append((a,'4' if (a-JT[1])%8==4 else '8',4*n))
+    return ['__asm__(".xeno_jt %s %d");'%(md,tot) for a,md,tot in sorted(out)]
 def analyze(row,fe,mode=''):
     """Return (block_text) or raise Reject."""
     name=row['xem_name']; src=fe['src']
@@ -313,6 +335,7 @@ def analyze(row,fe,mode=''):
             if t2 in XMAC and t2 not in um and t2!=um[k_]: um.append(t2)
         k_+=1
     for t in um: out.append('#pragma push_macro("%s")\n#undef %s\n%s'%(t,t,XMAC[t]))
+    out.extend(jt_markers(row['blizz_name']) if not a.nojt else [])
     out.append(body)
     for t in um: out.append('#pragma pop_macro("%s")'%t)
     out.append('#endif')
@@ -438,6 +461,7 @@ def main():
                 yield tu,[r for r in rs if r['xem_cc']==xc]
     for tu,rs in jobs():
         cur_xcc[0]=rs[0]['xem_cc']
+        jt_setup(tu)
         edits=sorted(set(r['edit'] for r in rs)); origs={f:open(f).read() for f in edits}
         if a.prelude:
             for f in edits:

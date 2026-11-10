@@ -1883,9 +1883,80 @@ void func_80072BB0(void) {
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80072DB4);
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80073300);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_choose_movement_mode (src/decomp/src/worldmap/worldmap_open_map.c:561). */
+#ifndef XM_S_worldmap_choose_movement_mode
+#define XM_S_worldmap_choose_movement_mode
+void xm_worldmap_choose_movement_mode(void) __asm__("func_80073300");
+#endif
+#ifndef XM_S_worldmap_movement_mode
+#define XM_S_worldmap_movement_mode
+extern s32 xm_worldmap_movement_mode __asm__("D_8009BE10");
+#endif
+__asm__(".xeno_jt 4 24");
+void func_80073300(void) {
+    if (xm_game_data.worldmap.flags & 0x4000) {
+        switch (xm_game_data.worldmap.flags & 0x1FFF) {
+        case 0:
+            break;
+        case 1:
+            xm_worldmap_movement_mode = 4;
+            break;
+        case 2:
+            xm_worldmap_movement_mode = 5;
+            break;
+        case 3:
+            xm_worldmap_movement_mode = 7;
+            break;
+        case 4:
+            xm_worldmap_movement_mode = 7;
+            break;
+        }
+    } else if ((xm_game_data.inGear[0] | xm_game_data.inGear[1] | xm_game_data.inGear[2]) == 0) {
+        xm_worldmap_movement_mode = 1;
+    } else {
+        xm_worldmap_movement_mode = 2;
+    }
+}
+#endif
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80073398);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_restore_player_position (src/decomp/src/worldmap/worldmap_open_map.c:587). */
+#ifndef XM_S_worldmap_restore_player_position
+#define XM_S_worldmap_restore_player_position
+void xm_worldmap_restore_player_position(void) __asm__("func_80073398");
+#endif
+#ifndef XM_S_worldmap_player_position
+#define XM_S_worldmap_player_position
+extern VECTOR xm_worldmap_player_position __asm__("D_8009C5AC");
+#endif
+#ifndef XM_S_worldmap_player_heading
+#define XM_S_worldmap_player_heading
+extern s32 xm_worldmap_player_heading __asm__("D_8009C584");
+#endif
+#ifndef XM_S_worldmap_load_flying_vehicle_position
+#define XM_S_worldmap_load_flying_vehicle_position
+void xm_worldmap_load_flying_vehicle_position(VECTOR *position) __asm__("func_8008DFF4");
+#endif
+__asm__(".xeno_jt 4 28");
+void func_80073398(void) {
+    xm_game_data.worldmap.unk6A = 0;
+    switch (xm_worldmap_movement_mode) {
+    case 1:
+    case 2:
+        xm_worldmap_player_position.vx = xm_game_data.worldmap.x << 12;
+        xm_worldmap_player_position.vz = xm_game_data.worldmap.z << 12;
+        xm_worldmap_player_heading = xm_game_data.worldmap.heading;
+        break;
+    case 4:
+    case 5:
+    case 7:
+        xm_worldmap_load_flying_vehicle_position(&xm_worldmap_player_position);
+        xm_worldmap_player_heading = xm_game_data.worldmap.vehicle_heading;
+        break;
+    }
+}
+#endif
 
 #ifndef XENO_PC_PORT
 /* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_place_player_at_arrival_point (src/decomp/src/worldmap/worldmap_open_map.c:607). */
@@ -1901,18 +1972,6 @@ typedef struct WorldmapSpot {
 #ifndef XM_S_worldmap_place_player_at_arrival_point
 #define XM_S_worldmap_place_player_at_arrival_point
 void xm_worldmap_place_player_at_arrival_point(s32 id) __asm__("func_80073448");
-#endif
-#ifndef XM_S_worldmap_load_flying_vehicle_position
-#define XM_S_worldmap_load_flying_vehicle_position
-void xm_worldmap_load_flying_vehicle_position(VECTOR *position) __asm__("func_8008DFF4");
-#endif
-#ifndef XM_S_worldmap_player_position
-#define XM_S_worldmap_player_position
-extern VECTOR xm_worldmap_player_position __asm__("D_8009C5AC");
-#endif
-#ifndef XM_S_worldmap_player_heading
-#define XM_S_worldmap_player_heading
-extern s32 xm_worldmap_player_heading __asm__("D_8009C584");
 #endif
 #ifndef XM_S_worldmap_arrival_points
 #define XM_S_worldmap_arrival_points
@@ -2928,10 +2987,6 @@ typedef struct {
 #ifndef XM_T_VEHICLE_SPOTS
 #define XM_T_VEHICLE_SPOTS
 #define VEHICLE_SPOTS ((VehicleSpot *)&xm_game_data.vars[21])
-#endif
-#ifndef XM_S_worldmap_movement_mode
-#define XM_S_worldmap_movement_mode
-extern s32 xm_worldmap_movement_mode __asm__("D_8009BE10");
 #endif
 void func_80075D4C(void) {
     WorldmapActor *actors;
