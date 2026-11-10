@@ -3829,7 +3829,37 @@ s32 func_80076A14(void) {
 }
 
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80076A1C);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_scene_frame_billboards_update (src/decomp/src/worldmap/worldmap_open_map.c:1758). */
+#ifndef XM_S_worldmap_scene_frame_billboards_update
+#define XM_S_worldmap_scene_frame_billboards_update
+s32 xm_worldmap_scene_frame_billboards_update(void) __asm__("func_80076A1C");
+#endif
+s32 func_80076A1C(void) {
+    if (xm_worldmap_view_kind == 0) {
+        xm_worldmap_camera_build_from_angles(&xm_worldmap_view_setup);
+    } else {
+        xm_worldmap_camera_build_look_at(&xm_worldmap_view_setup);
+    }
+    xm_worldmap_effects_run_emitters();
+    xm_worldmap_effects_draw_particles();
+    xm_worldmap_billboards_draw();
+    xm_worldmap_objects_draw();
+    xm_worldmap_terrain_wrap_origin(&xm_worldmap_terrain_origin);
+    if (xm_worldmap_terrain_crossed_edges != 0) {
+        xm_worldmap_terrain_update_grid(&xm_worldmap_camera);
+        xm_worldmap_stream_wait_for_slot();
+        xm_worldmap_terrain_load_new_edges();
+    }
+    xm_worldmap_terrain_classify_blocks(&xm_worldmap_camera);
+    xm_worldmap_terrain_draw(xm_worldmap_current_display_buffer->ot, (s32)xm_worldmap_current_display_buffer->packets, &xm_worldmap_camera);
+    xm_worldmap_wave_phase_x += 0x40;
+    xm_worldmap_horizon_draw();
+    xm_worldmap_sky_draw();
+    xm_worldmap_clouds_draw();
+    return 1;
+}
+#endif
 
 #ifndef XENO_PC_PORT
 /* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_actor_script_run (src/decomp/src/worldmap/worldmap_open_map.c:1789). */
@@ -4114,7 +4144,35 @@ s32 func_80077954(void) {
 #endif
 
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8007795C);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_scene_frame_no_effects_update (src/decomp/src/worldmap/worldmap_open_map.c:2163). */
+#ifndef XM_S_worldmap_scene_frame_no_effects_update
+#define XM_S_worldmap_scene_frame_no_effects_update
+s32 xm_worldmap_scene_frame_no_effects_update(void) __asm__("func_8007795C");
+#endif
+s32 func_8007795C(void) {
+    if (xm_worldmap_view_kind == 0) {
+        xm_worldmap_camera_build_from_angles(&xm_worldmap_view_setup);
+    } else {
+        xm_worldmap_camera_build_look_at(&xm_worldmap_view_setup);
+    }
+    xm_worldmap_billboards_draw();
+    xm_worldmap_objects_draw();
+    xm_worldmap_terrain_wrap_origin(&xm_worldmap_terrain_origin);
+    if (xm_worldmap_terrain_crossed_edges != 0) {
+        xm_worldmap_terrain_update_grid(&xm_worldmap_camera);
+        xm_worldmap_stream_wait_for_slot();
+        xm_worldmap_terrain_load_new_edges();
+    }
+    xm_worldmap_terrain_classify_blocks(&xm_worldmap_camera);
+    xm_worldmap_terrain_draw(xm_worldmap_current_display_buffer->ot, (s32)xm_worldmap_current_display_buffer->packets, &xm_worldmap_camera);
+    xm_worldmap_wave_phase_x += 0x40;
+    xm_worldmap_horizon_draw();
+    xm_worldmap_sky_draw();
+    xm_worldmap_clouds_draw();
+    return 1;
+}
+#endif
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80077A64);
 
@@ -4486,7 +4544,36 @@ s32 func_80078948(void) {
 }
 
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80078950);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_scene_frame_update (src/decomp/src/worldmap/worldmap_scenes_9_10.c:242). */
+#ifndef XM_S_worldmap_scene_frame_update
+#define XM_S_worldmap_scene_frame_update
+s32 xm_worldmap_scene_frame_update(void) __asm__("func_80078950");
+#endif
+s32 func_80078950(void) {
+    if (xm_worldmap_view_kind == 0) {
+        xm_worldmap_camera_build_from_angles(&xm_worldmap_view_setup);
+    } else {
+        xm_worldmap_camera_build_look_at(&xm_worldmap_view_setup);
+    }
+    xm_worldmap_effects_run_emitters();
+    xm_worldmap_effects_draw_particles();
+    xm_worldmap_objects_draw();
+    xm_worldmap_terrain_wrap_origin(&xm_worldmap_terrain_origin);
+    if (xm_worldmap_terrain_crossed_edges != 0) {
+        xm_worldmap_terrain_update_grid(&xm_worldmap_camera);
+        xm_worldmap_stream_wait_for_slot();
+        xm_worldmap_terrain_load_new_edges();
+    }
+    xm_worldmap_terrain_classify_blocks(&xm_worldmap_camera);
+    xm_worldmap_terrain_draw(xm_worldmap_current_display_buffer->ot, (s32)xm_worldmap_current_display_buffer->packets, &xm_worldmap_camera);
+    xm_worldmap_wave_phase_x += 0x40;
+    xm_worldmap_horizon_draw();
+    xm_worldmap_sky_draw();
+    xm_worldmap_clouds_draw();
+    return 1;
+}
+#endif
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80078A60);
 

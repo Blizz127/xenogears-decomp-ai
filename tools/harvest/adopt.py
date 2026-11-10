@@ -33,6 +33,9 @@ if EA_MODE:
 else:
   xsym.update(load_syms(X+'resident/symbol_addrs.txt'))
 if not EA_MODE and xmap[MOD]!='resident': xsym.update(load_syms(X+'overlays/%s.symbols.txt'%xmap[MOD]))
+if not EA_MODE:
+    for _f in sorted(glob.glob(X+'overlays/*.symbols.txt')):
+        for _k,_v in load_syms(_f).items(): xsym.setdefault(_k,_v)
 # Blizz known symbol names for this module
 def toks(path,S):
     try: t=open(path,errors='ignore').read()

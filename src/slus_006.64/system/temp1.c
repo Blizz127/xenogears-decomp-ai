@@ -51,97 +51,8 @@ static int XenoWalkAnimDumpEnabled(void)
 extern void func_800BA8F4(void* pSpriteData);
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1", func_80022B2C);
-#else
-void func_80022B2C(u8* pSpriteData)
-{
-    u8* p = pSpriteData;
-    s32 vel, dv, pos, floor;
-
-    if ((*(u32*)(p + 0x3C) >> 26) & 1) {
-        vel = *(s32*)(p + 0x10);
-        dv = (s32)((u32)func_80022CAC(p, vel >> 4) << 4);
-        *(u32*)(p + 0x4) += (u32)dv;
-        *(s32*)(p + 0x10) = (s32)((u32)vel + *(u32*)(p + 0x1C));
-        return;
-    }
-
-    func_800BA8F4(p);
-
-    vel = *(s32*)(p + 0x10);
-    if (vel > 0 && *(s32*)(p + 0x1C) > 0) {
-        floor = *(s16*)(p + 0x84);
-        if (*(s16*)(p + 0x6) == (s16)floor) {
-            return;
-        }
-        dv = (s32)((u32)func_80022CAC(p, vel >> 4) << 4);
-        pos = (s32)(*(u32*)(p + 0x4) + (u32)dv);
-        *(s32*)(p + 0x4) = pos;
-        if ((pos >> 16) < floor) {
-            *(u32*)(p + 0x10) += *(u32*)(p + 0x1C);
-            return;
-        }
-
-        /* Landed: snap to the floor and bounce. */
-        *(s32*)(p + 0x4) = (s32)((u32)floor << 16);
-        pos = (s32)((0u - (u32)vel) * ((*(u32*)(p + 0xA8) >> 1) & 0x3FF));
-        if (pos < 0) {
-            pos += 0xFF;
-        }
-        pos >>= 8;
-        *(s32*)(p + 0x10) = pos;
-        if (pos < 0) {
-            pos = -pos;
-        }
-        dv = *(s32*)(p + 0x1C);
-        if (dv < 0) {
-            dv = (s32)(0u - (u32)dv);
-        }
-        if (pos < dv) {
-            *(s32*)(p + 0x10) = 0;
-        }
-        return;
-    }
-
-    dv = (s32)((u32)func_80022CAC(p, vel >> 4) << 4);
-    pos = (s32)(*(u32*)(p + 0x4) + (u32)dv);
-    *(s32*)(p + 0x4) = pos;
-    floor = *(s16*)(p + 0x84);
-    if ((pos >> 16) >= floor) {
-        *(s32*)(p + 0x4) = (s32)((u32)floor << 16);
-    }
-    *(u32*)(p + 0x10) += *(u32*)(p + 0x1C);
-}
-#endif
-
-s32 func_80022CAC(void* pSpriteData, s32 value)
-{
-    u16 factor = *(u16*)((u8*)pSpriteData + 0x3A);
-    if (factor != 0) {
-        s32 adj;
-        /* MULT/MFLO keeps the low word; the wide product avoids C overflow. */
-        value = (s32)((s64)value * factor);
-        adj = value;
-        if (value < 0) adj = value + 0x3FF;
-        value = adj >> 10;
-    }
-    return value;
-}
-
-void func_80022CDC(u8* pSprite) {
-    s32 val;
-    val = func_80022CAC(pSprite, *(s32*)(pSprite + 0x0C) >> 4);
-    *(u32*)(pSprite + 0x00) += (u32)val << 4;
-    val = func_80022CAC(pSprite, *(s32*)(pSprite + 0x14) >> 4);
-    *(u32*)(pSprite + 0x08) += (u32)val << 4;
-    func_80022B2C(pSprite);
-}
-
-extern void func_8001D2B0(void* pSpriteData, s16 frameIndex);
-
 #ifndef XENO_PC_PORT
-#ifndef XENO_PC_PORT
-/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): sprite_show_indexed_frame (src/decomp/src/resident/sprite_construction.c:389). */
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): sprite_move_vertically (src/decomp/src/resident/sprite_construction.c:329). */
 #ifndef XM_T_SpritePart
 #define XM_T_SpritePart
 typedef struct {
@@ -288,6 +199,147 @@ typedef struct Sprite {
     } b0;                    
 } Sprite;
 #endif
+#ifndef XM_S_sprite_move_vertically
+#define XM_S_sprite_move_vertically
+void xm_sprite_move_vertically(Sprite *sprite) __asm__("func_80022B2C");
+#endif
+#ifndef XM_S_battle_sprite_update_ground
+#define XM_S_battle_sprite_update_ground
+void xm_battle_sprite_update_ground(Sprite *sprite) __asm__("func_800BA8F4");
+#endif
+#ifndef XM_S_sprite_scale_by_rate
+#define XM_S_sprite_scale_by_rate
+s32 xm_sprite_scale_by_rate(Sprite *sprite, s32 value) __asm__("func_80022CAC");
+#endif
+void func_80022B2C(Sprite *sprite) {
+    s32 speed;
+    s32 gravity;
+
+    if (!((sprite->render.word >> 26) & 1)) {
+        xm_battle_sprite_update_ground(sprite);
+        if (sprite->speed_y > 0 && sprite->gravity > 0) {
+            if ((sprite->y >> 16) == sprite->ground) {
+                return;
+            }
+            sprite->y += xm_sprite_scale_by_rate(sprite, sprite->speed_y >> 4) << 4;
+            if ((sprite->y >> 16) >= sprite->ground) {
+                speed = -sprite->speed_y * sprite->frame_bits.bounce;
+                sprite->y = sprite->ground << 16;
+                
+                if (speed < 0) {
+                    speed += 0xFF;
+                }
+                speed >>= 8;
+                sprite->speed_y = speed;
+                gravity = sprite->gravity;
+                if (abs(speed) < abs(gravity)) {
+                    sprite->speed_y = 0;
+                }
+                return;
+            }
+        } else {
+            sprite->y += xm_sprite_scale_by_rate(sprite, sprite->speed_y >> 4) << 4;
+            if ((sprite->y >> 16) >= sprite->ground) {
+                sprite->y = sprite->ground << 16;
+            }
+        }
+        sprite->speed_y += sprite->gravity;
+    } else {
+        sprite->y += xm_sprite_scale_by_rate(sprite, sprite->speed_y >> 4) << 4;
+        sprite->speed_y += sprite->gravity;
+    }
+}
+#endif
+#else
+void func_80022B2C(u8* pSpriteData)
+{
+    u8* p = pSpriteData;
+    s32 vel, dv, pos, floor;
+
+    if ((*(u32*)(p + 0x3C) >> 26) & 1) {
+        vel = *(s32*)(p + 0x10);
+        dv = (s32)((u32)func_80022CAC(p, vel >> 4) << 4);
+        *(u32*)(p + 0x4) += (u32)dv;
+        *(s32*)(p + 0x10) = (s32)((u32)vel + *(u32*)(p + 0x1C));
+        return;
+    }
+
+    func_800BA8F4(p);
+
+    vel = *(s32*)(p + 0x10);
+    if (vel > 0 && *(s32*)(p + 0x1C) > 0) {
+        floor = *(s16*)(p + 0x84);
+        if (*(s16*)(p + 0x6) == (s16)floor) {
+            return;
+        }
+        dv = (s32)((u32)func_80022CAC(p, vel >> 4) << 4);
+        pos = (s32)(*(u32*)(p + 0x4) + (u32)dv);
+        *(s32*)(p + 0x4) = pos;
+        if ((pos >> 16) < floor) {
+            *(u32*)(p + 0x10) += *(u32*)(p + 0x1C);
+            return;
+        }
+
+        /* Landed: snap to the floor and bounce. */
+        *(s32*)(p + 0x4) = (s32)((u32)floor << 16);
+        pos = (s32)((0u - (u32)vel) * ((*(u32*)(p + 0xA8) >> 1) & 0x3FF));
+        if (pos < 0) {
+            pos += 0xFF;
+        }
+        pos >>= 8;
+        *(s32*)(p + 0x10) = pos;
+        if (pos < 0) {
+            pos = -pos;
+        }
+        dv = *(s32*)(p + 0x1C);
+        if (dv < 0) {
+            dv = (s32)(0u - (u32)dv);
+        }
+        if (pos < dv) {
+            *(s32*)(p + 0x10) = 0;
+        }
+        return;
+    }
+
+    dv = (s32)((u32)func_80022CAC(p, vel >> 4) << 4);
+    pos = (s32)(*(u32*)(p + 0x4) + (u32)dv);
+    *(s32*)(p + 0x4) = pos;
+    floor = *(s16*)(p + 0x84);
+    if ((pos >> 16) >= floor) {
+        *(s32*)(p + 0x4) = (s32)((u32)floor << 16);
+    }
+    *(u32*)(p + 0x10) += *(u32*)(p + 0x1C);
+}
+#endif
+
+s32 func_80022CAC(void* pSpriteData, s32 value)
+{
+    u16 factor = *(u16*)((u8*)pSpriteData + 0x3A);
+    if (factor != 0) {
+        s32 adj;
+        /* MULT/MFLO keeps the low word; the wide product avoids C overflow. */
+        value = (s32)((s64)value * factor);
+        adj = value;
+        if (value < 0) adj = value + 0x3FF;
+        value = adj >> 10;
+    }
+    return value;
+}
+
+void func_80022CDC(u8* pSprite) {
+    s32 val;
+    val = func_80022CAC(pSprite, *(s32*)(pSprite + 0x0C) >> 4);
+    *(u32*)(pSprite + 0x00) += (u32)val << 4;
+    val = func_80022CAC(pSprite, *(s32*)(pSprite + 0x14) >> 4);
+    *(u32*)(pSprite + 0x08) += (u32)val << 4;
+    func_80022B2C(pSprite);
+}
+
+extern void func_8001D2B0(void* pSpriteData, s16 frameIndex);
+
+#ifndef XENO_PC_PORT
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): sprite_show_indexed_frame (src/decomp/src/resident/sprite_construction.c:389). */
 #ifndef XM_S_sprite_show_indexed_frame
 #define XM_S_sprite_show_indexed_frame
 void xm_sprite_show_indexed_frame(Sprite *sprite) __asm__("func_80022D44");
