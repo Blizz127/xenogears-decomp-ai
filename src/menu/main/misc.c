@@ -15364,7 +15364,109 @@ s32 func_801E1418(s32 slotIdx, u8 arg1) {
 
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E1544);
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E1AC8);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): menu_deathblow_screen_build (src/decomp/src/slot39/menu_member_screens.c:1863). */
+#ifndef XM_S_menu_deathblow_screen_build
+#define XM_S_menu_deathblow_screen_build
+void xm_menu_deathblow_screen_build(u8 slot) __asm__("func_801E1AC8");
+#endif
+#ifndef XM_S_menu_test_bit_msb_first
+#define XM_S_menu_test_bit_msb_first
+u16 xm_menu_test_bit_msb_first(u16 flags, u8 bit) __asm__("func_801C8640");
+#endif
+#ifndef XM_S_menu_compute_deathblow_progress
+#define XM_S_menu_compute_deathblow_progress
+u32 xm_menu_compute_deathblow_progress(u8 slot, u8 row) __asm__("func_801E1418");
+#endif
+#ifndef XM_S_text_get_system_resource_entry
+#define XM_S_text_get_system_resource_entry
+u8 *xm_text_get_system_resource_entry(s32 table, s32 index) __asm__("func_80033784");
+#endif
+#ifndef XM_S_menu_deathblow_screen_layout_row
+#define XM_S_menu_deathblow_screen_layout_row
+void xm_menu_deathblow_screen_layout_row(u8 row, u8 mode, u8 *pixels, u32 percent) __asm__("func_801E1544");
+#endif
+void func_801E1AC8(u8 slot) {
+    u8 *pixels;
+    RECT rect;
+    u8 text[2];
+    u8 glyphs[8];
+    s32 i;
+    u8 kind;
+    u8 learned;
+    u8 show;
+    u32 percent;
+
+    text[1] = 0;
+    pixels = xm_heap_alloc(0x3f6, 0);
+    for (i = 0; i < 13; i++) {
+        xm_menu_state_current->status_list->gaugeShown[i] = 0;
+        if (xm_menu_test_bit_msb_first(xm_game_data.skills[xm_menu_state_current->flags->party[slot]].counterSkills, i)) {
+            show = 1;
+            kind = 1;
+            learned = 1;
+        } else {
+            percent = xm_menu_compute_deathblow_progress(slot, i);
+            if (percent >= 50) {
+                show = 1;
+                kind = 2;
+            } else {
+                show = 0;
+                kind = 0;
+            }
+            learned = 0;
+        }
+        if (show) {
+            xm_menu_state_current->status_list->names[i].width =
+                xm_window_render_text_line(xm_text_get_system_resource_entry(xm_menu_state_current->flags->party[slot], i), pixels, 0x24, 0);
+            if (i < 7 && learned) {
+                text[0] = xm_menu_state_current->tables->arts[xm_menu_state_current->flags->party[slot]][i + 7].unk17 + 0x10;
+            } else {
+                text[0] = 0xf;
+            }
+            xm_text_decode_codes(text, glyphs, 1);
+            xm_menu_state_current->status_list->values[i].width = xm_window_render_text_line(glyphs, pixels, 0x24, 1);
+            rect.x = (i & 1) * 24 + 0x180;
+            rect.y = i / 2 * 13 + 0x80;
+            rect.w = 0x28;
+            rect.h = 0xd;
+            xm_LoadImage(&rect, (u_long *)pixels);
+            xm_DrawSync(0);
+            xm_menu_label_init_quads(&xm_menu_state_current->status_list->names[i], i, 0x80, 0x81);
+            xm_menu_label_init_quads(&xm_menu_state_current->status_list->values[i], i, 0x80, 0x82);
+            (xm_menu_state_current->status_list->names[i].polys + xm_menu_state_current->buffer_index)->x0 = 0x5c;
+            (xm_menu_state_current->status_list->names[i].polys + xm_menu_state_current->buffer_index)->y0 = i * 13 + 0x1f;
+            (xm_menu_state_current->status_list->names[i].polys + xm_menu_state_current->buffer_index)->x1 =
+                xm_menu_state_current->status_list->names[i].width + 0x5c;
+            (xm_menu_state_current->status_list->names[i].polys + xm_menu_state_current->buffer_index)->y1 = i * 13 + 0x1f;
+            (xm_menu_state_current->status_list->names[i].polys + xm_menu_state_current->buffer_index)->x2 = 0x5c;
+            (xm_menu_state_current->status_list->names[i].polys + xm_menu_state_current->buffer_index)->y2 = i * 13 + 0x2c;
+            (xm_menu_state_current->status_list->names[i].polys + xm_menu_state_current->buffer_index)->x3 =
+                xm_menu_state_current->status_list->names[i].width + 0x5c;
+            (xm_menu_state_current->status_list->names[i].polys + xm_menu_state_current->buffer_index)->y3 = i * 13 + 0x2c;
+            (xm_menu_state_current->status_list->values[i].polys + xm_menu_state_current->buffer_index)->x0 = 0xc8;
+            (xm_menu_state_current->status_list->values[i].polys + xm_menu_state_current->buffer_index)->y0 = i * 13 + 0x1f;
+            (xm_menu_state_current->status_list->values[i].polys + xm_menu_state_current->buffer_index)->x1 =
+                xm_menu_state_current->status_list->values[i].width + 0xc8;
+            (xm_menu_state_current->status_list->values[i].polys + xm_menu_state_current->buffer_index)->y1 = i * 13 + 0x1f;
+            (xm_menu_state_current->status_list->values[i].polys + xm_menu_state_current->buffer_index)->x2 = 0xc8;
+            (xm_menu_state_current->status_list->values[i].polys + xm_menu_state_current->buffer_index)->y2 = i * 13 + 0x2c;
+            (xm_menu_state_current->status_list->values[i].polys + xm_menu_state_current->buffer_index)->x3 =
+                xm_menu_state_current->status_list->values[i].width + 0xc8;
+            (xm_menu_state_current->status_list->values[i].polys + xm_menu_state_current->buffer_index)->y3 = i * 13 + 0x2c;
+            xm_menu_state_current->status_list->names[i].buffer = xm_menu_state_current->buffer_index;
+            xm_menu_state_current->status_list->shown[i] = 1;
+        } else {
+            xm_menu_state_current->status_list->shown[i] = 0;
+        }
+        xm_menu_state_current->status_list->counts[i] = 0;
+        xm_menu_deathblow_screen_layout_row(i, kind, pixels, percent);
+    }
+    xm_heap_free(pixels);
+    xm_menu_name_label_layout(&xm_menu_state_current->status_list->title, slot, 0, 2);
+    xm_menu_state_current->flags->status_list_shown = 1;
+}
+#endif
 #endif
 
 extern void func_801E1014(void);
