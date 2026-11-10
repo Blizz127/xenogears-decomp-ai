@@ -8,7 +8,7 @@ ap.add_argument('module'); ap.add_argument('--max-insns',type=int,default=60); a
 ap.add_argument('--limit',type=int,default=0); ap.add_argument('--tu',default=''); ap.add_argument('--out',default='')
 ap.add_argument('--root',default=os.path.expanduser('~/dev/xenogears-decomp-public-harvest'))
 ap.add_argument('--work',default=os.path.expanduser('~/scratch/xeno-mit-harvest'))
-ap.add_argument('--source',default='xem'); ap.add_argument('--only',default=''); ap.add_argument('--diag',action='store_true'); ap.add_argument('--cc',default=''); ap.add_argument('--altcc',action='store_true'); ap.add_argument('--hand',default=''); ap.add_argument('--dump',default='')
+ap.add_argument('--source',default='xem'); ap.add_argument('--only',default=''); ap.add_argument('--diag',action='store_true'); ap.add_argument('--cc',default=''); ap.add_argument('--altcc',action='store_true'); ap.add_argument('--hand',default=''); ap.add_argument('--dump',default=''); ap.add_argument('--prelude',action='store_true'); ap.add_argument('--pos',action='store_true')
 a=ap.parse_args()
 ROOT=a.root; WORK=a.work; MOD=a.module
 os.chdir(ROOT)
@@ -76,6 +76,13 @@ for f in glob.glob('include/psyq/**/*.h',recursive=True)+['include/types.h','inc
     PSYQ.update(re.findall(r'#\s*define\s+(\w+)',t)); PSYQ.update(re.findall(r'typedef[^;{]*?(\w+)\s*(?:\[[^\]]*\])?;',t))
     PSYQ.update(re.findall(r'}\s*(\w+)\s*;',t)); PSYQ.update(re.findall(r'\b(?:struct|union|enum)\s+(\w+)\s*\{',t))
 KW=set('auto break case char const continue default do double else enum extern float for goto if int long register return short signed sizeof static struct switch typedef union unsigned void volatile while asm __asm__ inline'.split())
+GTE_T={'VECTOR','SVECTOR','MATRIX','CVECTOR','DVECTOR'}
+def psyq_pre(blk):
+    if a.pos: return blk
+    need=[t for t in set(ident_tokens(blk)) if t in GTE_T and t not in VIS]
+    if need and 'psyq/libgte.h' not in blk:
+        return '#ifndef XENO_PC_PORT\n#include "psyq/libgte.h"\n#endif\n'+blk
+    return blk
 def strip_str(s): return re.sub(r'"(\\.|[^"\\])*"|\'(\\.|[^\'\\])*\'','""',s)
 def ident_tokens(s):
     s=strip_str(s); out=[]
@@ -87,6 +94,8 @@ def ident_tokens(s):
         out.append(m.group(0))
     return out
 VIS=set()
+MACROS=[set()]
+CTXF=['']
 def visible_for(tu):
     obj='build/'+tu+'.o'
     cmds=run('ninja -t commands %s'%obj).stdout.split('\n')
@@ -97,7 +106,7 @@ def visible_for(tu):
         r=run(c)
         try: t=open('/tmp/xm_vis.dm').read()
         except: t=''
-        v.update(re.findall(r'#define\s+(\w+)',t))
+        v.update(re.findall(r'#define\s+(\w+)',t)); MACROS[0]=set(re.findall(r'#define\s+(\w+)',t))
     # typedef names from the base preprocessed file
     try: t=open(WORK+'/base_build/'+tu+'.i').read()
     except: t=''
@@ -109,13 +118,51 @@ def visible_for(tu):
     v.update(re.findall(r'\b(?:struct|union|enum)\s+(\w+)',t))
     v.update(re.findall(r'\(\s*\*\s*(\w+)\s*\)\s*\(',t))
     return v
+POSMAP={}
+def build_posmap(tu):
+    """names -> list of (file,line) of typedef/struct definitions seen by the TU's own cpp run (linemarkers kept)"""
+    POSMAP.clear()
+    obj='build/'+tu+'.o'
+    cmds=run('ninja -t commands %s'%obj).stdout.split('\n')
+    cpp=[c for c in cmds if 'mips-linux-gnu-cpp' in c and ('src/'+tu.split('src/',1)[-1]) in c][:1]
+    if not cpp: return False
+    c=re.sub(r'\s-o\s+\S+',' -o /tmp/xm_pos.i',cpp[0]).replace(' -P ',' ').replace(' -MMD','').replace(' -MP','')
+    run(c)
+    try: t=open('/tmp/xm_pos.i',errors='ignore').read()
+    except: return False
+    cur=None; ln=0; buf=[]; segs=[]
+    for l in t.split('\n'):
+        m=re.match(r'# (\d+) "([^"]*)"',l)
+        if m:
+            if buf: segs.append((cur,ln,'\n'.join(buf))); buf=[]
+            cur=m.group(2); ln=int(m.group(1)); continue
+        buf.append(l)
+    if buf: segs.append((cur,ln,'\n'.join(buf)))
+    pats=[r'typedef[^;{]*?(\w+)\s*(?:\[[^\]]*\])*;',r'}\s*(\w+)\s*;',r'\b(?:struct|union|enum)\s+(\w+)',r'\(\s*\*\s*(\w+)\s*\)\s*\(']
+    for f,l0,tx in segs:
+        for p in pats:
+            for m in re.finditer(p,tx):
+                POSMAP.setdefault(m.group(1),[]).append((f,l0+tx.count('\n',0,m.start())))
+    return True
+def vis_at(edit,line):
+    v=set(['s8','s16','s32','u8','u16','u32','u_char','u_short','u_long','NULL'])
+    for n,ls in POSMAP.items():
+        for f,l in ls:
+            if f!=edit or l<line: v.add(n); break
+    return v
 def pick(entries,kinds,pref_file=None):
     c=[e for e in entries if e['kind'] in kinds]
     if pref_file:
         c2=[e for e in c if e['file']==pref_file]
         if c2: c=c2
     # prefer header extern for vars
-    c.sort(key=lambda e:(not e['src'].lstrip().startswith('extern'), e['file'].endswith('.c')))
+    def cp(e):
+        a_,b_=e['file'].split('/'),CTXF[0].split('/'); n=0
+        for x,y in zip(a_,b_):
+            if x!=y: break
+            n+=1
+        return -n
+    c.sort(key=lambda e:(cp(e) if a.pos else 0, not e['src'].lstrip().startswith('extern'), e['file'].endswith('.c')))
     return c[0] if c else None
 def pick_var(es,n,src,pf):
     c=[e for e in es if e['kind']=='var']
@@ -155,12 +202,13 @@ def analyze(row,fe,mode=''):
     if re.search(r'\bswitch\b|\bfloat\b|\bdouble\b|\b\d+\.\d',strip_str(src)) or '"' in src:
         row['ro']=True
         if not has_ro(row['blizz_name']): raise Reject('rodata not migrated into function .s')
-    pf=fe['file']; decls=[]; typeents=[]; seen_t=set(); symdone={}
+    pf=fe['file']; CTXF[0]=pf; decls=[]; typeents=[]; seen_t=set(); symdone={}; inprog=set(); fwd=set()
     base_toks=ident_tokens(src)
     renames={}
     ISO='iso' in mode; ASMDEF='asmdef' in mode; tmap={}
     def isotype(n): return ISO and n not in PSYQ and any(e['kind'] in ('typedef','tag') for e in (idx.get(n,[])+idx.get('tag:'+n,[])))
     def add_type(n):
+        if n in seen_t and n in inprog: fwd.add(n)
         if n in seen_t or (n in VIS and not isotype(n)): return
         if isotype(n): tmap[n]='xm_'+n
         seen_t.add(n)
@@ -168,8 +216,10 @@ def analyze(row,fe,mode=''):
         if not es: return
         e=pick(es,('typedef','define','tag'))
         if not e: return
+        inprog.add(n)
         for t2 in ident_tokens(e['src']):
             if t2!=n: resolve(t2,e['src'],in_type=(e['kind']!='define'))
+        inprog.discard(n)
         key=hashlib.md5(e['src'].encode()).hexdigest()
         if key not in [k for k,_ in typeents]: typeents.append((key,(n,e['src'])))
     def decl_for(n):
@@ -236,7 +286,11 @@ def analyze(row,fe,mode=''):
     def tren(txt):
         for n0,r0 in tmap.items(): txt=re.sub(r'(?<![\w.>])%s\b'%re.escape(n0),r0,txt)
         return txt
-    for key,(n,s) in typeents:
+    for i_,(key,(n,s)) in enumerate(typeents):
+        for f_ in fwd:
+            pos_=[j for j,(k2,(n2,s2)) in enumerate(typeents) if n2==f_]
+            if pos_ and pos_[0]>i_ and re.search(r'typedef\s+struct\s+%s\b'%re.escape(f_),typeents[pos_[0]][1][1]):
+                s=re.sub(r'(?<![\w.>])(?<!struct )%s\b(?=\s*\*)'%re.escape(f_),'struct '+f_,s)
         if s.lstrip().startswith('#'):
             for n0,r0 in renames.items(): s=re.sub(r'(?<![\w.>])%s\b'%re.escape(n0),r0,s)
         else: s=tren(s)
@@ -366,7 +420,19 @@ def main():
     for tu,rs in jobs():
         cur_xcc[0]=rs[0]['xem_cc']
         edits=sorted(set(r['edit'] for r in rs)); origs={f:open(f).read() for f in edits}
-        VIS.clear(); VIS.update(visible_for(tu))
+        if a.prelude:
+            for f in edits:
+                if 'psyq/libgpu.h' not in origs[f] and '#include "common.h"\n' in origs[f]:
+                    origs[f]=origs[f].replace('#include "common.h"\n','#include "common.h"\n#ifndef XENO_PC_PORT\n#include "psyq/libgpu.h"\n#endif\n',1)
+                    open(f,'w').write(origs[f])
+            run('nice -n 10 ninja -j4 build/%s.o'%tu)
+        VIS.clear(); VIS.update(visible_for(tu)); VIS0=set(VIS)
+        POS=build_posmap(tu) if a.pos else False
+        def setvis(r):
+            if not POS: return
+            m=re.search(r'^[ \t]*INCLUDE_ASM\(\s*[^,]+,\s*%s\s*\)\s*;'%re.escape(r['blizz_name']),origs[r['edit']],re.M)
+            ln=origs[r['edit']].count('\n',0,m.start())+1 if m else 10**9
+            VIS.clear(); VIS.update(vis_at(r['edit'],ln)|MACROS[0])
         cands=[];
         for r in rs:
             if a.limit and n>=a.limit: break
@@ -378,11 +444,13 @@ def main():
                 if e['kind']=='funcdef' and e['file']==r['xem_loc'].split(':')[0]: fe=e
             if not fe:
                 res.append((r['blizz_name'],r['addr'],'reject','no funcdef')); continue
-            try: blk=analyze(r,fe)
+            try:
+                setvis(r); blk=psyq_pre(analyze(r,fe))
             except Reject as ex:
                 res.append((r['blizz_name'],r['addr'],'reject',str(ex))); continue
-            r['mk']=(lambda r=r,fe=fe: (lambda md: analyze(r,fe,md)))()
-            if a.dump and r['blizz_name']==a.dump: print(blk)
+            r['mk']=(lambda r=r,fe=fe: (lambda md: (setvis(r),psyq_pre(analyze(r,fe,md)))[1]))()
+            if a.dump and r['blizz_name']==a.dump:
+                print(blk); print('=====ISO'); print(analyze(r,fe,'iso+asmdef'))
             cands.append((r,blk)); n+=1
         if not cands: continue
         obj='build/'+tu+'.o'
@@ -418,7 +486,9 @@ def main():
                         try: nb=r0['mk'](md)
                         except Reject: continue
                         r0['mode']=md
-                        if attempt([(r0,nb)]).returncode==0: return [(r0,nb)]
+                        pp=attempt([(r0,nb)])
+                        if pp.returncode==0: return [(r0,nb)]
+                        if a.diag: print('CERR-'+md,r0['blizz_name'],pp.stdout[:1200])
                     r0['mode']=''
                 er=(re.findall(r'build/[^\n]*\.i:\d+:[^\n]*',p.stdout) or re.findall(r'[^\n]*(?:error|Error)[^\n]*',p.stdout) or [p.stdout.strip()[-120:]])[0][:200]
                 if a.diag: print('CERR',c[0][0]['blizz_name'],p.stdout[:1500])

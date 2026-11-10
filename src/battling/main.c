@@ -3354,7 +3354,283 @@ void func_8008EB88(void *arg0, s32 arg1, s32 arg2, s32 arg3) {
                       (arg1 & 0x7F) | ((*(u32 *)((u8 *)arg0 + 0xD0) >> 0x14) & 0x80));
     }
 }
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008EBD0);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_sound_play_command_sound (src/decomp/src/menu/arena_scene_graph_and_opponent.c:2397). */
+#ifndef XM_T_Trail
+#define XM_T_Trail
+typedef struct {
+    VECTOR a;          
+    VECTOR a_prev;     
+    VECTOR b;          
+    VECTOR b_prev;     
+    s16 effect;        
+    u8 unk42;
+    u8 unk43;
+    u32 unk44_0 : 1;
+    u32 flip : 1;
+    u32 unk44_2 : 6;
+    u32 state : 8;     
+    u32 unk46 : 8;
+    u32 unk47 : 8;
+    u8 frame;          
+    u8 unk49[0x3];
+    s32 style;         
+    u8 *unk50;
+} Trail;
+#endif
+#ifndef XM_T_Shot
+#define XM_T_Shot
+typedef struct {
+    VECTOR pos;      
+    VECTOR prev;     
+    SVECTOR velocity; 
+    SVECTOR dir;     
+    u8 active;       
+    u8 speed;
+    u8 look;         
+    u8 steer;        
+    s32 dist;        
+    s32 unk38;
+    s16 unk3C;
+    s16 homing;      
+    s16 life;        
+    u8 unk42[0x2];
+} Shot;
+#endif
+#ifndef XM_T_Pose
+#define XM_T_Pose
+typedef struct {
+    s16 x, y, z;
+    u16 flags;       
+    s16 unk8;
+    u16 unkA;        
+} Pose;
+#endif
+#ifndef XM_T_Move
+#define XM_T_Move
+typedef struct {
+    u8 unk0[0x6];
+    u16 flags;       
+    u8 anim;
+    u8 unk9;
+    u8 unkA;
+} Move;
+#endif
+#ifndef XM_T_CVECTOR
+#define XM_T_CVECTOR
+typedef struct {
+    u_char r, g, b, cd;
+} CVECTOR;
+#endif
+#ifndef XM_T_Brain
+#define XM_T_Brain
+typedef struct Brain {
+    struct Actor *owner;
+    s16 timer;          
+    u8 unk6;
+    u8 unk7;
+    u8 mode;            
+    u8 unk9;
+    s16 unkA;
+    s16 unkC;
+    u8 unkE;
+    u8 unkF;
+    s32 unk10;          
+    s32 unk14;
+    s32 unk18;          
+    s32 unk1C;          
+    s32 unk20;
+    s32 unk24;          
+    s32 unk28;
+    u32 roll : 8;       
+    u32 unk2C_8 : 1;
+    u32 unk2C_9 : 1;
+    u32 unk2C_10 : 1;
+    u32 unk2C_11 : 1;
+    u32 unk2C_12 : 1;
+    u32 defending : 1;  
+    u32 unk2C_14 : 2;
+    u32 unk2E : 8;      
+    u32 unk2C_24 : 8;
+    s16 unk30;
+} Brain;
+#endif
+#ifndef XM_T_MoveList
+#define XM_T_MoveList
+typedef struct MoveList {
+    s16 base;       
+    u8 unk2[0x2];
+    s16 level;      
+    u8 tendency[4]; 
+    u8 learned[14]; 
+    u8 unk18;       
+    u8 unk19[0x7];
+} MoveList;
+#endif
+#ifndef XM_T_Actor
+#define XM_T_Actor
+typedef struct Actor {
+    VECTOR pos;          
+    VECTOR velocity;     
+    VECTOR push;         
+    VECTOR unk30;        
+    s32 unk40;           
+    s32 unk44;           
+    s32 state;           
+    u8 anim;             
+    u8 unk4D;
+    u8 unk4E;
+    u8 unk4F;
+    s16 event_frame;     
+    u8 unk52;
+    u8 unk53;
+    s32 angle;           
+    s32 target_angle;    
+    Node *node;          
+    void *object;        
+    u8 unk64[0x8];
+    VECTOR start;        
+    s32 unk7C;
+    struct MoveSlot *move_slots; 
+    u8 *unk84;
+    s32 unk88;
+    s32 unk8C;
+    s32 unk90;
+    s32 unk94;
+    s32 accel;           
+    s32 brake;           
+    u8 unkA0[0x8];
+    s32 unkA8;
+    u8 unkAC[0x4];
+    s32 floor_y;         
+    s16 hp;              
+    s16 charge;          
+    s16 unkB8;
+    s16 unkBA;
+    s16 max_hp;          
+    s16 unkBE;           
+    u8 unkC0;
+    u8 unkC1;
+    u8 level;            
+    u8 unkC3;
+    u8 unkC4;
+    u8 unkC5;
+    u8 unkC6;            
+    u8 unkC7;
+    s16 unkC8;
+    s16 unkCA;
+    s16 unkCC;
+    s16 unkCE;
+    u32 flags;           
+    u32 unkD4;
+    struct Actor *opponent; 
+    u8 unkDC[0xC];
+    s32 unkE8;
+    u8 unkEC[0x4];
+    s16 unkF0;           
+    s16 unkF2;
+    s32 unkF4;
+    u8 unkF8[0x4];
+    s32 unkFC;           
+    s32 unk100;
+    Trail trails[16];    
+    s32 unk644;
+    s32 unk648;          
+    Shot shots[9];       
+    u8 unk8B0[0x44];
+    s32 nearest_dist;    
+    Shot *nearest_shot;  
+    SceneHeader *header; 
+    u8 *unk900;
+    u8 *visible;         
+    u8 visible_count;
+    u8 model_id;         
+    u8 kind;             
+    u8 unk90B;
+    s16 unk90C;          
+    u8 hold_anim;        
+    u8 unk90F;
+    u8 unk910;
+    u8 move_count;       
+    u8 parts_b;          
+    u8 unk913;
+    s16 unk914;
+    s16 unk916;
+    u8 glow;             
+    u8 unk919[0x3];
+    VECTOR hit_point;    
+    VECTOR unk92C;       
+    VECTOR home;         
+    VECTOR core;         
+    VECTOR start_home;   
+    s16 foot_b_y;        
+    s16 foot_a_y;
+    s32 unk970;
+    VECTOR hit_from;     
+    u8 unk984[0x14];
+    s16 unk998;
+    s16 unk99A;
+    s16 anim_speed;      
+    s16 unk99E;
+    u8 inputs[32];       
+    u8 input_head;
+    u8 input_tail;
+    u8 input_count;
+    u8 unk9C3;
+    u8 unk9C4[0x8];
+    u8 unk9CC[0xC00];    
+    Pose *pose;          
+    Move *move;          
+    CVECTOR colour;        
+    u8 unk15D8[0x10];
+    s16 unk15E8;
+    s16 unk15EA;
+    s16 unk15EC;
+    s16 unk15EE;
+    s16 unk15F0;
+    s16 unk15F2;
+    s16 unk15F4;
+    s16 unk15F6;
+    s16 unk15F8;
+    u8 unk15FA[0x2];
+    struct Brain *brain; 
+    struct MoveList *moves; 
+    POLY_FT4 backdrop[2]; 
+    s32 unk1654;
+    s32 unk1658;
+    s32 unk165C;
+    s32 unk1660;
+    u8 *sounds;          
+    s16 unk1668;
+} Actor;
+#endif
+#ifndef XM_S_arena_sound_play_command_sound
+#define XM_S_arena_sound_play_command_sound
+void xm_arena_sound_play_command_sound(Actor *owner, s32 index, VECTOR *pos, s32 mode) __asm__("func_8008EBD0");
+#endif
+#ifndef XM_S_arena_sound_command_effect_pairs
+#define XM_S_arena_sound_command_effect_pairs
+extern u8 xm_arena_sound_command_effect_pairs[128] __asm__("D_80091EE0");
+#endif
+void func_8008EBD0(Actor *owner, s32 index, VECTOR *pos, s32 mode) {
+    s32 entry;
+
+    if (index == 0) {
+        index = xm_rand() % 6 + 1;
+    }
+    entry = owner->sounds[index];
+    if (entry != 0xFF) {
+        index = xm_arena_sound_command_effect_pairs[entry * 2];
+        if (index != 0) {
+            xm_arena_sound_start_voice(index | 0x60000, mode, pos, (index & 0x7F) | ((owner->flags >> 20) & 0x80));
+        }
+        index = xm_arena_sound_command_effect_pairs[entry * 2 + 1];
+        if (index != 0) {
+            xm_arena_sound_start_voice(index | 0x60000, mode, pos, (index & 0x7F) | ((owner->flags >> 20) & 0x80));
+        }
+    }
+}
+#endif
 void func_8003A20C(s32);
 extern u8 D_80096EA0[];
 
@@ -3371,7 +3647,32 @@ void func_8008ECEC(s32 arg0) {
     }
 }
 
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008ED6C);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_sound_stop_command_sound (src/decomp/src/menu/arena_scene_graph_and_opponent.c:2432). */
+#ifndef XM_S_arena_sound_stop_command_sound
+#define XM_S_arena_sound_stop_command_sound
+s32 xm_arena_sound_stop_command_sound(Actor *owner, s32 index) __asm__("func_8008ED6C");
+#endif
+#ifndef XM_S_arena_sound_stop_tag
+#define XM_S_arena_sound_stop_tag
+void xm_arena_sound_stop_tag(u8 tag) __asm__("func_8008ECEC");
+#endif
+s32 func_8008ED6C(Actor *owner, s32 index) {
+    s32 entry;
+
+    entry = owner->sounds[index];
+    if (entry != 0xFF) {
+        index = xm_arena_sound_command_effect_pairs[entry * 2];
+        if (index != 0) {
+            xm_arena_sound_stop_tag((index & 0x7F) | ((owner->flags >> 20) & 0x80));
+        }
+        index = xm_arena_sound_command_effect_pairs[entry * 2 + 1];
+        if (index != 0) {
+            xm_arena_sound_stop_tag((index & 0x7F) | ((owner->flags >> 20) & 0x80));
+        }
+    }
+}
+#endif
 s32 func_8008B650(s32, s16, s32, s32);
 
 void func_8008EE1C(void *arg0, s16 arg1, s16 arg2) {
@@ -3669,128 +3970,6 @@ typedef struct ImageAnim {
     RECT rect;                
 } ImageAnim;
 #endif
-#ifndef XM_T_Actor
-#define XM_T_Actor
-typedef struct Actor {
-    ModelTable *models;     
-    ModelPart *parts;       
-    s32 *entries;           
-    EntryTable *shared;     
-    s32 pc;                 
-    s32 *locals;            
-    s32 *globals;           
-    s16 scale;              
-    s16 h1E;                
-    u8 index;               
-    u8 b21;                 
-    u8 b22;                 
-    u8 b23;                 
-    s16 size[3];            
-    u8 reference;           
-    u8 depth;               
-    u8 queue_source[4];     
-    u8 queue_entry[4];      
-    u8 active;              
-    u8 b35;                 
-    u8 b36;                 
-    u8 scaled;              
-    u8 b38;                 
-    u8 b39;                 
-    s16 h3A;                
-    u16 h3C;                
-    s16 h3E;                
-    u16 h40;                
-    u16 h42;                
-    u16 h44;                
-    u16 h46;                
-    s16 h48;                
-    u16 flags;              
-
-
-
-    s32 w4C;                
-    s32 w50;                
-    s32 w54;                
-    s16 aim_actor;          
-    s16 aim_node;           
-    u8 parent;              
-    u8 inherit;             
-    s16 parent_node;        
-    s16 groundY;            
-
-
-    u8 b62;                 
-    u8 b63;                 
-    s16 aim_offset[3];      
-    s16 offset[3];          
-    s16 spin[3];            
-    s16 spin_accel[3];      
-    s16 drift[3];           
-    s16 drift_accel[3];     
-    s16 target[3];          
-    s16 h8E;                
-    s16 h90;                
-    s16 h92;                
-    u16 shift_x;            
-    u16 shift_y;            
-    s16 anim_state;         
-    s16 anim_loop;          
-    s16 anim_frame;         
-    s16 anim_frames;        
-    u8 *anim_pos;           
-    u8 *anim_start;         
-    void *group;            
-    void *blockAC;          
-    SoundOwner *ownerB0;    
-    SoundOwner *ownerB4;    
-    POLY_FT4 prims[2];      
-    u8 pad108[2];
-    u16 mask;               
-    u8 channel_count;       
-    u8 surfaceCount;        
-    u8 imageCount;          
-    u8 pad10F;
-    struct ColorFade *channels; 
-    struct Surface *surfaces;   
-    struct ImageAnim *images;   
-    s32 previous[3];        
-    s32 moved[3];           
-
-} Actor;
-#endif
-#ifndef XM_T_Brain
-#define XM_T_Brain
-typedef struct Brain {
-    Actor *owner;
-    s16 timer;          
-    u8 unk6;
-    u8 unk7;
-    u8 mode;            
-    u8 unk9;
-    s16 unkA;
-    s16 unkC;
-    u8 unkE;
-    u8 unkF;
-    s32 unk10;          
-    s32 unk14;
-    s32 unk18;          
-    s32 unk1C;          
-    s32 unk20;
-    s32 unk24;          
-    s32 unk28;
-    u32 roll : 8;       
-    u32 unk2C_8 : 1;
-    u32 unk2C_9 : 1;
-    u32 unk2C_10 : 1;
-    u32 unk2C_11 : 1;
-    u32 unk2C_12 : 1;
-    u32 defending : 1;  
-    u32 unk2C_14 : 2;
-    u32 unk2E : 8;      
-    u32 unk2C_24 : 8;
-    s16 unk30;
-} Brain;
-#endif
 #ifndef XM_S_arena_brain_command_magic_jumper
 #define XM_S_arena_brain_command_magic_jumper
 void xm_arena_brain_command_magic_jumper(Actor *actor, Brain *brain) __asm__("func_8008F014");
@@ -4041,12 +4220,6 @@ typedef struct BattlingReplayFrame {
      u16 mA_b8 : 1;
      u16 mA_pad : 7;
 } BattlingReplayFrame;
-#endif
-#ifndef XM_T_CVECTOR
-#define XM_T_CVECTOR
-typedef struct {
-    u8 r, g, b, cd;
-} CVECTOR;
 #endif
 #ifndef XM_T_BattlingAiState
 #define XM_T_BattlingAiState
