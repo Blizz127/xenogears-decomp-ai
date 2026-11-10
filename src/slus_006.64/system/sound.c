@@ -2959,7 +2959,336 @@ s32 func_8003A65C(s32 packedId, s32 pairSize) {
     return start;
 }
 #else
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003A65C);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): sound_find_effect_channels (src/decomp/src/resident/sound.c:792). */
+#ifndef XM_T_xm_SoundSeqHeader
+#define XM_T_xm_SoundSeqHeader
+typedef struct xm_SoundSeqHeader {
+    u8 unk0[0x10];
+    u16 unk10;
+    u8 unk12[2];
+    u8 channels;
+    u8 entries;        
+    u16 unk16;
+    u16 unk18;
+    u8 reverb_type;
+    u8 reverb_depth;   
+    u8 reverb_delay;
+    u8 reverb_feedback;
+    u16 unk1E;
+    u16 table;         
+    u16 channel[1];    
+} xm_SoundSeqHeader;
+#endif
+#ifndef XM_T_xm_Fixed
+#define XM_T_xm_Fixed
+typedef union {
+    s32 value;
+    struct {
+        u16 fraction;
+        s16 whole;
+    } part;
+} xm_Fixed;
+#endif
+#ifndef XM_T_xm_SoundEffectId
+#define XM_T_xm_SoundEffectId
+typedef union {
+    s32 full;
+    struct {
+        u16 effect;
+        s16 bank;
+    } part;
+} xm_SoundEffectId;
+#endif
+#ifndef XM_T_xm_SoundInstrument
+#define XM_T_xm_SoundInstrument
+typedef struct {
+    u32 start;         
+    u16 loop;          
+    s16 note;          
+    u32 envelope;      
+    u16 modes;         
+    u8 unkE[2];
+} xm_SoundInstrument;
+#endif
+#ifndef XM_T_xm_SoundSequence
+#define XM_T_xm_SoundSequence
+typedef struct xm_SoundSequence {
+    u8 unk0[0x10];
+    s32 header_size;   
+    s32 size;          
+    s32 offset;        
+    u8 unk1C[2];
+    u16 volume;
+    u16 key;
+    u8 unk22[6];
+    s32 address;       
+    struct xm_SoundSequence *next;
+    xm_SoundInstrument instrument[1];
+} xm_SoundSequence;
+#endif
+#ifndef XM_T_xm_SoundEnvelope
+#define XM_T_xm_SoundEnvelope
+typedef struct {
+    u8 attack_mode;
+    u8 sustain_mode;
+    u8 release_mode;
+    u8 attack_rate;
+    u8 decay_rate;
+    u8 sustain_rate;
+    u8 release_rate;
+    u8 sustain_level;
+} xm_SoundEnvelope;
+#endif
+#ifndef XM_T_xm_SoundChannel
+#define XM_T_xm_SoundChannel
+typedef struct xm_SoundChannel {
+    u16 voice;         
+    u16 mode;          
+    s16 priority;
+    u16 flags;         
+
+
+    s16 volume_left;
+    s16 volume_right;
+    u16 unkC;
+    u16 unkE;
+    u8 unk10[4];
+    u16 pitch;
+    u8 unk16[6];
+    u32 sample_start;  
+    u32 sample_loop;
+    xm_SoundEnvelope envelope;
+} xm_SoundChannel;
+#endif
+#ifndef XM_T_xm_SoundLoop
+#define XM_T_xm_SoundLoop
+typedef struct {
+    u8 count;          
+    u8 unk1;
+    u8 transpose;      
+    u8 exit_transpose; 
+    u8 *start;
+    u8 *end;
+} xm_SoundLoop;
+#endif
+#ifndef XM_T_xm_SoundModulator
+#define XM_T_xm_SoundModulator
+typedef struct xm_SoundModulator {
+    s32 (*wave)(struct xm_SoundModulator *modulator);
+    s32 phase;         
+    s32 slope;
+    s32 step;
+    u16 count;         
+    u16 rate;          
+    u16 delay_count;
+    s16 delay;
+    s16 period_count;
+    s16 period;
+    u8 target;         
+    u8 shape;
+    u16 flags;         
+} xm_SoundModulator;
+#endif
+#ifndef XM_T_xm_SoundSeqChannel
+#define XM_T_xm_SoundSeqChannel
+typedef struct {
+    u16 flags;         
+    u16 flags2;        
+    u16 flags3;        
+    u8 voice_bit;      
+    u8 priority;
+    xm_SoundEffectId id;
+    u32 stamp;         
+    u8 *start;         
+    u8 *position;      
+    u8 *loop;          
+    s32 unk1C;
+    u16 unk20;
+    u8 unk22;
+    u8 unk23;
+    u8 unk24;
+    u8 unk25;
+    u8 instrument;
+    u8 voice;          
+    u8 unk28;
+    u8 unk29[3];
+    struct xm_SoundSequence *instruments;
+    xm_SoundChannel state;
+    s16 unk5C;         
+    u16 unk5E;         
+    u8 duration_adjust; 
+    u8 unk61;
+    u16 gate_fraction; 
+    u8 previous_note;
+    u8 current_note;
+    s16 transpose;     
+    xm_Fixed note;   
+    s16 unk6C;
+    s16 detune;
+    u16 unk70;
+    u16 loop_depth;    
+    s16 pan;           
+    s16 volume;
+    xm_Fixed level;  
+    s32 unk7C;
+    s16 unk80;
+    s16 unk82;
+    s32 unk84;
+    s32 unk88;
+    s16 volume_step;
+    s16 volume_target;
+    s16 pan_step;
+    s16 pan_target;
+    u16 unk94;         
+    u16 unk96;         
+    u16 pan_frames;
+    u16 volume_frames;
+    xm_SoundLoop loops[4];
+    u16 modulator_index; 
+    u16 modulators;    
+    s16 pitch_mod;     
+    s16 level_mod;
+    s16 pan_mod;
+    u8 unkD6[2];
+    xm_SoundModulator modulator[4];
+} xm_SoundSeqChannel;
+#endif
+#ifndef XM_T_xm_SoundSeq
+#define XM_T_xm_SoundSeq
+typedef struct xm_SoundSeq {
+    struct xm_SoundSeq *next;
+    struct xm_SoundSeq *snapshot; 
+    struct xm_SoundSeqHeader *header; 
+    u32 *table;        
+    u16 flags;         
+
+    u16 unk12;
+    u8 channels;
+    u8 unk15;
+    s16 unk16;         
+    u16 unk18;
+    u8 unk1A;
+    u8 unk1B;
+    u16 noise_clock;
+    u16 unk1E;
+    s32 unk20;
+    u32 unk24;
+    u32 ticks;
+    u32 unk2C;
+    u16 unk30;
+    u16 unk32;
+    u16 unk34;
+    u16 unk36;
+    u16 unk38;
+    u16 unk3A;
+    s16 unk3C;
+    s16 unk3E;
+    u8 unk40;
+    u8 reverb_type;
+    u8 reverb_delay;
+    u8 reverb_feedback;
+    s16 reverb_depth;
+    u8 unk46[2];
+    u32 voices;        
+    u32 muted;         
+    s32 unk50;
+    s32 tick_step;     
+    xm_Fixed rate;   
+    s32 rate_step;
+    u16 rate_frames;
+    u16 rate_target;
+    xm_Fixed tempo;  
+    s32 tempo_step;
+    s16 tempo_frames;
+    s16 tempo_target;
+    xm_Fixed fade;   
+    s32 fade_step;
+    s16 fade_frames;
+    s16 fade_target;
+    xm_Fixed pitch;  
+    s32 pitch_step;
+    s16 pitch_frames;
+    s16 pitch_target;
+    xm_Fixed pan;    
+    s32 pan_step;
+    s16 pan_frames;
+    s16 pan_target;
+    xm_SoundSeqChannel channel[1];
+} xm_SoundSeq;
+#endif
+#ifndef XM_S_sound_find_effect_channels
+#define XM_S_sound_find_effect_channels
+u32 xm_sound_find_effect_channels(s32 id, s32 width) __asm__("func_8003A65C");
+#endif
+#ifndef XM_S_sound_effect_channels
+#define XM_S_sound_effect_channels
+extern xm_SoundSeq *xm_sound_effect_channels __asm__("D_800595D8");
+#endif
+#ifndef XM_S_sound_effect_channel_count
+#define XM_S_sound_effect_channel_count
+extern s32 xm_sound_effect_channel_count __asm__("D_80059478");
+#endif
+#ifndef XM_S_sound_release_voice
+#define XM_S_sound_release_voice
+void xm_sound_release_voice(xm_SoundChannel *state, u32 voice) __asm__("SoundReleaseVoiceFromChannel");
+#endif
+#ifndef XM_S_sound_effect_voice_count
+#define XM_S_sound_effect_voice_count
+extern s32 xm_sound_effect_voice_count __asm__("D_80059544");
+#endif
+u32 xm_sound_find_effect_channels(s32 id, s32 width) __asm__("func_8003A65C");
+u32 xm_sound_find_effect_channels(s32 id, s32 width) {
+    xm_SoundSeq *effects = xm_sound_effect_channels;
+    s32 count = xm_sound_effect_channel_count;
+    u32 reserved = 0;
+    xm_SoundSeqChannel *channel = effects->channel;
+    u32 limit;
+    u32 index;
+    u32 mask;
+    u32 used;
+    u32 group;
+    u32 oldest;
+    u32 found;
+    s32 span;
+
+    do {
+        count--;
+        if ((channel->flags & 1) && channel->id.full == id) {
+            channel->flags = 0;
+            effects->voices &= ~(1 << channel->voice_bit);
+            xm_sound_release_voice(&channel->state, channel->voice);
+        }
+        channel++;
+    } while (count != 0);
+
+    span = width + 2;
+    limit = effects->channels - xm_sound_effect_voice_count;
+    index = xm_sound_effect_channel_count - span;
+    effects = xm_sound_effect_channels;
+    group = 0xFFFFFFFF >> (32 - width);
+    mask = group << index;
+    channel = &effects->channel[index];
+    used = ~reserved & effects->voices;
+    oldest = 0xFFFFFFFF;
+    if (used & mask) {
+        do {
+            if (channel->stamp < oldest && channel->priority < 0x21) {
+                oldest = channel->stamp;
+                found = index;
+            }
+            mask >>= width;
+            if (mask < group || index <= limit) {
+                index = found;
+                break;
+            }
+            channel -= width;
+            index -= width;
+        } while (used & mask);
+    }
+    return index;
+}
+#endif
 #endif
 
 s32 func_8003A82C(u16* arg0) {
@@ -3081,7 +3410,57 @@ void func_8003AA30(AudioManager* manager) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003AAC4);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): sound_set_seq_mute_mask (src/decomp/src/resident/sound.c:953). */
+#ifndef XM_T_SEQ_CHANNEL_FLAGS32
+#define XM_T_SEQ_CHANNEL_FLAGS32
+#define SEQ_CHANNEL_FLAGS32(channel) (*(u32 *)&(channel)->flags)
+#endif
+#ifndef XM_S_sound_set_seq_mute_mask
+#define XM_S_sound_set_seq_mute_mask
+void xm_sound_set_seq_mute_mask(xm_SoundSeq *seq, u32 mask) __asm__("func_8003AAC4");
+#endif
+#ifndef XM_S_sound_request_key_off
+#define XM_S_sound_request_key_off
+void xm_sound_request_key_off(xm_SoundChannel *state, u32 voice) __asm__("SoundStopVoiceOnChannel");
+#endif
+#ifndef XM_S_sound_key_on_voice
+#define XM_S_sound_key_on_voice
+void xm_sound_key_on_voice(xm_SoundChannel *state, u32 voice) __asm__("SoundAssignVoiceToChannelAndPlay");
+#endif
+void func_8003AAC4(xm_SoundSeq *seq, u32 mask) {
+    xm_SoundSeqChannel *channel;
+    s32 count;
+
+    if (seq == NULL) {
+        return;
+    }
+    channel = seq->channel;
+    count = seq->channels;
+    seq->muted = mask;
+    do {
+        if (channel->flags != 0) {
+            if (mask & 1) {
+                if (!(channel->flags & 0x20)) {
+                    channel->flags |= 0x20;
+                    if ((s16)seq->flags & 0x8000) {
+                        xm_sound_request_key_off(&channel->state, channel->voice);
+                    }
+                }
+            } else if (channel->flags & 0x20) {
+                channel->flags &= ~0x20;
+                if ((SEQ_CHANNEL_FLAGS32(channel) & 0x110) == 0x100 &&
+                    ((s16)seq->flags & 0x8000)) {
+                    xm_sound_key_on_voice(&channel->state, channel->voice);
+                }
+            }
+        }
+        channel++;
+        count--;
+        mask >>= 1;
+    } while (count != 0);
+}
+#endif
 #else
 void func_8003AAC4(void* pManager, u32 mask) {
     u8* pFlags;
@@ -3712,10 +4091,6 @@ void func_8003B22C(AudioManager* manager) {
 #define XM_S_sound_init_effect_channels
 void xm_sound_init_effect_channels(SoundSeq *seq) __asm__("func_8003B32C");
 #endif
-#ifndef XM_S_sound_effect_channel_count
-#define XM_S_sound_effect_channel_count
-extern s32 xm_sound_effect_channel_count __asm__("D_80059478");
-#endif
 #ifndef XM_S_sound_reset_seq_playback
 #define XM_S_sound_reset_seq_playback
 void xm_sound_reset_seq_playback(SoundSeq *seq) __asm__("SoundInitializeAudioManager");
@@ -3897,7 +4272,107 @@ void func_8003B424(AudioManager* manager) {
     manager->unk_0x48 = mask;
 }
 #else
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003B424);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): sound_start_seq_channels (src/decomp/src/resident/sound.c:1312). */
+#ifndef XM_S_sound_start_seq_channels
+#define XM_S_sound_start_seq_channels
+void xm_sound_start_seq_channels(xm_SoundSeq *seq) __asm__("func_8003B424");
+#endif
+#ifndef XM_S_sound_select_instrument
+#define XM_S_sound_select_instrument
+void xm_sound_select_instrument(s16 index, xm_SoundSeqChannel *channel) __asm__("func_8003E5BC");
+#endif
+#ifndef XM_S_sound_claim_voice
+#define XM_S_sound_claim_voice
+void xm_sound_claim_voice(xm_SoundChannel *state, u32 voice) __asm__("SoundAssignVoiceToChannelAndStop");
+#endif
+void func_8003B424(xm_SoundSeq *seq) {
+    s32 count = seq->channels;
+    xm_SoundSeqChannel *channel = seq->channel;
+    xm_SoundSeqHeader *header;
+    u16 *offset;
+    xm_SoundSequence *instruments;
+    s32 index;
+    s32 voice;
+    u32 voices;
+    u32 bit;
+    s32 i;
+
+    if (count == 0) {
+        return;
+    }
+    index = 0;
+    voice = -1;
+    voices = 0;
+    header = seq->header;
+    offset = header->channel;
+    instruments = xm_sound_find_wave_bank(seq->unk16);
+    if (instruments == NULL) {
+        instruments = xm_sound_wave_bank_list;
+    }
+    do {
+        if (*offset != 0) {
+            bit = 1 << index;
+            voices |= bit;
+            if (bit & seq->muted) {
+                channel->flags = 0x421;
+            } else {
+                channel->flags = 0x401;
+            }
+            if (seq->flags & 4) {
+                channel->flags |= 4;
+            }
+            channel->flags2 = 0x170;
+            channel->flags3 = 0;
+            channel->id.full = header->unk10;
+            channel->priority = 0x10;
+            channel->voice_bit = index;
+            channel->position = channel->start = (u8 *)header + *offset;
+            channel->loop = NULL;
+            channel->transpose = 0x3C;
+            channel->gate_fraction = 0xF;
+            channel->loop_depth = 0xFFFF;
+            channel->volume = 0x6000;
+            channel->level.value = 0x7F000000;
+            channel->unk1C = 0;
+            channel->unk20 = 0;
+            channel->unk22 = 0;
+            channel->unk5C = 0;
+            channel->duration_adjust = 0;
+            channel->detune = 0;
+            channel->previous_note = 0;
+            channel->pan = 0x4000;
+            channel->unk70 = 0;
+            channel->pitch_mod = 0;
+            channel->level_mod = 0;
+            channel->pan_mod = 0;
+            channel->state.unkC = 0;
+            channel->state.unkE = 0;
+            channel->modulators = 0;
+            for (i = 3; i >= 0; i--) {
+                channel->modulator[i].flags = 0;
+            }
+            channel->unk25 = seq->unk16;
+            channel->instruments = instruments;
+            if (instruments != NULL) {
+                xm_sound_select_instrument(0, channel);
+            }
+            channel->voice = voice;
+            channel->state.mode = 0;
+            channel->state.priority = 0x100;
+            xm_sound_claim_voice(&channel->state, voice);
+        } else {
+            channel->flags = 0;
+        }
+        offset++;
+        channel++;
+        index++;
+        count--;
+        voice++;
+    } while (count != 0);
+    seq->voices = voices;
+}
+#endif
 #endif
 
 #ifdef XENO_PC_PORT
@@ -4017,7 +4492,125 @@ void func_8003B644(s32 elementSpec, s32 packedId, s32 volume, s32 pan) {
     EnableEvent(g_unk_SoundEvent);
 }
 #else
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003B644);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): sound_start_effect (src/decomp/src/resident/sound.c:1403). */
+#ifndef XM_T_xm_SoundBank
+#define XM_T_xm_SoundBank
+typedef struct xm_SoundBank {
+    u8 unk0[0x10];
+    u16 flags;
+    u8 unk12[2];
+    u16 id;
+    u16 unk16;         
+    u16 volumes;       
+    u8 unk1A[2];
+    struct xm_SoundBank *next;
+    u16 effect[1];     
+} xm_SoundBank;
+#endif
+#ifndef XM_S_sound_start_effect
+#define XM_S_sound_start_effect
+void xm_sound_start_effect(s16 code, s32 id, s16 volume, s16 pan) __asm__("func_8003B644");
+#endif
+#ifndef XM_S_sound_channels_per_effect
+#define XM_S_sound_channels_per_effect
+extern s32 xm_sound_channels_per_effect __asm__("D_80059404");
+#endif
+#ifndef XM_S_sound_tick_count
+#define XM_S_sound_tick_count
+extern u32 xm_sound_tick_count __asm__("D_80059504");
+#endif
+void xm_sound_start_effect(s16 code, s32 id, s16 volume, s16 pan) __asm__("func_8003B644");
+void xm_sound_start_effect(s16 code, s32 id, s16 volume, s16 pan) {
+    xm_SoundBank *bank = xm_sound_effect_bank_list;
+    s32 bank_id = id >> 16;
+    xm_SoundSeq *effects = xm_sound_effect_channels;
+    xm_SoundSequence *instruments;
+    u16 *offset;
+    xm_SoundSeqChannel *channel;
+    s32 count;
+    u8 priority;
+    s32 i;
+    u8 *volumes;
+
+    while (bank->id != bank_id) {
+        bank = bank->next;
+        if (bank == NULL) {
+            return;
+        }
+    }
+    instruments = xm_sound_find_wave_bank(bank->unk16);
+    if (instruments == NULL) {
+        instruments = xm_sound_wave_bank_list;
+    }
+    volumes = (u8 *)bank + bank->volumes;
+    volume = (u32)(volume * volumes[id & 0xFFFF]) >> 7;
+    if ((u16)volume > 0x7FFF) {
+        volume = 0x7FFF;
+    }
+    offset = &bank->effect[(id & 0xFFFF) * 2];
+    priority = code >> 8;
+    channel = &effects->channel[code & 0xFF];
+    count = xm_sound_channels_per_effect;
+    xm_DisableEvent(xm_sound_tick_event);
+    do {
+        channel->id.full = id;
+        channel->stamp = xm_sound_tick_count;
+        channel->priority = priority;
+        if (*offset != 0) {
+            effects->voices |= 1 << channel->voice_bit;
+            channel->flags = 0x409;
+            if (bank->flags & 1) {
+                channel->flags = 0x40B;
+            }
+            channel->flags2 = 0x170;
+            channel->flags3 = 0;
+            channel->position = channel->start = (u8 *)bank + *offset;
+            channel->transpose = 0x3C;
+            channel->gate_fraction = 0xF;
+            channel->loop_depth = 0xFFFF;
+            channel->loop = NULL;
+            channel->unk1C = 0;
+            channel->unk20 = 0;
+            channel->unk22 = 0;
+            channel->unk5C = 0;
+            channel->duration_adjust = 0;
+            channel->detune = 0;
+            channel->previous_note = 0;
+            channel->volume = volume;
+            channel->level.value = 0x7F000000;
+            channel->pan = pan;
+            channel->unk70 = 0;
+            channel->pitch_mod = 0;
+            channel->level_mod = 0;
+            channel->pan_mod = 0;
+            channel->state.unkC = 0;
+            channel->state.unkE = 0;
+            channel->modulators = 0;
+            for (i = 3; i >= 0; i--) {
+                channel->modulator[i].flags = 0;
+            }
+            channel->unk25 = bank->unk16;
+            channel->instruments = instruments;
+            if (instruments != NULL) {
+                xm_sound_select_instrument(0, channel);
+            }
+            channel->state.mode = 0;
+            channel->state.priority = 0x200;
+            xm_sound_claim_voice(&channel->state, channel->voice);
+        } else {
+            effects->voices &= ~(1 << channel->voice_bit);
+            channel->flags = 0;
+            xm_sound_release_voice(&channel->state, channel->voice);
+        }
+        offset++;
+        channel++;
+        count--;
+    } while (count != 0);
+    effects->flags |= 0x8000;
+    xm_EnableEvent(xm_sound_tick_event);
+}
+#endif
 #endif
 
 /* Frees the chain hanging off manager->unk_Manager_0x4. Retail reuses the
@@ -4659,7 +5252,95 @@ void func_8003C4C4(AudioManager* manager, AudioElement* pAudioElements, s32 coun
     } while ((s16)count != 0);
 }
 #else
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003C4C4);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): sound_step_seq_slides (src/decomp/src/resident/sound.c:1875). */
+#ifndef XM_S_sound_step_seq_slides
+#define XM_S_sound_step_seq_slides
+void xm_sound_step_seq_slides(xm_SoundSeq *seq, xm_SoundSeqChannel *channel, s16 count) __asm__("func_8003C4C4");
+#endif
+void xm_sound_step_seq_slides(xm_SoundSeq *seq, xm_SoundSeqChannel *channel, s16 count) __asm__("func_8003C4C4");
+void xm_sound_step_seq_slides(xm_SoundSeq *seq, xm_SoundSeqChannel *channel, s16 count) {
+    u16 frames;
+    u16 flags;
+    u16 flags2;
+    u16 flags3;
+    u32 timers;
+    u32 note_ticks;
+    u32 gate_ticks;
+
+    frames = seq->rate_frames;
+    if (frames != 0) {
+        frames--;
+        if (frames != 0) {
+            seq->rate.value += seq->rate_step;
+        } else {
+            seq->rate.value = seq->rate_target << 16;
+        }
+        seq->rate_frames = frames;
+        seq->tick_step = seq->rate.part.whole * seq->tempo.part.whole;
+    }
+    do {
+        flags = channel->flags;
+        if (flags != 0) {
+            timers = *(u32 *)&channel->unk5C;
+            flags2 = channel->flags2;
+            note_ticks = timers & 0xFFFF;
+            gate_ticks = timers >> 16;
+            if (note_ticks != 0) {
+                flags3 = channel->flags3;
+                if (flags3 & 8) {
+                    flags2 |= 0x100;
+                    if (--channel->unk96 == 0) {
+                        flags3 &= ~8;
+                    }
+                    channel->level.value += channel->unk88;
+                }
+                if (flags3 & 1) {
+                    flags2 |= 0x200;
+                    if (!(flags3 & 2)) {
+                        if (--channel->unk94 == 0) {
+                            flags3 &= ~1;
+                        }
+                    }
+                    channel->note.value += channel->unk84;
+                }
+                if (flags3 & 0x10) {
+                    if (--channel->pan_frames == 0) {
+                        channel->pan = channel->pan_target;
+                        flags3 &= ~0x10;
+                    } else {
+                        channel->pan += channel->pan_step;
+                    }
+                    flags2 |= 0x100;
+                }
+                if (flags3 & 0x20) {
+                    if (--channel->volume_frames == 0) {
+                        channel->volume = channel->volume_target;
+                        flags3 &= ~0x20;
+                    } else {
+                        channel->volume += channel->volume_step;
+                    }
+                    flags2 |= 0x100;
+                }
+                channel->flags3 = flags3;
+                note_ticks--;
+                gate_ticks--;
+                if (note_ticks == 1 && (flags & 0x1000)) {
+                    channel->state.envelope.release_rate = 6;
+                    channel->state.flags |= 0x80;
+                }
+                if (gate_ticks == 0) {
+                    channel->flags |= 0x400;
+                    flags2 |= 2;
+                }
+                *(u32 *)&channel->unk5C = note_ticks + (gate_ticks << 16);
+            }
+            channel->flags2 = flags2;
+        }
+        channel++;
+    } while (--count != 0);
+}
+#endif
 #endif
 
 // Sequencer step: for every active element whose duration counter reached
@@ -6137,7 +6818,26 @@ u8* func_8003E360(u8* pScript, AudioManager* pAudioManager, AudioElement* pAudio
     return pScript;
 }
 #else
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003E360);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): sound_seq_modulator_on (src/decomp/src/resident/sound.c:3195). */
+#ifndef XM_S_sound_seq_modulator_on
+#define XM_S_sound_seq_modulator_on
+u8 *xm_sound_seq_modulator_on(u8 *data, xm_SoundSeq *seq, xm_SoundSeqChannel *channel) __asm__("func_8003E360");
+#endif
+#ifndef XM_S_sound_restart_modulator
+#define XM_S_sound_restart_modulator
+void xm_sound_restart_modulator(xm_SoundModulator *modulator) __asm__("func_8003E3E0");
+#endif
+u8 *func_8003E360(u8 *data, xm_SoundSeq *seq, xm_SoundSeqChannel *channel) {
+    s32 index = *data++;
+    xm_SoundModulator *modulator = &channel->modulator[index];
+
+    xm_sound_restart_modulator(modulator);
+    modulator->flags |= 1;
+    channel->modulators |= 1 << index;
+    return data;
+}
+#endif
 #endif
 
 // Envelope arm/reset: first tick fires immediately (counter 1), direction/
@@ -6297,7 +6997,35 @@ void func_8003E5BC(s32 instrument, AudioElement* pAudioElements) {
     pAudioElements->unk_0x6C = *(u16*)(pInstr + 6);
 }
 #else
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003E5BC);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): sound_select_instrument (src/decomp/src/resident/sound.c:3284). */
+void xm_sound_select_instrument(s16 index, xm_SoundSeqChannel *channel) __asm__("func_8003E5BC");
+void xm_sound_select_instrument(s16 index, xm_SoundSeqChannel *channel) {
+    xm_SoundSequence *bank;
+    xm_SoundInstrument *instrument;
+    u32 start;
+    u32 bits;
+
+    channel->instrument = index;
+    bank = channel->instruments;
+    instrument = &bank->instrument[index];
+    start = instrument->start * 8;
+    channel->state.sample_start = start + bank->address;
+    channel->state.sample_loop = start + instrument->loop * 8;
+    bits = instrument->modes;
+    channel->state.envelope.attack_mode = bits & 7;
+    channel->state.envelope.sustain_mode = (bits >> 4) & 7;
+    channel->state.envelope.release_mode = (bits >> 8) & 7;
+    bits = instrument->envelope;
+    channel->state.envelope.attack_rate = bits & 0x7F;
+    channel->state.envelope.decay_rate = (bits >> 8) & 0xF;
+    channel->state.envelope.sustain_rate = (bits >> 16) & 0x7F;
+    channel->state.envelope.sustain_level = (bits >> 12) & 0xF;
+    channel->state.envelope.release_rate = channel->unk28 = (bits >> 24) & 0x1F;
+    channel->unk6C = instrument->note;
+    channel->flags |= 0x8000;
+}
+#endif
 #endif
 
 //----------------------------------------------------------------------------------------------------------------------

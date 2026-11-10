@@ -56,7 +56,459 @@ static inline void FieldLoadLightRecord(u8** ppLightData, u8* pLight) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc3", func_8006FDEC);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_init_view_and_lights (src/decomp/src/field/field.c:162). */
+#ifndef XM_T_SavedView
+#define XM_T_SavedView
+typedef struct {
+    s16 octant;
+    s32 projection;
+    s16 elevation;
+} SavedView;
+#endif
+#ifndef XM_T_ModelLight
+#define XM_T_ModelLight
+typedef struct {
+    s32 vx, vy, vz;
+    u16 r, g, b;
+} ModelLight;
+#endif
+#ifndef XM_T_MorphDelta
+#define XM_T_MorphDelta
+typedef struct {
+    s16 dx, dy, dz;
+    s16 index;
+} MorphDelta;
+#endif
+#ifndef XM_T_MorphTarget
+#define XM_T_MorphTarget
+typedef struct {
+    s32 count;
+    void *deltas;
+    MorphDelta *normals;
+} MorphTarget;
+#endif
+#ifndef XM_T_MorphTable
+#define XM_T_MorphTable
+typedef struct {
+    s32 count;
+    MorphTarget targets[1];
+} MorphTable;
+#endif
+#ifndef XM_T_SpriteModel
+#define XM_T_SpriteModel
+typedef struct {
+    u16 flags;          
+    u16 vertex_count;
+    u16 primitive_count;
+    u16 group_count;    
+    SVECTOR *vertices;
+    SVECTOR *normals;
+    u8 *unk10;          
+    u8 *unk14;
+    u8 *unk18;
+    MorphTable *morphs; 
+    SVECTOR box_min;    
+    SVECTOR box_max;
+    s32 aux_size;       
+    s32 packet_size;    
+} SpriteModel;
+#endif
+#ifndef XM_T_MorphChannel
+#define XM_T_MorphChannel
+typedef struct MorphChannel {
+    s32 (*update)(struct MorphChannel *channel);
+    s32 target;
+    s32 weight;
+    s32 step;
+    u8 unk10[0x10];
+} MorphChannel;
+#endif
+#ifndef XM_T_MorphState
+#define XM_T_MorphState
+typedef struct {
+    SpriteModel *model;
+    SVECTOR *vertices;
+    SVECTOR *normals;
+    s32 count;
+    MorphChannel *channels;
+} MorphState;
+#endif
+#ifndef XM_T_FieldInstance
+#define XM_T_FieldInstance
+typedef struct {
+    u8 unk00[4];
+    SpriteModel *mesh; 
+    void *packets[2]; 
+    u8 unk10[2];
+    s16 mode;        
+    MorphState *anims; 
+    s16 center[3];   
+    s16 unk1E;
+    s16 radius;      
+} FieldInstance;
+#endif
+#ifndef XM_T_SpritePart
+#define XM_T_SpritePart
+typedef struct {
+    s16 x, y;              
+    u8 u, v;               
+    u8 w, h;               
+    u8 byte8, byte9;       
+    u16 tpage;             
+    u16 clut;              
+    u8 unknowne[2];
+    u32 colour;            
+    u32 flags;             
+} SpritePart;
+#endif
+#ifndef XM_T_SpriteRendererEntry
+#define XM_T_SpriteRendererEntry
+typedef struct {
+    s8 byte0;              
+    s8 byte1;              
+    s16 half2;
+    s16 half4;
+    s16 half6;
+} SpriteRendererEntry;
+#endif
+#ifndef XM_T_SpriteOffset
+#define XM_T_SpriteOffset
+typedef struct {
+    s8 x, y;
+} SpriteOffset;
+#endif
+#ifndef XM_T_SpriteRenderer
+#define XM_T_SpriteRenderer
+typedef struct {
+    s16 angle_x, angle_y, angle_z; 
+    s16 scale_x, scale_y, scale_z; 
+    MATRIX matrix;                 
+    SpritePart *parts[2];          
+    SpriteRendererEntry *pointer34; 
+    struct Sprite *next_pending;   
+    SpriteOffset offset;           
+    u8 unknown3e[2];
+    s32 word40;                    
+    SVECTOR light_angles;          
+    u16 light_colour[3];           
+} SpriteRenderer;
+#endif
+#ifndef XM_T_Sprite
+#define XM_T_Sprite
+typedef struct Sprite {
+    s32 x, y, z;                
+    s32 speed_x, speed_y, speed_z; 
+    s32 speed;                  
+    s32 gravity;                
+    SpriteRenderer *renderer;   
+    void *image;                
+    u8 red, green, blue;     
+    u8 colour_flags;         
+    s16 scale;               
+    s16 depth;               
+    s16 half30;              
+    s16 direction;           
+    u16 frame;               
+    u16 height;              
+    u16 extent_depth;        
+    u16 rate;                
+    union {
+        u32 word;
+        struct {
+        unsigned sides : 2;      
+        unsigned unknown2 : 1;
+        unsigned flip : 1;       
+        unsigned flip_y : 1;
+        unsigned blend : 3;      
+        unsigned unknown8 : 8;
+        unsigned field16 : 4;
+        unsigned mode : 4;       
+        unsigned no_view : 1;    
+        unsigned unknown25 : 3;
+        unsigned dirty : 1;      
+        unsigned unknown29 : 3;
+        } bits;
+        u8 bytes[4];         
+    } render;                
+    u32 flags;               
+    s32 *resource_block;     
+    s32 *animations;         
+    s32 resource;            
+    s32 word50;              
+    u16 *frame_table;        
+    u16 *animation;          
+    u16 *facings;            
+    u16 *word60;             
+    u8 *script;              
+    void (*callback)(struct Sprite *sprite); 
+    void *block;             
+    struct Sprite *parent;   
+    struct Sprite *partner;  
+    s32 word78;              
+    void *sequencer;         
+    u16 word80;              
+    u16 word82;              
+    s16 ground;              
+    u16 size;                
+    u8 *frames;              
+    s8 stack_top;            
+    u8 unknown8d;
+    u8 stack[0x10];          
+    s16 countdown;           
+    s16 target_x, target_y, target_z; 
+    u8 unknowna6[2];
+    struct {
+        unsigned sequencer_owned : 1; 
+        unsigned bounce : 10;    
+        unsigned frame : 6;      
+        unsigned step : 3;       
+        unsigned phase : 2;      
+        unsigned field22 : 6;    
+        unsigned field28 : 2;
+        unsigned unknown30 : 2;
+    } frame_bits;            
+    union {
+        u32 word;
+        struct {
+        unsigned unknown0 : 2;
+        unsigned mirror : 1;     
+        unsigned frame_flip : 1; 
+        unsigned unknown4 : 1;
+        unsigned owns_children : 1; 
+        unsigned double_step : 1;
+        unsigned divisor : 12;   
+        unsigned unknown19 : 13;
+        } bits;
+        u8 bytes[4];
+    } motion;                
+    union {
+        u32 wordb0;          
+        u8 byteb0;
+        struct {
+            unsigned unknown0 : 8;
+            unsigned passive_children : 1; 
+            unsigned share_rate : 1;       
+            unsigned unknown10 : 22;
+        } bits;
+    } b0;                    
+} Sprite;
+#endif
+#ifndef XM_T_FieldMarker
+#define XM_T_FieldMarker
+typedef struct FieldMarker {
+    SVECTOR v[4];
+    POLY_FT4 poly[2];
+} FieldMarker;
+#endif
+#ifndef XM_T_FieldDescriptor
+#define XM_T_FieldDescriptor
+typedef struct FieldDescriptor {
+    FieldInstance *instance; 
+    Sprite *model;           
+    struct FieldMarker *shadow; 
+    MATRIX matrix;           
+    MATRIX transform;        
+    FieldActor *actor;       
+    SVECTOR rotation;        
+    u16 flags;               
+    u16 unk5A;               
+} FieldDescriptor;
+#endif
+#ifndef XM_T_Attribute
+#define XM_T_Attribute
+typedef union {
+    u32 word;
+    u8 bytes[4];
+} Attribute;
+#endif
+#ifndef XM_T_CollisionTriangle
+#define XM_T_CollisionTriangle
+typedef struct {
+    s16 unk00[6];
+    u8 attribute;
+    u8 unk0D;
+} CollisionTriangle;
+#endif
+#ifndef XM_T_FieldComponents
+#define XM_T_FieldComponents
+typedef struct {
+    s32 descriptor_count;                      
+    FieldDescriptor *descriptors;              
+    s32 *geometry;                             
+    s32 *collision;                            
+    s32 *sprites;                              
+    Attribute *collision_attributes;           
+    CollisionTriangle *collision_triangles[4]; 
+    void *collision_vertices[4];               
+    s32 triangle_counts[4];                    
+    s16 layer_count;                           
+} FieldComponents;
+#endif
+#ifndef XM_T_FieldView
+#define XM_T_FieldView
+typedef struct FieldView {
+    VECTOR eye;              
+    VECTOR target;           
+    VECTOR up;               
+    VECTOR eye_goal;         
+    VECTOR target_goal;      
+    VECTOR unk050;           
+    VECTOR shake_offset;     
+    VECTOR saved_target;     
+    VECTOR point_actor_a;    
+    VECTOR saved_eye;        
+    VECTOR point_actor_b;    
+    s32 scripted_zoom;       
+    s16 mode;                
+    s16 scripted_elevation;  
+    s16 scripted_heading;    
+    s16 scripted_scale;      
+    u16 scripted;            
+    s16 target_steps;        
+    VECTOR scripted_target;  
+    VECTOR target_step;      
+    s16 eye_steps;           
+    s32 scripted_eye[3];     
+    s32 unk0F0;              
+    s32 eye_step[3];         
+    s32 unk100;              
+    s32 target_a;            
+    s32 target_b;            
+    s16 angle;               
+    s16 view_angle;          
+    MATRIX previous_view;    
+    MATRIX orbit;            
+    SVECTOR orbit_angles;    
+    u32 flags;               
+    s16 bounds[4];           
+    SVECTOR heading_angles;  
+    s32 heading_velocity;    
+    s32 heading_high;        
+    u8 heading_blocks[2];    
+    s16 heading_steps;       
+    s32 projection;          
+    u16 elevation;           
+    s16 distance;            
+    s16 elevation_steps;     
+    s32 elevation_value;     
+    s32 elevation_step;      
+    u32 heading;             
+    s16 projection_steps;    
+    s32 projection_value;    
+    s32 projection_step;     
+    s16 steps;               
+    s32 start;               
+    s32 step;                
+    s16 shake;               
+    s16 shake_time;          
+    s16 shake_stop;          
+    s32 shake_amplitude[3];  
+    s32 shake_step[3];       
+    SavedView saved_view;    
+    SVECTOR world_angles;    
+    SVECTOR anchor;          
+    MATRIX scaled_world;     
+    MATRIX unk204;           
+    MATRIX world_matrix;     
+    s32 scale;               
+    ModelLight lights[3];    
+    s16 back_color[3];       
+    u8 unk28A[2];
+    FieldComponents components; 
+} FieldView;
+#endif
+#ifndef XM_S_field_init_view_and_lights
+#define XM_S_field_init_view_and_lights
+void xm_field_init_view_and_lights(s16 *record) __asm__("func_8006FDEC");
+#endif
+#ifndef XM_S_field_camera_build_lookat_matrix
+#define XM_S_field_camera_build_lookat_matrix
+void xm_field_camera_build_lookat_matrix(MATRIX *view, VECTOR *eye, VECTOR *target, VECTOR *up) __asm__("FieldMatrixLookAt");
+#endif
+#ifndef XM_S_field_view
+#define XM_S_field_view
+extern FieldView xm_field_view __asm__("g_CameraEye");
+#endif
+#ifndef XM_S_gpu_build_rotation_matrix
+#define XM_S_gpu_build_rotation_matrix
+MATRIX *xm_gpu_build_rotation_matrix(SVECTOR *angles, MATRIX *m) __asm__("RotMatrix");
+#endif
+#ifndef XM_S_MulMatrix2
+#define XM_S_MulMatrix2
+MATRIX *xm_MulMatrix2(MATRIX *m0, MATRIX *m1) __asm__("MulMatrix2");
+#endif
+#ifndef XM_S_model_set_light
+#define XM_S_model_set_light
+void xm_model_set_light(s32 index, ModelLight *light) __asm__("func_80030A30");
+#endif
+#ifndef XM_S_SetRotMatrix
+#define XM_S_SetRotMatrix
+void xm_SetRotMatrix(MATRIX *m) __asm__("SetRotMatrix");
+#endif
+#ifndef XM_S_SetTransMatrix
+#define XM_S_SetTransMatrix
+void xm_SetTransMatrix(MATRIX *m) __asm__("SetTransMatrix");
+#endif
+#ifndef XM_S_RotTrans
+#define XM_S_RotTrans
+void xm_RotTrans(SVECTOR *v0, VECTOR *v1, long *flag) __asm__("RotTrans");
+#endif
+#ifndef XM_S_model_load_light_matrix
+#define XM_S_model_load_light_matrix
+void xm_model_load_light_matrix(MATRIX *rotation) __asm__("func_80030B14");
+#endif
+void xm_field_init_view_and_lights(s16 *record) __asm__("func_8006FDEC");
+void xm_field_init_view_and_lights(s16 *record) {
+    long flag;
+
+    xm_field_camera_build_lookat_matrix(&xm_field_view.previous_view, &xm_field_view.eye, &xm_field_view.target, &xm_field_view.up);
+    xm_gpu_build_rotation_matrix(&xm_field_view.world_angles, &xm_field_view.scaled_world);
+    xm_MulMatrix2(&xm_field_view.previous_view, &xm_field_view.scaled_world);
+
+    xm_field_view.lights[0].vx = *record++;
+    xm_field_view.lights[0].vy = *record++;
+    xm_field_view.lights[0].vz = *record;
+    record += 2;
+    xm_field_view.lights[0].r = *record++ << 3;
+    xm_field_view.lights[0].g = *record++ << 3;
+    xm_field_view.lights[0].b = *record << 3;
+    record += 2;
+    xm_model_set_light(0, &xm_field_view.lights[0]);
+
+    xm_field_view.lights[1].vx = *record++;
+    xm_field_view.lights[1].vy = *record++;
+    xm_field_view.lights[1].vz = *record;
+    record += 2;
+    xm_field_view.lights[1].r = *record++ << 3;
+    xm_field_view.lights[1].g = *record++ << 3;
+    xm_field_view.lights[1].b = *record << 3;
+    record += 2;
+    xm_model_set_light(1, &xm_field_view.lights[1]);
+
+    xm_field_view.lights[2].vx = *record++;
+    xm_field_view.lights[2].vy = *record++;
+    xm_field_view.lights[2].vz = *record;
+    record += 2;
+    xm_field_view.lights[2].r = *record++ << 3;
+    xm_field_view.lights[2].g = *record++ << 3;
+    xm_field_view.lights[2].b = *record << 3;
+    xm_field_view.lights[1] = xm_field_view.lights[0];
+    xm_field_view.lights[2] = xm_field_view.lights[0];
+    record += 2;
+    xm_model_set_light(2, &xm_field_view.lights[2]);
+
+    xm_field_view.back_color[0] = record[0] << 4;
+    xm_field_view.back_color[1] = record[1] << 4;
+    xm_field_view.back_color[2] = record[2] << 4;
+    xm_SetRotMatrix(&xm_field_view.previous_view);
+    xm_SetTransMatrix(&xm_field_view.previous_view);
+    xm_RotTrans(&xm_field_view.anchor, (VECTOR *)xm_field_view.scaled_world.t, &flag);
+    xm_model_load_light_matrix(&xm_field_view.scaled_world);
+    xm_SetRotMatrix(&xm_field_view.scaled_world);
+    xm_SetTransMatrix(&xm_field_view.scaled_world);
+}
+#endif
 #else
 void func_8006FDEC(void* pLightData) {
     u8* pData = pLightData;
@@ -169,7 +621,379 @@ static int IsLiveHeapBlock(void* ptr) {
 // FieldLoad's fresh allocations have room. Actors with status&0x40 keep
 // their model data (shared/static model, not owned by this actor slot).
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc3", FieldFree);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_teardown (src/decomp/src/field/field.c:220). */
+#ifndef XM_T_ModelBuffer
+#define XM_T_ModelBuffer
+typedef struct {
+    u16 flags;       
+    u8 unk2[0x12];
+    u8 *end;
+    u8 *buffer;
+    u8 unk1C[0x18];
+    s32 size;
+} ModelBuffer;
+#endif
+#ifndef XM_T_ZonePoint
+#define XM_T_ZonePoint
+typedef struct {
+    s16 x;
+    s16 y;
+    s16 z;
+} ZonePoint;
+#endif
+#ifndef XM_T_Zone
+#define XM_T_Zone
+typedef struct {
+    ZonePoint corner[4];
+} Zone;
+#endif
+#ifndef XM_T_EventPackage
+#define XM_T_EventPackage
+typedef struct {
+    u32 unsigned_bits[32]; 
+    s32 count;             
+    u16 entries[32];       
+} EventPackage;
+#endif
+#ifndef XM_T_FieldEventParams
+#define XM_T_FieldEventParams
+typedef struct FieldEventParams {
+    s16 unk80[8]; 
+    s32 unk90;    
+    s32 unk94;    
+    s32 unk98;    
+    u8 unk9C[4];
+    u8 unkA0[3];  
+    u8 unkA3;
+    u8 unkA4[3];  
+    u8 unkA7;
+    u8 unkA8[3];  
+    u8 unkAB;
+    s16 unkAC;    
+    s16 unkAE;    
+    s16 unkB0;    
+    s16 enabled;  
+} FieldEventParams;
+#endif
+#ifndef XM_T_Panorama
+#define XM_T_Panorama
+typedef struct Panorama {
+    POLY_FT4 quads[2][8]; 
+    POLY_F4 fills[4];     
+    POLY_G4 fades[2];     
+    s32 width;
+    s32 height;
+    s32 turn;             
+    s16 tex_x;
+    s16 tex_y;
+    s16 mode;             
+    s16 v;                
+    s16 vx, vy, vz;       
+    s16 unk342;
+    s16 fill;             
+    s16 fill_scale;       
+    s16 fade_range;       
+    s16 fade_start;
+} Panorama;
+#endif
+#ifndef XM_T_TextureScroll
+#define XM_T_TextureScroll
+typedef struct TextureScroll {
+    u16 x, y;          
+    u16 w, h;
+    u16 step;          
+    u16 count;         
+    u16 source_x;      
+    u16 source_y;      
+    s8 *speeds;        
+    u16 *phases;
+} TextureScroll;
+#endif
+#ifndef XM_T_WindowList
+#define XM_T_WindowList
+typedef struct WindowList {
+    s16 count;
+    TextureScroll *scrolls[32];
+    u8 *buffers[32];
+    s16 lengths[32];
+} WindowList;
+#endif
+#ifndef XM_T_FadeChannel
+#define XM_T_FadeChannel
+typedef struct {
+    DR_MODE modes[2]; 
+    TILE tiles[2];   
+    s32 level[3];
+    s32 step[3];
+    u16 abr;
+    s16 active;
+    s16 steps;
+    u16 pad;
+} FadeChannel;
+#endif
+#ifndef XM_T_FieldWork
+#define XM_T_FieldWork
+typedef struct FieldWork {
+    s16 unk2078;               
+    s16 unk207A;               
+    s16 effect_steps;          
+    u8 unk207E[2];
+    s32 effect_value[6];       
+    s32 effect_step[6];        
+    s16 unk20B0[2];            
+    void *effect_buffers[4];   
+    FadeChannel fades[2];      
+    u16 open_windows;          
+
+    s16 encounter_inhibition;  
+    s16 terrain_angle;         
+    u16 input_mask;            
+    s32 unk217C;               
+    s32 unk2180;               
+    SVECTOR sprite_angles;     
+    s16 scale;                 
+    s16 sprite_gate;           
+    u8 fog_color[4];           
+    u8 far_color[4];           
+    s16 fog_range[2];          
+    u8 clear_color[3];         
+    u8 party_bits;             
+    s16 unk21A0[6];            
+    s16 emitter_range;         
+    s16 piece_drift[3];        
+    s16 unk21B4;               
+    u8 unk21B6[2];
+    s32 last_sound_effect;     
+    s32 unk21BC[3];            
+    u8 unk21C8[0x21CC - 0x21C8];
+    u8 party_processing_mode;  
+    u8 camera_floor_fixed;     
+    u8 preserve_nonplayer_motion; 
+    u8 forced_position;        
+    u8 script_control[2];      
+    u8 piece_drift_mode;       
+    u8 unk21D3;
+    s16 unk21D4;               
+    s16 text_speed;            
+    s32 camera_counter;        
+    s16 unk21DC[4];            
+    s16 unk21E4[4];            
+    SVECTOR layer_positions[4]; 
+    s32 layer_scales[4];       
+    s16 unk221C[5][3];         
+    u8 unk223A[2];
+    s16 unk223C[3][3];         
+    u8 unk224E[0x225C - 0x224E];
+    u8 unk225C[3];             
+    u8 unk225F[0x2264 - 0x225F]; 
+    s32 unk2264;               
+    s32 unk2268;               
+    s32 controlled;            
+    u16 encounter_music[16];   
+    s16 battle_music;          
+    u8 unk2292[2];
+    s32 unk2294;               
+    s32 unk2298;               
+    s32 unk229C;               
+    u16 unk22A0[32];           
+    s16 unk22E0;               
+    s16 emitter_descriptor[3]; 
+    s16 unk22E8[3][4];         
+    s16 unk2300[3][4];         
+    s32 unk2318[3];            
+    s16 emitter_position[3][4]; 
+    u16 effects_kept;          
+    u16 unk233E;               
+    s16 repeat_delay;          
+    s16 repeat_remaining;      
+    s16 jump_mode;             
+    s16 animation_mode;        
+    u16 unk2348;               
+    s16 unk234A;               
+    s16 gear_riding_lock_override; 
+    s16 followers_idle;        
+    u32 unk2350;               
+    u8 unk2354;                
+    u8 unk2355;                
+    u8 unk2356;                
+    u8 unk2357;                
+    u8 unk2358;                
+    u8 unk2359[0x235C - 0x2359];
+} FieldWork;
+#endif
+#ifndef XM_S_field_teardown
+#define XM_S_field_teardown
+void xm_field_teardown(void) __asm__("FieldFree");
+#endif
+#ifndef XM_S_ResetGraph
+#define XM_S_ResetGraph
+int xm_ResetGraph(int mode) __asm__("ResetGraph");
+#endif
+#ifndef XM_S_task_destroy_all
+#define XM_S_task_destroy_all
+void xm_task_destroy_all(void) __asm__("WorkListsFreeAllEntries");
+#endif
+#ifndef XM_S_sprite_queue_run_uploads
+#define XM_S_sprite_queue_run_uploads
+void xm_sprite_queue_run_uploads(void) __asm__("func_80025044");
+#endif
+#ifndef XM_S_DrawSync
+#define XM_S_DrawSync
+int xm_DrawSync(int mode) __asm__("DrawSync");
+#endif
+#ifndef XM_S_sprite_queue_start_fill
+#define XM_S_sprite_queue_start_fill
+void xm_sprite_queue_start_fill(s32 queue) __asm__("func_800250E0");
+#endif
+#ifndef XM_S_field_draw_buffer_index
+#define XM_S_field_draw_buffer_index
+extern s32 xm_field_draw_buffer_index __asm__("g_FieldCurRenderContextIndex");
+#endif
+#ifndef XM_S_sprite_free_queues
+#define XM_S_sprite_free_queues
+void xm_sprite_free_queues(void) __asm__("GfxFreeWorkBuffers");
+#endif
+#ifndef XM_S_field_actor_release
+#define XM_S_field_actor_release
+void xm_field_actor_release(s32 index) __asm__("func_8008083C");
+#endif
+#ifndef XM_S_model_stop_morph
+#define XM_S_model_stop_morph
+void xm_model_stop_morph(MorphState *state) __asm__("func_800306D0");
+#endif
+#ifndef XM_S_model_free_owned_block
+#define XM_S_model_free_owned_block
+void xm_model_free_owned_block(ModelBuffer *buffer) __asm__("func_8002CBBC");
+#endif
+#ifndef XM_S_heap_free
+#define XM_S_heap_free
+s32 xm_heap_free(void *data) __asm__("HeapFree");
+#endif
+#ifndef XM_S_field_distortion_stop
+#define XM_S_field_distortion_stop
+void xm_field_distortion_stop(void) __asm__("FieldDistortionFree");
+#endif
+#ifndef XM_S_field_trigger_zones
+#define XM_S_field_trigger_zones
+extern Zone *xm_field_trigger_zones __asm__("g_pFieldTriggerZones");
+#endif
+#ifndef XM_S_field_message_table
+#define XM_S_field_message_table
+extern void *xm_field_message_table __asm__("D_800ADBF0");
+#endif
+#ifndef XM_S_field_event_package
+#define XM_S_field_event_package
+extern EventPackage *xm_field_event_package __asm__("g_FieldCurScriptFile");
+#endif
+#ifndef XM_S_field_panorama_parameters
+#define XM_S_field_panorama_parameters
+extern FieldEventParams xm_field_panorama_parameters __asm__("D_800B0080");
+#endif
+#ifndef XM_S_gpu_free_panorama
+#define XM_S_gpu_free_panorama
+void xm_gpu_free_panorama(void *block) __asm__("func_80027D40");
+#endif
+#ifndef XM_S_field_panorama
+#define XM_S_field_panorama
+extern Panorama *xm_field_panorama __asm__("D_800B007C");
+#endif
+#ifndef XM_S_field_texture_scrolls
+#define XM_S_field_texture_scrolls
+extern WindowList xm_field_texture_scrolls __asm__("D_800AFEA8");
+#endif
+#ifndef XM_S_gpu_free_texture_scroll
+#define XM_S_gpu_free_texture_scroll
+void xm_gpu_free_texture_scroll(TextureScroll *scroll) __asm__("GfxLineScrollFree");
+#endif
+#ifndef XM_S_console_close
+#define XM_S_console_close
+void xm_console_close(void) __asm__("FontFree");
+#endif
+#ifndef XM_S_field_work
+#define XM_S_field_work
+extern FieldWork xm_field_work __asm__("g_FieldEffects");
+#endif
+#ifndef XM_S_gear_model_shut_down
+#define XM_S_gear_model_shut_down
+void xm_gear_model_shut_down(void) __asm__("func_801E7FD4");
+#endif
+#ifndef XM_S_field_layer_module
+#define XM_S_field_layer_module
+extern void *xm_field_layer_module __asm__("D_800ADB20");
+#endif
+#ifndef XM_S_field_sync_and_flush_cache
+#define XM_S_field_sync_and_flush_cache
+void xm_field_sync_and_flush_cache(void) __asm__("FieldRenderSyncAndFlush");
+#endif
+#ifndef XM_S_heap_free_tag
+#define XM_S_heap_free_tag
+void xm_heap_free_tag(s32 tag) __asm__("HeapFreeBlocksWithFlag");
+#endif
+#ifndef XM_S_field_status_panel_release
+#define XM_S_field_status_panel_release
+void xm_field_status_panel_release(void) __asm__("func_800A83B4");
+#endif
+void FieldFree(void) {
+    s32 i;
+    s32 next;
+    FieldInstance *instance;
+    s32 *module_loaded;
+
+    xm_ResetGraph(1);
+    xm_task_destroy_all();
+    for (i = 0; i < 2;) {
+        xm_sprite_queue_run_uploads();
+        xm_DrawSync(0);
+        next = i + 1;
+        xm_sprite_queue_start_fill((xm_field_draw_buffer_index + next) & 1);
+        i = next;
+        xm_sprite_queue_run_uploads();
+        xm_DrawSync(0);
+        xm_sprite_free_queues();
+    }
+
+    for (i = 0; i < xm_field_view.components.descriptor_count; i++) {
+        xm_field_actor_release(i);
+        if (!(xm_field_view.components.descriptors[i].flags & 0x40)) {
+            instance = xm_field_view.components.descriptors[i].instance;
+            if (xm_field_view.components.descriptors[i].flags & 0x2000) {
+                xm_model_stop_morph(instance->anims);
+            }
+            xm_model_free_owned_block((ModelBuffer *)instance->mesh);
+            xm_heap_free(instance->packets[0]);
+            xm_heap_free(xm_field_view.components.descriptors[i].instance);
+        }
+    }
+    xm_field_distortion_stop();
+    xm_heap_free(xm_field_view.components.descriptors);
+    xm_heap_free(xm_field_trigger_zones);
+    xm_heap_free(xm_field_message_table);
+    xm_heap_free(xm_field_event_package);
+    xm_heap_free(xm_field_view.components.collision);
+    xm_heap_free(xm_field_view.components.geometry);
+    xm_heap_free(xm_field_view.components.sprites);
+    if (xm_field_panorama_parameters.enabled != 0) {
+        xm_gpu_free_panorama(xm_field_panorama);
+    }
+    for (i = 0; i < xm_field_texture_scrolls.count; i++) {
+        xm_gpu_free_texture_scroll(xm_field_texture_scrolls.scrolls[i]);
+        xm_heap_free(xm_field_texture_scrolls.buffers[i]);
+        xm_heap_free(xm_field_texture_scrolls.scrolls[i]);
+    }
+    xm_console_close();
+    module_loaded = &xm_field_work.unk2264;
+    xm_field_texture_scrolls.count = 0;
+    if (*module_loaded != 0) {
+        xm_gear_model_shut_down();
+        xm_heap_free(xm_field_layer_module);
+        xm_field_sync_and_flush_cache();
+    }
+    *module_loaded = 0;
+    xm_heap_free_tag(3);
+    xm_field_status_panel_release();
+}
+#endif
 #else
 void FieldFree(void) {
     s32 i;
