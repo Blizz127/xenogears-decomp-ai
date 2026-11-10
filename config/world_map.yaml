@@ -72,7 +72,7 @@ segments:
       # offset 0 is 0x00000005; a data-first split emits `addiu $sp,$sp,-0x28`
       # there instead).  movie.bin -- which matches retail exactly -- uses
       # `rodata` here for the same reason.
-      - [0x0, rodata]
+      - [0x0, .rodata, main]
       - [0x120C, c, main]
       # Code ends after func_80099BFC; splat's own scan puts the first trailing
       # data label at D_80099E8C == offset 0x2A39C.  It must be declared as a
