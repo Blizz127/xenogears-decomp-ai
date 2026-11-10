@@ -2469,7 +2469,80 @@ void func_8008CF9C(void *arg0, BattlingSVec *out) {
     *out = *(BattlingSVec *)((u8 *)arg0 + 0x1C);
 }
 
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008CFC4);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_spark_place_in_rotated_box (src/decomp/src/menu/arena_scene_graph_and_opponent.c:1697). */
+#ifndef XM_T_Emitter
+#define XM_T_Emitter
+typedef struct Emitter Emitter;
+#endif
+#ifndef XM_T_Spark
+#define XM_T_Spark
+typedef struct {
+    SVECTOR pos; 
+    SVECTOR vel;
+} Spark;
+#endif
+#ifndef XM_T_Emitter__def
+#define XM_T_Emitter__def
+struct Emitter {
+    s16 gravity;            
+    s16 unk2;
+    s16 unk4;
+    s16 unk6;
+    s16 unk8;
+    s16 count;              
+    s16 size;               
+    s16 unkE;
+    u8 *sparks;             
+    SVECTOR base;           
+    SVECTOR origin;         
+    SVECTOR range;          
+    SVECTOR offset;         
+    SVECTOR angles;         
+    SVECTOR turn;           
+    s16 spread;             
+    s16 unk46;
+    s16 speed;              
+    s16 speed_range;        
+    s16 unk4C;
+    s16 placement;          
+    void (*reset)(void *spark);          
+    void (*draw)(void *spark, u32 *ot);  
+    void (*setup)(void *spark, Emitter *emitter); 
+    void (*place)(Emitter *emitter, SVECTOR *pos); 
+    void (*update)(Spark *spark);        
+    s16 unk64;
+    s16 shape;              
+    s16 unk68;
+    s16 life;               
+    u8 unk6C[0x8];
+    u8 r;                   
+    u8 g;
+    u8 b;
+    u8 unk77[0x5];
+};
+#endif
+#ifndef XM_S_arena_spark_place_in_rotated_box
+#define XM_S_arena_spark_place_in_rotated_box
+void xm_arena_spark_place_in_rotated_box(Emitter *source, SVECTOR *pos) __asm__("func_8008CFC4");
+#endif
+#ifndef XM_S_libgte_rotate_svector
+#define XM_S_libgte_rotate_svector
+void xm_libgte_rotate_svector(SVECTOR *v0, VECTOR *v1) __asm__("ApplyRotMatrix");
+#endif
+void func_8008CFC4(Emitter *source, SVECTOR *pos) {
+    SVECTOR v;
+    VECTOR r;
+
+    v.vx = xm_rand() % source->range.vx - source->offset.vx;
+    v.vy = xm_rand() % source->range.vy - source->offset.vy;
+    v.vz = xm_rand() % source->range.vz - source->offset.vz;
+    xm_libgte_rotate_svector(&v, &r);
+    pos->vx = source->origin.vx + r.vx;
+    pos->vy = source->origin.vy + r.vy;
+    pos->vz = source->origin.vz + r.vz;
+}
+#endif
 
 void func_8008D0A4(void *arg0, void *arg1) {
     s32 temp_hi;
@@ -2482,9 +2555,74 @@ void func_8008D0A4(void *arg0, void *arg1) {
     *(s16 *)((s8*)(arg1) + 4) = (s16) ((*(u16 *)((s8*)(arg0) + 0x20) + (rand(temp_hi_2) % (s16) *(s16 *)((s8*)(arg0) + 0x28))) - *(u16 *)((s8*)(arg0) + 0x30));
 }
 
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008D14C);
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008D208);
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008D304);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_spark_place_in_rotated_rect (src/decomp/src/menu/arena_scene_graph_and_opponent.c:1719). */
+#ifndef XM_S_arena_spark_place_in_rotated_rect
+#define XM_S_arena_spark_place_in_rotated_rect
+void xm_arena_spark_place_in_rotated_rect(Emitter *source, SVECTOR *pos) __asm__("func_8008D14C");
+#endif
+void func_8008D14C(Emitter *source, SVECTOR *pos) {
+    SVECTOR v;
+    VECTOR r;
+
+    v.vx = xm_rand() % source->range.vx - source->offset.vx;
+    v.vy = 0;
+    v.vz = xm_rand() % source->range.vz - source->offset.vz;
+    xm_libgte_rotate_svector(&v, &r);
+    pos->vx = source->origin.vx + r.vx;
+    pos->vy = source->origin.vy + r.vy;
+    pos->vz = source->origin.vz + r.vz;
+}
+#endif
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_spark_place_in_rotated_ellipse (src/decomp/src/menu/arena_scene_graph_and_opponent.c:1734). */
+#ifndef XM_S_arena_spark_place_in_rotated_ellipse
+#define XM_S_arena_spark_place_in_rotated_ellipse
+void xm_arena_spark_place_in_rotated_ellipse(Emitter *source, SVECTOR *pos) __asm__("func_8008D208");
+#endif
+#ifndef XM_S_gpu_get_sin
+#define XM_S_gpu_get_sin
+s32 xm_gpu_get_sin(s32 angle) __asm__("rcos");
+#endif
+#ifndef XM_S_gpu_get_cos
+#define XM_S_gpu_get_cos
+s32 xm_gpu_get_cos(s32 angle) __asm__("rsin");
+#endif
+void func_8008D208(Emitter *source, SVECTOR *pos) {
+    SVECTOR v;
+    VECTOR r;
+    s32 angle = xm_rand();
+    s32 radius = xm_rand();
+
+    v.vx = (xm_gpu_get_sin(angle) * (radius % source->range.vx)) >> 13;
+    v.vy = 0;
+    v.vz = (xm_gpu_get_cos(angle) * (radius % source->range.vz)) >> 13;
+    xm_libgte_rotate_svector(&v, &r);
+    pos->vx = source->origin.vx + r.vx;
+    pos->vy = source->origin.vy + r.vy;
+    pos->vz = source->origin.vz + r.vz;
+}
+#endif
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_spark_place_on_rotated_ring (src/decomp/src/menu/arena_scene_graph_and_opponent.c:1751). */
+#ifndef XM_S_arena_spark_place_on_rotated_ring
+#define XM_S_arena_spark_place_on_rotated_ring
+void xm_arena_spark_place_on_rotated_ring(Emitter *source, SVECTOR *pos) __asm__("func_8008D304");
+#endif
+void func_8008D304(Emitter *source, SVECTOR *pos) {
+    SVECTOR v;
+    VECTOR r;
+    s32 angle;
+
+    v.vx = (xm_gpu_get_sin(angle) * source->range.vx) >> 12;
+    v.vy = xm_rand() % source->range.vy - source->range.vy / 2;
+    v.vz = (xm_gpu_get_cos(angle) * source->range.vz) >> 12;
+    xm_libgte_rotate_svector(&v, &r);
+    pos->vx = source->origin.vx + r.vx;
+    pos->vy = source->origin.vy + r.vy;
+    pos->vz = source->origin.vz + r.vz;
+}
+#endif
 extern u8 D_80091C74[];
 extern s32 D_80091CC4[];
 extern s32 D_80091CDC;
@@ -2577,7 +2715,127 @@ void func_8008D5C0(void *arg0, s32 arg1) {
     }
 }
 
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008D680);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_spark_launch (src/decomp/src/menu/arena_scene_graph_and_opponent.c:1850). */
+#ifndef XM_T_gte_rtv0
+#define XM_T_gte_rtv0
+#define gte_rtv0() __asm__ volatile("nop;nop;.word 0x4A486012")
+#endif
+#ifndef XM_T_gte_stsv
+#define XM_T_gte_stsv
+#define gte_stsv(r0)                                                           \
+    __asm__ volatile("mfc2 $12, $9;"                                           \
+                     "mfc2 $13, $10;"                                          \
+                     "mfc2 $14, $11;"                                          \
+                     "sh $12, 0(%0);"                                          \
+                     "sh $13, 2(%0);"                                          \
+                     "sh $14, 4(%0)"                                           \
+                     :                                                         \
+                     : "r"(r0)                                                 \
+                     : "$12", "$13", "$14", "memory")
+#endif
+#ifndef XM_T_gte_lddp
+#define XM_T_gte_lddp
+#define gte_lddp(r0) __asm__ volatile("mtc2 %0, $8" : : "r"(r0))
+#endif
+#ifndef XM_T_gte_ldsv
+#define XM_T_gte_ldsv
+#define gte_ldsv(r0)                                                           \
+    __asm__ volatile("lhu $12, 0(%0);"                                         \
+                     "lhu $13, 2(%0);"                                         \
+                     "lhu $14, 4(%0);"                                         \
+                     "mtc2 $12, $9;"                                           \
+                     "mtc2 $13, $10;"                                          \
+                     "mtc2 $14, $11"                                           \
+                     :                                                         \
+                     : "r"(r0)                                                 \
+                     : "$12", "$13", "$14", "memory")
+#endif
+#ifndef XM_T_gte_gpf12
+#define XM_T_gte_gpf12
+#define gte_gpf12() __asm__ volatile("nop;nop;.word 0x4B98003D")
+#endif
+#ifndef XM_S_arena_spark_launch
+#define XM_S_arena_spark_launch
+void xm_arena_spark_launch(Emitter *emitter, MATRIX *rotation, s32 count) __asm__("func_8008D680");
+#endif
+#ifndef XM_S_gpu_build_rotation_matrix
+#define XM_S_gpu_build_rotation_matrix
+MATRIX *xm_gpu_build_rotation_matrix(SVECTOR *angles, MATRIX *m) __asm__("RotMatrix");
+#endif
+#ifndef XM_S_libgte_multiply_matrix_in_place
+#define XM_S_libgte_multiply_matrix_in_place
+MATRIX *xm_libgte_multiply_matrix_in_place(MATRIX *m0, MATRIX *m1) __asm__("MulMatrix");
+#endif
+#ifndef XM_S_SetRotMatrix
+#define XM_S_SetRotMatrix
+void xm_SetRotMatrix(MATRIX *m) __asm__("SetRotMatrix");
+#endif
+void func_8008D680(Emitter *emitter, MATRIX *rotation, s32 count) {
+    SVECTOR dir;
+    SVECTOR unit;
+    MATRIX local;
+    MATRIX world;
+    MATRIX turned;
+    u8 *spark;
+    void (*place)(Emitter *, SVECTOR *);
+    void (*reset)(void *);
+    s32 left;
+    s32 i;
+    s32 angle;
+    s32 heading;
+
+    reset = emitter->reset;
+    place = emitter->place;
+    world = *rotation;
+    emitter->origin.vx = emitter->base.vx + rotation->t[0];
+    emitter->origin.vy = emitter->base.vy + rotation->t[1];
+    emitter->origin.vz = emitter->base.vz + rotation->t[2];
+    xm_gpu_build_rotation_matrix(&emitter->angles, &local);
+    xm_libgte_multiply_matrix_in_place(&world, &local);
+    xm_gpu_build_rotation_matrix(&emitter->turn, &turned);
+    xm_libgte_multiply_matrix_in_place(&turned, &world);
+    xm_SetRotMatrix(&turned);
+    left = count;
+    spark = emitter->sparks;
+    for (i = 0; i < emitter->count; i++) {
+        if (((Spark *)spark)->pos.pad == 0) {
+            if (--left == -1) {
+                break;
+            }
+            angle = xm_rand() % emitter->spread;
+            heading = xm_rand();
+            dir.vy = -xm_gpu_get_cos(angle);
+            angle = xm_gpu_get_sin(angle);
+            dir.vx = (xm_gpu_get_sin(heading) * angle) >> 12;
+            dir.vz = (xm_gpu_get_cos(heading) * angle) >> 12;
+            heading = emitter->speed + xm_rand() % emitter->speed_range; 
+            gte_ldv0(&dir);
+            gte_rtv0();
+            gte_stsv(&unit);
+            gte_lddp(heading);
+            gte_ldsv(&unit);
+            gte_gpf12();
+            gte_stsv(&((Spark *)spark)->vel);
+        }
+        spark += emitter->size;
+    }
+    xm_SetRotMatrix(&world);
+    left = count;
+    spark = emitter->sparks;
+    for (i = 0; i < emitter->count; i++) {
+        if (((Spark *)spark)->pos.pad == 0) {
+            if (--left == -1) {
+                break;
+            }
+            place(emitter, (SVECTOR *)spark);
+            ((Spark *)spark)->pos.pad = emitter->life;
+            reset(spark);
+        }
+        spark += emitter->size;
+    }
+}
+#endif
 s32 func_80082488(void *, s32);
 
 void func_8008D980(void *arg0) {

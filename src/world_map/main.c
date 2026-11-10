@@ -13039,10 +13039,8 @@ void func_800981C8(Camera *camera) {
 }
 #endif
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_800983A0);
-
 #ifndef XENO_PC_PORT
-/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_terrain_classify_quad (src/decomp/src/worldmap/worldmap_movement_terrain.c:1892). */
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_terrain_classify_blocks (src/decomp/src/worldmap/worldmap_movement_terrain.c:1799). */
 #ifndef XM_T_GridScratch
 #define XM_T_GridScratch
 typedef struct {
@@ -13057,6 +13055,116 @@ typedef struct {
     MATRIX world;    
 } GridScratch;
 #endif
+#ifndef XM_S_worldmap_terrain_visible_blocks
+#define XM_S_worldmap_terrain_visible_blocks
+extern s16 xm_worldmap_terrain_visible_blocks[25] __asm__("D_8009D618");
+#endif
+#ifndef XM_S_worldmap_terrain_quarter_visibility
+#define XM_S_worldmap_terrain_quarter_visibility
+extern s16 xm_worldmap_terrain_quarter_visibility[25][4] __asm__("D_8009D650");
+#endif
+#ifndef XM_S_worldmap_terrain_classify_quad
+#define XM_S_worldmap_terrain_classify_quad
+s16 xm_worldmap_terrain_classify_quad(SVECTOR *a, SVECTOR *b, SVECTOR *c, SVECTOR *d) __asm__("func_800987AC");
+#endif
+#ifndef XM_S_worldmap_terrain_always_visible_quarters
+#define XM_S_worldmap_terrain_always_visible_quarters
+extern s16 xm_worldmap_terrain_always_visible_quarters[4][25][4] __asm__("D_8009B7A8");
+#endif
+#pragma push_macro("GRID_SCRATCH")
+#undef GRID_SCRATCH
+#define GRID_SCRATCH ((GridScratch *)0x1F800000)
+void func_800983A0(Camera *camera) {
+    s16 *block;
+    u32 *quarters;
+    u32 visible;
+    s32 row;
+    s32 column;
+    s16 result;
+    GridScratch *scratch;
+
+    scratch = GRID_SCRATCH;
+    GRID_SCRATCH->local = xm_worldmap_terrain_matrix;
+    xm_CompMatrix(&xm_worldmap_camera_matrix, &GRID_SCRATCH->local, &GRID_SCRATCH->world);
+    xm_SetRotMatrix(&GRID_SCRATCH->world);
+    xm_SetTransMatrix(&GRID_SCRATCH->world);
+    block = xm_worldmap_terrain_visible_blocks;
+    quarters = (u32 *)xm_worldmap_terrain_quarter_visibility[0];
+    GRID_SCRATCH->x0 = -((camera->target.vx >> 12) & 0x7FF) - 0x1000;
+    GRID_SCRATCH->z0 = -((camera->target.vz >> 12) & 0x7FF) - 0x1000;
+    GRID_SCRATCH->v[8].vy = 0;
+    GRID_SCRATCH->v[7].vy = 0;
+    GRID_SCRATCH->v[6].vy = 0;
+    GRID_SCRATCH->v[5].vy = 0;
+    GRID_SCRATCH->v[4].vy = 0;
+    GRID_SCRATCH->v[3].vy = 0;
+    GRID_SCRATCH->v[2].vy = 0;
+    GRID_SCRATCH->v[1].vy = 0;
+    GRID_SCRATCH->v[0].vy = 0;
+    GRID_SCRATCH->v[0].vz = -GRID_SCRATCH->z0;
+    for (row = 0; row < 5; row++) {
+        scratch->v[0].vx = scratch->x0;
+        for (column = 0; column < 5; quarters += 2, scratch->v[0].vx += 0x800, block++, column++) {
+            scratch->v[1].vx = scratch->v[0].vx + 0x800;
+            scratch->v[1].vz = scratch->v[0].vz;
+            scratch->v[2].vx = scratch->v[0].vx;
+            scratch->v[2].vz = scratch->v[0].vz - 0x800;
+            scratch->v[3].vx = scratch->v[0].vx + 0x800;
+            scratch->v[3].vz = scratch->v[0].vz - 0x800;
+            result = xm_worldmap_terrain_classify_quad(&scratch->v[0], &scratch->v[1], &scratch->v[2],
+                                   &scratch->v[3]);
+            *block = result;
+            if (result == 0) {
+                scratch->v[4].vx = scratch->v[0].vx + 0x400;
+                scratch->v[4].vz = scratch->v[0].vz;
+                scratch->v[5].vx = scratch->v[0].vx;
+                scratch->v[5].vz = scratch->v[0].vz - 0x400;
+                scratch->v[6].vx = scratch->v[1].vx;
+                scratch->v[6].vz = scratch->v[5].vz;
+                scratch->v[7].vx = scratch->v[4].vx;
+                scratch->v[7].vz = scratch->v[2].vz;
+                scratch->v[8].vx = scratch->v[4].vx;
+                scratch->v[8].vz = scratch->v[5].vz;
+                visible = xm_worldmap_terrain_classify_quad(&scratch->v[0], &scratch->v[4], &scratch->v[5],
+                                        &scratch->v[8]) & 0xFFFF;
+                visible |= xm_worldmap_terrain_classify_quad(&scratch->v[4], &scratch->v[1], &scratch->v[8],
+                                         &scratch->v[6]) << 16;
+                quarters[0] = visible;
+                visible = xm_worldmap_terrain_classify_quad(&scratch->v[5], &scratch->v[8], &scratch->v[2],
+                                        &scratch->v[7]) & 0xFFFF;
+                visible |= xm_worldmap_terrain_classify_quad(&scratch->v[8], &scratch->v[6], &scratch->v[7],
+                                         &scratch->v[3]) << 16;
+            } else {
+                visible = result & 0xFFFF;
+                visible |= visible << 16;
+                quarters[0] = visible;
+            }
+            quarters[1] = visible;
+        }
+        scratch->v[0].vz -= 0x800;
+    }
+    
+    column = 0;
+    if (((camera->target.vx >> 12) & 0x7FF) >= 0x400) {
+        column = 1;
+    }
+    if (((camera->target.vz >> 12) & 0x7FF) >= 0x400) {
+        column |= 2;
+    }
+    block = (s16 *)xm_worldmap_terrain_always_visible_quarters[column][0];
+    quarters = (u32 *)xm_worldmap_terrain_quarter_visibility[0];
+    for (row = 0; row < 25; row++) {
+        quarters[0] |= ((u32 *)block)[0];
+        quarters[1] |= ((u32 *)block)[1];
+        block += 4;
+        quarters += 2;
+    }
+}
+#pragma pop_macro("GRID_SCRATCH")
+#endif
+
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_terrain_classify_quad (src/decomp/src/worldmap/worldmap_movement_terrain.c:1892). */
 #ifndef XM_T_GRID_SCRATCH
 #define XM_T_GRID_SCRATCH
 #define GRID_SCRATCH ((GridScratch *)0x1F800000)
@@ -13074,10 +13182,6 @@ typedef struct {
                      :                                                         \
                      : "r"(r0)                                                 \
                      : "memory")
-#endif
-#ifndef XM_S_worldmap_terrain_classify_quad
-#define XM_S_worldmap_terrain_classify_quad
-s16 xm_worldmap_terrain_classify_quad(SVECTOR *a, SVECTOR *b, SVECTOR *c, SVECTOR *d) __asm__("func_800987AC");
 #endif
 #ifndef XM_S_worldmap_terrain_cull_normal_0
 #define XM_S_worldmap_terrain_cull_normal_0
@@ -13237,14 +13341,6 @@ extern u16 xm_worldmap_terrain_tpages[7] __asm__("D_8009CD54");
 #ifndef XM_S_worldmap_terrain_packet_count
 #define XM_S_worldmap_terrain_packet_count
 extern s32 xm_worldmap_terrain_packet_count __asm__("D_8009D7DC");
-#endif
-#ifndef XM_S_worldmap_terrain_visible_blocks
-#define XM_S_worldmap_terrain_visible_blocks
-extern s16 xm_worldmap_terrain_visible_blocks[25] __asm__("D_8009D618");
-#endif
-#ifndef XM_S_worldmap_terrain_quarter_visibility
-#define XM_S_worldmap_terrain_quarter_visibility
-extern s16 xm_worldmap_terrain_quarter_visibility[25][4] __asm__("D_8009D650");
 #endif
 #ifndef XM_S_worldmap_terrain_build_and_draw_quarter
 #define XM_S_worldmap_terrain_build_and_draw_quarter

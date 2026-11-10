@@ -19,7 +19,83 @@ extern s32 g_GfxCurContext;
 extern u_long* g_GfxCurOT;
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp1f", func_80025C04);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): sprite_scale_pixels (src/decomp/src/resident/sprite_sheet.c:20). */
+#ifndef XM_T_ColourScratch
+#define XM_T_ColourScratch
+typedef struct {
+    u16 colour;     
+    u16 unused2;
+    VECTOR in;      
+    VECTOR out;     
+} ColourScratch;
+#endif
+#ifndef XM_T_COLOUR_SCRATCH
+#define XM_T_COLOUR_SCRATCH
+#define COLOUR_SCRATCH ((ColourScratch *)0x1F800000)
+#endif
+#ifndef XM_T_gte_lddp
+#define XM_T_gte_lddp
+#define gte_lddp(r0) __asm__ volatile("mtc2 %0, $8" : : "r"(r0))
+#endif
+#ifndef XM_T_gte_ldlvl
+#define XM_T_gte_ldlvl
+#define gte_ldlvl(r0)                                                          \
+    __asm__ volatile("lwc2 $9, 0(%0);"                                         \
+                     "lwc2 $10, 4(%0);"                                        \
+                     "lwc2 $11, 8(%0)"                                         \
+                     :                                                         \
+                     : "r"(r0) : "memory")
+#endif
+#ifndef XM_T_gte_gpf12
+#define XM_T_gte_gpf12
+#define gte_gpf12() __asm__ volatile("nop;nop;.word 0x4B98003D")
+#endif
+#ifndef XM_T_gte_stlvl
+#define XM_T_gte_stlvl
+#define gte_stlvl(r0)                                                          \
+    __asm__ volatile("swc2 $9, 0(%0);"                                         \
+                     "swc2 $10, 4(%0);"                                        \
+                     "swc2 $11, 8(%0)"                                         \
+                     :                                                         \
+                     : "r"(r0)                                                 \
+                     : "memory")
+#endif
+#ifndef XM_S_sprite_scale_pixels
+#define XM_S_sprite_scale_pixels
+void xm_sprite_scale_pixels(s32 count, s32 scale, u16 *dst, u16 *src) __asm__("func_80025C04");
+#endif
+void func_80025C04(s32 count, s32 scale, u16 *dst, u16 *src) {
+    ColourScratch *scratch = COLOUR_SCRATCH;
+
+    gte_lddp(scale << 7);
+    while (--count != -1) {
+        scratch->in.vx = *src & 0x1F;
+        scratch->in.vy = *src & 0x3E0;
+        scratch->in.vz = *src & 0x7C00;
+        gte_ldlvl(&scratch->in);
+        gte_gpf12();
+        gte_stlvl(&scratch->out);
+        if (scratch->out.vx >= 0x20) {
+            scratch->colour = 0x1F;
+        } else {
+            scratch->colour = scratch->out.vx & 0x1F;
+        }
+        if (scratch->out.vy > 0x3E0) {
+            scratch->colour |= 0x3E0;
+        } else {
+            scratch->colour |= scratch->out.vy & 0x3E0;
+        }
+        if (scratch->out.vz > 0x7C00) {
+            scratch->colour |= 0x7C00;
+        } else {
+            scratch->colour |= scratch->out.vz & 0x7C00;
+        }
+        scratch->colour |= *src++ & 0x8000;
+        *dst++ = scratch->colour;
+    }
+}
+#endif
 #endif
 
 /* Handwritten GTE color-processing routine retained as assembly. */

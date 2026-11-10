@@ -645,7 +645,152 @@ extern s16 D_800AFB54;
 extern s32 D_800AFB44[];
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80080A74);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_actor_reset (src/decomp/src/field/field_motion.c:2275). */
+#ifndef XM_T_xm_ActorBits134
+#define XM_T_xm_ActorBits134
+typedef struct {
+    u32 bank : 4;
+    u32 bank_flag : 1;
+    u32 unk5 : 2;
+    u32 linked : 1;
+    u32 unk8 : 24;
+} xm_ActorBits134;
+#endif
+#ifndef XM_T_ACTOR_BITS134
+#define XM_T_ACTOR_BITS134
+#define ACTOR_BITS134(actor) (*(xm_ActorBits134 *)&(actor)->unk134)
+#endif
+#ifndef XM_S_field_actor_reset
+#define XM_S_field_actor_reset
+void xm_field_actor_reset(s32 index) __asm__("func_80080A74");
+#endif
+#ifndef XM_S_rand
+#define XM_S_rand
+int xm_rand(void) __asm__("rand");
+#endif
+#ifndef XM_S_field_collision_find_floor_triangle
+#define XM_S_field_collision_find_floor_triangle
+s32 xm_field_collision_find_floor_triangle(s32 x, s32 z, s32 layer, SVECTOR *point, VECTOR *normal) __asm__("func_8007B1C4");
+#endif
+void func_80080A74(s32 index) {
+    VECTOR normal[4];
+    SVECTOR point[4];
+    xm_FieldActor *actor;
+    s32 i;
+
+    actor = xm_field_view.components.descriptors[index].actor;
+    actor->flags = 0xB0;
+    actor->unk18 = 0x10;
+    actor->layer_flags = 0x800;
+    actor->gravity.part.fraction = 0x10;
+    actor->height = 0x60;
+    actor->ridden_actor = 0xFF;
+    actor->unk40[0] = 0;
+    actor->unk40[1] = 0;
+    actor->unk40[2] = 0;
+    actor->unk030[0] = 0;
+    actor->unk030[1] = 0;
+    actor->unk030[2] = 0;
+    actor->unk64 = 0;
+    actor->unk60 = 0;
+    actor->unk62 = 0;
+    actor->target[0] = 0;
+    actor->target[1] = 0;
+    actor->target[2] = 0;
+    actor->unkE6 = 0;
+    actor->unk0EA = 0xFF;
+    actor->unk075 = 0xFF;
+    actor->unkE2 = 0;
+    actor->pc = 0;
+    actor->stuck = 0;
+    actor->state.bits.unk5 = 0;
+    actor->unk11E = 0x200;
+    actor->gravity.part.whole = actor->unk18;
+    actor->state.bits.mode = 0;
+    actor->color1[2] = 0x80;
+    actor->color1[1] = 0x80;
+    actor->color1[0] = 0x80;
+    actor->color0[2] = 0x80;
+    actor->color0[1] = 0x80;
+    actor->color0[0] = 0x80;
+    actor->unk128 = 0xFFFF;
+    actor->state.bits.unk16 = 0;
+    actor->unk130_19 = 0;
+    actor->unk130 = 0;
+    actor->unk130_9 = 0;
+    actor->state.bits.unk18 = 0;
+    for (i = 0; i < 8; i++) {
+        actor->slots[i].countdown = 0;
+        actor->slots[i].unk16 = 0;
+        actor->slots[i].unk22 = 0;
+        actor->slots[i].move_mode = 0;
+        actor->slots[i].priority = 15;
+        actor->slots[i].value = 0xFFFF;
+        actor->slots[i].resume_pc = 0xFFFF;
+        actor->slots[i].tag = 0xFF;
+    }
+    actor->unk120 = NULL;
+    actor->unkE4 = 0xFF;
+    actor->unk76 = 0x100;
+    actor->unk83 = 0;
+    actor->unk82 = 0;
+    actor->unk8A = 0;
+    actor->unk88 = 0;
+    actor->unk84 = 0;
+    actor->unk0CF = 0;
+    actor->slot = 0;
+    actor->unkE8 = 0;
+    actor->layer = 0;
+    actor->unkEC = 0;
+    actor->unk134 &= ~0x80;
+    actor->state.bits.depth = 0;
+    actor->state.bits.octant = 0;
+    actor->state.bits.unk12 = 0;
+    ACTOR_BITS134(actor).unk5 = 0;
+    actor->unk102 = xm_rand();
+    actor->scale[0] = 0x1000;
+    actor->scale[1] = 0x1000;
+    actor->scale[2] = 0x1000;
+    actor->sound_mode = 0xFF;
+    actor->character = 0xFF;
+    actor->heading_goal = 0x8000;
+    actor->heading = 0x8000;
+    actor->unk108 = 0x8000;
+    actor->unk124 = -1;
+    actor->unk0E3 = 0;
+    actor->triangle[3] = 0;
+    actor->triangle[2] = 0;
+    actor->triangle[1] = 0;
+    actor->triangle[0] = 0;
+    actor->state.bits.unk2 = 0;
+    for (i = 0; i < xm_field_view.components.layer_count - 1; i++) {
+        actor->triangle[i] = xm_field_collision_find_floor_triangle((s16)xm_field_view.components.descriptors[index].matrix.t[0],
+                                           (s16)xm_field_view.components.descriptors[index].matrix.t[2], i,
+                                           point + i, &normal[i]);
+        if (actor->triangle[i] != -1 && (u32)actor->triangle[i] >= xm_field_view.components.triangle_counts[i]) {
+            xm_field_view.components.triangle_counts[i] = 0;
+            normal[i].vx = 0;
+            normal[i].vy = 0;
+            normal[i].vz = 0;
+            (point + i)->vx = 0;
+            (point + i)->vy = 0;
+            (point + i)->vz = 0;
+        }
+    }
+    actor->floor_attribute = xm_field_actor_get_floor_attribute(actor);
+    actor->unk50[0] = (normal + actor->layer)->vx;
+    actor->unk50[1] = (normal + actor->layer)->vy;
+    actor->unk50[2] = (normal + actor->layer)->vz;
+    if (!(xm_field_view.components.descriptors[index].flags & 0x80)) {
+        xm_field_view.components.descriptors[index].matrix.t[1] = point[actor->layer].vy;
+    }
+    actor->position[0] = xm_field_view.components.descriptors[index].matrix.t[0] << 16;
+    actor->position[1] = xm_field_view.components.descriptors[index].matrix.t[1] << 16;
+    actor->position[2] = xm_field_view.components.descriptors[index].matrix.t[2] << 16;
+    actor->unk72 = xm_field_view.components.descriptors[index].matrix.t[1];
+}
+#endif
 #else
 void func_80080A74(s32 actorIndex) {
     u8* p = (u8*)(uintptr_t)g_FieldActors[actorIndex].pActorData;
@@ -972,10 +1117,6 @@ void *xm_heap_alloc(s32 size, s32 mode) __asm__("HeapAlloc");
 #ifndef XM_S_field_morph_read_list_word
 #define XM_S_field_morph_read_list_word
 s32 xm_field_morph_read_list_word(xm_MorphChannel *channel) __asm__("func_80080A18");
-#endif
-#ifndef XM_S_field_actor_reset
-#define XM_S_field_actor_reset
-void xm_field_actor_reset(s32 index) __asm__("func_80080A74");
 #endif
 #ifndef XM_S_field_shadow_init_quad
 #define XM_S_field_shadow_init_quad
