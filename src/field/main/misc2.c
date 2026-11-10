@@ -4972,7 +4972,71 @@ extern void func_80084A40(s32 actorIndex, s16 y, void* pFieldActor, void* pActor
 extern void func_80081C54(s32 actorIndex);
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_80077268);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_party_place_at_controlled (src/decomp/src/field/field.c:2629). */
+#ifndef XM_S_field_party_place_at_controlled
+#define XM_S_field_party_place_at_controlled
+void xm_field_party_place_at_controlled(void) __asm__("func_80077268");
+#endif
+#ifndef XM_S_field_actor_update_position
+#define XM_S_field_actor_update_position
+s32 xm_field_actor_update_position() __asm__("func_80084A40");
+#endif
+#ifndef XM_S_field_event_actor_count
+#define XM_S_field_event_actor_count
+extern s32 xm_field_event_actor_count __asm__("D_800ADBFC");
+#endif
+#ifndef XM_S_field_party_find_character_slot
+#define XM_S_field_party_find_character_slot
+s32 xm_field_party_find_character_slot(s32 id) __asm__("FieldCharacterIdToPartyId");
+#endif
+#ifndef XM_S_field_movement_history_indices
+#define XM_S_field_movement_history_indices
+extern s32 xm_field_movement_history_indices[3] __asm__("D_800B2360");
+#endif
+#ifndef XM_S_field_record_movement_history
+#define XM_S_field_record_movement_history
+void xm_field_record_movement_history(s32 index) __asm__("func_80081C54");
+#endif
+void func_80077268(void) {
+    xm_FieldDescriptor *descriptor;
+    xm_FieldActor *actor;
+    xm_Sprite *model;
+    s32 slot;
+    s32 i;
+
+    xm_field_actor_update_position(xm_field_work.controlled,
+                  WHOLE(xm_field_view.components.descriptors[xm_field_work.controlled].actor->position[1]),
+                  &xm_field_view.components.descriptors[xm_field_work.controlled],
+                  xm_field_view.components.descriptors[xm_field_work.controlled].actor);
+    for (i = 0; i < xm_field_event_actor_count; i++) {
+        descriptor = &xm_field_view.components.descriptors[i];
+        actor = descriptor->actor;
+        if ((descriptor->flags & 0xF80) == 0x200) {
+            slot = xm_field_party_find_character_slot(actor->unkE4);
+            if (slot != -1) {
+                model = xm_field_view.components.descriptors[i].model;
+                if (slot != 0) {
+                    xm_field_actor_update_position(i, WHOLE(xm_field_view.components.descriptors[i].actor->position[1]),
+                                  descriptor, actor);
+                    model->x = xm_field_view.components.descriptors[xm_field_work.controlled].model->x;
+                    model->y = xm_field_view.components.descriptors[xm_field_work.controlled].model->y;
+                    model->z = xm_field_view.components.descriptors[xm_field_work.controlled].model->z;
+                    descriptor->matrix.t[0] = xm_field_view.components.descriptors[xm_field_work.controlled].matrix.t[0];
+                    descriptor->matrix.t[1] = xm_field_view.components.descriptors[xm_field_work.controlled].matrix.t[1];
+                    descriptor->matrix.t[2] = xm_field_view.components.descriptors[xm_field_work.controlled].matrix.t[2];
+                }
+            }
+        }
+    }
+    xm_field_movement_history_indices[2] = 0;
+    xm_field_movement_history_indices[1] = 0;
+    xm_field_movement_history_indices[0] = 0;
+    for (i = 0; i < 0x20; i++) {
+        xm_field_record_movement_history(xm_field_work.controlled);
+    }
+}
+#endif
 #else
 void func_80077268(void) {
     s32 i;

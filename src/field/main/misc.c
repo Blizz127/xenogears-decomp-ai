@@ -4231,7 +4231,108 @@ void func_8008B894(void) {
  * settle (func_80077268), and on gear maps re-run the party slot's gear
  * actor too.  The VM context is saved/restored around the nested runs. */
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008B978);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_party_run_join_event (src/decomp/src/field/field_event.c:2313). */
+#ifndef XM_S_field_party_run_join_event
+#define XM_S_field_party_run_join_event
+void xm_field_party_run_join_event(s32 member) __asm__("func_8008B978");
+#endif
+#ifndef XM_S_field_current_event_descriptor
+#define XM_S_field_current_event_descriptor
+extern xm_FieldDescriptor *xm_field_current_event_descriptor __asm__("D_800B06B8");
+#endif
+#ifndef XM_S_field_event_batch_limit
+#define XM_S_field_event_batch_limit
+extern s32 xm_field_event_batch_limit __asm__("g_FieldScriptMaxInstructionCount");
+#endif
+#ifndef XM_S_field_event_get_entry_pc
+#define XM_S_field_event_get_entry_pc
+s32 xm_field_event_get_entry_pc(s32 actor, s32 event) __asm__("FieldScriptGetBytecodeOffset");
+#endif
+#ifndef XM_S_field_actor_reset
+#define XM_S_field_actor_reset
+void xm_field_actor_reset(s32 index) __asm__("func_80080A74");
+#endif
+#ifndef XM_S_field_event_yield_ends_run
+#define XM_S_field_event_yield_ends_run
+extern s32 xm_field_event_yield_ends_run __asm__("D_800AFFEC");
+#endif
+#ifndef XM_S_field_actor_copy_placement
+#define XM_S_field_actor_copy_placement
+void xm_field_actor_copy_placement(s32 to, s32 from) __asm__("FieldActorCopyPlacement");
+#endif
+#ifndef XM_S_field_event_run_instructions
+#define XM_S_field_event_run_instructions
+s32 xm_field_event_run_instructions(s32 limit) __asm__("FieldScriptVMRun");
+#endif
+#ifndef XM_S_field_party_place_at_controlled
+#define XM_S_field_party_place_at_controlled
+void xm_field_party_place_at_controlled(void) __asm__("func_80077268");
+#endif
+#ifndef XM_S_mode_party_stand_in_actors
+#define XM_S_mode_party_stand_in_actors
+extern s32 xm_mode_party_stand_in_actors[3] __asm__("D_8006F990");
+#endif
+void func_8008B978(s32 member) {
+    xm_FieldDescriptor *descriptor;
+    xm_FieldActor *actor;
+    s32 yield;
+    s32 current;
+    s32 steps;
+    s32 pc;
+    s32 i;
+    s32 entry;
+    u8 *code;
+    s32 pc_new;
+
+    xm_game_current_data->joined |= 1 << xm_field_party_sprite_load_member;
+    descriptor = xm_field_current_event_descriptor;
+    actor = xm_field_current_event_actor;
+    if (xm_field_event_runs_per_frame != 0) {
+        pc = actor->pc;
+        yield = xm_field_event_yield_requested;
+        steps = xm_field_event_batch_limit;
+        current = xm_field_current_event_actor_index;
+        for (i = 0; i < xm_field_event_actor_count; i++) {
+            entry = xm_field_event_get_entry_pc(i, 0);
+            code = &xm_field_event_bytecode[entry];
+            if (code[0] == 0x16 && code[1] == member) {
+                xm_field_current_event_descriptor = &xm_field_view.components.descriptors[i];
+                xm_field_current_event_actor = xm_field_current_event_descriptor->actor;
+                xm_field_actor_reset(i);
+                xm_field_current_event_actor_index = i;
+                xm_field_view.components.descriptors[i].actor->pc = entry;
+                pc_new = xm_field_event_get_entry_pc(i, 0);
+                xm_field_event_yield_ends_run = 0;
+                xm_field_current_event_actor->pc = pc_new;
+                entry = xm_field_event_get_entry_pc(i, 0);
+                xm_field_actor_copy_placement(i, xm_field_work.controlled);
+                xm_field_event_run_instructions(0xFFFF);
+                xm_field_party_place_at_controlled();
+                xm_game_current_data->joined |= 1 << xm_field_party_sprite_load_member;
+                if (xm_mode_field_map_id & 0xC000) {
+                    xm_field_current_event_descriptor = &xm_field_view.components.descriptors[xm_mode_party_stand_in_actors[xm_field_party_sprite_load_slot]];
+                    xm_field_current_event_actor = xm_field_current_event_descriptor->actor;
+                    xm_field_actor_reset(xm_mode_party_stand_in_actors[xm_field_party_sprite_load_slot]);
+                    xm_field_view.components.descriptors[i].actor->pc = entry;
+                    xm_field_current_event_actor_index = xm_mode_party_stand_in_actors[xm_field_party_sprite_load_slot];
+                    pc_new = xm_field_event_get_entry_pc(xm_mode_party_stand_in_actors[xm_field_party_sprite_load_slot], 0);
+                    xm_field_event_yield_ends_run = 0;
+                    xm_field_current_event_actor->pc = pc_new;
+                    xm_field_event_run_instructions(0xFFFF);
+                }
+                break;
+            }
+        }
+        xm_field_current_event_descriptor = descriptor;
+        xm_field_current_event_actor = actor;
+        xm_field_event_yield_requested = yield;
+        xm_field_current_event_actor_index = current;
+        xm_field_event_batch_limit = steps;
+        actor->pc = pc;
+    }
+}
+#endif
 #else
 void func_8008B978(s32 charId) {
     ActorData* savedCur = g_FieldScriptVMCurActor;
@@ -4448,7 +4549,62 @@ extern void* D_8005A418[];
 extern void* g_FieldSpriteData;
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008BF38);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_party_close_up_slot (src/decomp/src/field/field_event.c:2436). */
+#ifndef XM_T_PartySprite
+#define XM_T_PartySprite
+typedef struct {
+    s32 data[0x14000 / 4];
+} PartySprite;
+#endif
+#ifndef XM_S_field_party_close_up_slot
+#define XM_S_field_party_close_up_slot
+void xm_field_party_close_up_slot(s32 slot) __asm__("func_8008BF38");
+#endif
+#ifndef XM_S_mode_party_sprite_blocks
+#define XM_S_mode_party_sprite_blocks
+extern void *xm_mode_party_sprite_blocks[3] __asm__("g_PartyDataBuffers");
+#endif
+#ifndef XM_S_field_actor_create_sprite
+#define XM_S_field_actor_create_sprite
+void xm_field_actor_create_sprite(s32 index, s32 slot, void *data, s32 kind, s32 bank, s32 unk, s32 flag) __asm__("func_80076AC0");
+#endif
+void func_8008BF38(s32 slot) {
+    s32 member;
+    s32 kind;
+    s32 *sprites;
+
+    member = xm_mode_party_actors[slot + 1];
+    if (member == 0xFF) {
+        xm_mode_party_file_ids[slot] = xm_mode_party_file_ids[slot + 1];
+        xm_mode_party_members[slot] = xm_mode_party_members[slot + 1];
+        xm_mode_party_actors[slot] = xm_mode_party_actors[slot + 1];
+        xm_mode_party_members[slot + 1] = member;
+        xm_mode_party_file_ids[slot + 1] = member;
+        xm_mode_party_actors[slot + 1] = member;
+        return;
+    }
+    *(PartySprite *)xm_mode_party_sprite_blocks[slot] = *(PartySprite *)xm_mode_party_sprite_blocks[slot + 1];
+    xm_mode_party_file_ids[slot] = xm_mode_party_file_ids[slot + 1];
+    xm_mode_party_members[slot] = xm_mode_party_members[slot + 1];
+    xm_mode_party_actors[slot] = xm_mode_party_actors[slot + 1];
+    kind = xm_field_view.components.descriptors[member].actor->unk126;
+    if (!(kind & 0x80)) {
+        xm_field_actor_create_sprite(member, slot, xm_mode_party_sprite_blocks[slot], 1, 0, slot, 1);
+    } else {
+        sprites = xm_field_view.components.sprites;
+        xm_field_actor_create_sprite(member, xm_field_view.components.descriptors[member].actor->unk127,
+                      (u8 *)(sprites[(kind & 0x7F) + 1] + (s32)sprites),
+                      xm_field_view.components.descriptors[member].actor->sprite_kind,
+                      xm_field_view.components.descriptors[member].actor->unk134 & 0xF,
+                      xm_field_view.components.descriptors[member].actor->unk126,
+                      (xm_field_view.components.descriptors[member].actor->unk134 >> 4) & 1);
+    }
+    xm_mode_party_members[slot + 1] = 0xFF;
+    xm_mode_party_file_ids[slot + 1] = 0xFF;
+    xm_mode_party_actors[slot + 1] = 0xFF;
+}
+#endif
 #else
 /* Retail 8008BF38.  D_8005A448 is &D_8005A444[1] on retail but a separate
  * stub on PC, so every party-slot access goes through D_8005A444 + 1.
@@ -4519,22 +4675,6 @@ extern void func_80080A74(s32 actorIndex);
 #ifndef XM_S_field_party_remove_slot_member
 #define XM_S_field_party_remove_slot_member
 void xm_field_party_remove_slot_member(s32 slot) __asm__("func_8008C180");
-#endif
-#ifndef XM_S_field_current_event_descriptor
-#define XM_S_field_current_event_descriptor
-extern xm_FieldDescriptor *xm_field_current_event_descriptor __asm__("D_800B06B8");
-#endif
-#ifndef XM_S_field_actor_reset
-#define XM_S_field_actor_reset
-void xm_field_actor_reset(s32 index) __asm__("func_80080A74");
-#endif
-#ifndef XM_S_field_actor_create_sprite
-#define XM_S_field_actor_create_sprite
-void xm_field_actor_create_sprite(s32 index, s32 slot, void *data, s32 kind, s32 bank, s32 unk, s32 flag) __asm__("func_80076AC0");
-#endif
-#ifndef XM_S_mode_party_sprite_blocks
-#define XM_S_mode_party_sprite_blocks
-extern void *xm_mode_party_sprite_blocks[3] __asm__("g_PartyDataBuffers");
 #endif
 void func_8008C180(s32 slot) {
     xm_FieldDescriptor *descriptor;
@@ -5153,10 +5293,6 @@ static inline void CopyActorFieldS32(FieldActor* base, int dstId, int srcId, int
 #ifndef XENO_PC_PORT
 #ifndef XENO_PC_PORT
 /* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_actor_copy_placement (src/decomp/src/field/field_event.c:2887). */
-#ifndef XM_S_field_actor_copy_placement
-#define XM_S_field_actor_copy_placement
-void xm_field_actor_copy_placement(s32 to, s32 from) __asm__("FieldActorCopyPlacement");
-#endif
 void FieldActorCopyPlacement(s32 to, s32 from) {
     xm_FieldActor *target;
     xm_FieldActor *source;
