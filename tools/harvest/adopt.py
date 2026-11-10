@@ -38,9 +38,23 @@ if not EA_MODE:
         for _k,_v in load_syms(_f).items(): xsym.setdefault(_k,_v)
 if not EA_MODE:
     try:
-        for _k,_v in json.load(open(WORK+'/ext/xem/src/port/symbols.json')).items():
-            if isinstance(_v,int) and _k not in xsym: xsym[_k]=(_v,'')
+        _im=json.load(open(WORK+'/ext/xem/src/port/symbols.json'))['images']
+        for _nm in [xmap[MOD],'slus_006.64']+[x for x in _im if x not in (xmap[MOD],'slus_006.64')]:
+            for _sec in ('globals','functions'):
+                for _k,_v in _im.get(_nm,{}).get(_sec,{}).items():
+                    if isinstance(_v,int) and _k not in xsym: xsym[_k]=(_v,'func' if _sec=='functions' else '')
     except Exception as _e: pass
+if not EA_MODE:
+    import glob as _g2
+    for _f in _g2.glob(WORK+'/ext/xem/src/decomp/src/**/*.h',recursive=True):
+        try: _t=open(_f,errors='ignore').read()
+        except: continue
+        for _m in re.finditer(r'extern[^;{}()]*?\b(\w+)\s*(?:\[[^\]]*\])?\s*__asm__\("(\w+)"\)',_t):
+            if _m.group(1) not in xsym and _m.group(2) in xsym: xsym[_m.group(1)]=xsym[_m.group(2)]
+            if _m.group(1) not in idx and _m.group(2) in xsym:
+                _d=re.sub(r'\s*__asm__\("\w+"\)','',_m.group(0))+';'
+                _ex=dict(idx[_m.group(2)][0]) if idx.get(_m.group(2)) else {}
+                _ex.update({'kind':'var','file':_f.replace(WORK+'/ext/xem/',''),'src':_d}); idx[_m.group(1)]=[_ex]
 # Blizz known symbol names for this module
 def toks(path,S):
     try: t=open(path,errors='ignore').read()

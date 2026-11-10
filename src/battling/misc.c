@@ -6440,7 +6440,121 @@ void xm_arena_stage_keep_step_inside(VECTOR *pos, VECTOR *step, s32 radius) {
     }
 }
 #endif
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80082A70);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_stage_apply_colors (src/decomp/src/menu/arena_stage_views_and_hud.c:421). */
+#ifndef XM_T_Environment
+#define XM_T_Environment
+typedef struct Environment {
+    u8 top[3];         
+    u8 unk3;
+    u8 unk4, unk5, unk6;
+    u8 unk7;
+    u8 bottom[3];      
+    u8 unkB;
+    u8 back[3];        
+    u8 unkF;
+    u8 dim;            
+} Environment;
+#endif
+#ifndef XM_T_gte_ldrgb
+#define XM_T_gte_ldrgb
+#define gte_ldrgb(r0) __asm__ volatile("lwc2 $6, 0(%0)" : : "r"(r0) : "memory")
+#endif
+#ifndef XM_S_arena_stage_apply_colors
+#define XM_S_arena_stage_apply_colors
+void xm_arena_stage_apply_colors(void) __asm__("func_80082A70");
+#endif
+#ifndef XM_S_arena_stage_color_table
+#define XM_S_arena_stage_color_table
+extern Environment xm_arena_stage_color_table[] __asm__("D_8009178C");
+#endif
+#ifndef XM_S_arena_stage_index
+#define XM_S_arena_stage_index
+extern u8 xm_arena_stage_index __asm__("D_800928B4");
+#endif
+#ifndef XM_S_arena_current_stage_colors
+#define XM_S_arena_current_stage_colors
+extern Environment *xm_arena_current_stage_colors __asm__("D_8009288C");
+#endif
+#ifndef XM_S_arena_stage_back_color_red
+#define XM_S_arena_stage_back_color_red
+extern s32 xm_arena_stage_back_color_red __asm__("D_8009291C");
+#endif
+#ifndef XM_S_arena_stage_back_color_green
+#define XM_S_arena_stage_back_color_green
+extern s32 xm_arena_stage_back_color_green __asm__("D_80092910");
+#endif
+#ifndef XM_S_arena_stage_back_color_blue
+#define XM_S_arena_stage_back_color_blue
+extern s32 xm_arena_stage_back_color_blue __asm__("D_80092908");
+#endif
+#ifndef XM_S_model_set_color
+#define XM_S_model_set_color
+void xm_model_set_color(s32 r, s32 g, s32 b) __asm__("func_8002C6E0");
+#endif
+#ifndef XM_S_SetFarColor
+#define XM_S_SetFarColor
+void xm_SetFarColor(long r, long g, long b) __asm__("SetFarColor");
+#endif
+#ifndef XM_S_SetFogNearFar
+#define XM_S_SetFogNearFar
+void xm_SetFogNearFar(long a, long b, long h) __asm__("func_80048AB0");
+#endif
+#ifndef XM_S_model_color
+#define XM_S_model_color
+extern u32 xm_model_color __asm__("D_80059598");
+#endif
+void func_80082A70(void) {
+    Environment *env;
+    s32 top_r;
+    s32 top_g;
+    s32 top_b;
+    s32 bottom_r;
+    s32 bottom_g;
+    s32 bottom_b;
+
+    env = &xm_arena_stage_color_table[xm_arena_stage_index];
+    xm_arena_current_stage_colors = env;
+    top_r = env->top[0];
+    top_g = env->top[1];
+    top_b = env->top[2];
+    xm_arena_stage_back_color_red = env->unk4;
+    xm_arena_stage_back_color_green = env->unk5;
+    xm_arena_stage_back_color_blue = env->unk6;
+    bottom_r = env->bottom[0];
+    bottom_g = env->bottom[1];
+    bottom_b = env->bottom[2];
+    xm_model_set_color(env->back[0], env->back[1], env->back[2]);
+    xm_SetFarColor(bottom_r, bottom_g, bottom_b);
+    xm_arena_stage_sky_gradients[0].r0 = top_r;
+    xm_arena_stage_sky_gradients[1].r0 = top_r;
+    xm_arena_stage_sky_gradients[0].g0 = top_g;
+    xm_arena_stage_sky_gradients[1].g0 = top_g;
+    xm_arena_stage_sky_gradients[0].b0 = top_b;
+    xm_arena_stage_sky_gradients[1].b0 = top_b;
+    *(u16 *)&xm_arena_stage_sky_gradients[0].r1 = top_r | (top_g << 8);
+    xm_arena_stage_sky_gradients[0].b1 = top_b;
+    *(u16 *)&xm_arena_stage_sky_gradients[1].r1 = top_r | (top_g << 8);
+    xm_arena_stage_sky_gradients[1].b1 = top_b;
+    *(u16 *)&xm_arena_stage_sky_gradients[0].r2 = bottom_r | (bottom_g << 8);
+    xm_arena_stage_sky_gradients[0].b2 = bottom_b;
+    *(u16 *)&xm_arena_stage_sky_gradients[1].r2 = bottom_r | (bottom_g << 8);
+    xm_arena_stage_sky_gradients[1].b2 = bottom_b;
+    *(u16 *)&xm_arena_stage_sky_gradients[0].r3 = bottom_r | (bottom_g << 8);
+    xm_arena_stage_sky_gradients[0].b3 = bottom_b;
+    *(u16 *)&xm_arena_stage_sky_gradients[1].r3 = bottom_r | (bottom_g << 8);
+    xm_arena_stage_sky_gradients[1].b3 = bottom_b;
+    xm_arena_display_buffers[0].background.r0 = bottom_r;
+    xm_arena_display_buffers[0].background.g0 = bottom_g;
+    xm_arena_display_buffers[0].background.b0 = bottom_b;
+    xm_arena_display_buffers[1].background.r0 = bottom_r;
+    xm_arena_display_buffers[1].background.g0 = bottom_g;
+    xm_arena_display_buffers[1].background.b0 = bottom_b;
+    xm_SetFogNearFar(0x800, 0x1800, 0xC0);
+    xm_model_color = (xm_model_color & 0xFFFFFF) | 0x28000000;
+    gte_ldrgb(&xm_model_color);
+}
+#endif
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80082C4C);
 #ifndef XENO_PC_PORT
 /* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_stage_draw_wall (src/decomp/src/menu/arena_stage_views_and_hud.c:530). */
@@ -7021,18 +7135,6 @@ void xm_arena_menu_draw_overlay(void *ot) __asm__("func_80080D20");
 #define XM_S_model_set_light
 void xm_model_set_light(s32 index, struct Light *light) __asm__("func_80030A30");
 #endif
-#ifndef XM_S_arena_stage_back_color_red
-#define XM_S_arena_stage_back_color_red
-extern s32 xm_arena_stage_back_color_red __asm__("D_8009291C");
-#endif
-#ifndef XM_S_arena_stage_back_color_green
-#define XM_S_arena_stage_back_color_green
-extern s32 xm_arena_stage_back_color_green __asm__("D_80092910");
-#endif
-#ifndef XM_S_arena_stage_back_color_blue
-#define XM_S_arena_stage_back_color_blue
-extern s32 xm_arena_stage_back_color_blue __asm__("D_80092908");
-#endif
 #ifndef XM_S_arena_view_light_actor
 #define XM_S_arena_view_light_actor
 void xm_arena_view_light_actor(LightRig *rig, Actor *actor, s32 index) __asm__("func_80083DCC");
@@ -7048,10 +7150,6 @@ void xm_arena_sound_update_voices(void) __asm__("func_8008E8B0");
 #ifndef XM_S_arena_effect_emit_hit_sparks
 #define XM_S_arena_effect_emit_hit_sparks
 void xm_arena_effect_emit_hit_sparks(u32 *ot, MATRIX *view) __asm__("func_8007334C");
-#endif
-#ifndef XM_S_arena_stage_apply_colors
-#define XM_S_arena_stage_apply_colors
-void xm_arena_stage_apply_colors(void) __asm__("func_80082A70");
 #endif
 #ifndef XM_S_arena_stage_draw_shadow
 #define XM_S_arena_stage_draw_shadow

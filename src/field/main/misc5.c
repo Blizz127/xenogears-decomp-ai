@@ -528,7 +528,104 @@ extern SVECTOR D_800B00B8;
 
 // Or Draw?
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc5", FieldZoomFadeEffectUpdate);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_screen_pieces_draw (src/decomp/src/field/field_screen.c:844). */
+#ifndef XM_T_ScreenPieces
+#define XM_T_ScreenPieces
+typedef struct ScreenPieces {
+    DR_MODE modes[5][2];   
+    RECT windows[5][2];    
+    POLY_FT4 quads[5][2];  
+    SVECTOR corners[5][4]; 
+} ScreenPieces;
+#endif
+#ifndef XM_T_FieldDrawBlock
+#define XM_T_FieldDrawBlock
+typedef struct FieldDrawBlock {
+    DRAWENV draw;
+    DRAWENV draw2;
+    DISPENV disp;
+    u_long ot[0x1001];   
+    u_long ot2[0x1001];  
+    u_long overlay_ot[8]; 
+} FieldDrawBlock;
+#endif
+#ifndef XM_S_field_screen_pieces_draw
+#define XM_S_field_screen_pieces_draw
+void xm_field_screen_pieces_draw(void) __asm__("FieldZoomFadeEffectUpdate");
+#endif
+#ifndef XM_S_gpu_build_rotation_matrix
+#define XM_S_gpu_build_rotation_matrix
+MATRIX *xm_gpu_build_rotation_matrix(SVECTOR *angles, MATRIX *m) __asm__("RotMatrix");
+#endif
+#ifndef XM_S_field_screen_pieces_rotation
+#define XM_S_field_screen_pieces_rotation
+extern SVECTOR xm_field_screen_pieces_rotation __asm__("D_800B00B8");
+#endif
+#ifndef XM_S_field_screen_pieces_scale
+#define XM_S_field_screen_pieces_scale
+extern s32 xm_field_screen_pieces_scale __asm__("D_800C2684");
+#endif
+#ifndef XM_S_ScaleMatrix
+#define XM_S_ScaleMatrix
+MATRIX *xm_ScaleMatrix(MATRIX *m, VECTOR *v) __asm__("ScaleMatrix");
+#endif
+#ifndef XM_S_SetRotMatrix
+#define XM_S_SetRotMatrix
+void xm_SetRotMatrix(MATRIX *m) __asm__("SetRotMatrix");
+#endif
+#ifndef XM_S_SetTransMatrix
+#define XM_S_SetTransMatrix
+void xm_SetTransMatrix(MATRIX *m) __asm__("SetTransMatrix");
+#endif
+#ifndef XM_S_RotAverage4
+#define XM_S_RotAverage4
+long xm_RotAverage4(SVECTOR *v0, SVECTOR *v1, SVECTOR *v2, SVECTOR *v3, long *sxy0, long *sxy1,
+                 long *sxy2, long *sxy3, long *p, long *flag) __asm__("RotAverage4");
+#endif
+#ifndef XM_S_field_screen_pieces
+#define XM_S_field_screen_pieces
+extern ScreenPieces xm_field_screen_pieces __asm__("g_FieldZoomFadeEffect");
+#endif
+#ifndef XM_S_field_draw_buffer_index
+#define XM_S_field_draw_buffer_index
+extern s32 xm_field_draw_buffer_index __asm__("g_FieldCurRenderContextIndex");
+#endif
+#ifndef XM_S_field_current_draw_block
+#define XM_S_field_current_draw_block
+extern FieldDrawBlock *xm_field_current_draw_block __asm__("g_FieldCurRenderContext");
+#endif
+void FieldZoomFadeEffectUpdate(void) {
+    MATRIX m;
+    VECTOR scale;
+    long p;
+    long flag;
+    s32 i;
+
+    xm_gpu_build_rotation_matrix(&xm_field_screen_pieces_rotation, &m);
+    m.t[2] = 0;
+    m.t[1] = 0;
+    m.t[0] = 0;
+    scale.vx = xm_field_screen_pieces_scale;
+    scale.vy = xm_field_screen_pieces_scale;
+    scale.vz = xm_field_screen_pieces_scale;
+    xm_ScaleMatrix(&m, &scale);
+    xm_SetRotMatrix(&m);
+    xm_SetTransMatrix(&m);
+    for (i = 0; i < 5; i++) {
+        if (xm_field_screen_pieces_scale != 0x1000) {
+            xm_RotAverage4(&xm_field_screen_pieces.corners[i][0], &xm_field_screen_pieces.corners[i][1],
+                        &xm_field_screen_pieces.corners[i][2], &xm_field_screen_pieces.corners[i][3],
+                        (long *)&xm_field_screen_pieces.quads[i][xm_field_draw_buffer_index].x0,
+                        (long *)&xm_field_screen_pieces.quads[i][xm_field_draw_buffer_index].x1,
+                        (long *)&xm_field_screen_pieces.quads[i][xm_field_draw_buffer_index].x2,
+                        (long *)&xm_field_screen_pieces.quads[i][xm_field_draw_buffer_index].x3, &p, &flag);
+        }
+        addPrim(&xm_field_current_draw_block->overlay_ot[0], &xm_field_screen_pieces.quads[i][xm_field_draw_buffer_index]);
+        addPrim(&xm_field_current_draw_block->overlay_ot[0], &xm_field_screen_pieces.modes[i][xm_field_draw_buffer_index]);
+    }
+}
+#endif
 #else
 void FieldZoomFadeEffectUpdate(void) {
     MATRIX matrix;
@@ -584,30 +681,9 @@ void FieldZoomFadeEffectUpdate(void) {
 #ifndef XENO_PC_PORT
 #ifndef XENO_PC_PORT
 /* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_screen_pieces_init (src/decomp/src/field/field_screen.c:878). */
-#ifndef XM_T_ScreenPieces
-#define XM_T_ScreenPieces
-typedef struct ScreenPieces {
-    DR_MODE modes[5][2];   
-    RECT windows[5][2];    
-    POLY_FT4 quads[5][2];  
-    SVECTOR corners[5][4]; 
-} ScreenPieces;
-#endif
 #ifndef XM_S_field_screen_pieces_init
 #define XM_S_field_screen_pieces_init
 void xm_field_screen_pieces_init(s32 semitrans, s32 abr) __asm__("FieldZoomFadeEffectInitialize");
-#endif
-#ifndef XM_S_field_screen_pieces_scale
-#define XM_S_field_screen_pieces_scale
-extern s32 xm_field_screen_pieces_scale __asm__("D_800C2684");
-#endif
-#ifndef XM_S_field_screen_pieces_rotation
-#define XM_S_field_screen_pieces_rotation
-extern SVECTOR xm_field_screen_pieces_rotation __asm__("D_800B00B8");
-#endif
-#ifndef XM_S_field_screen_pieces
-#define XM_S_field_screen_pieces
-extern ScreenPieces xm_field_screen_pieces __asm__("g_FieldZoomFadeEffect");
 #endif
 #ifndef XM_S_SetPolyFT4
 #define XM_S_SetPolyFT4

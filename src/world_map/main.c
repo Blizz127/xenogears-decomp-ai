@@ -10616,7 +10616,182 @@ s32 func_8008B54C(s32 index) {
 }
 #endif
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8008B644);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_follower_update (src/decomp/src/worldmap/worldmap_objects_effects_party.c:3140). */
+#ifndef XM_T_PartySpot
+#define XM_T_PartySpot
+typedef struct {
+    u16 x;
+    u16 z;
+    u16 flags;
+} PartySpot;
+#endif
+#ifndef XM_S_worldmap_follower_update
+#define XM_S_worldmap_follower_update
+s32 xm_worldmap_follower_update(s32 index) __asm__("func_8008B644");
+#endif
+#ifndef XM_S_worldmap_actor_emit_on_layer3
+#define XM_S_worldmap_actor_emit_on_layer3
+void xm_worldmap_actor_emit_on_layer3(s32 effect, WorldmapActor *actor, ActorScratch *scratch) __asm__("func_8008C1DC");
+#endif
+#ifndef XM_S_worldmap_get_heading_to
+#define XM_S_worldmap_get_heading_to
+void xm_worldmap_get_heading_to(VECTOR *from, VECTOR *to, VECTOR *direction, s16 *heading) __asm__("func_800941C4");
+#endif
+#ifndef XM_S_worldmap_actor_step_to_target
+#define XM_S_worldmap_actor_step_to_target
+s32 xm_worldmap_actor_step_to_target(WorldmapActor *actor) __asm__("func_8008BEC8");
+#endif
+#ifndef XM_S_game_data_vehicle_spots_by_follower
+#define XM_S_game_data_vehicle_spots_by_follower
+extern PartySpot xm_game_data_vehicle_spots_by_follower[] __asm__("D_8006EF8A");
+#endif
+#ifndef XM_S_gpu_get_sin
+#define XM_S_gpu_get_sin
+s32 xm_gpu_get_sin(s32 angle) __asm__("rcos");
+#endif
+#ifndef XM_S_gpu_get_cos
+#define XM_S_gpu_get_cos
+s32 xm_gpu_get_cos(s32 angle) __asm__("rsin");
+#endif
+__asm__(".xeno_jt 8 264 jtbl_80070670");
+s32 func_8008B644(s32 index) {
+    WorldmapActor *actor;
+    WorldmapActor *target;
+    TrailPoint *point;
+    VECTOR *work;
+    s32 result;
+    u16 heading;
+    VECTOR unused; 
+
+    result = 1;
+    work = (VECTOR *)0x1F800000;
+    actor = &xm_worldmap_actor_slots[index];
+    switch (actor->unk4) {
+    case 1:
+        actor->unk4 = 0;
+        actor->state = 8;
+        target = &xm_worldmap_actor_slots[actor->unk6];
+        break;
+    case 2:
+        actor->unk4 = 0;
+        actor->state = 0x28;
+        break;
+    case 3:
+        actor->unk4 = 0;
+        actor->state = 1;
+        break;
+    case 5:
+        actor->unk4 = 0;
+        actor->state = 0x30;
+        break;
+    }
+    switch (actor->state) {
+    case 0:
+    case 1:
+        if (xm_game_data.inGear[index - 1] == 0) {
+            point = &xm_worldmap_trail_points[(xm_worldmap_trail_index - actor->unk58) & 0x1F];
+            if ((actor->position.vx == point->position.vx) & (actor->position.vy == point->position.vy) &
+                (actor->position.vz == point->position.vz)) {
+                if (((s8 *)actor->handle)[0xAF] != 0) {
+                    xm_sprite_start_animation(actor->handle, 0);
+                    xm_worldmap_effects_stop_emitters(index + 0x2E);
+                }
+            } else {
+                if (((s8 *)actor->handle)[0xAF] != 1) {
+                    xm_sprite_start_animation(actor->handle, 1);
+                }
+                xm_worldmap_actor_emit_on_layer3(index + 0x2E, actor, (ActorScratch *)work);
+            }
+            actor->position.vx = point->position.vx;
+            actor->position.vy = point->position.vy;
+            actor->position.vz = point->position.vz;
+            actor->heading = point->heading;
+            actor->unk24 = 0;
+        } else {
+            target = &xm_worldmap_actor_slots[index + 3];
+            actor->position.vx = target->position.vx;
+            actor->position.vy = target->position.vy;
+            actor->position.vz = target->position.vz;
+            actor->heading = target->heading;
+            actor->unk24 = 1;
+            xm_worldmap_effects_stop_emitters(index + 0x2E);
+        }
+        break;
+    case 2:
+        actor->position.vx = xm_worldmap_actor_slots[7].position.vx;
+        actor->position.vy = xm_worldmap_actor_slots[7].position.vy;
+        actor->position.vz = xm_worldmap_actor_slots[7].position.vz;
+        actor->heading = xm_worldmap_actor_slots[7].heading;
+        break;
+    case 8:
+        xm_worldmap_get_heading_to(&actor->position, &target->position, &actor->motion, &actor->heading);
+        actor->u.step = target->position.vx >> 12;
+        actor->unk54 = target->position.vz >> 12;
+        xm_sprite_start_animation(actor->handle, 1);
+        actor->state++;
+        
+    case 9:
+        if (xm_worldmap_actor_step_to_target(actor) == 3) {
+            actor->state++;
+        }
+        xm_worldmap_actor_emit_on_layer3(index + 0x2E, actor, (ActorScratch *)work);
+        break;
+    case 10:
+        if (xm_worldmap_actor_request(actor->unk6, 4) != 0) {
+            actor->unk24 = 1;
+            actor->state = 2;
+            xm_worldmap_effects_stop_emitters(index + 0x2E);
+        }
+        break;
+    case 0x28:
+        actor->position.vx = xm_game_data_vehicle_spots_by_follower[index].x << 12;
+        actor->position.vz = xm_game_data_vehicle_spots_by_follower[index].z << 12;
+        actor->position.vy = xm_worldmap_terrain_get_height(actor->position.vx, actor->position.vz);
+        heading = (&xm_game_data.worldmap.unk5A)[index - 1];
+        actor->unk5C = heading;
+        actor->heading = heading;
+        work->vx = actor->position.vx + xm_gpu_get_sin(actor->heading) * 0x30;
+        work->vz = actor->position.vz + -xm_gpu_get_cos(actor->heading) * 0x30;
+        xm_worldmap_get_heading_to(&actor->position, work, &actor->motion, &actor->heading);
+        actor->u.step = work->vx >> 12;
+        actor->unk54 = work->vz >> 12;
+        actor->unk24 = 0;
+        xm_sprite_start_animation(actor->handle, 1);
+        actor->state++;
+        goto walk;
+    case 0x2A:
+        xm_game_data.inGear[index - 1] = 0;
+        actor->state = 0x40;
+        break;
+    case 0x30:
+        xm_worldmap_get_heading_to(&actor->position, &xm_worldmap_actor_slots[1].position, &actor->motion, &actor->heading);
+        actor->u.step = xm_worldmap_actor_slots[1].position.vx >> 12;
+        actor->unk54 = xm_worldmap_actor_slots[1].position.vz >> 12;
+        xm_sprite_start_animation(actor->handle, 1);
+        actor->state++;
+        
+    case 0x29:
+    case 0x31:
+    walk:
+        if (xm_worldmap_actor_step_to_target(actor) == 3) {
+            actor->state++;
+        }
+        break;
+    case 0x32:
+        if (xm_worldmap_actor_request(1, 6) != 0) {
+            actor->state = 0;
+        }
+        break;
+    case 0x40: 
+        break;
+    }
+    if (actor->unk24 == 0) {
+        xm_worldmap_footprints_add(0, &actor->position);
+    }
+    return result;
+}
+#endif
 
 #ifndef XENO_PC_PORT
 /* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_third_member_start (src/decomp/src/worldmap/worldmap_objects_effects_party.c:3279). */
@@ -10755,10 +10930,6 @@ s32 func_8008BDD0(s32 index) {
 #define XM_T_ABS
 #define ABS(x) (((x)>=0)?(x):(-(x)))
 #endif
-#ifndef XM_S_worldmap_actor_step_to_target
-#define XM_S_worldmap_actor_step_to_target
-s32 xm_worldmap_actor_step_to_target(WorldmapActor *actor) __asm__("func_8008BEC8");
-#endif
 s32 func_8008BEC8(WorldmapActor *actor) {
     s32 arrived;
     s32 distance;
@@ -10895,10 +11066,6 @@ void func_8008C040(VECTOR* position, s32 radius, s32 height, u8* outType, u8* ou
 
 #ifndef XENO_PC_PORT
 /* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_actor_emit_on_layer3 (src/decomp/src/worldmap/worldmap_objects_effects_party.c:3481). */
-#ifndef XM_S_worldmap_actor_emit_on_layer3
-#define XM_S_worldmap_actor_emit_on_layer3
-void xm_worldmap_actor_emit_on_layer3(s32 effect, WorldmapActor *actor, ActorScratch *scratch) __asm__("func_8008C1DC");
-#endif
 void func_8008C1DC(s32 effect, WorldmapActor *actor, ActorScratch *scratch) {
     if (xm_worldmap_terrain_get_layer(&actor->position) == 3) {
         scratch->position.vx = actor->position.vx >> 12;
@@ -11561,14 +11728,6 @@ INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8008E078);
 #ifndef XM_S_worldmap_find_clear_heading
 #define XM_S_worldmap_find_clear_heading
 s32 xm_worldmap_find_clear_heading(VECTOR *position, s32 unused, s32 range) __asm__("func_8008E0F0");
-#endif
-#ifndef XM_S_gpu_get_sin
-#define XM_S_gpu_get_sin
-s32 xm_gpu_get_sin(s32 angle) __asm__("rcos");
-#endif
-#ifndef XM_S_gpu_get_cos
-#define XM_S_gpu_get_cos
-s32 xm_gpu_get_cos(s32 angle) __asm__("rsin");
 #endif
 #ifndef XM_S_worldmap_move_walking
 #define XM_S_worldmap_move_walking

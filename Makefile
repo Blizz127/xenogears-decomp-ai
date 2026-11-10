@@ -101,6 +101,7 @@ build:
 		sed -i 's/\.world_map_bss (NOLOAD)/.world_map_bss 0x8009BBB8 (NOLOAD)/' linker/world_map.ld; \
 	grep -q '\.battling_bss 0x8009295C' linker/battling.ld || \
 		sed -i 's/\.battling_bss (NOLOAD)/.battling_bss 0x8009295C (NOLOAD)/' linker/battling.ld; \
+	for f in config/extra_syms.*.txt; do [ -f "$$f" ] || continue; m=$${f#config/extra_syms.}; m=$${m%.txt}; cat "$$f" >> linker/undefined_syms_auto.$$m.txt; done; \
 	ninja -t clean; \
 	ninja -j$(NUMPROC)
 endif
@@ -128,6 +129,7 @@ objdiff-config:
 		sed -i '/^ApplyMatrix = /a ApplyMatrixSV = 0x80049D3C;' linker/undefined_funcs_auto.field.txt; \
 	grep -q '^g_Heap = ' linker/undefined_syms_auto.field.txt || \
 		echo 'g_Heap = 0x80059320;' >> linker/undefined_syms_auto.field.txt; \
+	for f in config/extra_syms.*.txt; do [ -f "$$f" ] || continue; m=$${f#config/extra_syms.}; m=$${m%.txt}; cat "$$f" >> linker/undefined_syms_auto.$$m.txt; done; \
 	ninja -t clean; \
 	ninja -j$(NUMPROC); \
 	mkdir -p $(EXPECTED_DIR); \

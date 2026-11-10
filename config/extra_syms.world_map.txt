@@ -1,0 +1,7 @@
+/* Interior fields of game_data (= g_GameState @ 0x8006D634) that adopted public-harvest
+   bodies reach by name. splat only auto-emits interior D_ symbols it meets in asm, so
+   they are defined here (appended to linker/undefined_syms_auto.world_map.txt by the
+   Makefile). Addresses = game_data + offset, cross-checked against asm/world_map
+   (g_GameState + 0x1832 / + 0x1956) and ex-machina's worldmap.resident.ld. */
+D_8006EE66 = 0x8006EE66; /* u16 flying-vehicle heading (game_data + 0x1832) */
+D_8006EF8A = 0x8006EF8A; /* PartySpot vehicle_spots_by_follower[] (game_data + 0x1956) */

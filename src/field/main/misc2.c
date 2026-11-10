@@ -3765,7 +3765,105 @@ extern s32 func_800273C4(void* ctx, SVECTOR* eye, SVECTOR* at, MATRIX* mtx,
                          void* ot, s32 renderCtxIndex);
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_80075484);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_draw_panorama (src/decomp/src/field/field.c:2082). */
+#ifndef XM_T_FieldEventParams
+#define XM_T_FieldEventParams
+typedef struct FieldEventParams {
+    s16 unk80[8]; 
+    s32 unk90;    
+    s32 unk94;    
+    s32 unk98;    
+    u8 unk9C[4];
+    u8 unkA0[3];  
+    u8 unkA3;
+    u8 unkA4[3];  
+    u8 unkA7;
+    u8 unkA8[3];  
+    u8 unkAB;
+    s16 unkAC;    
+    s16 unkAE;    
+    s16 unkB0;    
+    s16 enabled;  
+} FieldEventParams;
+#endif
+#ifndef XM_T_Panorama
+#define XM_T_Panorama
+typedef struct Panorama {
+    POLY_FT4 quads[2][8]; 
+    POLY_F4 fills[4];     
+    POLY_G4 fades[2];     
+    s32 width;
+    s32 height;
+    s32 turn;             
+    s16 tex_x;
+    s16 tex_y;
+    s16 mode;             
+    s16 v;                
+    s16 vx, vy, vz;       
+    s16 unk342;
+    s16 fill;             
+    s16 fill_scale;       
+    s16 fade_range;       
+    s16 fade_start;
+} Panorama;
+#endif
+#ifndef XM_T_FieldDrawBlock
+#define XM_T_FieldDrawBlock
+typedef struct FieldDrawBlock {
+    DRAWENV draw;
+    DRAWENV draw2;
+    DISPENV disp;
+    u_long ot[0x1001];   
+    u_long ot2[0x1001];  
+    u_long overlay_ot[8]; 
+} FieldDrawBlock;
+#endif
+#ifndef XM_S_field_draw_panorama
+#define XM_S_field_draw_panorama
+void xm_field_draw_panorama(void) __asm__("func_80075484");
+#endif
+#ifndef XM_S_field_panorama_parameters
+#define XM_S_field_panorama_parameters
+extern FieldEventParams xm_field_panorama_parameters __asm__("D_800B0080");
+#endif
+#ifndef XM_S_field_panorama_hidden
+#define XM_S_field_panorama_hidden
+extern s32 xm_field_panorama_hidden __asm__("D_800ADB50");
+#endif
+#ifndef XM_S_gpu_draw_panorama
+#define XM_S_gpu_draw_panorama
+s32 xm_gpu_draw_panorama(Panorama *panorama, SVECTOR *eye, SVECTOR *target, MATRIX *view, u_long *ot,
+                  s32 buffer) __asm__("func_800273C4");
+#endif
+#ifndef XM_S_field_panorama
+#define XM_S_field_panorama
+extern Panorama *xm_field_panorama __asm__("D_800B007C");
+#endif
+#ifndef XM_S_field_current_draw_block
+#define XM_S_field_current_draw_block
+extern FieldDrawBlock *xm_field_current_draw_block __asm__("g_FieldCurRenderContext");
+#endif
+#ifndef XM_S_field_draw_buffer_index
+#define XM_S_field_draw_buffer_index
+extern s32 xm_field_draw_buffer_index __asm__("g_FieldCurRenderContextIndex");
+#endif
+void func_80075484(void) {
+    SVECTOR eye;
+    SVECTOR target;
+
+    if (xm_field_panorama_parameters.enabled != 0 && xm_field_panorama_hidden == 0) {
+        eye.vx = xm_field_view.eye.vx >> 16;
+        eye.vy = xm_field_view.eye.vy >> 16;
+        eye.vz = xm_field_view.eye.vz >> 16;
+        target.vx = xm_field_view.target.vx >> 16;
+        target.vy = xm_field_view.target.vy >> 16;
+        target.vz = xm_field_view.target.vz >> 16;
+        xm_gpu_draw_panorama(xm_field_panorama, &eye, &target, &xm_field_view.scaled_world,
+                      xm_field_current_draw_block->ot + xm_field_work.unk21D4 + 0x1000, xm_field_draw_buffer_index);
+    }
+}
+#endif
 #else
 void func_80075484(void) {
     if (D_800B00B2 != 0 && D_800ADB50 == 0) {
@@ -4019,7 +4117,71 @@ extern void func_800805F4(void);
 extern void func_8008004C(void* pCtx, s32 idx);
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_80075910);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_movie_run_overlay_frame (src/decomp/src/field/field.c:2187). */
+#ifndef XM_S_field_movie_run_overlay_frame
+#define XM_S_field_movie_run_overlay_frame
+void xm_field_movie_run_overlay_frame(void) __asm__("func_80075910");
+#endif
+#ifndef XM_S_field_event_run_all_actors
+#define XM_S_field_event_run_all_actors
+s32 xm_field_event_run_all_actors(void) __asm__("func_800A2030");
+#endif
+#ifndef XM_S_field_dialogue_close_expired_windows
+#define XM_S_field_dialogue_close_expired_windows
+void xm_field_dialogue_close_expired_windows(void) __asm__("func_800805F4");
+#endif
+#ifndef XM_S_field_dialogue_draw_windows
+#define XM_S_field_dialogue_draw_windows
+void xm_field_dialogue_draw_windows(u_long *ot, s32 buffer) __asm__("func_8008004C");
+#endif
+#ifndef XM_S_DrawSync
+#define XM_S_DrawSync
+int xm_DrawSync(int mode) __asm__("DrawSync");
+#endif
+#ifndef XM_S_VSync
+#define XM_S_VSync
+int xm_VSync(int mode) __asm__("Vsync");
+#endif
+#ifndef XM_S_field_movie_decoded_block
+#define XM_S_field_movie_decoded_block
+extern s32 xm_field_movie_decoded_block __asm__("D_800ADB78");
+#endif
+#ifndef XM_S_MoveImage
+#define XM_S_MoveImage
+int xm_MoveImage(RECT *rect, int x, int y) __asm__("MoveImage");
+#endif
+#ifndef XM_S_PutDispEnv
+#define XM_S_PutDispEnv
+DISPENV *xm_PutDispEnv(DISPENV *env) __asm__("PutDispEnv");
+#endif
+#ifndef XM_S_PutDrawEnv
+#define XM_S_PutDrawEnv
+DRAWENV *xm_PutDrawEnv(DRAWENV *env) __asm__("PutDrawEnv");
+#endif
+#ifndef XM_S_DrawOTag
+#define XM_S_DrawOTag
+void xm_DrawOTag(u_long *p) __asm__("DrawOTag");
+#endif
+void func_80075910(void) {
+    RECT rect;
+
+    xm_field_pad_drain_queue();
+    xm_field_event_run_all_actors();
+    xm_field_dialogue_close_expired_windows();
+    xm_field_dialogue_draw_windows(xm_field_current_draw_block->overlay_ot, xm_field_draw_buffer_index);
+    xm_DrawSync(0);
+    xm_VSync(0);
+    rect.x = 0x140;
+    rect.w = 0x140;
+    rect.h = 0xE0;
+    rect.y = ((xm_field_movie_decoded_block + 1) & 1) << 8;
+    xm_MoveImage(&rect, 0, xm_field_draw_buffer_index << 8);
+    xm_PutDispEnv(&xm_field_current_draw_block->disp);
+    xm_PutDrawEnv(&xm_field_current_draw_block->draw);
+    xm_DrawOTag(&xm_field_current_draw_block->overlay_ot[7]);
+}
+#endif
 #else
 void func_80075910(void) {
     RECT rect;
