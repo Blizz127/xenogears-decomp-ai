@@ -558,8 +558,42 @@ void func_8007474C(void) {
 #endif
 
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80074794);
-
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_footprints_add (src/decomp/src/worldmap/worldmap_open_map.c:994). */
+#ifndef XM_T_VECTOR
+#define XM_T_VECTOR
+typedef struct {
+    long vx, vy, vz, pad;
+} VECTOR;
+#endif
+#ifndef XM_T_WorldmapSpot
+#define XM_T_WorldmapSpot
+typedef struct WorldmapSpot {
+    s16 x;
+    s16 id;
+    s16 z;
+    s16 pad;
+} WorldmapSpot;
+#endif
+#ifndef XM_S_worldmap_footprints_add
+#define XM_S_worldmap_footprints_add
+void xm_worldmap_footprints_add(s16 id, VECTOR *position) __asm__("func_80074794");
+#endif
+#ifndef XM_S_worldmap_footprints
+#define XM_S_worldmap_footprints
+extern WorldmapSpot *xm_worldmap_footprints __asm__("D_8009D30C");
+#endif
+#ifndef XM_S_worldmap_footprint_count
+#define XM_S_worldmap_footprint_count
+extern s32 xm_worldmap_footprint_count __asm__("D_8009BE38");
+#endif
+void func_80074794(s16 id, VECTOR *position) {
+    xm_worldmap_footprints[xm_worldmap_footprint_count].x = position->vx >> 12;
+    xm_worldmap_footprints[xm_worldmap_footprint_count].z = position->vz >> 12;
+    xm_worldmap_footprints[xm_worldmap_footprint_count].id = id;
+    xm_worldmap_footprint_count = (xm_worldmap_footprint_count + 1) & 0xF;
+}
+#endif
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_800747DC);
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80074E58);
@@ -686,9 +720,245 @@ s32 func_80076A14(void) {
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80076A1C);
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80076B34);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_actor_script_run (src/decomp/src/worldmap/worldmap_open_map.c:1789). */
+#ifndef XM_T_VECTOR
+#define XM_T_VECTOR
+typedef struct {
+    long vx, vy, vz, pad;
+} VECTOR;
+#endif
+#ifndef XM_T_MATRIX
+#define XM_T_MATRIX
+typedef struct {
+    short m[3][3];
+    long t[3];
+} MATRIX;
+#endif
+#ifndef XM_T_SpritePart
+#define XM_T_SpritePart
+typedef struct {
+    s16 x, y;              
+    u8 u, v;               
+    u8 w, h;               
+    u8 byte8, byte9;       
+    u16 tpage;             
+    u16 clut;              
+    u8 unknowne[2];
+    u32 colour;            
+    u32 flags;             
+} SpritePart;
+#endif
+#ifndef XM_T_SpriteRendererEntry
+#define XM_T_SpriteRendererEntry
+typedef struct {
+    s8 byte0;              
+    s8 byte1;              
+    s16 half2;
+    s16 half4;
+    s16 half6;
+} SpriteRendererEntry;
+#endif
+#ifndef XM_T_SpriteOffset
+#define XM_T_SpriteOffset
+typedef struct {
+    s8 x, y;
+} SpriteOffset;
+#endif
+#ifndef XM_T_SVECTOR
+#define XM_T_SVECTOR
+typedef struct {
+    short vx, vy, vz, pad;
+} SVECTOR;
+#endif
+#ifndef XM_T_SpriteRenderer
+#define XM_T_SpriteRenderer
+typedef struct {
+    s16 angle_x, angle_y, angle_z; 
+    s16 scale_x, scale_y, scale_z; 
+    MATRIX matrix;                 
+    SpritePart *parts[2];          
+    SpriteRendererEntry *pointer34; 
+    struct Sprite *next_pending;   
+    SpriteOffset offset;           
+    u8 unknown3e[2];
+    s32 word40;                    
+    SVECTOR light_angles;          
+    u16 light_colour[3];           
+} SpriteRenderer;
+#endif
+#ifndef XM_T_Sprite
+#define XM_T_Sprite
+typedef struct Sprite {
+    s32 x, y, z;                
+    s32 speed_x, speed_y, speed_z; 
+    s32 speed;                  
+    s32 gravity;                
+    SpriteRenderer *renderer;   
+    void *image;                
+    u8 red, green, blue;     
+    u8 colour_flags;         
+    s16 scale;               
+    s16 depth;               
+    s16 half30;              
+    s16 direction;           
+    u16 frame;               
+    u16 height;              
+    u16 extent_depth;        
+    u16 rate;                
+    union {
+        u32 word;
+        struct {
+        unsigned sides : 2;      
+        unsigned unknown2 : 1;
+        unsigned flip : 1;       
+        unsigned flip_y : 1;
+        unsigned blend : 3;      
+        unsigned unknown8 : 8;
+        unsigned field16 : 4;
+        unsigned mode : 4;       
+        unsigned no_view : 1;    
+        unsigned unknown25 : 3;
+        unsigned dirty : 1;      
+        unsigned unknown29 : 3;
+        } bits;
+        u8 bytes[4];         
+    } render;                
+    u32 flags;               
+    s32 *resource_block;     
+    s32 *animations;         
+    s32 resource;            
+    s32 word50;              
+    u16 *frame_table;        
+    u16 *animation;          
+    u16 *facings;            
+    u16 *word60;             
+    u8 *script;              
+    void (*callback)(struct Sprite *sprite); 
+    void *block;             
+    struct Sprite *parent;   
+    struct Sprite *partner;  
+    s32 word78;              
+    void *sequencer;         
+    u16 word80;              
+    u16 word82;              
+    s16 ground;              
+    u16 size;                
+    u8 *frames;              
+    s8 stack_top;            
+    u8 unknown8d;
+    u8 stack[0x10];          
+    s16 countdown;           
+    s16 target_x, target_y, target_z; 
+    u8 unknowna6[2];
+    struct {
+        unsigned sequencer_owned : 1; 
+        unsigned bounce : 10;    
+        unsigned frame : 6;      
+        unsigned step : 3;       
+        unsigned phase : 2;      
+        unsigned field22 : 6;    
+        unsigned field28 : 2;
+        unsigned unknown30 : 2;
+    } frame_bits;            
+    union {
+        u32 word;
+        struct {
+        unsigned unknown0 : 2;
+        unsigned mirror : 1;     
+        unsigned frame_flip : 1; 
+        unsigned unknown4 : 1;
+        unsigned owns_children : 1; 
+        unsigned double_step : 1;
+        unsigned divisor : 12;   
+        unsigned unknown19 : 13;
+        } bits;
+        u8 bytes[4];
+    } motion;                
+    union {
+        u32 wordb0;          
+        u8 byteb0;
+        struct {
+            unsigned unknown0 : 8;
+            unsigned passive_children : 1; 
+            unsigned share_rate : 1;       
+            unsigned unknown10 : 22;
+        } bits;
+    } b0;                    
+} Sprite;
+#endif
+#ifndef XM_T_WorldmapActor
+#define XM_T_WorldmapActor
+typedef struct WorldmapActor {
+    s16 command;     
+    s16 command_arg;
+    s16 unk4;
+    s16 unk6;
+    s32 unk8;
+    s32 unkC;
+    s32 unk10;
+    s32 unk14;
+    s32 kind;        
+    s32 update;      
+    s16 state;       
+    s16 wait;        
+    s16 unk24;
+    s16 unk26;
+    VECTOR position; 
+    VECTOR motion;   
+    s16 heading;     
+    s16 turn;        
+    Sprite *handle;  
+    union {
+        s16 *script; 
+        u16 value;   
+        s32 step;
+    } u;             
+    s32 unk54;
+    s32 unk58;
+    s32 unk5C;
+    s32 unk60;
+    s32 unk64;
+    s32 unk68;
+    s32 unk6C;
+    s32 unk70;
+    s32 unk74;
+    s32 unk78;
+    s32 unk7C;
+} WorldmapActor;
+#endif
+#ifndef XM_T_ScriptOp
+#define XM_T_ScriptOp
+typedef s32 (*ScriptOp)(WorldmapActor *actor, s32 operand1, s32 operand2, s32 operand3);
+#endif
+#ifndef XM_S_worldmap_actor_script_run
+#define XM_S_worldmap_actor_script_run
+s32 xm_worldmap_actor_script_run(s32 index) __asm__("func_80076B34");
+#endif
+#ifndef XM_S_worldmap_actor_slots
+#define XM_S_worldmap_actor_slots
+extern WorldmapActor *xm_worldmap_actor_slots __asm__("D_8009BE24");
+#endif
+#ifndef XM_S_worldmap_actor_script_handlers
+#define XM_S_worldmap_actor_script_handlers
+extern ScriptOp xm_worldmap_actor_script_handlers[12] __asm__("D_8009A3C0");
+#endif
+s32 func_80076B34(s32 index) {
+    s32 unused[2]; 
+    WorldmapActor *actor;
+    s32 step;
+    s32 word;
 
-
+    actor = &xm_worldmap_actor_slots[index];
+    step = 0;
+    do {
+        actor->u.script += step;
+        word = *(s32 *)actor->u.script;
+        step = xm_worldmap_actor_script_handlers[word & 0xFFFF](actor, word >> 16, actor->u.script[2], actor->u.script[3]);
+    } while (step != 0);
+    return 1;
+}
+#endif
 #ifndef XENO_PC_PORT
 s32 func_80076BC4(void) {
     D_8009D554 = 0;
@@ -1083,8 +1353,318 @@ INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80079778);
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8007A06C);
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8007A144);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_scene10_grow_sprites_14_15_start (src/decomp/src/worldmap/worldmap_scenes_9_10.c:702). */
+#ifndef XM_T_VECTOR
+#define XM_T_VECTOR
+typedef struct {
+    long vx, vy, vz, pad;
+} VECTOR;
+#endif
+#ifndef XM_T_MATRIX
+#define XM_T_MATRIX
+typedef struct {
+    short m[3][3];
+    long t[3];
+} MATRIX;
+#endif
+#ifndef XM_T_SpritePart
+#define XM_T_SpritePart
+typedef struct {
+    s16 x, y;              
+    u8 u, v;               
+    u8 w, h;               
+    u8 byte8, byte9;       
+    u16 tpage;             
+    u16 clut;              
+    u8 unknowne[2];
+    u32 colour;            
+    u32 flags;             
+} SpritePart;
+#endif
+#ifndef XM_T_SpriteRendererEntry
+#define XM_T_SpriteRendererEntry
+typedef struct {
+    s8 byte0;              
+    s8 byte1;              
+    s16 half2;
+    s16 half4;
+    s16 half6;
+} SpriteRendererEntry;
+#endif
+#ifndef XM_T_SpriteOffset
+#define XM_T_SpriteOffset
+typedef struct {
+    s8 x, y;
+} SpriteOffset;
+#endif
+#ifndef XM_T_SVECTOR
+#define XM_T_SVECTOR
+typedef struct {
+    short vx, vy, vz, pad;
+} SVECTOR;
+#endif
+#ifndef XM_T_SpriteRenderer
+#define XM_T_SpriteRenderer
+typedef struct {
+    s16 angle_x, angle_y, angle_z; 
+    s16 scale_x, scale_y, scale_z; 
+    MATRIX matrix;                 
+    SpritePart *parts[2];          
+    SpriteRendererEntry *pointer34; 
+    struct Sprite *next_pending;   
+    SpriteOffset offset;           
+    u8 unknown3e[2];
+    s32 word40;                    
+    SVECTOR light_angles;          
+    u16 light_colour[3];           
+} SpriteRenderer;
+#endif
+#ifndef XM_T_Sprite
+#define XM_T_Sprite
+typedef struct Sprite {
+    s32 x, y, z;                
+    s32 speed_x, speed_y, speed_z; 
+    s32 speed;                  
+    s32 gravity;                
+    SpriteRenderer *renderer;   
+    void *image;                
+    u8 red, green, blue;     
+    u8 colour_flags;         
+    s16 scale;               
+    s16 depth;               
+    s16 half30;              
+    s16 direction;           
+    u16 frame;               
+    u16 height;              
+    u16 extent_depth;        
+    u16 rate;                
+    union {
+        u32 word;
+        struct {
+        unsigned sides : 2;      
+        unsigned unknown2 : 1;
+        unsigned flip : 1;       
+        unsigned flip_y : 1;
+        unsigned blend : 3;      
+        unsigned unknown8 : 8;
+        unsigned field16 : 4;
+        unsigned mode : 4;       
+        unsigned no_view : 1;    
+        unsigned unknown25 : 3;
+        unsigned dirty : 1;      
+        unsigned unknown29 : 3;
+        } bits;
+        u8 bytes[4];         
+    } render;                
+    u32 flags;               
+    s32 *resource_block;     
+    s32 *animations;         
+    s32 resource;            
+    s32 word50;              
+    u16 *frame_table;        
+    u16 *animation;          
+    u16 *facings;            
+    u16 *word60;             
+    u8 *script;              
+    void (*callback)(struct Sprite *sprite); 
+    void *block;             
+    struct Sprite *parent;   
+    struct Sprite *partner;  
+    s32 word78;              
+    void *sequencer;         
+    u16 word80;              
+    u16 word82;              
+    s16 ground;              
+    u16 size;                
+    u8 *frames;              
+    s8 stack_top;            
+    u8 unknown8d;
+    u8 stack[0x10];          
+    s16 countdown;           
+    s16 target_x, target_y, target_z; 
+    u8 unknowna6[2];
+    struct {
+        unsigned sequencer_owned : 1; 
+        unsigned bounce : 10;    
+        unsigned frame : 6;      
+        unsigned step : 3;       
+        unsigned phase : 2;      
+        unsigned field22 : 6;    
+        unsigned field28 : 2;
+        unsigned unknown30 : 2;
+    } frame_bits;            
+    union {
+        u32 word;
+        struct {
+        unsigned unknown0 : 2;
+        unsigned mirror : 1;     
+        unsigned frame_flip : 1; 
+        unsigned unknown4 : 1;
+        unsigned owns_children : 1; 
+        unsigned double_step : 1;
+        unsigned divisor : 12;   
+        unsigned unknown19 : 13;
+        } bits;
+        u8 bytes[4];
+    } motion;                
+    union {
+        u32 wordb0;          
+        u8 byteb0;
+        struct {
+            unsigned unknown0 : 8;
+            unsigned passive_children : 1; 
+            unsigned share_rate : 1;       
+            unsigned unknown10 : 22;
+        } bits;
+    } b0;                    
+} Sprite;
+#endif
+#ifndef XM_T_WorldmapActor
+#define XM_T_WorldmapActor
+typedef struct WorldmapActor {
+    s16 command;     
+    s16 command_arg;
+    s16 unk4;
+    s16 unk6;
+    s32 unk8;
+    s32 unkC;
+    s32 unk10;
+    s32 unk14;
+    s32 kind;        
+    s32 update;      
+    s16 state;       
+    s16 wait;        
+    s16 unk24;
+    s16 unk26;
+    VECTOR position; 
+    VECTOR motion;   
+    s16 heading;     
+    s16 turn;        
+    Sprite *handle;  
+    union {
+        s16 *script; 
+        u16 value;   
+        s32 step;
+    } u;             
+    s32 unk54;
+    s32 unk58;
+    s32 unk5C;
+    s32 unk60;
+    s32 unk64;
+    s32 unk68;
+    s32 unk6C;
+    s32 unk70;
+    s32 unk74;
+    s32 unk78;
+    s32 unk7C;
+} WorldmapActor;
+#endif
+#ifndef XM_T_MorphDelta
+#define XM_T_MorphDelta
+typedef struct {
+    s16 dx, dy, dz;
+    s16 index;
+} MorphDelta;
+#endif
+#ifndef XM_T_MorphTarget
+#define XM_T_MorphTarget
+typedef struct {
+    s32 count;
+    void *deltas;
+    MorphDelta *normals;
+} MorphTarget;
+#endif
+#ifndef XM_T_MorphTable
+#define XM_T_MorphTable
+typedef struct {
+    s32 count;
+    MorphTarget targets[1];
+} MorphTable;
+#endif
+#ifndef XM_T_SpriteModel
+#define XM_T_SpriteModel
+typedef struct {
+    u16 flags;          
+    u16 vertex_count;
+    u16 primitive_count;
+    u16 group_count;    
+    SVECTOR *vertices;
+    SVECTOR *normals;
+    u8 *unk10;          
+    u8 *unk14;
+    u8 *unk18;
+    MorphTable *morphs; 
+    SVECTOR box_min;    
+    SVECTOR box_max;
+    s32 aux_size;       
+    s32 packet_size;    
+} SpriteModel;
+#endif
+#ifndef XM_T_SceneObject
+#define XM_T_SceneObject
+typedef struct SceneObject {
+    s16 visible;
+    s16 unk2;
+    u16 flags;                  
+    s16 unk6;
+    VECTOR position;            
+    SVECTOR angle;              
+    MATRIX matrix;              
+    SpriteModel *def;           
+    s32 unk44;                  
+    void *prims;                
+    void *prims2;               
+    struct SceneObject *parent; 
+} SceneObject;
+#endif
+#ifndef XM_T_POLY_FT4
+#define XM_T_POLY_FT4
+typedef struct {
+    u_long tag;
+    u_char r0, g0, b0, code;
+    short x0, y0;
+    u_char u0, v0;
+    u_short clut;
+    short x1, y1;
+    u_char u1, v1;
+    u_short tpage;
+    short x2, y2;
+    u_char u2, v2;
+    u_short pad1;
+    short x3, y3;
+    u_char u3, v3;
+    u_short pad2;
+} POLY_FT4;
+#endif
+#ifndef XM_S_worldmap_scene10_grow_sprites_14_15_start
+#define XM_S_worldmap_scene10_grow_sprites_14_15_start
+s32 xm_worldmap_scene10_grow_sprites_14_15_start(s32 index) __asm__("func_8007A144");
+#endif
+#ifndef XM_S_worldmap_actor_slots
+#define XM_S_worldmap_actor_slots
+extern WorldmapActor *xm_worldmap_actor_slots __asm__("D_8009BE24");
+#endif
+#ifndef XM_S_worldmap_build_translucent_quads
+#define XM_S_worldmap_build_translucent_quads
+void xm_worldmap_build_translucent_quads(SceneObject *object, POLY_FT4 *quads, s32 count) __asm__("func_8007A06C");
+#endif
+#ifndef XM_S_worldmap_objects
+#define XM_S_worldmap_objects
+extern SceneObject *xm_worldmap_objects __asm__("D_8009C620");
+#endif
+s32 func_8007A144(s32 index) {
+    WorldmapActor *actor;
 
+    actor = &xm_worldmap_actor_slots[index];
+    actor->state = 0;
+    actor->unk70 = 0;
+    actor->unk6C = 0;
+    xm_worldmap_build_translucent_quads(&xm_worldmap_objects[14], xm_worldmap_objects[14].prims, xm_worldmap_objects[14].def->primitive_count);
+    xm_worldmap_build_translucent_quads(&xm_worldmap_objects[15], xm_worldmap_objects[15].prims, xm_worldmap_objects[15].def->primitive_count);
+    return 3;
+}
+#endif
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8007A1B4);
 
 
@@ -1808,10 +2388,154 @@ INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80082F64);
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80083108);
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_800831D8);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_set_triangle_colors (src/decomp/src/worldmap/worldmap_scenes_16_18.c:912). */
+#ifndef XM_T_POLY_FT3
+#define XM_T_POLY_FT3
+typedef struct {
+    u_long tag;
+    u_char r0, g0, b0, code;
+    short x0, y0;
+    u_char u0, v0;
+    u_short clut;
+    short x1, y1;
+    u_char u1, v1;
+    u_short tpage;
+    short x2, y2;
+    u_char u2, v2;
+    u_short pad1;
+} POLY_FT3;
+#endif
+#ifndef XM_T_setRGB0
+#define XM_T_setRGB0
+#define setRGB0(p, _r0, _g0, _b0) ((p)->r0 = _r0, (p)->g0 = _g0, (p)->b0 = _b0)
+#endif
+#ifndef XM_S_worldmap_set_triangle_colors
+#define XM_S_worldmap_set_triangle_colors
+void xm_worldmap_set_triangle_colors(POLY_FT3 *prims, s32 count, s32 r, s32 g, s32 b) __asm__("func_800831D8");
+#endif
+void func_800831D8(POLY_FT3 *prims, s32 count, s32 r, s32 g, s32 b) {
+    for (count--; count != -1; count--) {
+        setRGB0(prims, r, g, b);
+        prims++;
+    }
+}
+#endif
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_scene17_pulse_start (src/decomp/src/worldmap/worldmap_scenes_16_18.c:920). */
+#ifndef XM_T_VECTOR
+#define XM_T_VECTOR
+typedef struct {
+    long vx, vy, vz, pad;
+} VECTOR;
+#endif
+#ifndef XM_T_SVECTOR
+#define XM_T_SVECTOR
+typedef struct {
+    short vx, vy, vz, pad;
+} SVECTOR;
+#endif
+#ifndef XM_T_MATRIX
+#define XM_T_MATRIX
+typedef struct {
+    short m[3][3];
+    long t[3];
+} MATRIX;
+#endif
+#ifndef XM_T_MorphDelta
+#define XM_T_MorphDelta
+typedef struct {
+    s16 dx, dy, dz;
+    s16 index;
+} MorphDelta;
+#endif
+#ifndef XM_T_MorphTarget
+#define XM_T_MorphTarget
+typedef struct {
+    s32 count;
+    void *deltas;
+    MorphDelta *normals;
+} MorphTarget;
+#endif
+#ifndef XM_T_MorphTable
+#define XM_T_MorphTable
+typedef struct {
+    s32 count;
+    MorphTarget targets[1];
+} MorphTable;
+#endif
+#ifndef XM_T_SpriteModel
+#define XM_T_SpriteModel
+typedef struct {
+    u16 flags;          
+    u16 vertex_count;
+    u16 primitive_count;
+    u16 group_count;    
+    SVECTOR *vertices;
+    SVECTOR *normals;
+    u8 *unk10;          
+    u8 *unk14;
+    u8 *unk18;
+    MorphTable *morphs; 
+    SVECTOR box_min;    
+    SVECTOR box_max;
+    s32 aux_size;       
+    s32 packet_size;    
+} SpriteModel;
+#endif
+#ifndef XM_T_SceneObject
+#define XM_T_SceneObject
+typedef struct SceneObject {
+    s16 visible;
+    s16 unk2;
+    u16 flags;                  
+    s16 unk6;
+    VECTOR position;            
+    SVECTOR angle;              
+    MATRIX matrix;              
+    SpriteModel *def;           
+    s32 unk44;                  
+    void *prims;                
+    void *prims2;               
+    struct SceneObject *parent; 
+} SceneObject;
+#endif
+#ifndef XM_T_POLY_FT3
+#define XM_T_POLY_FT3
+typedef struct {
+    u_long tag;
+    u_char r0, g0, b0, code;
+    short x0, y0;
+    u_char u0, v0;
+    u_short clut;
+    short x1, y1;
+    u_char u1, v1;
+    u_short tpage;
+    short x2, y2;
+    u_char u2, v2;
+    u_short pad1;
+} POLY_FT3;
+#endif
+#ifndef XM_S_worldmap_scene17_pulse_start
+#define XM_S_worldmap_scene17_pulse_start
+s32 xm_worldmap_scene17_pulse_start(s32 index) __asm__("func_80083214");
+#endif
+#ifndef XM_S_worldmap_objects
+#define XM_S_worldmap_objects
+extern SceneObject *xm_worldmap_objects __asm__("D_8009C620");
+#endif
+#ifndef XM_S_worldmap_scene17_build_black_triangles
+#define XM_S_worldmap_scene17_build_black_triangles
+void xm_worldmap_scene17_build_black_triangles(SceneObject *object, POLY_FT3 *prims, s32 count, s32 abr) __asm__("func_80083108");
+#endif
+s32 func_80083214(s32 index) {
+    SceneObject *object;
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80083214);
-
+    object = &xm_worldmap_objects[78 + index];
+    xm_worldmap_scene17_build_black_triangles(object, object->prims, object->def->primitive_count, 3);
+    return 1;
+}
+#endif
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80083264);
 
 
@@ -1892,8 +2616,299 @@ INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8008390C);
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80083A00);
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80083FE4);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_scene18_lift_start (src/decomp/src/worldmap/worldmap_objects_effects_party.c:247). */
+#ifndef XM_T_VECTOR
+#define XM_T_VECTOR
+typedef struct {
+    long vx, vy, vz, pad;
+} VECTOR;
+#endif
+#ifndef XM_T_MATRIX
+#define XM_T_MATRIX
+typedef struct {
+    short m[3][3];
+    long t[3];
+} MATRIX;
+#endif
+#ifndef XM_T_SpritePart
+#define XM_T_SpritePart
+typedef struct {
+    s16 x, y;              
+    u8 u, v;               
+    u8 w, h;               
+    u8 byte8, byte9;       
+    u16 tpage;             
+    u16 clut;              
+    u8 unknowne[2];
+    u32 colour;            
+    u32 flags;             
+} SpritePart;
+#endif
+#ifndef XM_T_SpriteRendererEntry
+#define XM_T_SpriteRendererEntry
+typedef struct {
+    s8 byte0;              
+    s8 byte1;              
+    s16 half2;
+    s16 half4;
+    s16 half6;
+} SpriteRendererEntry;
+#endif
+#ifndef XM_T_SpriteOffset
+#define XM_T_SpriteOffset
+typedef struct {
+    s8 x, y;
+} SpriteOffset;
+#endif
+#ifndef XM_T_SVECTOR
+#define XM_T_SVECTOR
+typedef struct {
+    short vx, vy, vz, pad;
+} SVECTOR;
+#endif
+#ifndef XM_T_SpriteRenderer
+#define XM_T_SpriteRenderer
+typedef struct {
+    s16 angle_x, angle_y, angle_z; 
+    s16 scale_x, scale_y, scale_z; 
+    MATRIX matrix;                 
+    SpritePart *parts[2];          
+    SpriteRendererEntry *pointer34; 
+    struct Sprite *next_pending;   
+    SpriteOffset offset;           
+    u8 unknown3e[2];
+    s32 word40;                    
+    SVECTOR light_angles;          
+    u16 light_colour[3];           
+} SpriteRenderer;
+#endif
+#ifndef XM_T_Sprite
+#define XM_T_Sprite
+typedef struct Sprite {
+    s32 x, y, z;                
+    s32 speed_x, speed_y, speed_z; 
+    s32 speed;                  
+    s32 gravity;                
+    SpriteRenderer *renderer;   
+    void *image;                
+    u8 red, green, blue;     
+    u8 colour_flags;         
+    s16 scale;               
+    s16 depth;               
+    s16 half30;              
+    s16 direction;           
+    u16 frame;               
+    u16 height;              
+    u16 extent_depth;        
+    u16 rate;                
+    union {
+        u32 word;
+        struct {
+        unsigned sides : 2;      
+        unsigned unknown2 : 1;
+        unsigned flip : 1;       
+        unsigned flip_y : 1;
+        unsigned blend : 3;      
+        unsigned unknown8 : 8;
+        unsigned field16 : 4;
+        unsigned mode : 4;       
+        unsigned no_view : 1;    
+        unsigned unknown25 : 3;
+        unsigned dirty : 1;      
+        unsigned unknown29 : 3;
+        } bits;
+        u8 bytes[4];         
+    } render;                
+    u32 flags;               
+    s32 *resource_block;     
+    s32 *animations;         
+    s32 resource;            
+    s32 word50;              
+    u16 *frame_table;        
+    u16 *animation;          
+    u16 *facings;            
+    u16 *word60;             
+    u8 *script;              
+    void (*callback)(struct Sprite *sprite); 
+    void *block;             
+    struct Sprite *parent;   
+    struct Sprite *partner;  
+    s32 word78;              
+    void *sequencer;         
+    u16 word80;              
+    u16 word82;              
+    s16 ground;              
+    u16 size;                
+    u8 *frames;              
+    s8 stack_top;            
+    u8 unknown8d;
+    u8 stack[0x10];          
+    s16 countdown;           
+    s16 target_x, target_y, target_z; 
+    u8 unknowna6[2];
+    struct {
+        unsigned sequencer_owned : 1; 
+        unsigned bounce : 10;    
+        unsigned frame : 6;      
+        unsigned step : 3;       
+        unsigned phase : 2;      
+        unsigned field22 : 6;    
+        unsigned field28 : 2;
+        unsigned unknown30 : 2;
+    } frame_bits;            
+    union {
+        u32 word;
+        struct {
+        unsigned unknown0 : 2;
+        unsigned mirror : 1;     
+        unsigned frame_flip : 1; 
+        unsigned unknown4 : 1;
+        unsigned owns_children : 1; 
+        unsigned double_step : 1;
+        unsigned divisor : 12;   
+        unsigned unknown19 : 13;
+        } bits;
+        u8 bytes[4];
+    } motion;                
+    union {
+        u32 wordb0;          
+        u8 byteb0;
+        struct {
+            unsigned unknown0 : 8;
+            unsigned passive_children : 1; 
+            unsigned share_rate : 1;       
+            unsigned unknown10 : 22;
+        } bits;
+    } b0;                    
+} Sprite;
+#endif
+#ifndef XM_T_WorldmapActor
+#define XM_T_WorldmapActor
+typedef struct WorldmapActor {
+    s16 command;     
+    s16 command_arg;
+    s16 unk4;
+    s16 unk6;
+    s32 unk8;
+    s32 unkC;
+    s32 unk10;
+    s32 unk14;
+    s32 kind;        
+    s32 update;      
+    s16 state;       
+    s16 wait;        
+    s16 unk24;
+    s16 unk26;
+    VECTOR position; 
+    VECTOR motion;   
+    s16 heading;     
+    s16 turn;        
+    Sprite *handle;  
+    union {
+        s16 *script; 
+        u16 value;   
+        s32 step;
+    } u;             
+    s32 unk54;
+    s32 unk58;
+    s32 unk5C;
+    s32 unk60;
+    s32 unk64;
+    s32 unk68;
+    s32 unk6C;
+    s32 unk70;
+    s32 unk74;
+    s32 unk78;
+    s32 unk7C;
+} WorldmapActor;
+#endif
+#ifndef XM_T_MorphDelta
+#define XM_T_MorphDelta
+typedef struct {
+    s16 dx, dy, dz;
+    s16 index;
+} MorphDelta;
+#endif
+#ifndef XM_T_MorphTarget
+#define XM_T_MorphTarget
+typedef struct {
+    s32 count;
+    void *deltas;
+    MorphDelta *normals;
+} MorphTarget;
+#endif
+#ifndef XM_T_MorphTable
+#define XM_T_MorphTable
+typedef struct {
+    s32 count;
+    MorphTarget targets[1];
+} MorphTable;
+#endif
+#ifndef XM_T_SpriteModel
+#define XM_T_SpriteModel
+typedef struct {
+    u16 flags;          
+    u16 vertex_count;
+    u16 primitive_count;
+    u16 group_count;    
+    SVECTOR *vertices;
+    SVECTOR *normals;
+    u8 *unk10;          
+    u8 *unk14;
+    u8 *unk18;
+    MorphTable *morphs; 
+    SVECTOR box_min;    
+    SVECTOR box_max;
+    s32 aux_size;       
+    s32 packet_size;    
+} SpriteModel;
+#endif
+#ifndef XM_T_SceneObject
+#define XM_T_SceneObject
+typedef struct SceneObject {
+    s16 visible;
+    s16 unk2;
+    u16 flags;                  
+    s16 unk6;
+    VECTOR position;            
+    SVECTOR angle;              
+    MATRIX matrix;              
+    SpriteModel *def;           
+    s32 unk44;                  
+    void *prims;                
+    void *prims2;               
+    struct SceneObject *parent; 
+} SceneObject;
+#endif
+#ifndef XM_S_worldmap_scene18_lift_start
+#define XM_S_worldmap_scene18_lift_start
+s32 xm_worldmap_scene18_lift_start(s32 index) __asm__("func_80083FE4");
+#endif
+#ifndef XM_S_worldmap_actor_slots
+#define XM_S_worldmap_actor_slots
+extern WorldmapActor *xm_worldmap_actor_slots __asm__("D_8009BE24");
+#endif
+#ifndef XM_S_worldmap_objects
+#define XM_S_worldmap_objects
+extern SceneObject *xm_worldmap_objects __asm__("D_8009C620");
+#endif
+s32 func_80083FE4(s32 index) {
+    WorldmapActor *actor;
 
+    actor = &xm_worldmap_actor_slots[index];
+    actor->position.vx = 0x1800000;
+    actor->position.vy = 0x80000;
+    actor->position.vz = 0x1A00000;
+    actor->state = 0;
+    xm_worldmap_objects[8].visible = 1;
+    xm_worldmap_objects[7].visible = 1;
+    xm_worldmap_objects[7].position.vx = xm_worldmap_objects[8].position.vx = actor->position.vx >> 12;
+    xm_worldmap_objects[7].position.vy = xm_worldmap_objects[8].position.vy = actor->position.vy >> 12;
+    xm_worldmap_objects[7].position.vz = xm_worldmap_objects[8].position.vz = actor->position.vz >> 12;
+    return 1;
+}
+#endif
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80084068);
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8008440C);
@@ -1975,8 +2990,46 @@ INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80085760);
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80085CDC);
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80085F58);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_billboards_resolve_lists (src/decomp/src/worldmap/worldmap_objects_effects_party.c:978). */
+#ifndef XM_T_BillboardList
+#define XM_T_BillboardList
+typedef struct BillboardList {
+    u8 *data;  
+    s32 count;
+} BillboardList;
+#endif
+#ifndef XM_S_worldmap_billboards_resolve_lists
+#define XM_S_worldmap_billboards_resolve_lists
+void xm_worldmap_billboards_resolve_lists(void) __asm__("func_80085F58");
+#endif
+#ifndef XM_S_worldmap_billboard_lists
+#define XM_S_worldmap_billboard_lists
+extern BillboardList *xm_worldmap_billboard_lists __asm__("D_8009C7EC");
+#endif
+#ifndef XM_S_worldmap_billboard_cluts
+#define XM_S_worldmap_billboard_cluts
+extern u16 xm_worldmap_billboard_cluts[16] __asm__("D_8009D478");
+#endif
+#ifndef XM_S_GetClut
+#define XM_S_GetClut
+u_short xm_GetClut(int x, int y) __asm__("GetClut");
+#endif
+void func_80085F58(void) {
+    BillboardList *texture;
+    s32 i;
 
+    texture = xm_worldmap_billboard_lists;
+    for (i = 0; i < 0x100; i++, texture++) {
+        if (texture->data != NULL) {
+            texture->data += (s32)xm_worldmap_billboard_lists;
+        }
+    }
+    for (i = 0; i < 0x10; i++) {
+        xm_worldmap_billboard_cluts[i] = xm_GetClut(0xF0, i + 0x1F0);
+    }
+}
+#endif
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80085FE0);
 
 
@@ -2013,7 +3066,67 @@ void func_800866C8(void) {
 
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80086700);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_clouds_move (src/decomp/src/worldmap/worldmap_objects_effects_party.c:1160). */
+#ifndef XM_T_Drift
+#define XM_T_Drift
+typedef struct Drift {
+    s32 x;
+    s32 unk4;
+    s32 z;
+    s32 unkC;
+} Drift;
+#endif
+#ifndef XM_T_DriftVelocity
+#define XM_T_DriftVelocity
+typedef struct DriftVelocity {
+    s16 dx;
+    s16 unk2;
+    s16 dz;
+    s16 unk6;
+} DriftVelocity;
+#endif
+#ifndef XM_S_worldmap_clouds_move
+#define XM_S_worldmap_clouds_move
+void xm_worldmap_clouds_move(void) __asm__("func_80086700");
+#endif
+#ifndef XM_S_worldmap_cloud_positions
+#define XM_S_worldmap_cloud_positions
+extern Drift *xm_worldmap_cloud_positions __asm__("D_8009D150");
+#endif
+#ifndef XM_S_worldmap_cloud_velocities
+#define XM_S_worldmap_cloud_velocities
+extern DriftVelocity *xm_worldmap_cloud_velocities __asm__("D_8009CEB4");
+#endif
+void func_80086700(void) {
+    Drift *drift;
+    DriftVelocity *velocity;
+    s32 x;
+    s32 z;
+    s32 i;
+
+    for (i = 0; i < 0x50; i++) {
+        drift = &xm_worldmap_cloud_positions[i];
+        velocity = &xm_worldmap_cloud_velocities[i];
+        x = drift->x + velocity->dx;
+        z = drift->z + velocity->dz;
+        if (x > 0x1FFFFFF) {
+            x -= 0x2000000;
+        }
+        if (x < 0) {
+            x += 0x2000000;
+        }
+        if (z > 0x1FFFFFF) {
+            z -= 0x2000000;
+        }
+        if (z < 0) {
+            z += 0x2000000;
+        }
+        drift->x = x;
+        drift->z = z;
+    }
+}
+#endif
 #else
 /* FAKEMATCH: natural semantic reconstruction for port execution only. It is
  * not retail-byte-matched; the retail build continues to use the pinned asm. */
@@ -2426,9 +3539,109 @@ s32 func_80088B40(s32 arg0) {
 }
 
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80088C90);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_object69_resume (src/decomp/src/worldmap/worldmap_objects_effects_party.c:1991). */
+#ifndef XM_T_VECTOR
+#define XM_T_VECTOR
+typedef struct {
+    long vx, vy, vz, pad;
+} VECTOR;
+#endif
+#ifndef XM_T_SVECTOR
+#define XM_T_SVECTOR
+typedef struct {
+    short vx, vy, vz, pad;
+} SVECTOR;
+#endif
+#ifndef XM_T_MATRIX
+#define XM_T_MATRIX
+typedef struct {
+    short m[3][3];
+    long t[3];
+} MATRIX;
+#endif
+#ifndef XM_T_MorphDelta
+#define XM_T_MorphDelta
+typedef struct {
+    s16 dx, dy, dz;
+    s16 index;
+} MorphDelta;
+#endif
+#ifndef XM_T_MorphTarget
+#define XM_T_MorphTarget
+typedef struct {
+    s32 count;
+    void *deltas;
+    MorphDelta *normals;
+} MorphTarget;
+#endif
+#ifndef XM_T_MorphTable
+#define XM_T_MorphTable
+typedef struct {
+    s32 count;
+    MorphTarget targets[1];
+} MorphTable;
+#endif
+#ifndef XM_T_SpriteModel
+#define XM_T_SpriteModel
+typedef struct {
+    u16 flags;          
+    u16 vertex_count;
+    u16 primitive_count;
+    u16 group_count;    
+    SVECTOR *vertices;
+    SVECTOR *normals;
+    u8 *unk10;          
+    u8 *unk14;
+    u8 *unk18;
+    MorphTable *morphs; 
+    SVECTOR box_min;    
+    SVECTOR box_max;
+    s32 aux_size;       
+    s32 packet_size;    
+} SpriteModel;
+#endif
+#ifndef XM_T_SceneObject
+#define XM_T_SceneObject
+typedef struct SceneObject {
+    s16 visible;
+    s16 unk2;
+    u16 flags;                  
+    s16 unk6;
+    VECTOR position;            
+    SVECTOR angle;              
+    MATRIX matrix;              
+    SpriteModel *def;           
+    s32 unk44;                  
+    void *prims;                
+    void *prims2;               
+    struct SceneObject *parent; 
+} SceneObject;
+#endif
+#ifndef XM_S_worldmap_object69_resume
+#define XM_S_worldmap_object69_resume
+s32 xm_worldmap_object69_resume(void) __asm__("func_80088C90");
+#endif
+#ifndef XM_S_worldmap_objects
+#define XM_S_worldmap_objects
+extern SceneObject *xm_worldmap_objects __asm__("D_8009C620");
+#endif
+#ifndef XM_S_worldmap_object69_children
+#define XM_S_worldmap_object69_children
+extern s16 xm_worldmap_object69_children[10] __asm__("D_8009AFDC");
+#endif
+s32 func_80088C90(void) {
+    SceneObject *objects;
+    s32 i;
 
-
+    objects = xm_worldmap_objects;
+    objects[69].visible = 1;
+    for (i = 0; xm_worldmap_object69_children[i] != -1; i++) {
+        objects[xm_worldmap_object69_children[i]].visible = 1;
+    }
+    return 3;
+}
+#endif
 s32 func_80088D00(s32 arg0) {
     u8 *a1;
     WmObj *obj;
@@ -2518,9 +3731,112 @@ s32 func_80088F5C(void) {
 }
 
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80088F64);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_effects_alloc_slots (src/decomp/src/worldmap/worldmap_objects_effects_party.c:2085). */
+#ifndef XM_T_SVECTOR
+#define XM_T_SVECTOR
+typedef struct {
+    short vx, vy, vz, pad;
+} SVECTOR;
+#endif
+#ifndef XM_T_AreaObject
+#define XM_T_AreaObject
+typedef struct AreaObject {
+    s32 unk0;          
+    s32 unk4;          
+    s16 unk8;          
+    s16 unkA;          
+    s32 life;          
+    s16 unk10;         
+    s16 unk12;         
+    SVECTOR position;  
+    SVECTOR angle;     
+    SVECTOR unk24;     
+    SVECTOR direction; 
+    s32 speed;         
+    s16 accel[3];      
+    s16 pad3E;
+    u16 spread[2];     
+    s32 rot;           
+    s32 spin;          
+    u8 rgb[3];         
+    u8 flags;          
+    s32 fade;          
+} AreaObject;
+#endif
+#ifndef XM_T_VECTOR
+#define XM_T_VECTOR
+typedef struct {
+    long vx, vy, vz, pad;
+} VECTOR;
+#endif
+#ifndef XM_T_EffectSlot
+#define XM_T_EffectSlot
+typedef struct EffectSlot {
+    s16 id;            
+    s16 unk2;
+    s32 timer;         
+    VECTOR position;   
+    VECTOR velocity;   
+    VECTOR accel;      
+    s16 rot[2];        
+    s16 spin[2];       
+    s32 colour;        
+    s32 fade;          
+    s16 code;          
+    s16 pad4A;
+} EffectSlot;
+#endif
+#ifndef XM_T_EFFECT_ENABLED
+#define XM_T_EFFECT_ENABLED
+#define EFFECT_ENABLED(slot) (((s16 *)&(slot)->timer)[1])
+#endif
+#ifndef XM_T_EFFECT_COUNT
+#define XM_T_EFFECT_COUNT
+#define EFFECT_COUNT(slot) (((s16 *)&(slot)->timer)[0])
+#endif
+#ifndef XM_S_worldmap_effects_alloc_slots
+#define XM_S_worldmap_effects_alloc_slots
+void xm_worldmap_effects_alloc_slots(void) __asm__("func_80088F64");
+#endif
+#ifndef XM_S_worldmap_effect_emitters
+#define XM_S_worldmap_effect_emitters
+extern AreaObject *xm_worldmap_effect_emitters __asm__("D_8009BCC0");
+#endif
+#ifndef XM_S_worldmap_effect_slots
+#define XM_S_worldmap_effect_slots
+extern EffectSlot *xm_worldmap_effect_slots __asm__("D_8009BDF4");
+#endif
+#ifndef XM_S_heap_alloc
+#define XM_S_heap_alloc
+void *xm_heap_alloc(s32 size, s32 mode) __asm__("HeapAlloc");
+#endif
+void func_80088F64(void) {
+    AreaObject *object;
+    EffectSlot *slot;
+    s32 i;
 
-
+    object = xm_worldmap_effect_emitters;
+    for (i = 0x1FF; i != -1; i--) {
+        object->unk4 = 0;
+        object->unkA = 0;
+        object->unk12 = 0;
+        object->position.vz = 0;
+        object->position.vy = 0;
+        object->position.vx = 0;
+        object->angle.vz = 0;
+        object->angle.vy = 0;
+        object->angle.vx = 0;
+        object++;
+    }
+    xm_worldmap_effect_slots = slot = xm_heap_alloc(0x4C00, 0);
+    for (i = 0xFF; i != -1; i--) {
+        EFFECT_ENABLED(slot) = 0;
+        EFFECT_COUNT(slot) = 0;
+        slot++;
+    }
+}
+#endif
 #ifndef XENO_PC_PORT
 void func_80088FF4(void) {
     HeapFree(D_8009BDF4);
@@ -2558,8 +3874,64 @@ void func_800894C8(s32 arg0) {
 }
 
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80089514);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_effects_stop_particles (src/decomp/src/worldmap/worldmap_objects_effects_party.c:2261). */
+#ifndef XM_T_VECTOR
+#define XM_T_VECTOR
+typedef struct {
+    long vx, vy, vz, pad;
+} VECTOR;
+#endif
+#ifndef XM_T_EffectSlot
+#define XM_T_EffectSlot
+typedef struct EffectSlot {
+    s16 id;            
+    s16 unk2;
+    s32 timer;         
+    VECTOR position;   
+    VECTOR velocity;   
+    VECTOR accel;      
+    s16 rot[2];        
+    s16 spin[2];       
+    s32 colour;        
+    s32 fade;          
+    s16 code;          
+    s16 pad4A;
+} EffectSlot;
+#endif
+#ifndef XM_T_EFFECT_ENABLED
+#define XM_T_EFFECT_ENABLED
+#define EFFECT_ENABLED(slot) (((s16 *)&(slot)->timer)[1])
+#endif
+#ifndef XM_T_EFFECT_COUNT
+#define XM_T_EFFECT_COUNT
+#define EFFECT_COUNT(slot) (((s16 *)&(slot)->timer)[0])
+#endif
+#ifndef XM_S_worldmap_effects_stop_particles
+#define XM_S_worldmap_effects_stop_particles
+void xm_worldmap_effects_stop_particles(s32 group) __asm__("func_80089514");
+#endif
+#ifndef XM_S_worldmap_effect_slots
+#define XM_S_worldmap_effect_slots
+extern EffectSlot *xm_worldmap_effect_slots __asm__("D_8009BDF4");
+#endif
+void func_80089514(s32 group) {
+    EffectSlot *slot;
+    s32 i;
+    s32 j;
 
+    slot = xm_worldmap_effect_slots;
+    for (i = 0xFF; i != -1; i--) {
+        for (j = 0; j < 8; j++) {
+            if (slot->id == group * 8 + j && EFFECT_ENABLED(slot) != 0) {
+                EFFECT_COUNT(slot) = 0;
+                break;
+            }
+        }
+        slot++;
+    }
+}
+#endif
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80089580);
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80089748);
@@ -2782,8 +4154,45 @@ void func_8008E034(void *arg0) {
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8008E078);
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8008E0F0);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_find_clear_heading (src/decomp/src/worldmap/worldmap_vehicles.c:847). */
+#ifndef XM_T_VECTOR
+#define XM_T_VECTOR
+typedef struct {
+    long vx, vy, vz, pad;
+} VECTOR;
+#endif
+#ifndef XM_S_worldmap_find_clear_heading
+#define XM_S_worldmap_find_clear_heading
+s32 xm_worldmap_find_clear_heading(VECTOR *position, s32 unused, s32 range) __asm__("func_8008E0F0");
+#endif
+#ifndef XM_S_gpu_get_sin
+#define XM_S_gpu_get_sin
+s32 xm_gpu_get_sin(s32 angle) __asm__("rcos");
+#endif
+#ifndef XM_S_gpu_get_cos
+#define XM_S_gpu_get_cos
+s32 xm_gpu_get_cos(s32 angle) __asm__("rsin");
+#endif
+#ifndef XM_S_worldmap_move_walking
+#define XM_S_worldmap_move_walking
+s32 xm_worldmap_move_walking(VECTOR *position, VECTOR *direction, VECTOR *out, s32 scale, s32 mode) __asm__("func_80095414");
+#endif
+s32 func_8008E0F0(VECTOR *position, s32 unused, s32 range) {
+    VECTOR hit;
+    VECTOR direction;
+    s32 heading;
 
+    for (heading = 0; heading < 0x1000; heading += 0x100) {
+        direction.vx = xm_gpu_get_sin(heading);
+        direction.vz = -xm_gpu_get_cos(heading);
+        if (xm_worldmap_move_walking(position, &direction, &hit, range, 2) == 1) {
+            return heading;
+        }
+    }
+    return -1;
+}
+#endif
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8008E190);
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8008E4F4);
@@ -3052,8 +4461,20 @@ s32 func_80094028(void *arg0) {
 #endif
 
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80094060);
-
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_terrain_can_mode_enter_layer (src/decomp/src/worldmap/worldmap_steering_camera_terrain.c:1405). */
+#ifndef XM_S_worldmap_terrain_can_mode_enter_layer
+#define XM_S_worldmap_terrain_can_mode_enter_layer
+s16 xm_worldmap_terrain_can_mode_enter_layer(s16 row, s16 column) __asm__("func_80094060");
+#endif
+#ifndef XM_S_worldmap_terrain_passable_layers
+#define XM_S_worldmap_terrain_passable_layers
+extern s16 xm_worldmap_terrain_passable_layers[] __asm__("D_8009BAC8");
+#endif
+s16 func_80094060(s16 row, s16 column) {
+    return *(s16 *)((u8 *)xm_worldmap_terrain_passable_layers + row * 16 + column * 2);
+}
+#endif
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80094088);
 
 
@@ -3158,11 +4579,92 @@ void func_800960BC(void) {
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80096130);
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8009623C);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_stream_add_disc_request (src/decomp/src/worldmap/worldmap_movement_terrain.c:914). */
+#ifndef XM_T_DiscReadRequest
+#define XM_T_DiscReadRequest
+typedef struct DiscReadRequest {
+    s32 sector;
+    s32 bytes;
+    u8 *destination;
+} DiscReadRequest;
+#endif
+#ifndef XM_S_worldmap_stream_add_disc_request
+#define XM_S_worldmap_stream_add_disc_request
+s32 xm_worldmap_stream_add_disc_request(s32 sector, s32 bytes, u8 *destination) __asm__("func_8009623C");
+#endif
+#ifndef XM_S_worldmap_stream_request_count
+#define XM_S_worldmap_stream_request_count
+extern s32 xm_worldmap_stream_request_count __asm__("D_8009D808");
+#endif
+#ifndef XM_S_worldmap_stream_disc_buffer
+#define XM_S_worldmap_stream_disc_buffer
+extern void *xm_worldmap_stream_disc_buffer __asm__("D_8009BE08");
+#endif
+#ifndef XM_S_worldmap_stream_write_slot
+#define XM_S_worldmap_stream_write_slot
+extern s32 xm_worldmap_stream_write_slot __asm__("D_8009BE44");
+#endif
+s32 func_8009623C(s32 sector, s32 bytes, u8 *destination) {
+    DiscReadRequest *request;
+    s32 count;
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_800962B0);
+    count = xm_worldmap_stream_request_count;
+    if (count < 0x58) {
+        xm_worldmap_stream_request_count = count + 1;
+        request = (DiscReadRequest *)((u8 *)xm_worldmap_stream_disc_buffer + xm_worldmap_stream_write_slot * 0x420) + count;
+        request->sector = sector;
+        request->bytes = bytes;
+        request->destination = destination;
+        return 0;
+    }
+    return -1;
+}
+#endif
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_stream_add_host_request (src/decomp/src/worldmap/worldmap_movement_terrain.c:931). */
+#ifndef XM_T_HostReadRequest
+#define XM_T_HostReadRequest
+typedef struct HostReadRequest {
+    char *path;
+    s32 offset;
+    s32 bytes;
+    u8 *destination;
+} HostReadRequest;
+#endif
+#ifndef XM_S_worldmap_stream_add_host_request
+#define XM_S_worldmap_stream_add_host_request
+s32 xm_worldmap_stream_add_host_request(char *path, s32 offset, s32 bytes, u8 *destination) __asm__("func_800962B0");
+#endif
+#ifndef XM_S_worldmap_stream_request_count
+#define XM_S_worldmap_stream_request_count
+extern s32 xm_worldmap_stream_request_count __asm__("D_8009D808");
+#endif
+#ifndef XM_S_worldmap_stream_host_buffer
+#define XM_S_worldmap_stream_host_buffer
+extern void *xm_worldmap_stream_host_buffer __asm__("D_8009D3C0");
+#endif
+#ifndef XM_S_worldmap_stream_write_slot
+#define XM_S_worldmap_stream_write_slot
+extern s32 xm_worldmap_stream_write_slot __asm__("D_8009BE44");
+#endif
+s32 func_800962B0(char *path, s32 offset, s32 bytes, u8 *destination) {
+    HostReadRequest *request;
+    s32 count;
 
-
+    count = xm_worldmap_stream_request_count;
+    if (count < 0x58) {
+        xm_worldmap_stream_request_count = count + 1;
+        request = (HostReadRequest *)((u8 *)xm_worldmap_stream_host_buffer + xm_worldmap_stream_write_slot * 0x580) + count;
+        request->path = path;
+        request->offset = offset;
+        request->bytes = bytes;
+        request->destination = destination;
+        return 0;
+    }
+    return -1;
+}
+#endif
 #ifndef XENO_PC_PORT
 s32 func_80096328(void) {
     s32 *temp_s0;
@@ -3337,11 +4839,450 @@ s32 func_80097770(s32 arg0, s32 arg1) {
 #endif
 
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_800977A8);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_actor_send_idle (src/decomp/src/worldmap/worldmap_movement_terrain.c:1466). */
+#ifndef XM_T_VECTOR
+#define XM_T_VECTOR
+typedef struct {
+    long vx, vy, vz, pad;
+} VECTOR;
+#endif
+#ifndef XM_T_MATRIX
+#define XM_T_MATRIX
+typedef struct {
+    short m[3][3];
+    long t[3];
+} MATRIX;
+#endif
+#ifndef XM_T_SpritePart
+#define XM_T_SpritePart
+typedef struct {
+    s16 x, y;              
+    u8 u, v;               
+    u8 w, h;               
+    u8 byte8, byte9;       
+    u16 tpage;             
+    u16 clut;              
+    u8 unknowne[2];
+    u32 colour;            
+    u32 flags;             
+} SpritePart;
+#endif
+#ifndef XM_T_SpriteRendererEntry
+#define XM_T_SpriteRendererEntry
+typedef struct {
+    s8 byte0;              
+    s8 byte1;              
+    s16 half2;
+    s16 half4;
+    s16 half6;
+} SpriteRendererEntry;
+#endif
+#ifndef XM_T_SpriteOffset
+#define XM_T_SpriteOffset
+typedef struct {
+    s8 x, y;
+} SpriteOffset;
+#endif
+#ifndef XM_T_SVECTOR
+#define XM_T_SVECTOR
+typedef struct {
+    short vx, vy, vz, pad;
+} SVECTOR;
+#endif
+#ifndef XM_T_SpriteRenderer
+#define XM_T_SpriteRenderer
+typedef struct {
+    s16 angle_x, angle_y, angle_z; 
+    s16 scale_x, scale_y, scale_z; 
+    MATRIX matrix;                 
+    SpritePart *parts[2];          
+    SpriteRendererEntry *pointer34; 
+    struct Sprite *next_pending;   
+    SpriteOffset offset;           
+    u8 unknown3e[2];
+    s32 word40;                    
+    SVECTOR light_angles;          
+    u16 light_colour[3];           
+} SpriteRenderer;
+#endif
+#ifndef XM_T_Sprite
+#define XM_T_Sprite
+typedef struct Sprite {
+    s32 x, y, z;                
+    s32 speed_x, speed_y, speed_z; 
+    s32 speed;                  
+    s32 gravity;                
+    SpriteRenderer *renderer;   
+    void *image;                
+    u8 red, green, blue;     
+    u8 colour_flags;         
+    s16 scale;               
+    s16 depth;               
+    s16 half30;              
+    s16 direction;           
+    u16 frame;               
+    u16 height;              
+    u16 extent_depth;        
+    u16 rate;                
+    union {
+        u32 word;
+        struct {
+        unsigned sides : 2;      
+        unsigned unknown2 : 1;
+        unsigned flip : 1;       
+        unsigned flip_y : 1;
+        unsigned blend : 3;      
+        unsigned unknown8 : 8;
+        unsigned field16 : 4;
+        unsigned mode : 4;       
+        unsigned no_view : 1;    
+        unsigned unknown25 : 3;
+        unsigned dirty : 1;      
+        unsigned unknown29 : 3;
+        } bits;
+        u8 bytes[4];         
+    } render;                
+    u32 flags;               
+    s32 *resource_block;     
+    s32 *animations;         
+    s32 resource;            
+    s32 word50;              
+    u16 *frame_table;        
+    u16 *animation;          
+    u16 *facings;            
+    u16 *word60;             
+    u8 *script;              
+    void (*callback)(struct Sprite *sprite); 
+    void *block;             
+    struct Sprite *parent;   
+    struct Sprite *partner;  
+    s32 word78;              
+    void *sequencer;         
+    u16 word80;              
+    u16 word82;              
+    s16 ground;              
+    u16 size;                
+    u8 *frames;              
+    s8 stack_top;            
+    u8 unknown8d;
+    u8 stack[0x10];          
+    s16 countdown;           
+    s16 target_x, target_y, target_z; 
+    u8 unknowna6[2];
+    struct {
+        unsigned sequencer_owned : 1; 
+        unsigned bounce : 10;    
+        unsigned frame : 6;      
+        unsigned step : 3;       
+        unsigned phase : 2;      
+        unsigned field22 : 6;    
+        unsigned field28 : 2;
+        unsigned unknown30 : 2;
+    } frame_bits;            
+    union {
+        u32 word;
+        struct {
+        unsigned unknown0 : 2;
+        unsigned mirror : 1;     
+        unsigned frame_flip : 1; 
+        unsigned unknown4 : 1;
+        unsigned owns_children : 1; 
+        unsigned double_step : 1;
+        unsigned divisor : 12;   
+        unsigned unknown19 : 13;
+        } bits;
+        u8 bytes[4];
+    } motion;                
+    union {
+        u32 wordb0;          
+        u8 byteb0;
+        struct {
+            unsigned unknown0 : 8;
+            unsigned passive_children : 1; 
+            unsigned share_rate : 1;       
+            unsigned unknown10 : 22;
+        } bits;
+    } b0;                    
+} Sprite;
+#endif
+#ifndef XM_T_WorldmapActor
+#define XM_T_WorldmapActor
+typedef struct WorldmapActor {
+    s16 command;     
+    s16 command_arg;
+    s16 unk4;
+    s16 unk6;
+    s32 unk8;
+    s32 unkC;
+    s32 unk10;
+    s32 unk14;
+    s32 kind;        
+    s32 update;      
+    s16 state;       
+    s16 wait;        
+    s16 unk24;
+    s16 unk26;
+    VECTOR position; 
+    VECTOR motion;   
+    s16 heading;     
+    s16 turn;        
+    Sprite *handle;  
+    union {
+        s16 *script; 
+        u16 value;   
+        s32 step;
+    } u;             
+    s32 unk54;
+    s32 unk58;
+    s32 unk5C;
+    s32 unk60;
+    s32 unk64;
+    s32 unk68;
+    s32 unk6C;
+    s32 unk70;
+    s32 unk74;
+    s32 unk78;
+    s32 unk7C;
+} WorldmapActor;
+#endif
+#ifndef XM_S_worldmap_actor_send_idle
+#define XM_S_worldmap_actor_send_idle
+void xm_worldmap_actor_send_idle(s32 index) __asm__("func_800977A8");
+#endif
+#ifndef XM_S_worldmap_actor_slots
+#define XM_S_worldmap_actor_slots
+extern WorldmapActor *xm_worldmap_actor_slots __asm__("D_8009BE24");
+#endif
+void func_800977A8(s32 index) {
+    WorldmapActor *actor;
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_800977C4);
+    actor = &xm_worldmap_actor_slots[index];
+    actor->command = 3;
+}
+#endif
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_actor_send_release (src/decomp/src/worldmap/worldmap_movement_terrain.c:1474). */
+#ifndef XM_T_VECTOR
+#define XM_T_VECTOR
+typedef struct {
+    long vx, vy, vz, pad;
+} VECTOR;
+#endif
+#ifndef XM_T_MATRIX
+#define XM_T_MATRIX
+typedef struct {
+    short m[3][3];
+    long t[3];
+} MATRIX;
+#endif
+#ifndef XM_T_SpritePart
+#define XM_T_SpritePart
+typedef struct {
+    s16 x, y;              
+    u8 u, v;               
+    u8 w, h;               
+    u8 byte8, byte9;       
+    u16 tpage;             
+    u16 clut;              
+    u8 unknowne[2];
+    u32 colour;            
+    u32 flags;             
+} SpritePart;
+#endif
+#ifndef XM_T_SpriteRendererEntry
+#define XM_T_SpriteRendererEntry
+typedef struct {
+    s8 byte0;              
+    s8 byte1;              
+    s16 half2;
+    s16 half4;
+    s16 half6;
+} SpriteRendererEntry;
+#endif
+#ifndef XM_T_SpriteOffset
+#define XM_T_SpriteOffset
+typedef struct {
+    s8 x, y;
+} SpriteOffset;
+#endif
+#ifndef XM_T_SVECTOR
+#define XM_T_SVECTOR
+typedef struct {
+    short vx, vy, vz, pad;
+} SVECTOR;
+#endif
+#ifndef XM_T_SpriteRenderer
+#define XM_T_SpriteRenderer
+typedef struct {
+    s16 angle_x, angle_y, angle_z; 
+    s16 scale_x, scale_y, scale_z; 
+    MATRIX matrix;                 
+    SpritePart *parts[2];          
+    SpriteRendererEntry *pointer34; 
+    struct Sprite *next_pending;   
+    SpriteOffset offset;           
+    u8 unknown3e[2];
+    s32 word40;                    
+    SVECTOR light_angles;          
+    u16 light_colour[3];           
+} SpriteRenderer;
+#endif
+#ifndef XM_T_Sprite
+#define XM_T_Sprite
+typedef struct Sprite {
+    s32 x, y, z;                
+    s32 speed_x, speed_y, speed_z; 
+    s32 speed;                  
+    s32 gravity;                
+    SpriteRenderer *renderer;   
+    void *image;                
+    u8 red, green, blue;     
+    u8 colour_flags;         
+    s16 scale;               
+    s16 depth;               
+    s16 half30;              
+    s16 direction;           
+    u16 frame;               
+    u16 height;              
+    u16 extent_depth;        
+    u16 rate;                
+    union {
+        u32 word;
+        struct {
+        unsigned sides : 2;      
+        unsigned unknown2 : 1;
+        unsigned flip : 1;       
+        unsigned flip_y : 1;
+        unsigned blend : 3;      
+        unsigned unknown8 : 8;
+        unsigned field16 : 4;
+        unsigned mode : 4;       
+        unsigned no_view : 1;    
+        unsigned unknown25 : 3;
+        unsigned dirty : 1;      
+        unsigned unknown29 : 3;
+        } bits;
+        u8 bytes[4];         
+    } render;                
+    u32 flags;               
+    s32 *resource_block;     
+    s32 *animations;         
+    s32 resource;            
+    s32 word50;              
+    u16 *frame_table;        
+    u16 *animation;          
+    u16 *facings;            
+    u16 *word60;             
+    u8 *script;              
+    void (*callback)(struct Sprite *sprite); 
+    void *block;             
+    struct Sprite *parent;   
+    struct Sprite *partner;  
+    s32 word78;              
+    void *sequencer;         
+    u16 word80;              
+    u16 word82;              
+    s16 ground;              
+    u16 size;                
+    u8 *frames;              
+    s8 stack_top;            
+    u8 unknown8d;
+    u8 stack[0x10];          
+    s16 countdown;           
+    s16 target_x, target_y, target_z; 
+    u8 unknowna6[2];
+    struct {
+        unsigned sequencer_owned : 1; 
+        unsigned bounce : 10;    
+        unsigned frame : 6;      
+        unsigned step : 3;       
+        unsigned phase : 2;      
+        unsigned field22 : 6;    
+        unsigned field28 : 2;
+        unsigned unknown30 : 2;
+    } frame_bits;            
+    union {
+        u32 word;
+        struct {
+        unsigned unknown0 : 2;
+        unsigned mirror : 1;     
+        unsigned frame_flip : 1; 
+        unsigned unknown4 : 1;
+        unsigned owns_children : 1; 
+        unsigned double_step : 1;
+        unsigned divisor : 12;   
+        unsigned unknown19 : 13;
+        } bits;
+        u8 bytes[4];
+    } motion;                
+    union {
+        u32 wordb0;          
+        u8 byteb0;
+        struct {
+            unsigned unknown0 : 8;
+            unsigned passive_children : 1; 
+            unsigned share_rate : 1;       
+            unsigned unknown10 : 22;
+        } bits;
+    } b0;                    
+} Sprite;
+#endif
+#ifndef XM_T_WorldmapActor
+#define XM_T_WorldmapActor
+typedef struct WorldmapActor {
+    s16 command;     
+    s16 command_arg;
+    s16 unk4;
+    s16 unk6;
+    s32 unk8;
+    s32 unkC;
+    s32 unk10;
+    s32 unk14;
+    s32 kind;        
+    s32 update;      
+    s16 state;       
+    s16 wait;        
+    s16 unk24;
+    s16 unk26;
+    VECTOR position; 
+    VECTOR motion;   
+    s16 heading;     
+    s16 turn;        
+    Sprite *handle;  
+    union {
+        s16 *script; 
+        u16 value;   
+        s32 step;
+    } u;             
+    s32 unk54;
+    s32 unk58;
+    s32 unk5C;
+    s32 unk60;
+    s32 unk64;
+    s32 unk68;
+    s32 unk6C;
+    s32 unk70;
+    s32 unk74;
+    s32 unk78;
+    s32 unk7C;
+} WorldmapActor;
+#endif
+#ifndef XM_S_worldmap_actor_send_release
+#define XM_S_worldmap_actor_send_release
+void xm_worldmap_actor_send_release(s32 index) __asm__("func_800977C4");
+#endif
+#ifndef XM_S_worldmap_actor_slots
+#define XM_S_worldmap_actor_slots
+extern WorldmapActor *xm_worldmap_actor_slots __asm__("D_8009BE24");
+#endif
+void func_800977C4(s32 index) {
+    WorldmapActor *actor;
 
-
+    actor = &xm_worldmap_actor_slots[index];
+    actor->command = 4;
+}
+#endif
 #ifndef XENO_PC_PORT
 void func_800977E0(s32 arg0, s16 arg1) {
     void *temp_v0;
