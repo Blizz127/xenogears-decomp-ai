@@ -224,7 +224,7 @@ def jt_markers(blizz_name):
     for m in re.finditer(r'dlabel jtbl_([0-9A-Fa-f]{8})\n(.*?)\.size jtbl_',t,re.S):
         a=int(m.group(1),16); n=len(re.findall(r'\.word',m.group(2)))
         out.append((a,'4' if (a-JT[1])%8==4 else '8',4*n))
-    return ['__asm__(".xeno_jt %s %d jtbl_%08X");'%(md,tot,a) for a,md,tot in sorted(out)]
+    return [('__asm__(".xeno_jt %s %d");'%(md,tot) if os.environ.get('NOJTNAME') else '__asm__(".xeno_jt %s %d jtbl_%08X");'%(md,tot,a)) for a,md,tot in sorted(out,reverse=bool(os.environ.get('JTREV')))]
 def analyze(row,fe,mode=''):
     """Return (block_text) or raise Reject."""
     name=row['xem_name']; src=fe['src']

@@ -4403,6 +4403,7 @@ s32 xm_worldmap_get_ground_distance(VECTOR *a, VECTOR *b) __asm__("func_80094154
 #define XM_S_sound_set_effect_volume
 void xm_sound_set_effect_volume(s32 id, s32 volume) __asm__("func_8003A2E4");
 #endif
+__asm__(".xeno_jt 8 32 jtbl_8006FB40");
 s32 func_80077E68(s32 index) {
     WorldmapActor *actor;
     SVECTOR *points;
@@ -4963,6 +4964,7 @@ s32 xm_worldmap_scene10_script_update(s32 index) __asm__("func_80078EA4");
 #define XM_S_worldmap_camera_place_orbit
 void xm_worldmap_camera_place_orbit(xm_ViewSetup *view, xm_Camera *camera, s32 distance, SVECTOR *angle) __asm__("func_80096F18");
 #endif
+__asm__(".xeno_jt 8 80 jtbl_8006FB60");
 s32 func_80078EA4(s32 index) {
     xm_CameraScratch *scratch;
     xm_WorldmapActor *actor;
@@ -6883,6 +6885,7 @@ extern s32 xm_continueWorldmapLoop __asm__("D_8009D554");
 #define XM_S_exitWorldMapMode
 extern s32 xm_exitWorldMapMode __asm__("D_8009D7CC");
 #endif
+__asm__(".xeno_jt 8 260 jtbl_800701E0");
 s32 func_80080370(s32 index) {
     sWorldmapStateEntry* e = &xm_gWorldmapState->m0_entries[index];
 
@@ -9582,6 +9585,7 @@ INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8008A72C);
 #define XM_S_worldmap_second_member_start
 s32 xm_worldmap_second_member_start(s32 index) __asm__("func_8008B2BC");
 #endif
+__asm__(".xeno_jt 8 56 jtbl_80070638");
 s32 func_8008B2BC(s32 index) {
     WorldmapActor *actor;
     s32 result;
@@ -9714,6 +9718,7 @@ INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8008B644);
 #define XM_S_worldmap_third_member_start
 s32 xm_worldmap_third_member_start(s32 index) __asm__("func_8008BB40");
 #endif
+__asm__(".xeno_jt 8 52 jtbl_80070778");
 s32 func_8008BB40(s32 index) {
     WorldmapActor *actor;
     s32 result;
