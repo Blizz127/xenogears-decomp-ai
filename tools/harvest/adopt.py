@@ -561,11 +561,13 @@ def main():
                     res.append((nm,r['addr'],'reject','definition not in compiled TU (dead region)')); bad.append((r,blk,1)); continue
                 if base.get(nm) and nm in new and base.get(nm)==new.get(nm): continue
                 bad.append((r,blk))
+            if a.diag: print('ROUND',rnd,'cs',len(cs),'bad',[b[0]['blizz_name'] for b in bad][:12])
             if not bad: break
             order={k:i for i,k in enumerate(base)}
             bad.sort(key=lambda b:order.get(b[0]['blizz_name'],1<<30))
             sz=[i for i,b in enumerate(bad) if len(b)==2 and len(base.get(b[0]['blizz_name'],[]))!=len(new.get(b[0]['blizz_name'],[]))]
             if sz: bad=bad[:sz[0]+1]   # later diffs may only be shifted by this one; re-check next round
+            elif JT[0] and len(bad)>1: bad=bad[:1]   # jt-aware TU: a failed table candidate shifts every later .rodata offset
             swapped=False
             for b in list(bad):
                 r,blk=b[0],b[1]
