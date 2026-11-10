@@ -184,7 +184,13 @@ def pick_var(es,n,src,pf):
         if arrow: sc+= 2 if (ptr or arr) else -2
         if idx_: sc+= 2 if (arr or ptr) else -2
         return sc
-    c.sort(key=lambda e:(-score(e), e['file']!=pf, not e['src'].lstrip().startswith('extern'), e['file'].endswith('.c')))
+    def cp2(e):
+        a_,b_=e['file'].split('/'),(pf or '').split('/'); n=0
+        for x,y in zip(a_,b_):
+            if x!=y: break
+            n+=1
+        return -n
+    c.sort(key=lambda e:(-score(e), e['file']!=pf, cp2(e), not e['src'].lstrip().startswith('extern'), e['file'].endswith('.c')))
     return c[0]
 def split_top_commas(s):
     out=[];d=0;cur=''

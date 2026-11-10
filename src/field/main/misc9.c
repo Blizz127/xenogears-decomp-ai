@@ -1947,7 +1947,51 @@ extern u8 D_800AF7F0[];
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800AC99C);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_staff_roll_draw (src/decomp/src/field/field_effect.c:1235). */
+#ifndef XM_T_FieldDrawBlock
+#define XM_T_FieldDrawBlock
+typedef struct FieldDrawBlock {
+    DRAWENV draw;
+    DRAWENV draw2;
+    DISPENV disp;
+    u_long ot[0x1001];   
+    u_long ot2[0x1001];  
+    u_long overlay_ot[8]; 
+} FieldDrawBlock;
+#endif
+#ifndef XM_S_field_staff_roll_draw
+#define XM_S_field_staff_roll_draw
+void xm_field_staff_roll_draw(void) __asm__("func_800AC99C");
+#endif
+#ifndef XM_S_field_current_draw_block
+#define XM_S_field_current_draw_block
+extern FieldDrawBlock *xm_field_current_draw_block __asm__("g_FieldCurRenderContext");
+#endif
+#ifndef XM_S_field_draw_buffer_index
+#define XM_S_field_draw_buffer_index
+extern s32 xm_field_draw_buffer_index __asm__("g_FieldCurRenderContextIndex");
+#endif
+void func_800AC99C(void) {
+    s32 y;
+    s32 i;
+    s32 k;
+
+    addPrim(&xm_field_current_draw_block->overlay_ot[0], &xm_field_staff_roll_fade_quads[1][xm_field_draw_buffer_index]);
+    addPrim(&xm_field_current_draw_block->overlay_ot[0], &xm_field_staff_roll_fade_quads[0][xm_field_draw_buffer_index]);
+    for (i = 0; i < 16; i++) {
+        y = (xm_field_staff_roll_line_sprites[i].sprites[(xm_field_draw_buffer_index + 1) & 1][0].y0 - 1) & 0xFF;
+        xm_field_staff_roll_line_sprites[i].sprites[xm_field_draw_buffer_index][0].y0 = y;
+        xm_field_staff_roll_line_sprites[i].sprites[xm_field_draw_buffer_index][1].y0 = y;
+        xm_field_staff_roll_line_sprites[i].sprites[xm_field_draw_buffer_index][2].y0 = y;
+        xm_field_staff_roll_line_sprites[i].sprites[xm_field_draw_buffer_index][3].y0 = y;
+        for (k = 0; k < 4; k++) {
+            addPrim(&xm_field_current_draw_block->overlay_ot[0], &xm_field_staff_roll_line_sprites[i].sprites[xm_field_draw_buffer_index][k]);
+            addPrim(&xm_field_current_draw_block->overlay_ot[0], &xm_field_staff_roll_line_sprites[i].modes[xm_field_draw_buffer_index][k]);
+        }
+    }
+}
+#endif
 #else
 void func_800AC99C(void) {
     s32 idx = g_FieldCurRenderContextIndex;
