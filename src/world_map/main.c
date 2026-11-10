@@ -5104,7 +5104,78 @@ INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8008BEC8);
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8008BFD4);
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8008C040);
+#ifndef XENO_PC_PORT
+/* Adopted from EtherAura xenogears (GPL-3.0, github.com/EtherAura/xenogears @e54f35a): processWorldmapDynamicCollisions (src/worldmap/w_8008BD1C.c). */
+#ifndef XM_T_sWorldmapDynamicCollision
+#define XM_T_sWorldmapDynamicCollision
+typedef struct {
+     s16 m0_entityIndex;
+     s32 m4_position[3];
+     s32 m10_height;
+     s16 m14_radius;           
+} sWorldmapDynamicCollision;
+#endif
+#ifndef XM_S_processWorldmapDynamicCollisions
+#define XM_S_processWorldmapDynamicCollisions
+void xm_processWorldmapDynamicCollisions(VECTOR* position, s32 radius, s32 height, u8* outType, u8* outIndex) __asm__("func_8008C040");
+#endif
+#ifndef XM_S_worldmapDynamicCollisions
+#define XM_S_worldmapDynamicCollisions
+extern sWorldmapDynamicCollision xm_worldmapDynamicCollisions[32] __asm__("D_8009BE6C");
+#endif
+#ifndef XM_S_currentWorldmapDynamicCollisionSlot
+#define XM_S_currentWorldmapDynamicCollisionSlot
+extern s16 xm_currentWorldmapDynamicCollisionSlot __asm__("D_8009BD04");
+#endif
+#ifndef XM_S_adjustWorldModelLocation
+#define XM_S_adjustWorldModelLocation
+void xm_adjustWorldModelLocation(VECTOR* delta) __asm__("func_80093534");
+#endif
+#ifndef XM_S_SquareRoot0
+#define XM_S_SquareRoot0
+s32 xm_SquareRoot0(s32 a) __asm__("SquareRoot0");
+#endif
+void func_8008C040(VECTOR* position, s32 radius, s32 height, u8* outType, u8* outIndex) {
+    s32 i;
+    s32 top;
+    s32 bottom;
+    s32 dist;
+    sWorldmapDynamicCollision* entry;
+    VECTOR delta;
+    VECTOR delta2;                 
+
+    *outType = 0;
+    *outIndex = 0;
+    entry = xm_worldmapDynamicCollisions;
+    if (xm_currentWorldmapDynamicCollisionSlot > 0) {
+    for (i = 0; i < xm_currentWorldmapDynamicCollisionSlot; i++, entry++) {
+        top = position->vy;
+        if (top < entry->m4_position[1]) {
+            bottom = top - (height << 12);
+            top = entry->m4_position[1];
+        } else {
+            bottom = entry->m4_position[1] - (entry->m10_height << 12);
+        }
+        if ((top - bottom) >> 12 < height + entry->m10_height) {
+            delta.vx = (entry->m4_position[0] - position->vx) >> 12;
+            delta.vz = (entry->m4_position[2] - position->vz) >> 12;
+            xm_adjustWorldModelLocation(&delta);
+            dist = xm_SquareRoot0(delta.vx * delta.vx + delta.vz * delta.vz);
+            if (dist < entry->m14_radius + radius) {
+                *outType = 2;
+                *outIndex = entry->m0_entityIndex;
+                return;
+            }
+            if (dist < entry->m14_radius + radius + 0x10) {
+                *outType = 1;
+                *outIndex = entry->m0_entityIndex;
+                return;
+            }
+        }
+    }
+    }
+}
+#endif
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8008C1DC);
 
@@ -5458,7 +5529,53 @@ void func_800931B0(void) {
 #endif
 
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_800931D8);
+#ifndef XENO_PC_PORT
+/* Adopted from EtherAura xenogears (GPL-3.0, github.com/EtherAura/xenogears @e54f35a): tweakWorldmapTexture (src/worldmap/w_800907F4.c). */
+#ifndef XM_S_tweakWorldmapTexture
+#define XM_S_tweakWorldmapTexture
+void xm_tweakWorldmapTexture(u16* src, u16* dst, s32 steps, u8* color) __asm__("func_800931D8");
+#endif
+void func_800931D8(u16* src, u16* dst, s32 steps, u8* color) {
+    u32 alpha;
+    u32 red;
+    u32 green;
+    u32 blue;
+    s32 r;
+    s32 g;
+    s32 b;
+    s32 i;
+    s32 j;
+    u32 t;
+    u16* s;
+    u8 c[3];
+
+    r = color[0];
+    g = color[1];
+    b = color[2];
+    for (i = 0; i < steps; i++) {
+        t = (i << 12) / steps;
+        s = src;
+        j = 0;
+        while (j < 0x100) {
+            if (*s == 0) {
+                *dst = *s;
+            } else {
+                c[0] = (*s & 0x1F) << 3;
+                c[1] = (*s >> 2) & 0xF8;
+                c[2] = (*s >> 7) & 0xF8;
+                alpha = *s & 0x8000;
+                red = (c[0] * (0x1000 - t) + r * t) >> 15;
+                green = c[1] * (0x1000 - t) + g * t;
+                blue = c[2] * (0x1000 - t) + b * t;
+                *dst = alpha | red | ((green >> 15) << 5) | ((blue >> 15) << 10);
+            }
+            j++;
+            s++;
+            dst++;
+        }
+    }
+}
+#endif
 
 
 void func_80093354(void *arg0) {
@@ -5570,7 +5687,47 @@ INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80093660);
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80093740);
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80093978);
+#ifndef XENO_PC_PORT
+/* Adopted from EtherAura xenogears (GPL-3.0, github.com/EtherAura/xenogears @e54f35a): worldmapGetAltitudeFor2dPoint (src/worldmap/w_800907F4.c). */
+#ifndef XM_S_worldmapGetAltitudeFor2dPoint
+#define XM_S_worldmapGetAltitudeFor2dPoint
+s32 xm_worldmapGetAltitudeFor2dPoint(s32 x, s32 z) __asm__("func_80093978");
+#endif
+#ifndef XM_S_getWorldChunkForPosition
+#define XM_S_getWorldChunkForPosition
+u8* xm_getWorldChunkForPosition(s32 x, s32 z) __asm__("func_80093660");
+#endif
+#ifndef XM_S_interpolateWorldPosition
+#define XM_S_interpolateWorldPosition
+void xm_interpolateWorldPosition(VECTOR* out, s32 x, s32 z) __asm__("func_80093740");
+#endif
+#ifndef XM_S_averageVector
+#define XM_S_averageVector
+void xm_averageVector(VECTOR* a, VECTOR* b, VECTOR* n) __asm__("func_800935DC");
+#endif
+s32 func_80093978(s32 x, s32 z) {
+    VECTOR pos;
+    VECTOR base;
+    VECTOR normal;
+    u8* c;
+
+    c = xm_getWorldChunkForPosition(x, z);
+    pos.vx = (x / 8) & 0xFFFF;
+    pos.vz = -((z / 8) & 0xFFFF);
+    if (c[1] & 0x80) {
+        base.vx = 0;
+        base.vz = 0;
+        base.vy = (s8)c[0] << 12;
+    } else {
+        base.vx = 0x10000;
+        base.vz = 0;
+        base.vy = (s8)c[4] << 12;
+    }
+    xm_interpolateWorldPosition(&normal, x, z);
+    xm_averageVector(&pos, &base, &normal);
+    return pos.vy << 3;
+}
+#endif
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80093A5C);
 
@@ -5650,20 +5807,220 @@ void func_800941C4(void *arg0, void *arg1, void *arg2, s16 *arg3) {
 #endif
 
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80094238);
+#ifndef XENO_PC_PORT
+/* Adopted from EtherAura xenogears (GPL-3.0, github.com/EtherAura/xenogears @e54f35a): setupWorldmapExits (src/worldmap/w_800907F4.c). */
+#ifndef XM_T_sWorldmapExitDef
+#define XM_T_sWorldmapExitDef
+typedef struct sWorldmapExitDef {
+     s16 m0_X;
+     s16 m2_Y;
+     s16 m4_width;
+     s16 m6_height;
+     s16 m8_destinationField;
+     s16 mA_returnWorldmapMode;
+     s16 mC_newWorldmapMode;
+     s16 mE_type;
+} sWorldmapExitDef;
+#endif
+#ifndef XM_S_setupWorldmapExits
+#define XM_S_setupWorldmapExits
+s32 xm_setupWorldmapExits(VECTOR* pos, s32 set) __asm__("func_80094238");
+#endif
+#ifndef XM_S_worldmapExitsDefs
+#define XM_S_worldmapExitsDefs
+extern sWorldmapExitDef* * xm_worldmapExitsDefs __asm__("D_8009BD00");
+#endif
+#ifndef XM_S_worldmapCurrentExit
+#define XM_S_worldmapCurrentExit
+extern sWorldmapExitDef * xm_worldmapCurrentExit __asm__("D_8009D7D8");
+#endif
+#ifndef XM_S_worldmapExitVar0
+#define XM_S_worldmapExitVar0
+extern s16 xm_worldmapExitVar0 __asm__("D_8009BD24");
+#endif
+#ifndef XM_S_worldmapExitVar1
+#define XM_S_worldmapExitVar1
+extern s16 xm_worldmapExitVar1 __asm__("D_8009CE68");
+#endif
+s32 func_80094238(VECTOR* pos, s32 set) {
+    u16 x;
+    u16 z;
+    sWorldmapExitDef* e;
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80094364);
+    x = pos->vx >> 12;
+    e = xm_worldmapExitsDefs[set];
+    z = pos->vz >> 12;
+    while (e->m8_destinationField != -1) {
+        if ((e->m0_X <= x) & (x <= e->m0_X + e->m4_width) & (e->m2_Y <= z) & (z <= e->m2_Y + e->m6_height)) {
+            if (e->mE_type == 4) {
+                xm_worldmapCurrentExit = (sWorldmapExitDef*)-1;
+                xm_worldmapExitVar0 = -1;
+                xm_worldmapExitVar1 = e->mC_newWorldmapMode;
+            } else {
+                xm_worldmapCurrentExit = e;
+                xm_worldmapExitVar1 = -1;
+                xm_worldmapExitVar0 = e->mC_newWorldmapMode;
+            }
+            return 1;
+        }
+        e++;
+    }
+    xm_worldmapCurrentExit = (sWorldmapExitDef*)-1;
+    xm_worldmapExitVar0 = -1;
+    xm_worldmapExitVar1 = -1;
+    return 0;
+}
+#endif
+
+#ifndef XENO_PC_PORT
+/* Adopted from EtherAura xenogears (GPL-3.0, github.com/EtherAura/xenogears @e54f35a): findWorldmapExitOfType (src/worldmap/w_800907F4.c). */
+#ifndef XM_S_findWorldmapExitOfType
+#define XM_S_findWorldmapExitOfType
+s32 xm_findWorldmapExitOfType(VECTOR* pos, s32 set, s32 type) __asm__("func_80094364");
+#endif
+s32 func_80094364(VECTOR* pos, s32 set, s32 type) {
+    u16 x;
+    u16 z;
+    sWorldmapExitDef* e;
+
+    x = pos->vx >> 12;
+    e = xm_worldmapExitsDefs[set];
+    z = pos->vz >> 12;
+    while (e->m8_destinationField != -1) {
+        if ((e->m0_X <= x) & (x <= e->m0_X + e->m4_width) & (e->m2_Y <= z) & (z <= e->m2_Y + e->m6_height)) {
+            if (e->mE_type == type) {
+                xm_worldmapCurrentExit = e;
+                return 1;
+            }
+        }
+        e++;
+    }
+    return 0;
+}
+#endif
 
 void func_80094434(void) {
 }
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8009443C);
+#ifndef XENO_PC_PORT
+/* Adopted from EtherAura xenogears (GPL-3.0, github.com/EtherAura/xenogears @e54f35a): checkWorldmapPositionSub1_0_3 (src/worldmap/w_800907F4.c). */
+#ifndef XM_S_checkWorldmapPositionSub1_0_3
+#define XM_S_checkWorldmapPositionSub1_0_3
+s32 xm_checkWorldmapPositionSub1_0_3(VECTOR* pos, VECTOR* step, VECTOR* out, s16 type) __asm__("func_8009443C");
+#endif
+#ifndef XM_S_checkWorldmapPositionSub0
+#define XM_S_checkWorldmapPositionSub0
+void xm_checkWorldmapPositionSub0(VECTOR* p) __asm__("func_80093354");
+#endif
+#ifndef XM_S_checkWorldmapPositionSub1_0_1
+#define XM_S_checkWorldmapPositionSub1_0_1
+s16 xm_checkWorldmapPositionSub1_0_1(s16 a, s16 b) __asm__("func_80094060");
+#endif
+#ifndef XM_S_getWorldmapGroundType
+#define XM_S_getWorldmapGroundType
+s16 xm_getWorldmapGroundType(VECTOR* position) __asm__("func_80093F18");
+#endif
+s32 func_8009443C(VECTOR* pos, VECTOR* step, VECTOR* out, s16 type) {
+    s32 slope;
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_800945C8);
+    slope = (step->vz << 12) / step->vx;
+    out[0].vx = (out[1].vx & 0xFFF80000) - pos->vx;
+    out[2].vx = out[0].vx - 1;
+    out[3].vx = out[0].vx;
+    out[2].vz = (slope * out[2].vx >> 12) + pos->vz;
+    out[3].vz = (slope * out[3].vx >> 12) + pos->vz;
+    out[2].vx += pos->vx;
+    out[3].vx += pos->vx;
+    xm_checkWorldmapPositionSub0(&out[2]);
+    if (xm_checkWorldmapPositionSub1_0_1(type, xm_getWorldmapGroundType(&out[2])) == 0) {
+        out[0] = out[2];
+        return 1;
+    }
+    xm_checkWorldmapPositionSub0(&out[3]);
+    return -(xm_checkWorldmapPositionSub1_0_1(type, xm_getWorldmapGroundType(&out[3])) == 0) & 3;
+}
+#endif
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80094750);
+#ifndef XENO_PC_PORT
+/* Adopted from EtherAura xenogears (GPL-3.0, github.com/EtherAura/xenogears @e54f35a): checkWorldmapPositionSub1_0_4 (src/worldmap/w_800907F4.c). */
+#ifndef XM_S_checkWorldmapPositionSub1_0_4
+#define XM_S_checkWorldmapPositionSub1_0_4
+s32 xm_checkWorldmapPositionSub1_0_4(VECTOR* pos, VECTOR* step, VECTOR* out, s16 type) __asm__("func_800945C8");
+#endif
+s32 func_800945C8(VECTOR* pos, VECTOR* step, VECTOR* out, s16 type) {
+    s32 slope;
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_800948D8);
+    slope = (step->vz << 12) / step->vx;
+    out[0].vx = (pos->vx & 0xFFF80000) - pos->vx;
+    out[2].vx = out[0].vx;
+    out[3].vx = out[0].vx - 1;
+    out[2].vz = (slope * out[2].vx >> 12) + pos->vz;
+    out[3].vz = (slope * out[3].vx >> 12) + pos->vz;
+    out[2].vx += pos->vx;
+    out[3].vx += pos->vx;
+    xm_checkWorldmapPositionSub0(&out[2]);
+    if (xm_checkWorldmapPositionSub1_0_1(type, xm_getWorldmapGroundType(&out[2])) == 0) {
+        out[0] = out[2];
+        return 1;
+    }
+    xm_checkWorldmapPositionSub0(&out[3]);
+    return -(xm_checkWorldmapPositionSub1_0_1(type, xm_getWorldmapGroundType(&out[3])) == 0) & 3;
+}
+#endif
+
+#ifndef XENO_PC_PORT
+/* Adopted from EtherAura xenogears (GPL-3.0, github.com/EtherAura/xenogears @e54f35a): checkWorldmapPositionSub1_0_5 (src/worldmap/w_800907F4.c). */
+#ifndef XM_S_checkWorldmapPositionSub1_0_5
+#define XM_S_checkWorldmapPositionSub1_0_5
+s32 xm_checkWorldmapPositionSub1_0_5(VECTOR* pos, VECTOR* step, VECTOR* out, s16 type) __asm__("func_80094750");
+#endif
+s32 func_80094750(VECTOR* pos, VECTOR* step, VECTOR* out, s16 type) {
+    s32 slope;
+
+    slope = (step->vx << 12) / step->vz;
+    out[0].vz = (out[1].vz & 0xFFF80000) - pos->vz;
+    out[2].vz = out[0].vz - 1;
+    out[3].vz = out[0].vz;
+    out[2].vx = (slope * out[2].vz >> 12) + pos->vx;
+    out[3].vx = (slope * out[3].vz >> 12) + pos->vx;
+    out[2].vz += pos->vz;
+    out[3].vz += pos->vz;
+    xm_checkWorldmapPositionSub0(&out[2]);
+    if (xm_checkWorldmapPositionSub1_0_1(type, xm_getWorldmapGroundType(&out[2])) == 0) {
+        out[0] = out[2];
+        return 1;
+    }
+    xm_checkWorldmapPositionSub0(&out[3]);
+    return (xm_checkWorldmapPositionSub1_0_1(type, xm_getWorldmapGroundType(&out[3])) == 0) << 1;
+}
+#endif
+
+#ifndef XENO_PC_PORT
+/* Adopted from EtherAura xenogears (GPL-3.0, github.com/EtherAura/xenogears @e54f35a): checkWorldmapPositionSub1_0_2 (src/worldmap/w_800907F4.c). */
+#ifndef XM_S_checkWorldmapPositionSub1_0_2
+#define XM_S_checkWorldmapPositionSub1_0_2
+s32 xm_checkWorldmapPositionSub1_0_2(VECTOR* pos, VECTOR* step, VECTOR* out, s16 type) __asm__("func_800948D8");
+#endif
+s32 func_800948D8(VECTOR* pos, VECTOR* step, VECTOR* out, s16 type) {
+    s32 slope;
+
+    slope = (step->vx << 12) / step->vz;
+    out[0].vz = (pos->vz & 0xFFF80000) - pos->vz;
+    out[2].vz = out[0].vz;
+    out[3].vz = out[0].vz - 1;
+    out[2].vx = (slope * out[2].vz >> 12) + pos->vx;
+    out[3].vx = (slope * out[3].vz >> 12) + pos->vx;
+    out[2].vz += pos->vz;
+    out[3].vz += pos->vz;
+    xm_checkWorldmapPositionSub0(&out[2]);
+    if (xm_checkWorldmapPositionSub1_0_1(type, xm_getWorldmapGroundType(&out[2])) == 0) {
+        out[0] = out[2];
+        return 1;
+    }
+    xm_checkWorldmapPositionSub0(&out[3]);
+    return (xm_checkWorldmapPositionSub1_0_1(type, xm_getWorldmapGroundType(&out[3])) == 0) << 1;
+}
+#endif
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80094A5C);
 

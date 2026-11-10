@@ -467,7 +467,74 @@ extern s32 D_8004FE38;
 extern s32 g_ArchiveCurFileSize;
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002BA58);
+#ifndef XENO_PC_PORT
+/* Adopted from EtherAura xenogears (GPL-3.0, github.com/EtherAura/xenogears @e54f35a): streamDataCallback (src/main/filesystem.c). */
+#ifndef XM_T_SectorSlot
+#define XM_T_SectorSlot
+typedef struct {
+     u16 m0_state;
+     u16 m2_sequence;
+     u16 m4_count;
+     u16 m6_size;
+} SectorSlot;
+#endif
+#ifndef XM_S_streamDataCallback
+#define XM_S_streamDataCallback
+void xm_streamDataCallback() __asm__("func_8002BA58");
+#endif
+#ifndef XM_S_streamSectorSlots
+#define XM_S_streamSectorSlots
+extern SectorSlot * xm_streamSectorSlots __asm__("D_8004FE2C");
+#endif
+#ifndef XM_S_streamSectorSlotCount
+#define XM_S_streamSectorSlotCount
+extern s32 xm_streamSectorSlotCount __asm__("D_8004FE40");
+#endif
+#ifndef XM_S_streamNextDataSequence
+#define XM_S_streamNextDataSequence
+extern u16 xm_streamNextDataSequence __asm__("D_8004FE28");
+#endif
+#ifndef XM_S_remainingReadSize
+#define XM_S_remainingReadSize
+extern s32 xm_remainingReadSize __asm__("g_ArchiveCurFileSize");
+#endif
+#ifndef XM_S_readInProgress
+#define XM_S_readInProgress
+extern s32 xm_readInProgress __asm__("D_8004FDFC");
+#endif
+#ifndef XM_S_CdDataCallback
+#define XM_S_CdDataCallback
+void* xm_CdDataCallback(void* func) __asm__("CdDataCallback");
+#endif
+#ifndef XM_S_seekToFileUnchecked
+#define XM_S_seekToFileUnchecked
+void xm_seekToFileUnchecked(s32 fileIndex) __asm__("ArchiveCdSeekToFile");
+#endif
+#ifndef XM_S_readNextSeekFile
+#define XM_S_readNextSeekFile
+extern s32 xm_readNextSeekFile __asm__("D_8004FE38");
+#endif
+void func_8002BA58(void) {
+    s16 i;
+    SectorSlot* s = xm_streamSectorSlots;
+
+    for (i = 0; i < xm_streamSectorSlotCount; i++, s++) {
+        if (s->m0_state == 1 && s->m2_sequence == xm_streamNextDataSequence) {
+            break;
+        }
+    }
+    if (i != xm_streamSectorSlotCount) {
+        s->m0_state = 3;
+        xm_streamNextDataSequence++;
+        if (xm_remainingReadSize <= 0 && xm_readInProgress < 2) {
+            xm_remainingReadSize = 0;
+            xm_CdDataCallback(0);
+            xm_seekToFileUnchecked(xm_readNextSeekFile);
+            xm_readInProgress = 0;
+        }
+    }
+}
+#endif
 #else
 void func_8002BA58(void) {
     s32 slotCount = D_8004FE40;

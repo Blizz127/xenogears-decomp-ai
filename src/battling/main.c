@@ -2493,7 +2493,177 @@ void func_8008DCA8(s32 arg0) {
     D_80092838 = arg0;
 }
 
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008DCB8);
+#ifndef XENO_PC_PORT
+/* Adopted from EtherAura xenogears (GPL-3.0, github.com/EtherAura/xenogears @e54f35a): updateBattlingSparkBurst (src/battling/bl_8008C7C0.c). */
+#ifndef XM_T_OTag
+#define XM_T_OTag
+typedef u64 OTag;
+#endif
+#ifndef XM_T_BattlingNode
+#define XM_T_BattlingNode
+typedef struct BattlingNode {
+     s32 m0_type;
+     void* m4_data;           
+     void (*m8_callback)(void);
+     MATRIX mC_worldMatrix;
+     SVECTOR m2C_position;
+     VECTOR m34_translation;  
+     SVECTOR m44_rotation;    
+     MATRIX m4C_localMatrix;
+     MATRIX m6C_baseMatrix;
+     struct BattlingNode* m8C_parent;
+     struct BattlingNode* m90_next;
+     struct BattlingNode* m94_child;
+     s32 m98;
+} BattlingNode;
+#endif
+#ifndef XM_T_BattlingParticle
+#define XM_T_BattlingParticle
+typedef struct BattlingParticle {
+     s16 m0_x;
+     s16 m2_y;
+     s16 m4_z;
+     s16 m6_life;             
+     s16 m8_vx;
+     s16 mA_vy;
+     s16 mC_vz;
+} BattlingParticle;
+#endif
+#ifndef XM_T_BattlingParticleResetFn
+#define XM_T_BattlingParticleResetFn
+typedef void (*BattlingParticleResetFn)(void* particle);
+#endif
+#ifndef XM_T_BattlingParticleRenderFn
+#define XM_T_BattlingParticleRenderFn
+typedef void (*BattlingParticleRenderFn)(void* particle, OTag* ot);
+#endif
+#ifndef XM_T_BattlingParticleInitFn
+#define XM_T_BattlingParticleInitFn
+typedef void (*BattlingParticleInitFn)(void* particle, struct BattlingEmitter* e);
+#endif
+#ifndef XM_T_BattlingEmitterShapeFn
+#define XM_T_BattlingEmitterShapeFn
+typedef void (*BattlingEmitterShapeFn)(struct BattlingEmitter* e, SVECTOR* out);
+#endif
+#ifndef XM_T_BattlingEmitter
+#define XM_T_BattlingEmitter
+typedef struct BattlingEmitter {
+     s16 m0_gravity;
+     s16 m2;
+     s16 m4;
+     s16 m6;
+     s16 m8;
+     s16 mA_count;
+     s16 mC_particleSize;     
+     s16 mE;
+     BattlingParticle* m10_particles;
+     s16 m14_x;
+     s16 m16_y;
+     s16 m18_z;
+     s16 m1A;
+     SVECTOR m1C_origin;
+     s16 m24_size[3];
+     s16 m2A;
+     s16 m2C_halfSize[3];
+     s16 m32;
+     SVECTOR m34_rotation;
+     SVECTOR m3C_rotation2;
+     s16 m44_spread;
+     s16 m46;
+     s16 m48_speedMin;
+     s16 m4A_speedRange;
+     s16 m4C;
+     s16 m4E_shape;
+     BattlingParticleResetFn m50_reset;
+     BattlingParticleRenderFn m54_render;
+     BattlingParticleInitFn m58_init;
+     BattlingEmitterShapeFn m5C_shape;
+     void* m60_groundBounce;               
+     s16 m64;
+     s16 m66_type;
+     s16 m68;
+     s16 m6A_life;
+     s32 m6C;
+     s32 m70;
+     u8 m74_r;
+     u8 m75_g;
+     u8 m76_b;
+     u8 m77;
+     s32 m78;
+} BattlingEmitter;
+#endif
+#ifndef XM_T_gte_SetTransMatrix
+#define XM_T_gte_SetTransMatrix
+#define gte_SetTransMatrix(r0)                                                \
+    __asm__ volatile("lw $12, 20(%0); lw $13, 24(%0); ctc2 $12, $5; "         \
+                     "lw $14, 28(%0); ctc2 $13, $6; ctc2 $14, $7"              \
+                     : : "r"(r0) : "$12", "$13", "$14")
+#endif
+#ifndef XM_T_gte_SetRotMatrix
+#define XM_T_gte_SetRotMatrix
+#define gte_SetRotMatrix(r0)                                                  \
+    __asm__ volatile("lw $12, 0(%0); lw $13, 4(%0); ctc2 $12, $0; "           \
+                     "ctc2 $13, $1; lw $12, 8(%0); lw $13, 12(%0); "           \
+                     "lw $14, 16(%0); ctc2 $12, $2; ctc2 $13, $3; ctc2 $14, $4" \
+                     : : "r"(r0) : "$12", "$13", "$14")
+#endif
+#ifndef XM_S_updateBattlingSparkBurst
+#define XM_S_updateBattlingSparkBurst
+void xm_updateBattlingSparkBurst(OTag* arg0, BattlingNode* gear, MATRIX* m, VECTOR* pos) __asm__("func_8008DCB8");
+#endif
+#ifndef XM_S_battlingSparkEmitter
+#define XM_S_battlingSparkEmitter
+extern BattlingEmitter * xm_battlingSparkEmitter __asm__("D_80092834");
+#endif
+#ifndef XM_S_battlingSparkBurst
+#define XM_S_battlingSparkBurst
+extern s32 xm_battlingSparkBurst __asm__("D_80092838");
+#endif
+#ifndef XM_S_getBattlingBoneMatrix
+#define XM_S_getBattlingBoneMatrix
+void xm_getBattlingBoneMatrix(BattlingNode* gear, s16 bone, MATRIX* out) __asm__("func_8008DBC0");
+#endif
+#ifndef XM_S_MatrixNormal
+#define XM_S_MatrixNormal
+MATRIX* xm_MatrixNormal(MATRIX* m, MATRIX* n) __asm__("func_80048E94");
+#endif
+#ifndef XM_S_emitBattlingParticles
+#define XM_S_emitBattlingParticles
+void xm_emitBattlingParticles(BattlingEmitter* pool, MATRIX* m, s32 count) __asm__("func_8008D680");
+#endif
+#ifndef XM_S_updateBattlingEmitterParticles
+#define XM_S_updateBattlingEmitterParticles
+void xm_updateBattlingEmitterParticles(BattlingEmitter* pool, OTag* arg1, MATRIX* m) __asm__("func_8008DA48");
+#endif
+void func_8008DCB8(OTag* arg0, BattlingNode* gear, MATRIX* m, VECTOR* pos) {
+    MATRIX norm;
+    MATRIX bone;
+    BattlingEmitter* pool;
+
+    pool = xm_battlingSparkEmitter;
+    if (xm_battlingSparkBurst >= 0x10) {
+        xm_getBattlingBoneMatrix(gear, 0x27, &bone);
+        xm_MatrixNormal(&bone, &norm);
+        norm.t[2] = 0;
+        norm.t[1] = 0;
+        norm.t[0] = 0;
+        pool->m14_x = pos->vx;
+        pool->m16_y = pos->vy;
+        pool->m18_z = pos->vz;
+        pool->m3C_rotation2.vx = 0;
+        pool->m3C_rotation2.vy = 0;
+        pool->m3C_rotation2.vz = 0;
+        pool->m34_rotation.vx = 0;
+        pool->m34_rotation.vy = 0;
+        pool->m34_rotation.vz = 0x800;
+        xm_emitBattlingParticles(pool, &norm, xm_battlingSparkBurst >> 4);
+        xm_battlingSparkBurst -= 4;
+    }
+    gte_SetTransMatrix(m);
+    gte_SetRotMatrix(m);
+    xm_updateBattlingEmitterParticles(pool, arg0, m);
+}
+#endif
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008DDFC);
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008DE54);
 
@@ -3513,7 +3683,380 @@ block_5:
     }
 }
 
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008F9B0);
+#ifndef XENO_PC_PORT
+/* Adopted from EtherAura xenogears (GPL-3.0, github.com/EtherAura/xenogears @e54f35a): isBattlingGearInWater (src/battling/bl_8008C7C0.c). */
+#ifndef XM_T_BattlingMove
+#define XM_T_BattlingMove
+typedef struct BattlingMove {
+     u8 m0_anim;
+     u8 m1_lunge;
+     u8 m2_effects;            
+     u8 m3_alive;
+} BattlingMove;
+#endif
+#ifndef XM_T_BattlingGearFlags
+#define XM_T_BattlingGearFlags
+typedef struct BattlingGearFlags {
+    u32 b0 : 1;
+    u32 b1 : 1;                         
+    u32 b2 : 1;
+    u32 b3_combo : 3;                   
+    u32 b6 : 1;                         
+    u32 b7 : 3;
+    u32 b10_burning : 1;                
+    u32 b11_animEnd : 1;
+    u32 b12 : 1;
+    u32 b13 : 2;
+    u32 b15_scriptTurn : 1;             
+    u32 b16 : 1;
+    u32 b17_facing : 1;
+    u32 b18 : 1;
+    u32 b19 : 1;
+    u32 b20 : 3;
+    u32 b23 : 1;
+    u32 b24 : 1;
+    u32 b25 : 1;
+    u32 b26_effectStart : 1;            
+    u32 b27_side : 1;                   
+    u32 b28 : 1;
+    u32 b29_ground : 2;                 
+    u32 b31 : 1;
+} BattlingGearFlags;
+#endif
+#ifndef XM_T_BattlingGearFlags2
+#define XM_T_BattlingGearFlags2
+typedef struct BattlingGearFlags2 {
+    u32 b0_1 : 2;
+    u32 b2_3 : 2;
+    u32 b4 : 1;
+    u32 b5 : 1;                         
+    u32 b6 : 1;
+    u32 b7_31 : 25;
+} BattlingGearFlags2;
+#endif
+#ifndef XM_T_BattlingGearShape
+#define XM_T_BattlingGearShape
+typedef struct BattlingGearShape {
+     VECTOR m0_points[4];     
+     s16 m40_effect;
+     u8 m42;
+     u8 m43_part;
+     union {                  
+        u32 flags;
+        struct {
+            u32 b0 : 1;
+            u32 b1 : 1;
+            u32 b2 : 6;
+            u32 state : 8;              
+            u32 type : 8;
+            u32 damage : 8;
+        } bits;
+        struct {
+            u8 m44;
+            u8 m45_state;
+            u8 m46_type;
+            u8 m47_damage;
+        } b;
+    } m44_hit;
+     u8 m48_frame;            
+     u8 m49[3];
+     s32 m4C_handle;          
+     BattlingMove* m50_move;   
+} BattlingGearShape;
+#endif
+#ifndef XM_T_BattlingProjectile
+#define XM_T_BattlingProjectile
+typedef struct BattlingProjectile {
+     VECTOR m0_position;
+     VECTOR m10_prevPosition;
+     SVECTOR m20_velocity;     
+     SVECTOR m28_direction;    
+     u8 m30_active;
+     u8 m31_speed;
+     u8 m32_drawType;          
+     u8 m33_moveType;          
+     s32 m34_distance;         
+     s32 m38_handle;
+     s16 m3C_damage;
+     s16 m3E_homing;           
+     s16 m40_life;
+     u8 m42[0x2];
+} BattlingProjectile;
+#endif
+#ifndef XM_T_BattlingGearParams
+#define XM_T_BattlingGearParams
+typedef struct BattlingGearParams {
+     u8 m0_topPart;
+     u8 m1_foot1Part;
+     u8 m2_foot2Part;
+     u8 m3_bodyRadius;
+     s16 m4_foot1Vertex;
+     s16 m6_foot2Vertex;
+     s16 m8_topVertex;
+     u8 mA_pad[2];
+     u16 mC_speedScale;
+     u8 mE_hiddenPartCount;
+     u8 mF_moveScale;
+     u8 m10_glowR;
+     u8 m11_glowG;
+     u8 m12_glowB;
+     u8 m13_radius;          
+     s16 m14_victoryPitch;                 
+     s16 m16_victorySpin;
+     s16 m18_victoryY;
+     s16 m1A_victoryZ;
+     s16 m1C_victoryScale;
+     s16 m1E_victoryYaw;
+     u16 m20_scale;
+     u8 m22_pad[2];
+     s16 m24_winCamAngle;
+     s16 m26_winCamHeight;
+     s16 m28_winCamTargetHeight;
+     s16 m2A_winCamDistance;
+     s16 m2C_winAnimLoops;
+} BattlingGearParams;
+#endif
+#ifndef XM_T_BattlingReplayFrame
+#define XM_T_BattlingReplayFrame
+typedef struct BattlingReplayFrame {
+     s16 m0_x;
+     s16 m2_y;
+     s16 m4_z;
+     union {
+        u16 flags;                      
+        struct {
+            s16 angle : 12;
+            u16 b12 : 1;
+            u16 b13 : 1;
+            s16 b14 : 1;                
+            u16 b15 : 1;
+        } bits;
+    } m6_angleFlags;
+     u8 m8_anim;
+     u8 m9_frameStep;
+     u16 mA : 8;
+     u16 mA_b8 : 1;
+     u16 mA_pad : 7;
+} BattlingReplayFrame;
+#endif
+#ifndef XM_T_CVECTOR
+#define XM_T_CVECTOR
+typedef struct {
+    u8 r, g, b, cd;
+} CVECTOR;
+#endif
+#ifndef XM_T_BattlingAiState
+#define XM_T_BattlingAiState
+typedef struct BattlingAiState {
+     struct BattlingGear* m0_gear;
+     s16 m4_timer;
+     u8 m6;
+     u8 m7;
+     u8 m8_state;
+     u8 m9_repeatCount;
+     s16 mA_turn;
+     s16 mC_speed;
+     u8 mE_boost;
+     u8 mF_comLevel;
+     s32 m10_aiParam0;
+     s32 m14_aiParam1;
+     s32 m18_aiParam2;
+     s32 m1C_aiParam3;
+     s32 m20_waitStep;
+     s32 m24_gaugeLimit;
+     s32 m28_retreatDistance;
+     u32 m2C_b0_7 : 8;
+     u32 m2C_b8 : 1;
+     u32 m2C_b9 : 1;
+     u32 m2C_b10 : 1;
+     u32 m2C_b11 : 1;
+     u32 m2C_b12 : 1;
+     u32 m2C_b13 : 1;
+     u32 m2C_pad14 : 2;
+     u32 m2C_b16_23 : 8;      
+     u32 m2C_pad24 : 8;
+     s16 m30_hitsTaken;
+} BattlingAiState;
+#endif
+#ifndef XM_T_BattlingGearDef
+#define XM_T_BattlingGearDef
+typedef struct BattlingGearDef {
+     s16 m0_power;            
+     s16 m2;
+     s16 m4_unlockLevel;                  
+     u8 m6_ai[4];             
+     u8 mA_moves[14];         
+     u8 m18_etherPower;
+     u8 m19[7];
+} BattlingGearDef;
+#endif
+#ifndef XM_T_BattlingGear
+#define XM_T_BattlingGear
+typedef struct BattlingGear {
+     VECTOR m0_position;
+     VECTOR m10_velocity;
+     VECTOR m20_knockback;
+     VECTOR m30_lungeVelocity;
+     s32 m40_moveSpeed;
+     s32 m44_lungeSpeed;
+     s32 m48_speed;          
+     u8 m4C_animation;
+     u8 m4D;
+     u8 m4E_lastAnimation;
+     u8 m4F_animSpeed;
+     s16 m50_animFrame;      
+     u8 m52_moveAnimSpeed;
+     u8 m53;
+     s32 m54_rotY;
+     s32 m58_targetRotation; 
+     BattlingNode* m5C_model; 
+     BattlingNode* m60_node;  
+     u8 m64_pad[0x8];
+     VECTOR m6C_prevPosition;
+     u8* m7C_animParams;
+     BattlingMove* m80_moves; 
+     BattlingMove* m84_move;  
+     s32 m88_inputLeft;
+     s32 m8C_inputUp;
+     s32 m90_inputRight;
+     s32 m94_inputDown;
+     s32 m98_accel;
+     s32 m9C_decel;
+     u8 mA0_pad[0x8];
+     s32 mA8;
+     u8 mAC_pad[0x4];
+     s32 mB0_groundY;
+     s16 mB4_hp;
+     s16 mB6_gauge;          
+     s16 mB8_barHp;
+     s16 mBA_damage;
+     s16 mBC_maxHp;
+     s16 mBE_gaugeCost;
+     u8 mC0_hpBar;
+     u8 mC1_bar;
+     u8 mC2_flash;
+     u8 mC3_backDashTimer;
+     u8 mC4_moveState;
+     u8 mC5_action;
+     u8 mC6_prevMoveState;
+     u8 mC7_pad;
+     s16 mC8_comboTimer;
+     s16 mCA_downTimer;
+     s16 mCC_sideInputRotation;
+     s16 mCE_inputRotation;
+     union {
+        u32 flags;                      
+
+
+        BattlingGearFlags bits;
+    } mD0_status;
+     union {
+        u32 flags;
+        BattlingGearFlags2 bits;
+    } mD4_cues;
+     struct BattlingGear* mD8_opponent;
+     u8 mDC_pad[0xC];
+     s32 mE8_stun;
+     u8 mEC_pad[0x4];
+     s16 mF0_comboHits;
+     s16 mF2_wins;           
+     s32 mF4;
+     u8 mF8_pad[0x4];
+     s32 mFC_turnRotation;
+     s32 m100_hitType;
+     BattlingGearShape m104_shapes[16];
+     s32 m644_moveDamage;
+     s32 m648_baseRotation;
+     BattlingProjectile m64C_projectiles[9];
+     u8 m8B0_pad[0x44];
+     s32 m8F4_nearestProjectileDist;
+     BattlingProjectile* m8F8_nearestProjectile;
+     BattlingGearParams* m8FC_params;
+     s16* m900_eventOffsets;  
+     u8* m904_hiddenParts;
+     u8 m908_hiddenPartCount;
+     u8 m909_gearId;         
+     u8 m90A_flags;
+     u8 m90B_dustTimer;
+     s16 m90C_attackRotation;
+     u8 m90E_holdAnimation;
+     u8 m90F_pad;
+     u8 m910_damageSfxTimer;
+     u8 m911_partCount;
+     u8 m912_count;
+     u8 m913_pad;
+     s16 m914_inputLock;
+     s16 m916_stagger;
+     u8 m918_glow;           
+     u8 m919_pad[0x3];
+     VECTOR m91C_lastHitPoint;
+     VECTOR m92C_topPoint;
+     VECTOR m93C_footPoint;
+     VECTOR m94C_target;     
+     VECTOR m95C_prevFootPoint;
+     s16 m96C_prevFoot2Y;
+     s16 m96E_prevFoot1Y;
+     s32 m970_hitDamage;
+     VECTOR m974_hitPoint;
+     u8 m984_pad[0x14];
+     s16 m998_stepStartFrame;
+     s16 m99A_stepFrames;
+     s16 m99C_blendSteps;
+     s16 m99E_frameAccum;
+     u8 m9A0_inputQueue[32];
+     u8 m9C0_inputQueueWrite;
+     u8 m9C1_inputQueueRead;
+     u8 m9C2_inputQueueCount;
+     u8 m9C3_move;           
+     u8 m9C4_pad[0x8];
+     BattlingReplayFrame m9CC_replay[256];
+     BattlingReplayFrame* m15CC_replayCur;
+     BattlingReplayFrame* m15D0_replayNext;
+     CVECTOR m15D4_color;    
+     s16 m15D8[7];
+     u8 m15E6_pad[0x2];
+     s16 m15E8;
+     s16 m15EA;
+     s16 m15EC;
+     s16 m15EE;
+     s16 m15F0_moveScale;
+     s16 m15F2_speedScale;
+     s16 m15F4_baseSpeedScale;
+     s16 m15F6;
+     s16 m15F8;
+     u8 m15FA_pad[0x2];
+     struct BattlingAiState* m15FC_ai;
+     BattlingGearDef* m1600_def;
+     POLY_FT4 m1604_shadow[2];
+     s32 m1654_etherHpLoss;
+     s32 m1658_boostHpLoss;
+     s32 m165C_etherPresses;
+     s32 m1660_attackPresses;
+     u8* m1664_hitSounds;    
+     s16 m1668_hitsTaken;
+     u8 m166A_pad[0x2];
+} BattlingGear;
+#endif
+#ifndef XM_S_isBattlingGearInWater
+#define XM_S_isBattlingGearInWater
+s32 xm_isBattlingGearInWater(BattlingGear* gear) __asm__("func_8008F9B0");
+#endif
+#ifndef XM_S_getBattlingMapCell
+#define XM_S_getBattlingMapCell
+u32 xm_getBattlingMapCell(VECTOR* pos) __asm__("func_800828C4");
+#endif
+s32 func_8008F9B0(BattlingGear* gear) {
+    VECTOR v;
+
+    v = gear->m0_position;
+    v.vx -= 0x3F80;
+    v.vz -= 0x3F80;
+    if (v.vx > 0 && v.vz > 0) {
+        return 1;
+    }
+    return (xm_getBattlingMapCell(&gear->m0_position) & 0x3000000) == 0x1000000;
+}
+#endif
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008FA2C);
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008FACC);
 void func_80076424(void *arg0);
@@ -3739,7 +4282,40 @@ void func_80090504(void *arg0) {
 }
 
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_80090580);
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_80090894);
+#ifndef XENO_PC_PORT
+/* Adopted from EtherAura xenogears (GPL-3.0, github.com/EtherAura/xenogears @e54f35a): enterBattlingAiRetreat (src/battling/bl_8008C7C0.c). */
+#ifndef XM_S_enterBattlingAiRetreat
+#define XM_S_enterBattlingAiRetreat
+void xm_enterBattlingAiRetreat(BattlingGear* gear, s32 arg1) __asm__("func_80090894");
+#endif
+#ifndef XM_S_tryBattlingGearBackDash
+#define XM_S_tryBattlingGearBackDash
+s32 xm_tryBattlingGearBackDash(BattlingGear* g) __asm__("func_800767C8");
+#endif
+#ifndef XM_S_rollBattlingAiDecisions
+#define XM_S_rollBattlingAiDecisions
+void xm_rollBattlingAiDecisions(BattlingAiState* ai) __asm__("func_8008F7B8");
+#endif
+#ifndef XM_S_shouldBattlingAiBoost
+#define XM_S_shouldBattlingAiBoost
+s32 xm_shouldBattlingAiBoost(BattlingGear* gear, s32 flag) __asm__("func_8008F720");
+#endif
+void func_80090894(BattlingGear* gear, s32 arg1) {
+    BattlingAiState* ai;
+
+    ai = gear->m15FC_ai;
+    ai->m8_state = 2;
+    if (xm_rand() % 3 == 0) {
+        xm_tryBattlingGearBackDash(gear);
+    }
+    ai->m28_retreatDistance = xm_rand() % 0x600 + 0x100;
+    ai->m4_timer = 0;
+    ai->m9_repeatCount = xm_rand() % 5 + 3;
+    xm_rollBattlingAiDecisions(ai);
+    ai->mE_boost = xm_shouldBattlingAiBoost(gear, 0);
+    ai->m2C_b16_23 = 0;
+}
+#endif
 INCLUDE_ASM("asm/battling/nonmatchings/main", func_80090990);
 
 void func_80090C88(void *arg0) {
