@@ -809,61 +809,17 @@ typedef struct {
     u16 word8;   
 } StreamFrame;
 #endif
-#ifndef XM_T_StreamSlot
-#define XM_T_StreamSlot
-typedef struct {
-    u16 state;
-    u16 sequence;
-    u16 length; 
-    u16 w6;
-} StreamSlot;
-#endif
-#ifndef XM_T_StreamRing
-#define XM_T_StreamRing
-typedef struct {
-    s32 count;
-    StreamSlot slots[1];
-} StreamRing;
-#endif
 #ifndef XM_S_stream_get_next_movie_frame
 #define XM_S_stream_get_next_movie_frame
 s32 xm_stream_get_next_movie_frame(u8 **data, StreamFrame **frame) __asm__("func_80028F30");
-#endif
-#ifndef XM_S_stream_current_ring
-#define XM_S_stream_current_ring
-extern StreamRing *xm_stream_current_ring __asm__("g_ArchiveCurStreamFile");
-#endif
-#ifndef XM_S_cd_pc_file_names
-#define XM_S_cd_pc_file_names
-extern char *xm_cd_pc_file_names __asm__("g_ArchiveDebugTable");
-#endif
-#ifndef XM_S_cd_pc_file_descriptor
-#define XM_S_cd_pc_file_descriptor
-extern s32 xm_cd_pc_file_descriptor __asm__("D_8004FE4C");
-#endif
-#ifndef XM_S_cd_read_bytes_left
-#define XM_S_cd_read_bytes_left
-extern s32 xm_cd_read_bytes_left __asm__("g_ArchiveCurFileSize");
 #endif
 #ifndef XM_S_stream_frame_sector_index
 #define XM_S_stream_frame_sector_index
 extern s16 xm_stream_frame_sector_index __asm__("D_80059F60");
 #endif
-#ifndef XM_S_stream_slot_count
-#define XM_S_stream_slot_count
-extern s32 xm_stream_slot_count __asm__("D_8004FE40");
-#endif
-#ifndef XM_S_stream_slots
-#define XM_S_stream_slots
-extern StreamSlot *xm_stream_slots __asm__("D_8004FE2C");
-#endif
 #ifndef XM_S_cd_setmode_parameter
 #define XM_S_cd_setmode_parameter
 extern u8 xm_cd_setmode_parameter __asm__("D_80059F18");
-#endif
-#ifndef XM_S_PCread
-#define XM_S_PCread
-int xm_PCread(int fd, char *buff, int len) __asm__("PCread");
 #endif
 #ifndef XM_S_cd_sector_buffer
 #define XM_S_cd_sector_buffer
@@ -900,14 +856,6 @@ void xm_stream_merge_free_slots(s32 index) __asm__("ArchiveConsolidateStreamFile
 #ifndef XM_S_stream_frame_payloads
 #define XM_S_stream_frame_payloads
 extern u8 *xm_stream_frame_payloads __asm__("D_80059F58");
-#endif
-#ifndef XM_S_cd_read_cursor
-#define XM_S_cd_read_cursor
-extern s32 xm_cd_read_cursor __asm__("D_8004FE10");
-#endif
-#ifndef XM_S_stream_next_chunk_sequence
-#define XM_S_stream_next_chunk_sequence
-extern u16 xm_stream_next_chunk_sequence __asm__("D_8004FE24");
 #endif
 #ifndef XM_S_stream_has_slot_mismatch
 #define XM_S_stream_has_slot_mismatch

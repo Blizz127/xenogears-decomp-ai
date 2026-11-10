@@ -981,29 +981,13 @@ void xm_sound_remove_effect_bank(SoundBank *bank) __asm__("func_8003852C");
 #define XM_S_sound_effect_bank_list
 extern SoundBank *xm_sound_effect_bank_list __asm__("g_SoundSedsLinkedList");
 #endif
-#ifndef XM_S_sound_report_error
-#define XM_S_sound_report_error
-void xm_sound_report_error(s32 error) __asm__("SoundHandleError");
-#endif
 #ifndef XM_S_sound_stop_bank_effects
 #define XM_S_sound_stop_bank_effects
 void xm_sound_stop_bank_effects(SoundBank *bank) __asm__("func_8003A094");
 #endif
-#ifndef XM_S_DisableEvent
-#define XM_S_DisableEvent
-long xm_DisableEvent(long event) __asm__("DisableEvent");
-#endif
-#ifndef XM_S_sound_tick_event
-#define XM_S_sound_tick_event
-extern s32 xm_sound_tick_event __asm__("g_unk_SoundEvent");
-#endif
 #ifndef XM_S_sound_check_file
 #define XM_S_sound_check_file
 s32 xm_sound_check_file(u32 *data, u32 magic, s32 id) __asm__("SoundValidateFile");
-#endif
-#ifndef XM_S_EnableEvent
-#define XM_S_EnableEvent
-long xm_EnableEvent(long event) __asm__("EnableEvent");
 #endif
 void func_8003852C(SoundBank *bank) {
     SoundBank *entry;
@@ -3154,33 +3138,6 @@ typedef union {
     } part;
 } SoundEffectId;
 #endif
-#ifndef XM_T_SoundInstrument
-#define XM_T_SoundInstrument
-typedef struct {
-    u32 start;         
-    u16 loop;          
-    s16 note;          
-    u32 envelope;      
-    u16 modes;         
-    u8 unkE[2];
-} SoundInstrument;
-#endif
-#ifndef XM_T_SoundSequence
-#define XM_T_SoundSequence
-typedef struct SoundSequence {
-    u8 unk0[0x10];
-    s32 header_size;   
-    s32 size;          
-    s32 offset;        
-    u8 unk1C[2];
-    u16 volume;
-    u16 key;
-    u8 unk22[6];
-    s32 address;       
-    struct SoundSequence *next;
-    SoundInstrument instrument[1];
-} SoundSequence;
-#endif
 #ifndef XM_T_SoundChannel
 #define XM_T_SoundChannel
 typedef struct SoundChannel {
@@ -3362,14 +3319,6 @@ typedef struct SoundSeq {
 #define XM_S_sound_take_seq_snapshot
 void xm_sound_take_seq_snapshot(SoundSeq *seq) __asm__("func_8003ADCC");
 #endif
-#ifndef XM_S_DisableEvent
-#define XM_S_DisableEvent
-long xm_DisableEvent(long event) __asm__("DisableEvent");
-#endif
-#ifndef XM_S_sound_tick_event
-#define XM_S_sound_tick_event
-extern s32 xm_sound_tick_event __asm__("g_unk_SoundEvent");
-#endif
 #ifndef XM_S_sound_get_seq_size
 #define XM_S_sound_get_seq_size
 s32 xm_sound_get_seq_size(s32 index) __asm__("SoundCalculateAudioManagerSize");
@@ -3377,14 +3326,6 @@ s32 xm_sound_get_seq_size(s32 index) __asm__("SoundCalculateAudioManagerSize");
 #ifndef XM_S_sound_alloc_memory_low
 #define XM_S_sound_alloc_memory_low
 void *xm_sound_alloc_memory_low(s32 size) __asm__("SoundHeapAllocate");
-#endif
-#ifndef XM_S_EnableEvent
-#define XM_S_EnableEvent
-long xm_EnableEvent(long event) __asm__("EnableEvent");
-#endif
-#ifndef XM_S_sound_copy_memory
-#define XM_S_sound_copy_memory
-void xm_sound_copy_memory(void *dst, void *src, s32 size) __asm__("SoundHeapSetBlockMemory");
 #endif
 void func_8003ADCC(SoundSeq *seq) {
     s32 size;
@@ -3636,249 +3577,6 @@ void func_8003B22C(AudioManager* manager) {
 #ifndef XENO_PC_PORT
 #ifndef XENO_PC_PORT
 /* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): sound_init_effect_channels (src/decomp/src/resident/sound.c:1262). */
-#ifndef XM_T_SoundSeqHeader
-#define XM_T_SoundSeqHeader
-typedef struct SoundSeqHeader {
-    u8 unk0[0x10];
-    u16 unk10;
-    u8 unk12[2];
-    u8 channels;
-    u8 entries;        
-    u16 unk16;
-    u16 unk18;
-    u8 reverb_type;
-    u8 reverb_depth;   
-    u8 reverb_delay;
-    u8 reverb_feedback;
-    u16 unk1E;
-    u16 table;         
-    u16 channel[1];    
-} SoundSeqHeader;
-#endif
-#ifndef XM_T_Fixed
-#define XM_T_Fixed
-typedef union {
-    s32 value;
-    struct {
-        u16 fraction;
-        s16 whole;
-    } part;
-} Fixed;
-#endif
-#ifndef XM_T_SoundEffectId
-#define XM_T_SoundEffectId
-typedef union {
-    s32 full;
-    struct {
-        u16 effect;
-        s16 bank;
-    } part;
-} SoundEffectId;
-#endif
-#ifndef XM_T_SoundInstrument
-#define XM_T_SoundInstrument
-typedef struct {
-    u32 start;         
-    u16 loop;          
-    s16 note;          
-    u32 envelope;      
-    u16 modes;         
-    u8 unkE[2];
-} SoundInstrument;
-#endif
-#ifndef XM_T_SoundSequence
-#define XM_T_SoundSequence
-typedef struct SoundSequence {
-    u8 unk0[0x10];
-    s32 header_size;   
-    s32 size;          
-    s32 offset;        
-    u8 unk1C[2];
-    u16 volume;
-    u16 key;
-    u8 unk22[6];
-    s32 address;       
-    struct SoundSequence *next;
-    SoundInstrument instrument[1];
-} SoundSequence;
-#endif
-#ifndef XM_T_SoundChannel
-#define XM_T_SoundChannel
-typedef struct SoundChannel {
-    u16 voice;         
-    u16 mode;          
-    s16 priority;
-    u16 flags;         
-
-
-    s16 volume_left;
-    s16 volume_right;
-    u16 unkC;
-    u16 unkE;
-    u8 unk10[4];
-    u16 pitch;
-    u8 unk16[6];
-    u32 sample_start;  
-    u32 sample_loop;
-    SoundEnvelope envelope;
-} SoundChannel;
-#endif
-#ifndef XM_T_SoundLoop
-#define XM_T_SoundLoop
-typedef struct {
-    u8 count;          
-    u8 unk1;
-    u8 transpose;      
-    u8 exit_transpose; 
-    u8 *start;
-    u8 *end;
-} SoundLoop;
-#endif
-#ifndef XM_T_SoundModulator
-#define XM_T_SoundModulator
-typedef struct SoundModulator {
-    s32 (*wave)(struct SoundModulator *modulator);
-    s32 phase;         
-    s32 slope;
-    s32 step;
-    u16 count;         
-    u16 rate;          
-    u16 delay_count;
-    s16 delay;
-    s16 period_count;
-    s16 period;
-    u8 target;         
-    u8 shape;
-    u16 flags;         
-} SoundModulator;
-#endif
-#ifndef XM_T_SoundSeqChannel
-#define XM_T_SoundSeqChannel
-typedef struct {
-    u16 flags;         
-    u16 flags2;        
-    u16 flags3;        
-    u8 voice_bit;      
-    u8 priority;
-    SoundEffectId id;
-    u32 stamp;         
-    u8 *start;         
-    u8 *position;      
-    u8 *loop;          
-    s32 unk1C;
-    u16 unk20;
-    u8 unk22;
-    u8 unk23;
-    u8 unk24;
-    u8 unk25;
-    u8 instrument;
-    u8 voice;          
-    u8 unk28;
-    u8 unk29[3];
-    struct SoundSequence *instruments;
-    SoundChannel state;
-    s16 unk5C;         
-    u16 unk5E;         
-    u8 duration_adjust; 
-    u8 unk61;
-    u16 gate_fraction; 
-    u8 previous_note;
-    u8 current_note;
-    s16 transpose;     
-    Fixed note;   
-    s16 unk6C;
-    s16 detune;
-    u16 unk70;
-    u16 loop_depth;    
-    s16 pan;           
-    s16 volume;
-    Fixed level;  
-    s32 unk7C;
-    s16 unk80;
-    s16 unk82;
-    s32 unk84;
-    s32 unk88;
-    s16 volume_step;
-    s16 volume_target;
-    s16 pan_step;
-    s16 pan_target;
-    u16 unk94;         
-    u16 unk96;         
-    u16 pan_frames;
-    u16 volume_frames;
-    SoundLoop loops[4];
-    u16 modulator_index; 
-    u16 modulators;    
-    s16 pitch_mod;     
-    s16 level_mod;
-    s16 pan_mod;
-    u8 unkD6[2];
-    SoundModulator modulator[4];
-} SoundSeqChannel;
-#endif
-#ifndef XM_T_SoundSeq
-#define XM_T_SoundSeq
-typedef struct SoundSeq {
-    struct SoundSeq *next;
-    struct SoundSeq *snapshot; 
-    struct SoundSeqHeader *header; 
-    u32 *table;        
-    u16 flags;         
-
-    u16 unk12;
-    u8 channels;
-    u8 unk15;
-    s16 unk16;         
-    u16 unk18;
-    u8 unk1A;
-    u8 unk1B;
-    u16 noise_clock;
-    u16 unk1E;
-    s32 unk20;
-    u32 unk24;
-    u32 ticks;
-    u32 unk2C;
-    u16 unk30;
-    u16 unk32;
-    u16 unk34;
-    u16 unk36;
-    u16 unk38;
-    u16 unk3A;
-    s16 unk3C;
-    s16 unk3E;
-    u8 unk40;
-    u8 reverb_type;
-    u8 reverb_delay;
-    u8 reverb_feedback;
-    s16 reverb_depth;
-    u8 unk46[2];
-    u32 voices;        
-    u32 muted;         
-    s32 unk50;
-    s32 tick_step;     
-    Fixed rate;   
-    s32 rate_step;
-    u16 rate_frames;
-    u16 rate_target;
-    Fixed tempo;  
-    s32 tempo_step;
-    s16 tempo_frames;
-    s16 tempo_target;
-    Fixed fade;   
-    s32 fade_step;
-    s16 fade_frames;
-    s16 fade_target;
-    Fixed pitch;  
-    s32 pitch_step;
-    s16 pitch_frames;
-    s16 pitch_target;
-    Fixed pan;    
-    s32 pan_step;
-    s16 pan_frames;
-    s16 pan_target;
-    SoundSeqChannel channel[1];
-} SoundSeq;
-#endif
 #ifndef XM_S_sound_init_effect_channels
 #define XM_S_sound_init_effect_channels
 void xm_sound_init_effect_channels(SoundSeq *seq) __asm__("func_8003B32C");

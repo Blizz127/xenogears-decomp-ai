@@ -642,20 +642,9 @@ void func_80033ABC(u16* pIndices) {
 #ifndef XENO_PC_PORT
 #ifndef XENO_PC_PORT
 /* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): text_decode_codes (src/decomp/src/resident/text_windows_and_pads.c:413). */
-#ifndef XM_T_CharPair
-#define XM_T_CharPair
-typedef struct {
-    u8 first;
-    u8 second;
-} CharPair;
-#endif
 #ifndef XM_S_text_decode_codes
 #define XM_S_text_decode_codes
 void xm_text_decode_codes(u16 *codes, u8 *out, u32 count) __asm__("func_80033B34");
-#endif
-#ifndef XM_S_text_system_resources
-#define XM_S_text_system_resources
-extern u8 * *xm_text_system_resources __asm__("g_SystemDataEntries");
 #endif
 void func_80033B34(u16 *codes, u8 *out, u32 count) {
     CharPair *pairs = (CharPair *)xm_text_system_resources[27];
@@ -1201,80 +1190,9 @@ void func_800346D4(void* arg0) {
 #ifndef XENO_PC_PORT
 #ifndef XENO_PC_PORT
 /* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): window_queue_message (src/decomp/src/resident/text_windows_and_pads.c:895). */
-#ifndef XM_T_WindowLine
-#define XM_T_WindowLine
-typedef struct {
-    SPRT sprite[2][2];
-    RECT rect;       
-    s16 width;       
-    u8 plane;        
-    u8 slot;
-    u8 row;          
-    u8 unk5D;
-    u16 clut;
-} WindowLine;
-#endif
-#ifndef XM_T_WindowQueue
-#define XM_T_WindowQueue
-typedef struct WindowQueue {
-    struct WindowQueue *next;
-    s32 message;
-} WindowQueue;
-#endif
-#ifndef XM_T_Window
-#define XM_T_Window
-typedef struct Window {
-    s16 x;          
-    s16 y;          
-    s16 unk4;
-    s16 unk6;
-    s16 unk8;
-    s16 width;
-    s16 lines;
-    s16 unkE;
-    u16 flags;
-    s16 stride;
-    s16 unk14;
-    s16 unk16;
-    s16 unk18;      
-    u8 unk1A[2];
-    u8 *text;
-    u8 *resume;     
-    u8 unk24[4];
-    WindowLine *layout;
-    void *image;
-    u8 unk30[0xC];  
-    u8 unk3C[0xC];  
-    TILE tile[2];   
-    u8 unk68;
-    u8 unk69;
-    u8 unk6A;
-    u8 unk6B;
-    u8 unk6C;
-    u8 unk6D;
-    u8 unk6E;
-    u8 unk6F;
-    s32 values[4];  
-    s16 selection; 
-    s16 queued;
-    s16 unk84;      
-    s16 unk86;      
-    s16 unk88;      
-    u8 unk8A[2];
-    WindowQueue *queue;
-} Window;
-#endif
 #ifndef XM_S_window_queue_message
 #define XM_S_window_queue_message
 s16 xm_window_queue_message(Window *window, s32 message) __asm__("func_80034714");
-#endif
-#ifndef XM_S_heap_set_next_class
-#define XM_S_heap_set_next_class
-void xm_heap_set_next_class(s32 kind) __asm__("HeapSetCurrentContentType");
-#endif
-#ifndef XM_S_heap_alloc
-#define XM_S_heap_alloc
-void *xm_heap_alloc(s32 size, s32 mode) __asm__("HeapAlloc");
 #endif
 s16 func_80034714(Window *window, s32 message) {
     WindowQueue *last = window->queue;
@@ -1398,69 +1316,6 @@ int func_8003487C(void* arg0) {
 #ifndef XENO_PC_PORT
 #ifndef XENO_PC_PORT
 /* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): window_draw_frame (src/decomp/src/resident/text_windows_and_pads.c:957). */
-#ifndef XM_T_WindowLine
-#define XM_T_WindowLine
-typedef struct {
-    SPRT sprite[2][2];
-    RECT rect;       
-    s16 width;       
-    u8 plane;        
-    u8 slot;
-    u8 row;          
-    u8 unk5D;
-    u16 clut;
-} WindowLine;
-#endif
-#ifndef XM_T_WindowQueue
-#define XM_T_WindowQueue
-typedef struct WindowQueue {
-    struct WindowQueue *next;
-    s32 message;
-} WindowQueue;
-#endif
-#ifndef XM_T_Window
-#define XM_T_Window
-typedef struct Window {
-    s16 x;          
-    s16 y;          
-    s16 unk4;
-    s16 unk6;
-    s16 unk8;
-    s16 width;
-    s16 lines;
-    s16 unkE;
-    u16 flags;
-    s16 stride;
-    s16 unk14;
-    s16 unk16;
-    s16 unk18;      
-    u8 unk1A[2];
-    u8 *text;
-    u8 *resume;     
-    u8 unk24[4];
-    WindowLine *layout;
-    void *image;
-    u8 unk30[0xC];  
-    u8 unk3C[0xC];  
-    TILE tile[2];   
-    u8 unk68;
-    u8 unk69;
-    u8 unk6A;
-    u8 unk6B;
-    u8 unk6C;
-    u8 unk6D;
-    u8 unk6E;
-    u8 unk6F;
-    s32 values[4];  
-    s16 selection; 
-    s16 queued;
-    s16 unk84;      
-    s16 unk86;      
-    s16 unk88;      
-    u8 unk8A[2];
-    WindowQueue *queue;
-} Window;
-#endif
 #ifndef XM_S_window_draw_frame
 #define XM_S_window_draw_frame
 void xm_window_draw_frame(Window *window, u_long *ot, s32 buffer) __asm__("func_80034888");
@@ -1468,10 +1323,6 @@ void xm_window_draw_frame(Window *window, u_long *ot, s32 buffer) __asm__("func_
 #ifndef XM_S_heap_free
 #define XM_S_heap_free
 s32 xm_heap_free(void *data) __asm__("HeapFree");
-#endif
-#ifndef XM_S_text_plane0_clut
-#define XM_S_text_plane0_clut
-extern u16 xm_text_plane0_clut __asm__("g_SystemPalette1");
 #endif
 #ifndef XM_S_gpu_ot_link_sprt
 #define XM_S_gpu_ot_link_sprt

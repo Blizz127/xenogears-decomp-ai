@@ -1053,14 +1053,6 @@ int xm_MoveImage(RECT *rect, int x, int y) __asm__("MoveImage");
 #define XM_S_field_staff_roll_expand_rom_glyph
 void xm_field_staff_roll_expand_rom_glyph(u8 *cell, u16 *rows) __asm__("func_800AC03C");
 #endif
-#ifndef XM_S_LoadImage
-#define XM_S_LoadImage
-int xm_LoadImage(RECT *rect, u_long *p) __asm__("LoadImage");
-#endif
-#ifndef XM_S_DrawSync
-#define XM_S_DrawSync
-int xm_DrawSync(int mode) __asm__("DrawSync");
-#endif
 u8 *func_800AC0F0(u8 *text, s32 left, s32 row) {
     GlyphCell cell;
     RECT dest;

@@ -818,43 +818,6 @@ int func_8002C3E8(u8* pModel) {
 #ifndef XENO_PC_PORT
 #ifndef XENO_PC_PORT
 /* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): model_unrelocate_group (src/decomp/src/resident/model_renderer.c:157). */
-#ifndef XM_T_ModelListEntry
-#define XM_T_ModelListEntry
-typedef struct {
-    s32 unk0;
-    u8 *first;
-    u8 *second;
-} ModelListEntry;
-#endif
-#ifndef XM_T_ModelList
-#define XM_T_ModelList
-typedef struct {
-    s32 last;
-    ModelListEntry entries[1];
-} ModelList;
-#endif
-#ifndef XM_T_Model
-#define XM_T_Model
-typedef struct {
-    u8 unk0[4];
-    u8 *table0;
-    u8 *table4;
-    u8 *table8;
-    u8 *primitives;
-    u8 unk14[4];
-    ModelList *list; 
-    u8 unk1C[0x1C];
-} Model;
-#endif
-#ifndef XM_T_ModelGroup
-#define XM_T_ModelGroup
-typedef struct {
-    s32 count;
-    s32 flags;       
-    u8 unk8[0xC];
-    Model models[1];
-} ModelGroup;
-#endif
 #ifndef XM_S_model_unrelocate_group
 #define XM_S_model_unrelocate_group
 s32 xm_model_unrelocate_group(ModelGroup *group) __asm__("func_8002C4BC");
@@ -2781,13 +2744,6 @@ void func_800301C8(u8* pDst, u8* pSrc, s32 count, s16* pIndices) {
 #ifndef XENO_PC_PORT
 #ifndef XENO_PC_PORT
 /* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): model_add_morph_deltas (src/decomp/src/resident/model_renderer.c:991). */
-#ifndef XM_T_MorphDelta
-#define XM_T_MorphDelta
-typedef struct {
-    s16 dx, dy, dz;
-    s16 index;
-} MorphDelta;
-#endif
 #ifndef XM_S_model_add_morph_deltas
 #define XM_S_model_add_morph_deltas
 void xm_model_add_morph_deltas(SVECTOR *vertices, MorphDelta *deltas, s32 count, s32 weight) __asm__("func_80030228");
@@ -2829,13 +2785,6 @@ void func_80030228(u8* pVertices, s16* pDeltas, s32 count, s32 scale) {
 #ifndef XENO_PC_PORT
 #ifndef XENO_PC_PORT
 /* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): model_add_morph_normal_deltas (src/decomp/src/resident/model_renderer.c:1007). */
-#ifndef XM_T_MorphDelta
-#define XM_T_MorphDelta
-typedef struct {
-    s16 dx, dy, dz;
-    s16 index;
-} MorphDelta;
-#endif
 #ifndef XM_S_model_add_morph_normal_deltas
 #define XM_S_model_add_morph_normal_deltas
 void xm_model_add_morph_normal_deltas(SVECTOR *normals, MorphDelta *deltas, s32 count, s32 weight) __asm__("func_800302D4");
@@ -2965,47 +2914,6 @@ void* func_800303C8(u8* a0, s32 a1) {
 #ifndef XENO_PC_PORT
 #ifndef XENO_PC_PORT
 /* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): model_update_morph (src/decomp/src/resident/model_renderer.c:1071). */
-#ifndef XM_T_MorphDelta
-#define XM_T_MorphDelta
-typedef struct {
-    s16 dx, dy, dz;
-    s16 index;
-} MorphDelta;
-#endif
-#ifndef XM_T_MorphTarget
-#define XM_T_MorphTarget
-typedef struct {
-    s32 count;
-    void *deltas;
-    MorphDelta *normals;
-} MorphTarget;
-#endif
-#ifndef XM_T_MorphTable
-#define XM_T_MorphTable
-typedef struct {
-    s32 count;
-    MorphTarget targets[1];
-} MorphTable;
-#endif
-#ifndef XM_T_SpriteModel
-#define XM_T_SpriteModel
-typedef struct {
-    u16 flags;          
-    u16 vertex_count;
-    u16 primitive_count;
-    u16 group_count;    
-    SVECTOR *vertices;
-    SVECTOR *normals;
-    u8 *unk10;          
-    u8 *unk14;
-    u8 *unk18;
-    MorphTable *morphs; 
-    SVECTOR box_min;    
-    SVECTOR box_max;
-    s32 aux_size;       
-    s32 packet_size;    
-} SpriteModel;
-#endif
 #ifndef XM_T_MorphChannel
 #define XM_T_MorphChannel
 typedef struct MorphChannel {
@@ -3033,14 +2941,6 @@ void xm_model_update_morph(MorphState *state) __asm__("func_800305D8");
 #ifndef XM_S_model_copy_indexed_vertices
 #define XM_S_model_copy_indexed_vertices
 void xm_model_copy_indexed_vertices(SVECTOR *out, SVECTOR *in, s32 count, s16 *indices) __asm__("func_800301C8");
-#endif
-#ifndef XM_S_model_add_morph_deltas
-#define XM_S_model_add_morph_deltas
-void xm_model_add_morph_deltas(SVECTOR *vertices, MorphDelta *deltas, s32 count, s32 weight) __asm__("func_80030228");
-#endif
-#ifndef XM_S_model_add_morph_normal_deltas
-#define XM_S_model_add_morph_normal_deltas
-void xm_model_add_morph_normal_deltas(SVECTOR *normals, MorphDelta *deltas, s32 count, s32 weight) __asm__("func_800302D4");
 #endif
 void func_800305D8(MorphState *state) {
     SpriteModel *model;
@@ -3320,10 +3220,6 @@ typedef struct {
 #ifndef XM_S_model_set_light
 #define XM_S_model_set_light
 void xm_model_set_light(u16 index, ModelLight *light) __asm__("func_80030A30");
-#endif
-#ifndef XM_S_VectorNormalS
-#define XM_S_VectorNormalS
-long xm_VectorNormalS(VECTOR *v0, SVECTOR *v1) __asm__("VectorNormalS");
 #endif
 #ifndef XM_S_model_light_directions
 #define XM_S_model_light_directions

@@ -1768,10 +1768,6 @@ s32 xm_field_collision_slide_along_edge(s16 heading, SVECTOR *edge, VECTOR *velo
 #define XM_S_ratan2
 long xm_ratan2(long y, long x) __asm__("ratan2");
 #endif
-#ifndef XM_S_VectorNormal
-#define XM_S_VectorNormal
-long xm_VectorNormal(VECTOR *v0, VECTOR *v1) __asm__("VectorNormal");
-#endif
 #ifndef XM_S_field_compute_planar_length
 #define XM_S_field_compute_planar_length
 s32 xm_field_compute_planar_length(s32 dx, s32 dz) __asm__("FieldGetVec2Magnitude");
