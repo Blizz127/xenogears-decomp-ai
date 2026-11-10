@@ -771,9 +771,136 @@ void func_80075748(void) {
 
 }
 
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80075750);
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80075888);
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80075A4C);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_actor_is_point_near_segment (src/decomp/src/menu/arena_fighters_bout_and_effects.c:984). */
+#ifndef XM_T_VECTOR
+#define XM_T_VECTOR
+typedef struct {
+    long vx, vy, vz, pad;
+} VECTOR;
+#endif
+#ifndef XM_S_arena_actor_is_point_near_segment
+#define XM_S_arena_actor_is_point_near_segment
+s32 xm_arena_actor_is_point_near_segment(s32 x0, s32 z0, s32 x1, s32 z1, s32 px, s32 pz, s32 radius) __asm__("func_80075750");
+#endif
+#ifndef XM_S_Square0
+#define XM_S_Square0
+void xm_Square0(VECTOR *v0, VECTOR *v1) __asm__("Square0");
+#endif
+#ifndef XM_S_SquareRoot0
+#define XM_S_SquareRoot0
+long xm_SquareRoot0(long a) __asm__("SquareRoot0");
+#endif
+s32 func_80075750(s32 x0, s32 z0, s32 x1, s32 z1, s32 px, s32 pz, s32 radius) {
+    VECTOR d;
+    VECTOR sq;
+    s32 rx;
+    s32 rz;
+    s32 len;
+    s32 ux;
+    s32 uz;
+    s32 along;
+    s32 across;
+    s32 hit;
+
+    d.vx = x1 - x0;
+    d.vy = z1 - z0;
+    rx = px - x0;
+    rz = pz - z0;
+    d.vz = radius;
+    xm_Square0(&d, &sq);
+    len = xm_SquareRoot0(sq.vx + sq.vy);
+    if (len == 0) {
+        return 0;
+    }
+    ux = (d.vx << 12) / len;
+    uz = (d.vy << 12) / len;
+    along = (rx * ux + rz * uz) / 4096;
+    across = (-(rx * uz) + rz * ux) / 4096;
+    hit = (u32)(across * across - sq.vz) >> 31;
+    if (along < 0) {
+        return 0;
+    }
+    return along <= len + radius ? hit : 0;
+}
+#endif
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_actor_find_segment_crossing (src/decomp/src/menu/arena_fighters_bout_and_effects.c:1019). */
+#ifndef XM_S_arena_actor_find_segment_crossing
+#define XM_S_arena_actor_find_segment_crossing
+s32 xm_arena_actor_find_segment_crossing(s32 x0, s32 z0, s32 x1, s32 z1, s32 px, s32 pz, s32 radius) __asm__("func_80075888");
+#endif
+#ifndef XM_S_arena_actor_crossing_point_x
+#define XM_S_arena_actor_crossing_point_x
+extern s32 xm_arena_actor_crossing_point_x __asm__("D_80092654");
+#endif
+#ifndef XM_S_arena_actor_crossing_point_z
+#define XM_S_arena_actor_crossing_point_z
+extern s32 xm_arena_actor_crossing_point_z __asm__("D_80092658");
+#endif
+s32 func_80075888(s32 x0, s32 z0, s32 x1, s32 z1, s32 px, s32 pz, s32 radius) {
+    VECTOR d;
+    VECTOR sq;
+    s32 rx;
+    s32 rz;
+    s32 len;
+    s32 ux;
+    s32 uz;
+    s32 along;
+    s32 across;
+    s32 diff;
+    s32 hit;
+
+    d.vx = x1 - x0;
+    d.vy = z1 - z0;
+    rx = px - x0;
+    rz = pz - z0;
+    d.vz = radius;
+    xm_Square0(&d, &sq);
+    len = xm_SquareRoot0(sq.vx + sq.vy);
+    if (len == 0) {
+        return 0;
+    }
+    ux = (d.vx << 12) / len;
+    uz = (d.vy << 12) / len;
+    along = (rx * ux + rz * uz) / 4096;
+    across = (-(rx * uz) + rz * ux) / 4096;
+    diff = across * across - sq.vz;
+    hit = (u32)diff >> 31;
+    if (along < 0) {
+        hit = 0;
+    }
+    if (along > len + radius) {
+        hit = 0;
+    }
+    if (hit) {
+        if (diff < 0) {
+            diff = -diff;
+        }
+        diff = along - xm_SquareRoot0(diff); 
+        xm_arena_actor_crossing_point_x = diff * ux / 4096 + x0;
+        xm_arena_actor_crossing_point_z = diff * uz / 4096 + z0;
+    }
+    return hit;
+}
+#endif
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_actor_is_point_near_quad (src/decomp/src/menu/arena_fighters_bout_and_effects.c:1067). */
+#ifndef XM_S_arena_actor_is_point_near_quad
+#define XM_S_arena_actor_is_point_near_quad
+s32 xm_arena_actor_is_point_near_quad(VECTOR *quad, s32 px, s32 pz, s32 radius) __asm__("func_80075A4C");
+#endif
+s32 func_80075A4C(VECTOR *quad, s32 px, s32 pz, s32 radius) {
+    xm_arena_actor_crossing_point_x = px;
+    xm_arena_actor_crossing_point_z = pz;
+    if (xm_arena_actor_is_point_near_segment(quad[1].vx, quad[1].vz, quad[0].vx, quad[0].vz, px, pz, radius)
+        || xm_arena_actor_is_point_near_segment(quad[3].vx, quad[3].vz, quad[2].vx, quad[2].vz, px, pz, radius)
+        || xm_arena_actor_is_point_near_segment(quad[0].vx, quad[0].vz, quad[2].vx, quad[2].vz, px, pz, radius)) {
+        return 1;
+    }
+    return xm_arena_actor_is_point_near_segment(quad[1].vx, quad[1].vz, quad[3].vx, quad[3].vz, px, pz, radius) != 0;
+}
+#endif
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80075B50);
 
 void func_8007639C(void *arg0, s8 arg1) {
@@ -1344,7 +1471,119 @@ s32 func_8007CD14(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
 }
 
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007CD44);
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007CF78);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_effect_draw_all (src/decomp/src/menu/arena_fighters_bout_and_effects.c:3764). */
+#ifndef XM_T_MATRIX
+#define XM_T_MATRIX
+typedef struct {
+    short m[3][3];
+    long t[3];
+} MATRIX;
+#endif
+#ifndef XM_T_SVECTOR
+#define XM_T_SVECTOR
+typedef struct {
+    short vx, vy, vz, pad;
+} SVECTOR;
+#endif
+#ifndef XM_T_SceneScratch
+#define XM_T_SceneScratch
+typedef struct {
+    VECTOR camera; 
+    SVECTOR point; 
+    SVECTOR from;  
+    SVECTOR to;    
+    SVECTOR extra; 
+    VECTOR corner[6]; 
+    u8 unk90[0x20];
+    s32 depth;     
+} SceneScratch;
+#endif
+#ifndef XM_T_SCENE_SCRATCH
+#define XM_T_SCENE_SCRATCH
+#define SCENE_SCRATCH ((SceneScratch *)0x1F800000)
+#endif
+#ifndef XM_T_gte_SetRotMatrix
+#define XM_T_gte_SetRotMatrix
+#define gte_SetRotMatrix(r0)                                                   \
+    __asm__ volatile("lw $12, 0(%0);"                                          \
+                     "lw $13, 4(%0);"                                          \
+                     "ctc2 $12, $0;"                                           \
+                     "ctc2 $13, $1;"                                           \
+                     "lw $12, 8(%0);"                                          \
+                     "lw $13, 12(%0);"                                         \
+                     "lw $14, 16(%0);"                                         \
+                     "ctc2 $12, $2;"                                           \
+                     "ctc2 $13, $3;"                                           \
+                     "ctc2 $14, $4"                                            \
+                     :                                                         \
+                     : "r"(r0)                                                 \
+                     : "$12", "$13", "$14", "memory")
+#endif
+#ifndef XM_T_gte_SetTransMatrix
+#define XM_T_gte_SetTransMatrix
+#define gte_SetTransMatrix(r0)                                                 \
+    __asm__ volatile("lw $12, 20(%0);"                                         \
+                     "lw $13, 24(%0);"                                         \
+                     "ctc2 $12, $5;"                                           \
+                     "lw $14, 28(%0);"                                         \
+                     "ctc2 $13, $6;"                                           \
+                     "ctc2 $14, $7"                                            \
+                     :                                                         \
+                     : "r"(r0)                                                 \
+                     : "$12", "$13", "$14", "memory")
+#endif
+#ifndef XM_S_arena_effect_draw_all
+#define XM_S_arena_effect_draw_all
+void xm_arena_effect_draw_all(MATRIX *view, u32 *ot) __asm__("func_8007CF78");
+#endif
+#ifndef XM_S_arena_view_origin
+#define XM_S_arena_view_origin
+extern VECTOR xm_arena_view_origin __asm__("D_80096FA8");
+#endif
+#ifndef XM_S_libgte_transpose_matrix
+#define XM_S_libgte_transpose_matrix
+void xm_libgte_transpose_matrix(MATRIX *m, MATRIX *out) __asm__("TransposeMatrix");
+#endif
+#ifndef XM_S_arena_effect_draw_falling_sparkles
+#define XM_S_arena_effect_draw_falling_sparkles
+void xm_arena_effect_draw_falling_sparkles(MATRIX *view, MATRIX *local, u32 *ot) __asm__("func_8007BBA0");
+#endif
+#ifndef XM_S_arena_effect_draw_trail_sparkles
+#define XM_S_arena_effect_draw_trail_sparkles
+void xm_arena_effect_draw_trail_sparkles(MATRIX *view, MATRIX *local, u32 *ot) __asm__("func_8007C280");
+#endif
+#ifndef XM_S_arena_effect_draw_line_sparkles
+#define XM_S_arena_effect_draw_line_sparkles
+void xm_arena_effect_draw_line_sparkles(MATRIX *view, MATRIX *unused, u32 *ot) __asm__("func_8007CAA4");
+#endif
+#ifndef XM_S_arena_effect_draw_ground_particles
+#define XM_S_arena_effect_draw_ground_particles
+void xm_arena_effect_draw_ground_particles(u32 *ot) __asm__("func_8007D918");
+#endif
+#ifndef XM_S_arena_effect_draw_thrown_cells
+#define XM_S_arena_effect_draw_thrown_cells
+void xm_arena_effect_draw_thrown_cells(u32 *ot) __asm__("func_8007E020");
+#endif
+#ifndef XM_S_arena_effect_draw_lines
+#define XM_S_arena_effect_draw_lines
+void xm_arena_effect_draw_lines(u32 *ot) __asm__("func_8007E3CC");
+#endif
+void func_8007CF78(MATRIX *view, u32 *ot) {
+    MATRIX local;
+
+    SCENE_SCRATCH->camera = xm_arena_view_origin;
+    xm_libgte_transpose_matrix(view, &local);
+    xm_arena_effect_draw_falling_sparkles(view, &local, ot);
+    xm_arena_effect_draw_trail_sparkles(view, &local, ot);
+    xm_arena_effect_draw_line_sparkles(view, NULL, ot);
+    gte_SetRotMatrix(view);
+    gte_SetTransMatrix(view);
+    xm_arena_effect_draw_ground_particles(ot);
+    xm_arena_effect_draw_thrown_cells(ot);
+    xm_arena_effect_draw_lines(ot);
+}
+#endif
 void func_8007E3CC(void*);
 void func_8007D068(void* arg0) {
     struct Vector { s32 x,y,z,pad; };
@@ -1352,7 +1591,22 @@ void func_8007D068(void* arg0) {
     func_8007E3CC(arg0);
 }
 
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007D0B4);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_effect_jitter_svector (src/decomp/src/menu/arena_fighters_bout_and_effects.c:3786). */
+#ifndef XM_S_arena_effect_jitter_svector
+#define XM_S_arena_effect_jitter_svector
+void xm_arena_effect_jitter_svector(SVECTOR *pos) __asm__("func_8007D0B4");
+#endif
+#ifndef XM_S_rand
+#define XM_S_rand
+int xm_rand(void) __asm__("rand");
+#endif
+void func_8007D0B4(SVECTOR *pos) {
+    pos->vx += xm_rand() % 48 - 24;
+    pos->vy += xm_rand() % 48 - 24;
+    pos->vz += xm_rand() % 48 - 24;
+}
+#endif
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007D190);
 s32 func_8007D25C(s32 arg0) {
     if (arg0 < 0x10) {
@@ -1360,7 +1614,18 @@ s32 func_8007D25C(s32 arg0) {
     }
     return arg0 < 0x20;
 }
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007D274);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_effect_jitter_vector (src/decomp/src/menu/arena_fighters_bout_and_effects.c:3839). */
+#ifndef XM_S_arena_effect_jitter_vector
+#define XM_S_arena_effect_jitter_vector
+void xm_arena_effect_jitter_vector(VECTOR *from, VECTOR *to) __asm__("func_8007D274");
+#endif
+void func_8007D274(VECTOR *from, VECTOR *to) {
+    to->vx = from->vx + xm_rand() % 64 - 32;
+    to->vy = from->vy + xm_rand() % 64 - 32;
+    to->vz = from->vz + xm_rand() % 64 - 32;
+}
+#endif
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007D334);
 void func_8007D65C(s32 arg0, s32 arg1, s32 arg2) {
     switch (arg2) {
@@ -1419,11 +1684,363 @@ void func_8007D6B8(void) {
     } while (var_a2 < 0xFF);
 }
 
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007D7A8);
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007D918);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_effect_spawn_ground_particles (src/decomp/src/menu/arena_fighters_bout_and_effects.c:3949). */
+#ifndef XM_T_SceneCell10
+#define XM_T_SceneCell10
+typedef struct {
+    s16 unk0; 
+    s16 unk2; 
+    s16 unk4; 
+    s8 unk6;  
+    s8 unk7;  
+    s16 unk8; 
+} SceneCell10;
+#endif
+#ifndef XM_T_GroundSquare
+#define XM_T_GroundSquare
+typedef struct GroundSquare {
+    u16 height;
+    u16 unk2; 
+
+} GroundSquare;
+#endif
+#ifndef XM_S_arena_effect_spawn_ground_particles
+#define XM_S_arena_effect_spawn_ground_particles
+void xm_arena_effect_spawn_ground_particles(VECTOR *pos, s32 count) __asm__("func_8007D7A8");
+#endif
+#ifndef XM_S_arena_effect_ground_particles
+#define XM_S_arena_effect_ground_particles
+extern SceneCell10 *xm_arena_effect_ground_particles __asm__("D_800926BC");
+#endif
+#ifndef XM_S_arena_stage_height_map
+#define XM_S_arena_stage_height_map
+extern GroundSquare *xm_arena_stage_height_map __asm__("D_800928DC");
+#endif
+void func_8007D7A8(VECTOR *pos, s32 count) {
+    SceneCell10 *cell = xm_arena_effect_ground_particles;
+    s32 i;
+    s32 x;
+    s32 z;
+
+    for (i = 0; i < 251; i++, cell++) {
+        if (count == 0) {
+            break;
+        }
+        if (cell->unk6 == 0) {
+            x = pos->vx + (xm_rand() % 64 - 32);
+            cell->unk0 = x;
+            x = (s16)x;
+            z = pos->vz + (xm_rand() % 64 - 32);
+            cell->unk4 = z;
+            z = (s16)z;
+            cell->unk2 = cell->unk8 = xm_arena_stage_height_map[(x >> 8) + (z >> 8) * 128].height;
+            cell->unk7 = -(xm_rand() % 10 + 10);
+            count--;
+            cell->unk6 = 20;
+        }
+    }
+}
+#endif
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_effect_draw_ground_particles (src/decomp/src/menu/arena_fighters_bout_and_effects.c:3977). */
+#ifndef XM_T_Tile1Words
+#define XM_T_Tile1Words
+typedef struct {
+    u8 addr[3];
+    u8 len;
+    u32 rgbc;
+    s16 x0, y0;
+} Tile1Words;
+#endif
+#ifndef XM_T_gte_ldv0
+#define XM_T_gte_ldv0
+#define gte_ldv0(r0)                                                           \
+    __asm__ volatile("lwc2 $0, 0(%0);"                                         \
+                     "lwc2 $1, 4(%0)"                                          \
+                     :                                                         \
+                     : "r"(r0)                                                 \
+                     : "memory")
+#endif
+#ifndef XM_T_gte_ldv1
+#define XM_T_gte_ldv1
+#define gte_ldv1(r0)                                                           \
+    __asm__ volatile("lwc2 $2, 0(%0);"                                         \
+                     "lwc2 $3, 4(%0)"                                          \
+                     :                                                         \
+                     : "r"(r0)                                                 \
+                     : "memory")
+#endif
+#ifndef XM_T_gte_ldv2
+#define XM_T_gte_ldv2
+#define gte_ldv2(r0)                                                           \
+    __asm__ volatile("lwc2 $4, 0(%0);"                                         \
+                     "lwc2 $5, 4(%0)"                                          \
+                     :                                                         \
+                     : "r"(r0)                                                 \
+                     : "memory")
+#endif
+#ifndef XM_T_gte_rtpt
+#define XM_T_gte_rtpt
+#define gte_rtpt() __asm__ volatile("nop;nop;.word 0x4A280030")
+#endif
+#ifndef XM_T_gte_stsxy3
+#define XM_T_gte_stsxy3
+#define gte_stsxy3(r0, r1, r2)                                                 \
+    __asm__ volatile("swc2 $12, 0(%0);"                                        \
+                     "swc2 $13, 0(%1);"                                        \
+                     "swc2 $14, 0(%2)"                                         \
+                     :                                                         \
+                     : "r"(r0), "r"(r1), "r"(r2)                               \
+                     : "memory")
+#endif
+#ifndef XM_T_gte_stsz1
+#define XM_T_gte_stsz1
+#define gte_stsz1(r0) __asm__ volatile("swc2 $17, 0(%0)" : : "r"(r0) : "memory")
+#endif
+#ifndef XM_T_LINK_PRIM
+#define XM_T_LINK_PRIM
+#define LINK_PRIM(ot, scratch, prim, len)                                      \
+    prev = (ot)[(scratch)->depth >> 4];                                        \
+    addr = (u32)(prim) & 0xFFFFFF;                                             \
+    (ot)[(scratch)->depth >> 4] = addr;                                        \
+    prev |= (len);                                                             \
+    *(u32 *)addr = prev
+#endif
+#ifndef XM_T_gte_stsz2
+#define XM_T_gte_stsz2
+#define gte_stsz2(r0) __asm__ volatile("swc2 $18, 0(%0)" : : "r"(r0) : "memory")
+#endif
+#ifndef XM_T_gte_stsz
+#define XM_T_gte_stsz
+#define gte_stsz(r0) __asm__ volatile("swc2 $19, 0(%0)" : : "r"(r0) : "memory")
+#endif
+#ifndef XM_S_arena_effect_ground_particle_tiles
+#define XM_S_arena_effect_ground_particle_tiles
+extern Tile1Words *xm_arena_effect_ground_particle_tiles[2] __asm__("D_800926C0");
+#endif
+#ifndef XM_S_arena_draw_buffer_index
+#define XM_S_arena_draw_buffer_index
+extern u8 xm_arena_draw_buffer_index __asm__("D_800928A0");
+#endif
+void func_8007D918(u32 *ot) {
+    SceneScratch *scratch = SCENE_SCRATCH;
+    Tile1Words *tile = xm_arena_effect_ground_particle_tiles[xm_arena_draw_buffer_index];
+    SceneCell10 *cell = &xm_arena_effect_ground_particles[xm_arena_draw_buffer_index];
+    s32 cx = scratch->camera.vx;
+    s32 cy = scratch->camera.vy;
+    s32 cz = scratch->camera.vz;
+    s32 loaded = 0;
+    s32 i;
+    u32 prev;
+    u32 addr;
+
+    for (i = xm_arena_draw_buffer_index; i < 0xFC; i += 2, cell += 2) {
+        if (cell->unk6 == 0) {
+            continue;
+        }
+        scratch->point.vx = cell->unk0 - cx;
+        scratch->point.vy = cell->unk2 - cy;
+        scratch->point.vz = cell->unk4 - cz;
+        if (loaded == 0) {
+            gte_ldv0(&scratch->point);
+            loaded = 1;
+        } else if (loaded == 1) {
+            gte_ldv1(&scratch->point);
+            loaded = 2;
+        } else {
+            gte_ldv2(&scratch->point);
+            gte_rtpt();
+            loaded = 0;
+            gte_stsxy3(&tile[0].x0, &tile[1].x0, &tile[2].x0);
+            gte_stsz1(&scratch->depth);
+            LINK_PRIM(ot, scratch, &tile[0], 0x02000000);
+            gte_stsz2(&scratch->depth);
+            LINK_PRIM(ot, scratch, &tile[1], 0x02000000);
+            gte_stsz(&scratch->depth);
+            LINK_PRIM(ot, scratch, &tile[2], 0x02000000);
+            tile += 3;
+        }
+        cell->unk2 += cell->unk7;
+        if (cell->unk2 >= cell->unk8) {
+            cell->unk6 = 0;
+        }
+        cell->unk7 += 2;
+    }
+}
+#endif
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007DB28);
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007DC74);
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007E020);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_effect_throw_cells (src/decomp/src/menu/arena_fighters_bout_and_effects.c:4050). */
+#ifndef XM_T_SceneCell12
+#define XM_T_SceneCell12
+typedef struct {
+    s16 unk0, unk2, unk4; 
+    s16 unk6;             
+    s8 unk8;              
+    s8 unk9;              
+    s16 unkA;             
+} SceneCell12;
+#endif
+#ifndef XM_S_arena_effect_throw_cells
+#define XM_S_arena_effect_throw_cells
+void xm_arena_effect_throw_cells(VECTOR *from, VECTOR *to) __asm__("func_8007DC74");
+#endif
+#ifndef XM_S_arena_effect_thrown_cells
+#define XM_S_arena_effect_thrown_cells
+extern SceneCell12 *xm_arena_effect_thrown_cells __asm__("D_800926C8");
+#endif
+#ifndef XM_S_arena_vector_get_length
+#define XM_S_arena_vector_get_length
+s32 xm_arena_vector_get_length(VECTOR *vector) __asm__("func_800886FC");
+#endif
+#ifndef XM_S_arena_vector_get_flat_length
+#define XM_S_arena_vector_get_flat_length
+s32 xm_arena_vector_get_flat_length(VECTOR *vector) __asm__("func_80088754");
+#endif
+#ifndef XM_S_VectorNormal
+#define XM_S_VectorNormal
+long xm_VectorNormal(VECTOR *v0, VECTOR *v1) __asm__("VectorNormal");
+#endif
+void func_8007DC74(VECTOR *from, VECTOR *to) {
+    VECTOR across;
+    s32 nx;
+    s32 nz;
+    s32 life;
+    s32 speed;
+    s32 count;
+    s32 drift;
+    s32 height;
+    s32 i;
+    s32 r;
+    SceneCell12 *cell;
+
+    if (from->vy <= 0x80 && to->vy <= 0x80) {
+        return;
+    }
+    across.vz = to->vx - from->vx;
+    across.vx = from->vz - to->vz;
+    across.vy = from->vy - to->vy;
+    cell = xm_arena_effect_thrown_cells;
+    count = xm_arena_vector_get_length(&across) / 6;
+    if (count <= 0) {
+        count = 1;
+    }
+    across.vy = 0x1000;
+    drift = xm_arena_vector_get_flat_length(&across);
+    if (drift < 0x10) {
+        drift = 0;
+    }
+    if (across.vz != 0 || across.vx != 0) {
+        xm_VectorNormal(&across, &across);
+        nx = across.vx;
+        nz = across.vz;
+    }
+    height = abs(from->vy - to->vy);
+    life = height / 3 + 1;
+    if ((u32)life > 0x78) {
+        life = 0x78;
+    }
+    for (i = 0; i < 0x218; i++, cell++) {
+        if (count == 0) {
+            return;
+        }
+        if (cell->unk6 != 0) {
+            continue;
+        }
+        if (drift != 0) {
+            r = xm_rand() % 4096;
+            speed = drift / 7;
+            if (xm_rand() & 1) {
+                cell->unk8 = ((nx * r) >> 14) + speed;
+                cell->unk9 = ((nz * r) >> 14) + speed;
+            } else {
+                cell->unk8 = -((nx * r) >> 14) - speed;
+                cell->unk9 = -((nz * r) >> 14) - speed;
+            }
+        } else {
+            cell->unk8 = (xm_rand() & 0xF) - 8;
+            cell->unk9 = (xm_rand() & 0xF) - 8;
+        }
+        if (height >= 9) {
+            cell->unkA = -(xm_rand() % (height / 2)) + 1;
+            cell->unk6 = life;
+        } else {
+            cell->unkA = -4;
+            cell->unk6 = 0x14;
+        }
+        cell->unk0 = from->vx + (xm_rand() % 32 - 0x10) + cell->unk8 * 2;
+        cell->unk4 = from->vz + (xm_rand() % 32 - 0x10) + cell->unk9 * 2;
+        cell->unk2 = -0x10;
+        count--;
+    }
+}
+#endif
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_effect_draw_thrown_cells (src/decomp/src/menu/arena_fighters_bout_and_effects.c:4127). */
+#ifndef XM_T_TileWords
+#define XM_T_TileWords
+typedef struct {
+    u8 addr[3];
+    u8 len;
+    u32 rgbc;
+    s16 x0, y0;
+    s16 w, h;
+} TileWords;
+#endif
+#ifndef XM_S_arena_effect_thrown_cell_tiles
+#define XM_S_arena_effect_thrown_cell_tiles
+extern TileWords *xm_arena_effect_thrown_cell_tiles[2] __asm__("D_800926CC");
+#endif
+void func_8007E020(u32 *ot) {
+    SceneScratch *scratch = SCENE_SCRATCH;
+    s32 loaded = 0;
+    s32 i;
+    s32 cx = scratch->camera.vx;
+    s32 cy = scratch->camera.vy;
+    s32 cz = scratch->camera.vz;
+    SceneCell12 *cell = xm_arena_effect_thrown_cells;
+    TileWords *tile = xm_arena_effect_thrown_cell_tiles[xm_arena_draw_buffer_index];
+    u32 prev;
+    u32 addr;
+
+    for (i = 0; i < 0x218; i++, cell++) {
+        if (cell->unk6 == 0) {
+            continue;
+        }
+        cell->unk0 += cell->unk8;
+        cell->unk4 += cell->unk9;
+        scratch->point.vx = cell->unk0 - cx;
+        scratch->point.vy = cell->unk2 - cy;
+        scratch->point.vz = cell->unk4 - cz;
+        if (loaded == 0) {
+            gte_ldv0(&scratch->point);
+            loaded = 1;
+        } else if (loaded == 1) {
+            gte_ldv1(&scratch->point);
+            loaded = 2;
+        } else {
+            gte_ldv2(&scratch->point);
+            gte_rtpt();
+            loaded = 0;
+            gte_stsxy3(&tile[0].x0, &tile[1].x0, &tile[2].x0);
+            gte_stsz1(&scratch->depth);
+            LINK_PRIM(ot, scratch, &tile[0], 0x03000000);
+            gte_stsz2(&scratch->depth);
+            LINK_PRIM(ot, scratch, &tile[1], 0x03000000);
+            gte_stsz(&scratch->depth);
+            LINK_PRIM(ot, scratch, &tile[2], 0x03000000);
+            tile += 3;
+        }
+        cell->unk2 += cell->unkA;
+        cell->unkA += 2;
+        if (cell->unk2 > 0x10) {
+            cell->unk2 = 0x10;
+        }
+        cell->unk6--;
+    }
+}
+#endif
 extern s32 D_800926BC;
 extern void *D_800926C8;
 extern s8 D_8009791B;
@@ -1536,7 +2153,127 @@ void func_8007E954(s32 arg0) {
     D_800912DC = arg0;
 }
 
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007E964);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_text_draw_char (src/decomp/src/menu/arena_menu_screens.c:257). */
+#ifndef XM_T_POLY_FT4
+#define XM_T_POLY_FT4
+typedef struct {
+    u_long tag;
+    u_char r0, g0, b0, code;
+    short x0, y0;
+    u_char u0, v0;
+    u_short clut;
+    short x1, y1;
+    u_char u1, v1;
+    u_short tpage;
+    short x2, y2;
+    u_char u2, v2;
+    u_short pad1;
+    short x3, y3;
+    u_char u3, v3;
+    u_short pad2;
+} POLY_FT4;
+#endif
+#ifndef XM_T_Glyph
+#define XM_T_Glyph
+typedef struct {
+    u8 u, v;   
+    u8 width;
+    u8 height;
+} Glyph;
+#endif
+#ifndef XM_T_P_TAG
+#define XM_T_P_TAG
+typedef struct {
+    unsigned addr : 24;
+    unsigned len : 8;
+    u_char r0, g0, b0, code;
+} P_TAG;
+#endif
+#ifndef XM_T_setlen
+#define XM_T_setlen
+#define setlen(p, _len) (((P_TAG *)(p))->len = (u_char)(_len))
+#endif
+#ifndef XM_S_arena_text_draw_char
+#define XM_S_arena_text_draw_char
+s32 xm_arena_text_draw_char(s32 ch) __asm__("func_8007E964");
+#endif
+#ifndef XM_S_arena_text_quad_count
+#define XM_S_arena_text_quad_count
+extern s32 xm_arena_text_quad_count __asm__("D_800926DC");
+#endif
+#ifndef XM_S_arena_text_quads
+#define XM_S_arena_text_quads
+extern POLY_FT4 *xm_arena_text_quads[2] __asm__("D_800926D4");
+#endif
+#ifndef XM_S_arena_text_find_glyph
+#define XM_S_arena_text_find_glyph
+Glyph *xm_arena_text_find_glyph(s32 ch) __asm__("func_8007E8AC");
+#endif
+#ifndef XM_S_arena_text_cursor_x
+#define XM_S_arena_text_cursor_x
+extern s16 xm_arena_text_cursor_x __asm__("D_800926E8");
+#endif
+#ifndef XM_S_arena_text_cursor_y
+#define XM_S_arena_text_cursor_y
+extern s16 xm_arena_text_cursor_y __asm__("D_800926EC");
+#endif
+#ifndef XM_S_arena_text_width_scale
+#define XM_S_arena_text_width_scale
+extern s32 xm_arena_text_width_scale __asm__("D_800912DC");
+#endif
+#ifndef XM_S_arena_text_tpage
+#define XM_S_arena_text_tpage
+extern u16 xm_arena_text_tpage __asm__("D_800926E0");
+#endif
+#ifndef XM_S_arena_text_clut
+#define XM_S_arena_text_clut
+extern u16 xm_arena_text_clut __asm__("D_800926E4");
+#endif
+#ifndef XM_S_arena_text_red
+#define XM_S_arena_text_red
+extern u8 xm_arena_text_red __asm__("D_800926F0");
+#endif
+#ifndef XM_S_arena_text_green
+#define XM_S_arena_text_green
+extern u8 xm_arena_text_green __asm__("D_800926F4");
+#endif
+#ifndef XM_S_arena_text_blue
+#define XM_S_arena_text_blue
+extern u8 xm_arena_text_blue __asm__("D_800926F8");
+#endif
+s32 func_8007E964(s32 ch) {
+    POLY_FT4 *quad;
+    Glyph *glyph;
+    s32 right;
+
+    if (xm_arena_text_quad_count < 101) {
+        quad = xm_arena_text_quads[xm_arena_draw_buffer_index];
+        quad += xm_arena_text_quad_count;
+        glyph = xm_arena_text_find_glyph(ch);
+        if (glyph != NULL) {
+            if (ch != '(') {
+                ch = glyph->width | 3; 
+                *(u32 *)&quad->x0 = xm_arena_text_cursor_x | (xm_arena_text_cursor_y << 16);
+                right = xm_arena_text_cursor_x + ((ch * xm_arena_text_width_scale) >> 8);
+                *(u32 *)&quad->x1 = right | (xm_arena_text_cursor_y << 16);
+                *(u32 *)&quad->x2 = xm_arena_text_cursor_x | ((xm_arena_text_cursor_y + glyph->height) << 16);
+                *(u32 *)&quad->x3 = right | ((xm_arena_text_cursor_y + glyph->height) << 16);
+                *(u16 *)&quad->u0 = glyph->u | (glyph->v << 8);
+                *(u16 *)&quad->u1 = (glyph->u + ch) | (glyph->v << 8);
+                *(u16 *)&quad->u2 = glyph->u | ((glyph->v + (glyph->height + 1)) << 8);
+                *(u16 *)&quad->u3 = (glyph->u + ch) | ((glyph->v + (glyph->height + 1)) << 8);
+                quad->tpage = xm_arena_text_tpage;
+                quad->clut = xm_arena_text_clut;
+                setlen(quad, 9);
+                *(u32 *)&quad->r0 = xm_arena_text_red | (xm_arena_text_green << 8) | (xm_arena_text_blue << 16) | 0x2C000000;
+                xm_arena_text_quad_count++;
+            }
+            xm_arena_text_cursor_x += ((glyph->width * xm_arena_text_width_scale) >> 8) + 2;
+        }
+    }
+}
+#endif
 u8 *func_8007E8AC(u8);
 
 s32 func_8007EB6C(u8 *arg0) {
@@ -1638,8 +2375,447 @@ void func_8007EE08(s32 arg0) {
     }
 }
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007EE68);
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007EEE8);
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007EFB4);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_select_build_list (src/decomp/src/menu/arena_menu_screens.c:379). */
+#ifndef XM_T_CharacterEntry
+#define XM_T_CharacterEntry
+typedef struct {
+    u16 field0; 
+    u8 value2;
+    u8 value3;  
+    u8 value4;  
+    u8 pad5;
+    u8 id;      
+    u8 pad7;
+} CharacterEntry;
+#endif
+#ifndef XM_T_StatusPair
+#define XM_T_StatusPair
+typedef union {
+    u32 word;
+    struct {
+        u16 active;
+        u16 permanent;
+    } half;
+} StatusPair;
+#endif
+#ifndef XM_T_CharacterRecord
+#define XM_T_CharacterRecord
+typedef struct {
+    CharacterEntry entries[4]; 
+    u8 pad20[0x28 - 0x20];
+    u8 equipAttack;       
+    u8 equipDefense;      
+    u8 equipSpeed;        
+    u8 equipEther;        
+    u8 equipEtherDefense; 
+    u8 bodyDefense;       
+    u8 equip5E;           
+    u8 equip5F;           
+    u8 hpBonus;           
+    u8 epBonus;           
+    u16 flags32;          
+    u16 flags34;          
+    u16 flags36;          
+    u16 weakness;         
+    u16 field3A;          
+    u32 expTotalA;        
+    u32 expTotalB;        
+    u32 expNextA;         
+    u32 expNextB;         
+    u16 hp;               
+    u16 maxHp;            
+    u16 ep;               
+    u16 maxEp;            
+    u8 field54;           
+    u8 field55;
+    u8 characterId;       
+    u8 pad57;
+    u8 attack;            
+    u8 defense;           
+    u8 speed;             
+    u8 ether;             
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    u8 etherDefense;      
+    u8 field5D;
+    u8 field5E;           
+    u8 field5F;           
+    u8 field60;           
+    u8 field61;
+    u8 level;             
+    u8 level2;            
+    u8 field64[4];        
+    u8 pad68[0x6A - 0x68];
+    u8 weapons[5];        
+    u8 entryItems[5];     
+
+    u8 accessories[3];    
+    u8 field77;           
+
+    u8 field78;           
+    u8 field79;           
+    u16 status7A;         
+
+    u16 status7C;         
+
+
+    u16 status7E;         
+    u16 status80;         
+    u16 status82;         
+    StatusPair status84;  
+    StatusPair status88;  
+    StatusPair status8C;  
+    u16 useCounts[7];     
+    u8 pad9E[0xA0 - 0x9E];
+    u8 gearId;            
+    u8 fieldA1;           
+    u8 padA2[0xA4 - 0xA2];
+} CharacterRecord;
+#endif
+#ifndef XM_T_GearEntry
+#define XM_T_GearEntry
+typedef struct {
+    u16 field0; 
+    u8 valueE;  
+    u8 value10; 
+    u8 value11; 
+    u8 id;      
+    u8 pad6[2];
+} GearEntry;
+#endif
+#ifndef XM_T_GearRecord
+#define XM_T_GearRecord
+typedef struct GearRecord {
+    u8 pad0[2];
+    u8 engine;            
+    u8 field3;            
+    u8 partItems[4];      
+
+    u8 frame;             
+    u8 parts[3];          
+    u8 weapons[4];        
+    GearEntry entries[4]; 
+    u8 pad30[0x38 - 0x30];
+    u16 fuel;             
+    u16 maxFuel;          
+    u8 attack;            
+    u8 pad3D;
+    u8 field3E;
+    u8 attackScale;       
+    u16 equipBodyDefense; 
+    u16 equipArmor;       
+    u16 equip68a;         
+    u16 equip68b;         
+    u16 field48;          
+    u8 speedPenalty;      
+    u8 pad4B;
+    u8 equipGuard;        
+    u8 equipHitBonus;     
+    u8 equipSpeed;        
+    u8 field4F;           
+    u8 speedBonus[4];     
+    u8 equipFrameFactor;  
+    u8 pad55;
+    u8 equipAttackScale;  
+    u8 chargeRate;        
+    u8 pad58[0x5C - 0x58];
+    u8 fileVariant;       
+    u8 spriteVariants[3]; 
+    u32 hp;               
+    u32 maxHp;            
+    u16 field68;
+    u16 field6A;
+    u16 field6C;
+    u16 field6E;          
+    u16 bodyDefense;      
+    u16 armor;            
+    u8 field74;
+    u8 field75;
+    u8 pad76[0x7C - 0x76];
+    u16 status7C;         
+    u16 field7E;          
+    u16 status80;
+    u16 status82;         
+    StatusPair status84;  
+    u8 resistances[16];   
+    u8 speed;             
+    u8 defense;           
+    u8 pad9A[0x9C - 0x9A];
+    u8 guard;             
+    u8 field9D;
+    u8 frameFactor;       
+    s8 hitBonus;          
+
+    u8 padA0[0xA4 - 0xA0];
+} GearRecord;
+#endif
+#ifndef XM_T_CharacterSkills
+#define XM_T_CharacterSkills
+typedef struct {
+    u16 counterSkills; 
+    u16 levelSkills;   
+    u16 unlocksA;      
+    u16 unlocksB;      
+    u8 pad8[0x17 - 0x8];
+    u8 tier;           
+    u8 pad18[0x1A - 0x18];
+    u16 flags1A;       
+
+
+    u8 pad1C[0x20 - 0x1C];
+} CharacterSkills;
+#endif
+#ifndef XM_T_WorldmapReturn
+#define XM_T_WorldmapReturn
+typedef struct {
+    u16 x;
+    u16 z;
+    u16 heading;
+    u16 unk5A;
+    u16 unk5C;
+    u16 unk5E;
+    u16 unk60;           
+    u16 unk62;
+    u16 unk64;
+    u16 vehicle_heading; 
+    u16 flags;           
+    s16 unk6A;
+    u16 unk6C;
+    u16 unk6E;
+    u16 unk70;
+    u16 unk72;
+    u16 unk74;
+    u16 unk76;           
+} WorldmapReturn;
+#endif
+#ifndef XM_T_FlightSave
+#define XM_T_FlightSave
+typedef struct {
+    u16 x_frac;
+    s16 x;
+    u16 z_frac;
+    s16 z;
+    u16 count; 
+} FlightSave;
+#endif
+#ifndef XM_T_SystemOptions
+#define XM_T_SystemOptions
+typedef struct {
+    u32 version : 4;   
+    u32 option4 : 1;
+    u32 option5 : 1;
+    u32 option6 : 7;
+    u32 option13 : 3;  
+    u32 complete : 1;  
+    u32 unused : 15;
+} SystemOptions;
+#endif
+#ifndef XM_T_GameData
+#define XM_T_GameData
+typedef struct GameData {
+    u8 names[31][0x14];           
+
+    CharacterRecord characters[11]; 
+    GearRecord gears[20];           
+    u8 unk1648[0x16C0 - 0x1648];
+    CharacterSkills skills[11];     
+    WorldmapReturn worldmap;        
+    u16 unk1844[3];                 
+    u16 unk184A;                    
+    FlightSave flight;              
+    u16 unk1856;                    
+    u8 unk1858[0x1924 - 0x1858];
+    u32 gold;                       
+    u8 unk1928[0x1930 - 0x1928];
+    u16 vars[0x200];              
+
+    u16 joined;                   
+    u16 available;                
+    u8 party[3];                  
+    u8 unk1D37;
+    u8 weaponCounts[100];         
+    u8 weaponIds[100];            
+    u8 accessoryCounts[200];      
+    u8 accessoryIds[200];         
+    u8 itemCounts[150];           
+    u8 itemIds[150];              
+    u8 gearPartCounts[100];       
+    u8 gearPartIds[100];          
+    u8 gearAccessoryCounts[150];  
+    u8 gearAccessoryIds[150];     
+    u8 unk22B0;
+    u8 inGear[3];                 
+    u8 unk22B4[2];
+    u16 flags;                    
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+    u8 ammo[48];                  
+    u8 gearAmmo[48];              
+    u16 locked;                   
+    u16 map;                      
+    u16 entry[3];                 
+
+    u16 flagWords[17];            
+    u8 progress[8];               
+    SystemOptions options;        
+    u8 unk2350[0x2355 - 0x2350];
+    u8 flags2355;                 
+    u8 unk2356[0x2358 - 0x2356];
+} GameData;
+#endif
+#ifndef XM_T_ListEntry
+#define XM_T_ListEntry
+typedef struct ListEntry {
+    s32 id;
+    char *model; 
+    u8 *name;    
+} ListEntry;
+#endif
+#ifndef XM_T_MoveList
+#define XM_T_MoveList
+typedef struct MoveList {
+    s16 base;       
+    u8 unk2[0x2];
+    s16 level;      
+    u8 tendency[4]; 
+    u8 learned[14]; 
+    u8 unk18;       
+    u8 unk19[0x7];
+} MoveList;
+#endif
+#ifndef XM_S_arena_select_build_list
+#define XM_S_arena_select_build_list
+void xm_arena_select_build_list(s32 filter) __asm__("func_8007EEE8");
+#endif
+#ifndef XM_S_game_data
+#define XM_S_game_data
+extern GameData xm_game_data __asm__("g_GameState");
+#endif
+#ifndef XM_S_heap_alloc
+#define XM_S_heap_alloc
+void *xm_heap_alloc(s32 size, s32 mode) __asm__("HeapAlloc");
+#endif
+#ifndef XM_S_arena_select_entries
+#define XM_S_arena_select_entries
+extern ListEntry * *xm_arena_select_entries __asm__("D_800928EC");
+#endif
+#ifndef XM_S_arena_actor_move_lists
+#define XM_S_arena_actor_move_lists
+extern MoveList *xm_arena_actor_move_lists __asm__("D_80092874");
+#endif
+#ifndef XM_S_arena_select_entry_count
+#define XM_S_arena_select_entry_count
+extern s32 xm_arena_select_entry_count __asm__("D_80092888");
+#endif
+#ifndef XM_S_arena_select_gears
+#define XM_S_arena_select_gears
+extern ListEntry xm_arena_select_gears[49] __asm__("D_80091964");
+#endif
+#ifndef XM_S_arena_progress_add_unlocked_entry
+#define XM_S_arena_progress_add_unlocked_entry
+void xm_arena_progress_add_unlocked_entry(void) __asm__("func_8008895C");
+#endif
+void func_8007EEE8(s32 filter) {
+    s32 level = xm_game_data.vars[0];
+    ListEntry **list = xm_heap_alloc(0xC4, 1);
+    MoveList *source;
+    s32 i;
+
+    xm_arena_select_entries = list;
+    source = xm_arena_actor_move_lists;
+    xm_arena_select_entry_count = 0;
+    for (i = 0; i < 49; source++, i++) {
+        if (!filter || source->level <= level) {
+            xm_arena_select_entries[xm_arena_select_entry_count++] = &xm_arena_select_gears[i];
+        }
+    }
+    if (filter) {
+        xm_arena_progress_add_unlocked_entry();
+    }
+}
+#endif
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_select_alloc_portrait_slots (src/decomp/src/menu/arena_menu_screens.c:400). */
+#ifndef XM_T_RECT
+#define XM_T_RECT
+typedef struct {
+    short x, y;
+    short w, h;
+} RECT;
+#endif
+#ifndef XM_T_GridCell
+#define XM_T_GridCell
+typedef struct {
+    RECT clut;
+    RECT image;
+    u8 unk10[4];
+} GridCell;
+#endif
+#ifndef XM_S_arena_select_alloc_portrait_slots
+#define XM_S_arena_select_alloc_portrait_slots
+void xm_arena_select_alloc_portrait_slots(void) __asm__("func_8007EFB4");
+#endif
+#ifndef XM_S_arena_select_portrait_slots
+#define XM_S_arena_select_portrait_slots
+extern GridCell *xm_arena_select_portrait_slots __asm__("D_8009270C");
+#endif
+void func_8007EFB4(void) {
+    u8 unused[0x30]; 
+    GridCell *cell;
+    s32 id;
+    s32 row;
+    s32 col;
+    s16 top;
+
+    cell = xm_arena_select_portrait_slots = xm_heap_alloc(0x3D4, 0);
+    id = 0x1FF;
+    for (row = 0; row < 7; row++) {
+        top = row * 0x20 + 0x1A0;
+        for (col = 0; col < 7; col++) {
+            s16 left = col << 6;
+
+            cell->clut.x = 0x200;
+            cell->clut.y = id--;
+            cell->clut.w = 0x80;
+            cell->clut.h = 1;
+            cell->image.x = top;
+            cell->image.y = left;
+            cell->image.w = 0x1E;
+            cell->image.h = 0x40;
+            cell++;
+        }
+    }
+}
+#endif
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007F05C);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8007F258);
 
@@ -1831,7 +3007,73 @@ void func_80080268(void) {
     D_80099DA2__a[0] = func_8007FF70(D_80099DA2__a[0], 0xD, 3);
 }
 
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_800802A4);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_select_step_first_pick (src/decomp/src/menu/arena_menu_screens.c:862). */
+#ifndef XM_S_arena_select_step_first_pick
+#define XM_S_arena_select_step_first_pick
+void xm_arena_select_step_first_pick() __asm__("func_800802A4");
+#endif
+#ifndef XM_S_arena_menu_applied_pad_port
+#define XM_S_arena_menu_applied_pad_port
+extern s32 xm_arena_menu_applied_pad_port __asm__("D_80091364");
+#endif
+#ifndef XM_S_pad_port0_pressed
+#define XM_S_pad_port0_pressed
+extern u16 xm_pad_port0_pressed __asm__("g_C1ButtonStateReleased");
+#endif
+#ifndef XM_S_arena_select_confirmed_sides
+#define XM_S_arena_select_confirmed_sides
+extern u32 xm_arena_select_confirmed_sides __asm__("D_80092710");
+#endif
+#ifndef XM_S_arena_actor_release_model
+#define XM_S_arena_actor_release_model
+void xm_arena_actor_release_model(s32 which) __asm__("func_80085134");
+#endif
+#ifndef XM_S_arena_sound_play_effect
+#define XM_S_arena_sound_play_effect
+void xm_arena_sound_play_effect(s32 id) __asm__("func_8008EB4C");
+#endif
+#ifndef XM_S_arena_select_first_pick
+#define XM_S_arena_select_first_pick
+extern s32 xm_arena_select_first_pick __asm__("D_80092700");
+#endif
+#ifndef XM_S_arena_select_second_pick
+#define XM_S_arena_select_second_pick
+extern s32 xm_arena_select_second_pick __asm__("D_80092704");
+#endif
+#ifndef XM_S_arena_menu_step_setting
+#define XM_S_arena_menu_step_setting
+s32 xm_arena_menu_step_setting(s32 value, s32 max, s32 flags) __asm__("func_8007FF70");
+#endif
+#ifndef XM_S_arena_menu_buttons_held
+#define XM_S_arena_menu_buttons_held
+extern s32 xm_arena_menu_buttons_held __asm__("D_80092748");
+#endif
+#ifndef XM_S_arena_actor_load_model
+#define XM_S_arena_actor_load_model
+void xm_arena_actor_load_model(s32 which, s32 id) __asm__("func_8008509C");
+#endif
+void func_800802A4(void) {
+    s32 same;
+
+    if (xm_arena_menu_applied_pad_port == 0 && (xm_pad_port0_pressed & 0x40)) {
+        xm_arena_select_confirmed_sides &= ~1;
+        xm_arena_actor_release_model(0);
+        xm_arena_sound_play_effect(0x22);
+    }
+    if (!(xm_arena_select_confirmed_sides & 1)) {
+        same = xm_arena_select_first_pick == xm_arena_select_second_pick;
+        do {
+            xm_arena_select_first_pick = xm_arena_menu_step_setting(xm_arena_select_first_pick, xm_arena_select_entry_count - 1, 3);
+        } while (xm_arena_select_first_pick == xm_arena_select_second_pick && !(xm_arena_menu_buttons_held & 1) && !same);
+        if (xm_arena_menu_applied_pad_port == 0 && (xm_pad_port0_pressed & 0x20)) {
+            xm_arena_select_confirmed_sides |= 1;
+            xm_arena_sound_play_effect(0x21);
+            xm_arena_actor_load_model(0, xm_arena_select_entries[xm_arena_select_first_pick]->id);
+        }
+    }
+}
+#endif
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8008040C);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80080570);
 s32 ArchiveDecodeSector(s32);
@@ -2156,12 +3398,131 @@ void func_80081E6C(void) {
 }
 
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80081ECC);
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80082178);
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80082300);
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80082458);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_stage_mark_wide_view_cells (src/decomp/src/menu/arena_stage_views_and_hud.c:207). */
+#ifndef XM_S_arena_stage_mark_wide_view_cells
+#define XM_S_arena_stage_mark_wide_view_cells
+void xm_arena_stage_mark_wide_view_cells(s32 x, s32 z, s32 direction) __asm__("func_80082178");
+#endif
+#ifndef XM_S_gpu_get_sin
+#define XM_S_gpu_get_sin
+s32 xm_gpu_get_sin(s32 angle) __asm__("rcos");
+#endif
+#ifndef XM_S_gpu_get_cos
+#define XM_S_gpu_get_cos
+s32 xm_gpu_get_cos(s32 angle) __asm__("rsin");
+#endif
+#ifndef XM_S_arena_stage_widen_row_spans
+#define XM_S_arena_stage_widen_row_spans
+void xm_arena_stage_widen_row_spans(s32 x0, s32 y0, s32 x1, s32 y1) __asm__("func_80087698");
+#endif
+void func_80082178(s32 x, s32 z, s32 direction) {
+    s32 start_x;
+    s32 start_z;
+    s32 last_x;
+    s32 last_z;
+    s32 next_x;
+    s32 next_z;
+    s32 angle;
+    s32 i;
+
+    x >>= 8;
+    z >>= 8;
+    last_x = start_x = x + ((xm_gpu_get_sin(direction + 0x280) * 10) >> 12);
+    last_z = start_z = z + ((xm_gpu_get_cos(direction + 0x280) * 10) >> 12);
+    angle = direction + 0x580;
+    for (i = 0; i < 6; i++) {
+        next_x = x + ((xm_gpu_get_sin(angle) * 24) >> 12);
+        next_z = z + ((xm_gpu_get_cos(angle) * 24) >> 12);
+        xm_arena_stage_widen_row_spans(last_x, last_z, next_x, next_z);
+        last_x = next_x;
+        last_z = next_z;
+        angle += 0x100;
+    }
+    next_x = x + ((xm_gpu_get_sin(direction - 0x280) * 10) >> 12);
+    next_z = z + ((xm_gpu_get_cos(direction - 0x280) * 10) >> 12);
+    xm_arena_stage_widen_row_spans(last_x, last_z, next_x, next_z);
+    xm_arena_stage_widen_row_spans(start_x, start_z, next_x, next_z);
+}
+#endif
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_stage_mark_narrow_view_cells (src/decomp/src/menu/arena_stage_views_and_hud.c:238). */
+#ifndef XM_S_arena_stage_mark_narrow_view_cells
+#define XM_S_arena_stage_mark_narrow_view_cells
+void xm_arena_stage_mark_narrow_view_cells(s32 x, s32 z, s32 direction) __asm__("func_80082300");
+#endif
+void func_80082300(s32 x, s32 z, s32 direction) {
+    s32 start_x;
+    s32 start_z;
+    s32 last_x;
+    s32 last_z;
+    s32 next_x;
+    s32 next_z;
+    s32 angle;
+    s32 i;
+
+    x >>= 8;
+    z >>= 8;
+    last_x = start_x = x + ((xm_gpu_get_sin(direction + 0x100) * 16) >> 12);
+    last_z = start_z = z + ((xm_gpu_get_cos(direction + 0x100) * 16) >> 12);
+    angle = direction + 0x78A;
+    for (i = 0; i < 3; i++) {
+        next_x = x + ((xm_gpu_get_sin(angle) * 32) >> 12);
+        next_z = z + ((xm_gpu_get_cos(angle) * 32) >> 12);
+        xm_arena_stage_widen_row_spans(last_x, last_z, next_x, next_z);
+        last_x = next_x;
+        last_z = next_z;
+        angle += 0x75;
+    }
+    next_x = x + ((xm_gpu_get_sin(direction - 0x100) * 16) >> 12);
+    next_z = z + ((xm_gpu_get_cos(direction - 0x100) * 16) >> 12);
+    xm_arena_stage_widen_row_spans(last_x, last_z, next_x, next_z);
+    xm_arena_stage_widen_row_spans(start_x, start_z, next_x, next_z);
+}
+#endif
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_stage_get_ground_normal (src/decomp/src/menu/arena_stage_views_and_hud.c:268). */
+#ifndef XM_S_arena_stage_get_ground_normal
+#define XM_S_arena_stage_get_ground_normal
+void xm_arena_stage_get_ground_normal(SVECTOR *out) __asm__("func_80082458");
+#endif
+#ifndef XM_S_arena_stage_ground_normal
+#define XM_S_arena_stage_ground_normal
+extern SVECTOR xm_arena_stage_ground_normal __asm__("D_80092768");
+#endif
+void func_80082458(SVECTOR *out) {
+    *out = xm_arena_stage_ground_normal;
+}
+#endif
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80082488);
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80082880);
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_800828C4);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_stage_get_cell_height (src/decomp/src/menu/arena_stage_views_and_hud.c:358). */
+#ifndef XM_S_arena_stage_get_cell_height
+#define XM_S_arena_stage_get_cell_height
+s32 xm_arena_stage_get_cell_height(SVECTOR *pos) __asm__("func_80082880");
+#endif
+s32 func_80082880(SVECTOR *pos) {
+    VECTOR unused[3]; 
+    s16 x, z;
+
+    x = pos->vx >> 8;
+    z = pos->vz >> 8;
+    return *(s16 *)&((s32 *)xm_arena_stage_height_map)[x + z * 128];
+}
+#endif
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_stage_get_ground_square (src/decomp/src/menu/arena_stage_views_and_hud.c:368). */
+#ifndef XM_S_arena_stage_get_ground_square
+#define XM_S_arena_stage_get_ground_square
+s32 xm_arena_stage_get_ground_square(VECTOR *pos) __asm__("func_800828C4");
+#endif
+s32 func_800828C4(VECTOR *pos) {
+    s32 x = pos->vx >> 8;
+    s32 z = pos->vz >> 8;
+
+    return ((s32 *)xm_arena_stage_height_map)[z * 128 + x];
+}
+#endif
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_800828F8);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80082A70);
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80082C4C);
@@ -2203,7 +3564,33 @@ void func_800832C0(s32 arg0) {
 }
 
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80083310);
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8008369C);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_camera_start_orbit (src/decomp/src/menu/arena_stage_views_and_hud.c:708). */
+#ifndef XM_S_arena_camera_start_orbit
+#define XM_S_arena_camera_start_orbit
+void xm_arena_camera_start_orbit(void) __asm__("func_8008369C");
+#endif
+#ifndef XM_S_arena_camera_orbit_angle
+#define XM_S_arena_camera_orbit_angle
+extern s32 xm_arena_camera_orbit_angle __asm__("D_800927AC");
+#endif
+#ifndef XM_S_arena_camera_orbit_speed
+#define XM_S_arena_camera_orbit_speed
+extern s32 xm_arena_camera_orbit_speed __asm__("D_800927B0");
+#endif
+#ifndef XM_S_arena_camera_update_orbit
+#define XM_S_arena_camera_update_orbit
+void xm_arena_camera_update_orbit(s32 smooth) __asm__("func_80083310");
+#endif
+void func_8008369C(void) {
+    xm_arena_camera_orbit_angle = xm_rand();
+    xm_arena_camera_orbit_speed = xm_rand() % 12 + 4;
+    if (xm_rand() & 1) {
+        xm_arena_camera_orbit_speed = -xm_arena_camera_orbit_speed;
+    }
+    xm_arena_camera_update_orbit(0);
+}
+#endif
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80083738);
 void func_80083B54(void* arg0, void* arg1) {
     struct Vector { s32 x, y, z, pad; };
@@ -2567,7 +3954,29 @@ void func_800875EC(void) {
     record[1] = record[0];
 }
 
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80087650);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_stage_clear_row_spans (src/decomp/src/menu/arena_stage_views_and_hud.c:2048). */
+#ifndef XM_S_arena_stage_clear_row_spans
+#define XM_S_arena_stage_clear_row_spans
+void xm_arena_stage_clear_row_spans(void) __asm__("func_80087650");
+#endif
+#ifndef XM_S_arena_stage_span_right_columns
+#define XM_S_arena_stage_span_right_columns
+extern u8 *xm_arena_stage_span_right_columns __asm__("D_800927CC");
+#endif
+#ifndef XM_S_arena_stage_span_left_columns
+#define XM_S_arena_stage_span_left_columns
+extern u8 *xm_arena_stage_span_left_columns __asm__("D_800927D0");
+#endif
+void func_80087650(void) {
+    s32 row;
+
+    for (row = 0; row < 0x80; row++) {
+        xm_arena_stage_span_right_columns[row] = 0;
+        xm_arena_stage_span_left_columns[row] = 0xFF;
+    }
+}
+#endif
 extern u8 D_80091834[];
 extern u8 D_800918B4[];
 extern u8 *D_800927CC;
@@ -2704,7 +4113,106 @@ void func_80087E38(void *arg0) {
     }
 }
 
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80087EA0);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_debug_draw_path_markers (src/decomp/src/menu/arena_stage_views_and_hud.c:2270). */
+#ifndef XM_T_LINE_F2
+#define XM_T_LINE_F2
+typedef struct {
+    u_long tag;
+    u_char r0, g0, b0, code;
+    short x0, y0;
+    short x1, y1;
+} LINE_F2;
+#endif
+#ifndef XM_T_PathMarker
+#define XM_T_PathMarker
+typedef struct PathMarker {
+    LINE_F2 axes[2][3]; 
+    s16 x, y, z;          
+    u8 pad[2];
+} PathMarker;
+#endif
+#ifndef XM_T_gte_ldv3
+#define XM_T_gte_ldv3
+#define gte_ldv3(r0, r1, r2)                                                   \
+    __asm__ volatile("lwc2 $0, 0(%0);"                                         \
+                     "lwc2 $1, 4(%0);"                                         \
+                     "lwc2 $2, 0(%1);"                                         \
+                     "lwc2 $3, 4(%1);"                                         \
+                     "lwc2 $4, 0(%2);"                                         \
+                     "lwc2 $5, 4(%2)"                                          \
+                     :                                                         \
+                     : "r"(r0), "r"(r1), "r"(r2)                               \
+                     : "memory")
+#endif
+#ifndef XM_S_arena_debug_draw_path_markers
+#define XM_S_arena_debug_draw_path_markers
+void xm_arena_debug_draw_path_markers(u32 *ot) __asm__("func_80087EA0");
+#endif
+#ifndef XM_S_arena_debug_path_marker_count
+#define XM_S_arena_debug_path_marker_count
+extern s32 xm_arena_debug_path_marker_count __asm__("D_800928F8");
+#endif
+#ifndef XM_S_arena_debug_path_markers
+#define XM_S_arena_debug_path_markers
+extern PathMarker xm_arena_debug_path_markers[30] __asm__("D_8009A928");
+#endif
+#ifndef XM_S_gpu_ot_link_line_f2
+#define XM_S_gpu_ot_link_line_f2
+void xm_gpu_ot_link_line_f2(u_long *ot, LINE_F2 *prim) __asm__("func_800316C0");
+#endif
+void func_80087EA0(u32 *ot) {
+    SVECTOR ends[6];
+    PathMarker *point;
+    s32 i;
+    s32 j;
+
+    for (i = 0; i < xm_arena_debug_path_marker_count; i++) {
+        point = &xm_arena_debug_path_markers[i];
+        ends[0].vx = point->x - 0x20;
+        ends[0].vy = point->y;
+        ends[0].vz = point->z;
+        ends[1].vx = point->x + 0x20;
+        ends[1].vy = point->y;
+        ends[1].vz = point->z;
+        ends[2].vx = point->x;
+        ends[2].vy = point->y - 0x20;
+        ends[2].vz = point->z;
+        ends[3].vx = point->x;
+        ends[3].vy = point->y + 0x20;
+        ends[3].vz = point->z;
+        ends[4].vx = point->x;
+        ends[4].vy = point->y;
+        ends[4].vz = point->z - 0x20;
+        ends[5].vx = point->x;
+        ends[5].vy = point->y;
+        ends[5].vz = point->z + 0x20;
+        for (j = 0; j < 6; j++) {
+            ends[j].vx -= xm_arena_view_origin.vx;
+            ends[j].vy -= xm_arena_view_origin.vy;
+            ends[j].vz -= xm_arena_view_origin.vz;
+        }
+        gte_ldv3(&ends[0], &ends[1], &ends[2]);
+        gte_rtpt();
+        gte_stsxy3(&point->axes[xm_arena_draw_buffer_index][0].x0, &point->axes[xm_arena_draw_buffer_index][0].x1,
+                   &point->axes[xm_arena_draw_buffer_index][1].x0);
+        gte_ldv3(&ends[3], &ends[4], &ends[5]);
+        gte_rtpt();
+        gte_stsxy3(&point->axes[xm_arena_draw_buffer_index][1].x1, &point->axes[xm_arena_draw_buffer_index][2].x0,
+                   &point->axes[xm_arena_draw_buffer_index][2].x1);
+        setlen(&point->axes[xm_arena_draw_buffer_index][0], 3);
+        *(u32 *)&point->axes[xm_arena_draw_buffer_index][0].r0 = 0x400000FF;
+        setlen(&point->axes[xm_arena_draw_buffer_index][1], 3);
+        *(u32 *)&point->axes[xm_arena_draw_buffer_index][1].r0 = 0x4000FF00;
+        setlen(&point->axes[xm_arena_draw_buffer_index][2], 3);
+        *(u32 *)&point->axes[xm_arena_draw_buffer_index][2].r0 = 0x40FF0000;
+        xm_gpu_ot_link_line_f2((u_long *)ot, &point->axes[xm_arena_draw_buffer_index][0]);
+        xm_gpu_ot_link_line_f2((u_long *)ot, &point->axes[xm_arena_draw_buffer_index][1]);
+        xm_gpu_ot_link_line_f2((u_long *)ot, &point->axes[xm_arena_draw_buffer_index][2]);
+    }
+    xm_arena_debug_path_marker_count = 0;
+}
+#endif
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8008820C);
 
 void func_800882D4(s32 arg0, s32 arg1, s32 arg2, s16 arg3) {
@@ -2727,8 +4235,58 @@ void func_80088308(void) {
 }
 
 INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8008832C);
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_800884E0);
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_8008859C);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_vector_normalize (src/decomp/src/menu/arena_stage_views_and_hud.c:2399). */
+#ifndef XM_S_arena_vector_normalize
+#define XM_S_arena_vector_normalize
+void xm_arena_vector_normalize(VECTOR *vector, void *out) __asm__("func_800884E0");
+#endif
+#ifndef XM_S_model_get_largest_component
+#define XM_S_model_get_largest_component
+s32 xm_model_get_largest_component(s32 x, s32 y, s32 z) __asm__("func_8002DC9C");
+#endif
+void func_800884E0(VECTOR *vector, void *out) {
+    VECTOR scaled = *vector;
+    s32 square;
+    s32 length;
+
+    square = xm_model_get_largest_component(scaled.vx, scaled.vy, scaled.vz);
+    if (square < 0) {
+        square = -square;
+    }
+    length = xm_SquareRoot0(square);
+    scaled.vx /= length;
+    scaled.vy /= length;
+    scaled.vz /= length;
+    xm_VectorNormal(&scaled, out);
+}
+#endif
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_vector_normalize_to_svector (src/decomp/src/menu/arena_stage_views_and_hud.c:2417). */
+#ifndef XM_S_arena_vector_normalize_to_svector
+#define XM_S_arena_vector_normalize_to_svector
+void xm_arena_vector_normalize_to_svector(VECTOR *vector, void *out) __asm__("func_8008859C");
+#endif
+#ifndef XM_S_VectorNormalS
+#define XM_S_VectorNormalS
+long xm_VectorNormalS(VECTOR *v0, SVECTOR *v1) __asm__("VectorNormalS");
+#endif
+void func_8008859C(VECTOR *vector, void *out) {
+    VECTOR scaled = *vector;
+    s32 square;
+    s32 length;
+
+    square = xm_model_get_largest_component(scaled.vx, scaled.vy, scaled.vz);
+    if (square < 0) {
+        square = -square;
+    }
+    length = xm_SquareRoot0(square);
+    scaled.vx /= length;
+    scaled.vy /= length;
+    scaled.vz /= length;
+    xm_VectorNormalS(&scaled, out);
+}
+#endif
 s32 SquareRoot0(s32);                               /* extern */
 s32 VectorNormalS(void *, void *);    /* extern */
 s32 func_8002DC9C(s16, s16, s16);                   /* extern */
@@ -2762,10 +4320,86 @@ void func_80088658(void *arg0, void* arg1) {
     VectorNormalS(&vector, arg1);
 }
 
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_800886FC);
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80088754);
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_800887A4);
-INCLUDE_ASM("asm/battling/nonmatchings/misc", func_80088838);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_vector_get_length (src/decomp/src/menu/arena_stage_views_and_hud.c:2454). */
+#ifndef XM_T_gte_ldlvl
+#define XM_T_gte_ldlvl
+#define gte_ldlvl(r0)                                                          \
+    __asm__ volatile("lwc2 $9, 0(%0);"                                         \
+                     "lwc2 $10, 4(%0);"                                        \
+                     "lwc2 $11, 8(%0)"                                         \
+                     :                                                         \
+                     : "r"(r0) : "memory")
+#endif
+#ifndef XM_T_gte_sqr0
+#define XM_T_gte_sqr0
+#define gte_sqr0() __asm__ volatile("nop;nop;.word 0x4AA00428")
+#endif
+#ifndef XM_T_gte_stlvnl
+#define XM_T_gte_stlvnl
+#define gte_stlvnl(r0)                                                         \
+    __asm__ volatile("swc2 $25, 0(%0);"                                        \
+                     "swc2 $26, 4(%0);"                                        \
+                     "swc2 $27, 8(%0)"                                         \
+                     :                                                         \
+                     : "r"(r0)                                                 \
+                     : "memory")
+#endif
+s32 func_800886FC(VECTOR *vector) {
+    VECTOR square;
+
+    gte_ldlvl(vector);
+    gte_sqr0();
+    gte_stlvnl(&square);
+    return xm_SquareRoot0(square.vx + square.vy + square.vz);
+}
+#endif
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_vector_get_flat_length (src/decomp/src/menu/arena_stage_views_and_hud.c:2464). */
+s32 func_80088754(VECTOR *vector) {
+    VECTOR square;
+
+    gte_ldlvl(vector);
+    gte_sqr0();
+    gte_stlvnl(&square);
+    return xm_SquareRoot0(square.vx + square.vz);
+}
+#endif
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_vector_get_distance (src/decomp/src/menu/arena_stage_views_and_hud.c:2474). */
+#ifndef XM_S_arena_vector_get_distance
+#define XM_S_arena_vector_get_distance
+s32 xm_arena_vector_get_distance(VECTOR *from, VECTOR *to) __asm__("func_800887A4");
+#endif
+s32 func_800887A4(VECTOR *from, VECTOR *to) {
+    VECTOR delta;
+
+    delta.vx = to->vx - from->vx;
+    delta.vy = to->vy - from->vy;
+    delta.vz = to->vz - from->vz;
+    gte_ldlvl(&delta);
+    gte_sqr0();
+    gte_stlvnl(&delta);
+    return xm_SquareRoot0(delta.vx + delta.vy + delta.vz);
+}
+#endif
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_vector_get_flat_distance (src/decomp/src/menu/arena_stage_views_and_hud.c:2487). */
+#ifndef XM_S_arena_vector_get_flat_distance
+#define XM_S_arena_vector_get_flat_distance
+s32 xm_arena_vector_get_flat_distance(VECTOR *from, VECTOR *to) __asm__("func_80088838");
+#endif
+s32 func_80088838(VECTOR *from, VECTOR *to) {
+    VECTOR delta;
+
+    delta.vx = to->vx - from->vx;
+    delta.vz = to->vz - from->vz;
+    gte_ldlvl(&delta);
+    gte_sqr0();
+    gte_stlvnl(&delta);
+    return xm_SquareRoot0(delta.vx + delta.vz);
+}
+#endif
 extern u8 D_8006F978[];
 
 void func_800888B0(arg0)

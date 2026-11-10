@@ -370,7 +370,191 @@ void func_800704E8(void)
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/movie/nonmatchings/main", func_80070DCC);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): movie_mode_poll_cd_check_input (src/decomp/src/movie/movie.c:298). */
+#ifndef XM_T_FileEntry
+#define XM_T_FileEntry
+typedef struct {
+    u16 id;
+    void *data;
+} FileEntry;
+#endif
+#ifndef XM_T_StreamFrame
+#define XM_T_StreamFrame
+typedef struct {
+    u8 unknown0[6];
+    u16 sectors; 
+    u16 word8;   
+} StreamFrame;
+#endif
+#ifndef XM_S_movie_mode_poll_cd_check_input
+#define XM_S_movie_mode_poll_cd_check_input
+void xm_movie_mode_poll_cd_check_input(void) __asm__("func_80070DCC");
+#endif
+#ifndef XM_S_movie_mode_previous_buttons
+#define XM_S_movie_mode_previous_buttons
+extern s32 xm_movie_mode_previous_buttons __asm__("D_800773B4");
+#endif
+#ifndef XM_S_movie_mode_buttons
+#define XM_S_movie_mode_buttons
+extern s32 xm_movie_mode_buttons __asm__("D_800773AC");
+#endif
+#ifndef XM_S_movie_mode_start_cd_check_command
+#define XM_S_movie_mode_start_cd_check_command
+void xm_movie_mode_start_cd_check_command(s32 command) __asm__("func_80071C34");
+#endif
+#ifndef XM_S_movie_mode_cd_check_cancel_count
+#define XM_S_movie_mode_cd_check_cancel_count
+extern s32 xm_movie_mode_cd_check_cancel_count __asm__("D_80076EA4");
+#endif
+#ifndef XM_S_cd_stop_read
+#define XM_S_cd_stop_read
+void xm_cd_stop_read(s32 reason) __asm__("func_8002A498");
+#endif
+#ifndef XM_S_movie_mode_cd_check_stream_mode
+#define XM_S_movie_mode_cd_check_stream_mode
+extern s32 xm_movie_mode_cd_check_stream_mode __asm__("D_80076EB8");
+#endif
+#ifndef XM_S_movie_mode_cd_check_command
+#define XM_S_movie_mode_cd_check_command
+extern s32 xm_movie_mode_cd_check_command __asm__("D_80076E48");
+#endif
+#ifndef XM_S_movie_mode_start_cd_check_sector_read
+#define XM_S_movie_mode_start_cd_check_sector_read
+void xm_movie_mode_start_cd_check_sector_read(void) __asm__("func_80071BA0");
+#endif
+#ifndef XM_S_movie_mode_cd_check_stream_chunk
+#define XM_S_movie_mode_cd_check_stream_chunk
+extern s32 *xm_movie_mode_cd_check_stream_chunk __asm__("D_80076E9C");
+#endif
+#ifndef XM_S_stream_get_next_chunk
+#define XM_S_stream_get_next_chunk
+u8 *xm_stream_get_next_chunk(void) __asm__("func_80028B14");
+#endif
+#ifndef XM_S_movie_mode_cd_check_stream_bytes_left
+#define XM_S_movie_mode_cd_check_stream_bytes_left
+extern s32 xm_movie_mode_cd_check_stream_bytes_left __asm__("D_80076E94");
+#endif
+#ifndef XM_S_movie_mode_cd_check_write_pointer
+#define XM_S_movie_mode_cd_check_write_pointer
+extern s32 *xm_movie_mode_cd_check_write_pointer __asm__("D_80076E84");
+#endif
+#ifndef XM_S_movie_mode_cd_check_file_table
+#define XM_S_movie_mode_cd_check_file_table
+extern FileEntry *xm_movie_mode_cd_check_file_table __asm__("D_80076E7C");
+#endif
+#ifndef XM_S_movie_mode_cd_check_file_table_index
+#define XM_S_movie_mode_cd_check_file_table_index
+extern s32 xm_movie_mode_cd_check_file_table_index __asm__("D_80076EB4");
+#endif
+#ifndef XM_S_cd_get_aligned_file_size
+#define XM_S_cd_get_aligned_file_size
+s32 xm_cd_get_aligned_file_size(s32 file) __asm__("ArchiveDecodeAlignedSize");
+#endif
+#ifndef XM_S_stream_release_chunk
+#define XM_S_stream_release_chunk
+u16 xm_stream_release_chunk(u8 *chunk) __asm__("func_8002945C");
+#endif
+#ifndef XM_S_stream_get_next_movie_frame
+#define XM_S_stream_get_next_movie_frame
+s32 xm_stream_get_next_movie_frame(u8 **data, StreamFrame **frame) __asm__("func_80028F30");
+#endif
+#ifndef XM_S_movie_mode_cd_check_host_frame_data
+#define XM_S_movie_mode_cd_check_host_frame_data
+extern u8 *xm_movie_mode_cd_check_host_frame_data __asm__("D_80076F7C");
+#endif
+#ifndef XM_S_movie_mode_cd_check_host_frame
+#define XM_S_movie_mode_cd_check_host_frame
+extern StreamFrame *xm_movie_mode_cd_check_host_frame __asm__("D_80076F80");
+#endif
+#ifndef XM_S_stream_release_movie_frame
+#define XM_S_stream_release_movie_frame
+u16 xm_stream_release_movie_frame(u8 *chunk) __asm__("func_800294B4");
+#endif
+#ifndef XM_S_movie_mode_cd_check_random_mode
+#define XM_S_movie_mode_cd_check_random_mode
+extern s32 xm_movie_mode_cd_check_random_mode __asm__("D_80076EBC");
+#endif
+#ifndef XM_S_movie_mode_next_random
+#define XM_S_movie_mode_next_random
+s32 xm_movie_mode_next_random(void) __asm__("func_80074AF0");
+#endif
+void func_80070DCC(void) {
+    s32 i;
+    s32 command;
+
+    if (!(xm_movie_mode_previous_buttons & 0x20) && (xm_movie_mode_buttons & 0x20)) {
+        xm_movie_mode_start_cd_check_command(1);
+    }
+    if (!(xm_movie_mode_previous_buttons & 0x10) && (xm_movie_mode_buttons & 0x10)) {
+        xm_movie_mode_start_cd_check_command(2);
+    }
+    if (!(xm_movie_mode_previous_buttons & 0x80) && (xm_movie_mode_buttons & 0x80)) {
+        xm_movie_mode_start_cd_check_command(3);
+    }
+    if (!(xm_movie_mode_previous_buttons & 0x40) && (xm_movie_mode_buttons & 0x40)) {
+        xm_movie_mode_cd_check_cancel_count++;
+        xm_cd_stop_read(0);
+    }
+    if (!(xm_movie_mode_previous_buttons & 0x1000) && (xm_movie_mode_buttons & 0x1000)) {
+        xm_movie_mode_start_cd_check_command(7);
+    }
+    if (!(xm_movie_mode_previous_buttons & 0x4000) && (xm_movie_mode_buttons & 0x4000)) {
+        xm_movie_mode_start_cd_check_command(9);
+    }
+    if (!(xm_movie_mode_previous_buttons & 8) && (xm_movie_mode_buttons & 8)) {
+        xm_movie_mode_cd_check_stream_mode = 1 - xm_movie_mode_cd_check_stream_mode;
+    }
+    if (!(xm_movie_mode_previous_buttons & 4) && (xm_movie_mode_buttons & 4) && xm_movie_mode_cd_check_command < 11) {
+        xm_movie_mode_start_cd_check_sector_read();
+    }
+    if (xm_movie_mode_cd_check_stream_mode == 1) {
+        xm_movie_mode_cd_check_stream_chunk = (s32 *)xm_stream_get_next_chunk();
+        if (xm_movie_mode_cd_check_stream_chunk != NULL) {
+            i = 0;
+            if (xm_movie_mode_cd_check_stream_bytes_left > 0x800) {
+                do {
+                    *xm_movie_mode_cd_check_write_pointer++ = xm_movie_mode_cd_check_stream_chunk[i++];
+                } while (i < 0x200);
+            } else {
+                while (i < xm_movie_mode_cd_check_stream_bytes_left / 4) {
+                    *xm_movie_mode_cd_check_write_pointer++ = xm_movie_mode_cd_check_stream_chunk[i++];
+                }
+            }
+            xm_movie_mode_cd_check_stream_bytes_left -= 0x800;
+            if (xm_movie_mode_cd_check_stream_bytes_left <= 0 && xm_movie_mode_cd_check_command == 12) {
+                i = xm_movie_mode_cd_check_file_table[++xm_movie_mode_cd_check_file_table_index].id;
+                if (i != 0) {
+                    xm_movie_mode_cd_check_stream_bytes_left = xm_cd_get_aligned_file_size(i);
+                }
+                xm_movie_mode_cd_check_write_pointer = xm_movie_mode_cd_check_file_table[xm_movie_mode_cd_check_file_table_index].data;
+            }
+            xm_stream_release_chunk((u8 *)xm_movie_mode_cd_check_stream_chunk);
+        }
+    }
+    if (xm_movie_mode_cd_check_stream_mode == 2 && xm_stream_get_next_movie_frame(&xm_movie_mode_cd_check_host_frame_data, &xm_movie_mode_cd_check_host_frame) == 0) {
+        xm_stream_release_movie_frame((u8 *)xm_movie_mode_cd_check_host_frame);
+    }
+    if (!(xm_movie_mode_previous_buttons & 0x2000) && (xm_movie_mode_buttons & 0x2000)) {
+        xm_movie_mode_start_cd_check_command(11);
+    }
+    if (!(xm_movie_mode_previous_buttons & 0x8000) && (xm_movie_mode_buttons & 0x8000)) {
+        xm_movie_mode_start_cd_check_command(13);
+    }
+    if (xm_movie_mode_cd_check_random_mode != 0) {
+        command = xm_movie_mode_next_random() & 0xFF;
+        if (command == 0 && xm_movie_mode_cd_check_command < 11) {
+            xm_movie_mode_start_cd_check_sector_read();
+        }
+        if ((u32)(command - 1) < 12) {
+            xm_movie_mode_start_cd_check_command(command);
+        }
+    }
+    if (!(xm_movie_mode_previous_buttons & 0x100) && (xm_movie_mode_buttons & 0x100)) {
+        xm_movie_mode_cd_check_random_mode = 1 - xm_movie_mode_cd_check_random_mode;
+    }
+}
+#endif
 #endif
 
 #ifndef XENO_PC_PORT
