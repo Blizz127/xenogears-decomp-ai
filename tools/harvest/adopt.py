@@ -8,7 +8,7 @@ ap.add_argument('module'); ap.add_argument('--max-insns',type=int,default=60); a
 ap.add_argument('--limit',type=int,default=0); ap.add_argument('--tu',default=''); ap.add_argument('--out',default='')
 ap.add_argument('--root',default=os.path.expanduser('~/dev/xenogears-decomp-public-harvest'))
 ap.add_argument('--work',default=os.path.expanduser('~/scratch/xeno-mit-harvest'))
-ap.add_argument('--source',default='xem'); ap.add_argument('--only',default=''); ap.add_argument('--diag',action='store_true'); ap.add_argument('--cc',default=''); ap.add_argument('--altcc',action='store_true'); ap.add_argument('--dump',default='')
+ap.add_argument('--source',default='xem'); ap.add_argument('--only',default=''); ap.add_argument('--diag',action='store_true'); ap.add_argument('--cc',default=''); ap.add_argument('--altcc',action='store_true'); ap.add_argument('--hand',default=''); ap.add_argument('--dump',default='')
 a=ap.parse_args()
 ROOT=a.root; WORK=a.work; MOD=a.module
 os.chdir(ROOT)
@@ -117,6 +117,20 @@ def pick(entries,kinds,pref_file=None):
     # prefer header extern for vars
     c.sort(key=lambda e:(not e['src'].lstrip().startswith('extern'), e['file'].endswith('.c')))
     return c[0] if c else None
+def pick_var(es,n,src,pf):
+    c=[e for e in es if e['kind']=='var']
+    if not c: return None
+    ss=strip_str(src)
+    dot=bool(re.search(r'\b%s\s*\.'%re.escape(n),ss)); arrow=bool(re.search(r'\b%s\s*->'%re.escape(n),ss)); idx_=bool(re.search(r'\b%s\s*\['%re.escape(n),ss))
+    def score(e):
+        d=re.sub(r'\s*=.*','',e['src'],flags=re.S); sc=0
+        arr='[' in d; ptr='*' in d
+        if dot: sc+= 2 if not arr and not ptr else -2
+        if arrow: sc+= 2 if (ptr or arr) else -2
+        if idx_: sc+= 2 if (arr or ptr) else -2
+        return sc
+    c.sort(key=lambda e:(-score(e), e['file']!=pf, not e['src'].lstrip().startswith('extern'), e['file'].endswith('.c')))
+    return c[0]
 def split_top_commas(s):
     out=[];d=0;cur=''
     for ch in s:
@@ -173,7 +187,7 @@ def analyze(row,fe,mode=''):
                 if t2!=n: resolve(t2,head,in_type=True)
             d=re.sub(r'\b%s\b'%re.escape(n),'xm_'+n,head,count=1)
             return '%s __asm__("%s");'%(d,bn)
-        e=pick(es,('var',),pf)
+        e=pick_var(es,n,src,pf)
         if not e: raise Reject('no var decl for '+n)
         s=e['src'].strip().rstrip(';')
         s=re.sub(r'\s*=.*','',s,flags=re.S)
@@ -302,9 +316,20 @@ def disasm_func(obj,name):
 def sec_dump(obj):
     r=run('mips-linux-gnu-objdump -s -r -j .rodata -j .data -j .sdata -j .bss -j .sbss %s'%obj)
     return re.sub(r'^.*file format.*$','',r.stdout,flags=re.M)
+HAND={}
+if a.hand:
+    cur=None
+    for l in open(a.hand).read().split('\n'):
+        m=re.match(r'^//// (\w+)\s*$',l)
+        if m: cur=m.group(1); HAND[cur]=[]; continue
+        if cur: HAND[cur].append(l)
+    HAND={k:'#ifndef XENO_PC_PORT\n/* Hand-matched (references: ex-machina/EtherAura/Noah, m2c). */\n'+'\n'.join(v).strip('\n')+'\n#endif\n' for k,v in HAND.items()}
 def main():
-    rows=[d for d in csv.DictReader(open(WORK+'/HARVEST.csv')) if d['module']==MOD and d['blizz_status']=='INCLUDE_ASM' and a.min_insns<=int(d['insns'])<=a.max_insns and ((d['ea_conf']=='aligned-by-order' and d['ea_func']) if EA_MODE else d['xem_status']=='C')]
-    if EA_MODE:
+    if a.hand:
+        rows=[{'blizz_name':k,'addr':'','insns':'0','xem_name':k,'xem_loc':'','xem_cc':'2.7.2'} for k in HAND]
+    else:
+      rows=[d for d in csv.DictReader(open(WORK+'/HARVEST.csv')) if d['module']==MOD and d['blizz_status']=='INCLUDE_ASM' and a.min_insns<=int(d['insns'])<=a.max_insns and ((d['ea_conf']=='aligned-by-order' and d['ea_func']) if EA_MODE else d['xem_status']=='C')]
+    if EA_MODE and not a.hand:
         for d in rows: d['xem_name']=d['ea_func']; d['xem_loc']=d['ea_file']
         excl=set(l.split()[0] for l in open(WORK+'/ea_skip.txt')) if os.path.exists(WORK+'/ea_skip.txt') else set()
         rows=[d for d in rows if d['blizz_name'] not in excl]
@@ -345,6 +370,8 @@ def main():
         cands=[];
         for r in rs:
             if a.limit and n>=a.limit: break
+            if a.hand:
+                blk=HAND[r['blizz_name']]; r['mk']=(lambda blk=blk: (lambda md: blk))(); cands.append((r,blk)); n+=1; continue
             es=idx.get(r['xem_name'],[])
             fe=None
             for e in es:
@@ -402,7 +429,12 @@ def main():
         if cs:
             p=attempt(cs)
             if p.returncode!=0:
-                res.append(('*TU*',tu,'abort','combined compile fails')); cs=[]
+                keep=[]
+                for x in cs:
+                    if attempt(keep+[x]).returncode==0: keep.append(x)
+                    else: res.append((x[0]['blizz_name'],x[0]['addr'],'compile-error','conflicts with other adopted blocks in TU'))
+                cs=keep
+                if cs and attempt(cs).returncode!=0: res.append(('*TU*',tu,'abort','combined compile fails')); cs=[]
         for rnd in range(100):
             if not cs: break
             p=attempt(cs)
