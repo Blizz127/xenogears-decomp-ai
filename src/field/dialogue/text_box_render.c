@@ -277,7 +277,75 @@ static inline void FieldTextBoxLinkPrim(void* ot, void* prim) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/dialogue/text_box_render", FieldTextBoxInitialize);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_dialogue_reset_windows (src/decomp/src/field/field_motion.c:1557). */
+#ifndef XM_S_field_dialogue_reset_windows
+#define XM_S_field_dialogue_reset_windows
+void xm_field_dialogue_reset_windows(void) __asm__("FieldTextBoxInitialize");
+#endif
+#ifndef XM_S_field_texture_windows
+#define XM_S_field_texture_windows
+extern RECT xm_field_texture_windows[16] __asm__("D_800AFC80");
+#endif
+#ifndef XM_S_SetDrawMode
+#define XM_S_SetDrawMode
+void xm_SetDrawMode(DR_MODE *p, int dfe, int dtd, int tpage, RECT *tw) __asm__("SetDrawMode");
+#endif
+#ifndef XM_S_field_texture_window_modes
+#define XM_S_field_texture_window_modes
+extern DR_MODE xm_field_texture_window_modes[2][16] __asm__("D_800B1DF4");
+#endif
+#ifndef XM_S_GetTPage
+#define XM_S_GetTPage
+u_short xm_GetTPage(int tp, int abr, int x, int y) __asm__("GetTPage");
+#endif
+#ifndef XM_S_field_dialogue_build_packets
+#define XM_S_field_dialogue_build_packets
+void xm_field_dialogue_build_packets(s32 w) __asm__("FieldTextBoxInitializePrimitives");
+#endif
+#ifndef XM_S_field_dialogue_message_slots
+#define XM_S_field_dialogue_message_slots
+extern s32 xm_field_dialogue_message_slots[4] __asm__("D_800B068C");
+#endif
+void FieldTextBoxInitialize(void) {
+    RECT area;
+    RECT *window;
+    s32 i;
+
+    area.y = 0;
+    area.x = 0;
+    area.h = 0xFF;
+    area.w = 0xFF;
+    for (i = 0; i < 16; i++) {
+        window = &xm_field_texture_windows[i];
+        window->y = 0;
+        xm_field_texture_windows[i].x = 0;
+        window->h = 0xFF;
+        xm_field_texture_windows[i].w = 0xFF;
+        window->y = 0;
+        xm_field_texture_windows[i].x = 0;
+        window->h = 0xFF;
+        xm_field_texture_windows[i].w = 0xFF;
+        xm_SetDrawMode(&xm_field_texture_window_modes[0][i], 0, 0, xm_GetTPage(0, 0, 0x380, 0x100), window);
+        xm_SetDrawMode(&xm_field_texture_window_modes[1][i], 0, 0, xm_GetTPage(0, 0, 0x380, 0x100), window);
+    }
+    for (i = 0; i < 4; i++) {
+        xm_field_dialogue_windows[i].owner = 0xFF;
+        xm_field_dialogue_windows[i].unk418 = 0xFF;
+        xm_field_dialogue_windows[i].choice.status = -1;
+        xm_field_dialogue_windows[i].prompt.status = -1;
+        xm_field_dialogue_windows[i].busy = -1;
+        xm_field_dialogue_windows[i].cleared = -1;
+        xm_field_dialogue_windows[i].age = 0xFFFF;
+        xm_field_dialogue_windows[i].owner = 0xFF;
+        xm_field_dialogue_windows[i].unk412 = 0;
+        xm_field_dialogue_build_packets(i);
+        xm_field_dialogue_message_slots[i] = -1;
+        xm_SetDrawMode(&xm_field_dialogue_windows[i].modes[0], 0, 0, xm_GetTPage(0, 0, 0x300, 0x100), &area);
+        xm_SetDrawMode(&xm_field_dialogue_windows[i].modes[1], 0, 0, xm_GetTPage(0, 0, 0x300, 0x100), &area);
+    }
+}
+#endif
 #else
 void FieldTextBoxInitialize(void) {
     RECT rect;
@@ -774,7 +842,149 @@ void func_8007F5AC(s32 textBoxIndex, s32 faceDirection) {
 #endif /* XENO_PC_PORT */
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/dialogue/text_box_render", func_8007F6F8);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_dialogue_close_window (src/decomp/src/field/field_motion.c:1883). */
+#ifndef XM_T_FadeChannel
+#define XM_T_FadeChannel
+typedef struct {
+    DR_MODE modes[2]; 
+    TILE tiles[2];   
+    s32 level[3];
+    s32 step[3];
+    u16 abr;
+    s16 active;
+    s16 steps;
+    u16 pad;
+} FadeChannel;
+#endif
+#ifndef XM_T_FieldWork
+#define XM_T_FieldWork
+typedef struct FieldWork {
+    s16 unk2078;               
+    s16 unk207A;               
+    s16 effect_steps;          
+    u8 unk207E[2];
+    s32 effect_value[6];       
+    s32 effect_step[6];        
+    s16 unk20B0[2];            
+    void *effect_buffers[4];   
+    FadeChannel fades[2];      
+    u16 open_windows;          
+
+    s16 encounter_inhibition;  
+    s16 terrain_angle;         
+    u16 input_mask;            
+    s32 unk217C;               
+    s32 unk2180;               
+    SVECTOR sprite_angles;     
+    s16 scale;                 
+    s16 sprite_gate;           
+    u8 fog_color[4];           
+    u8 far_color[4];           
+    s16 fog_range[2];          
+    u8 clear_color[3];         
+    u8 party_bits;             
+    s16 unk21A0[6];            
+    s16 emitter_range;         
+    s16 piece_drift[3];        
+    s16 unk21B4;               
+    u8 unk21B6[2];
+    s32 last_sound_effect;     
+    s32 unk21BC[3];            
+    u8 unk21C8[0x21CC - 0x21C8];
+    u8 party_processing_mode;  
+    u8 camera_floor_fixed;     
+    u8 preserve_nonplayer_motion; 
+    u8 forced_position;        
+    u8 script_control[2];      
+    u8 piece_drift_mode;       
+    u8 unk21D3;
+    s16 unk21D4;               
+    s16 text_speed;            
+    s32 camera_counter;        
+    s16 unk21DC[4];            
+    s16 unk21E4[4];            
+    SVECTOR layer_positions[4]; 
+    s32 layer_scales[4];       
+    s16 unk221C[5][3];         
+    u8 unk223A[2];
+    s16 unk223C[3][3];         
+    u8 unk224E[0x225C - 0x224E];
+    u8 unk225C[3];             
+    u8 unk225F[0x2264 - 0x225F]; 
+    s32 unk2264;               
+    s32 unk2268;               
+    s32 controlled;            
+    u16 encounter_music[16];   
+    s16 battle_music;          
+    u8 unk2292[2];
+    s32 unk2294;               
+    s32 unk2298;               
+    s32 unk229C;               
+    u16 unk22A0[32];           
+    s16 unk22E0;               
+    s16 emitter_descriptor[3]; 
+    s16 unk22E8[3][4];         
+    s16 unk2300[3][4];         
+    s32 unk2318[3];            
+    s16 emitter_position[3][4]; 
+    u16 effects_kept;          
+    u16 unk233E;               
+    s16 repeat_delay;          
+    s16 repeat_remaining;      
+    s16 jump_mode;             
+    s16 animation_mode;        
+    u16 unk2348;               
+    s16 unk234A;               
+    s16 gear_riding_lock_override; 
+    s16 followers_idle;        
+    u32 unk2350;               
+    u8 unk2354;                
+    u8 unk2355;                
+    u8 unk2356;                
+    u8 unk2357;                
+    u8 unk2358;                
+    u8 unk2359[0x235C - 0x2359];
+} FieldWork;
+#endif
+#ifndef XM_S_field_dialogue_close_window
+#define XM_S_field_dialogue_close_window
+s32 xm_field_dialogue_close_window(s16 window) __asm__("func_8007F6F8");
+#endif
+#ifndef XM_S_window_reset_if_idle
+#define XM_S_window_reset_if_idle
+void xm_window_reset_if_idle(Window *window) __asm__("func_80034614");
+#endif
+#ifndef XM_S_window_end_wait
+#define XM_S_window_end_wait
+void xm_window_end_wait(Window *window) __asm__("func_800345E0");
+#endif
+#ifndef XM_S_window_close
+#define XM_S_window_close
+void xm_window_close(Window *window) __asm__("func_800346D4");
+#endif
+#ifndef XM_S_field_work
+#define XM_S_field_work
+extern FieldWork xm_field_work __asm__("g_FieldEffects");
+#endif
+s32 func_8007F6F8(s16 window) {
+    if (xm_field_dialogue_windows[window].busy == 0) {
+        xm_window_reset_if_idle(&xm_field_dialogue_windows[window].text);
+        xm_window_end_wait(&xm_field_dialogue_windows[window].text);
+        xm_window_close(&xm_field_dialogue_windows[window].text);
+        xm_field_dialogue_windows[window].choice.status = -1;
+        xm_field_dialogue_windows[window].busy = -1;
+        xm_field_dialogue_windows[window].cleared = -1;
+        xm_field_dialogue_windows[window].age = 0xFFFF;
+        xm_field_dialogue_message_slots[window] = -1;
+        xm_field_work.open_windows &= (1 << window) ^ 0xFF;
+        xm_field_dialogue_windows[window].owner = 0xFF;
+        xm_field_dialogue_windows[window].unk412 = 0;
+        return 0;
+    }
+    return -1;
+}
+#endif
 #else
 void func_8007F6F8(s16 index) {
     u32 mask;

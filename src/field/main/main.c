@@ -235,7 +235,572 @@ void func_80077884(void) {
 #endif /* XENO_PC_PORT */
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/main", func_80077AB4);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_layer_start (src/decomp/src/field/field.c:2792). */
+#ifndef XM_T_FadeChannel
+#define XM_T_FadeChannel
+typedef struct {
+    DR_MODE modes[2]; 
+    TILE tiles[2];   
+    s32 level[3];
+    s32 step[3];
+    u16 abr;
+    s16 active;
+    s16 steps;
+    u16 pad;
+} FadeChannel;
+#endif
+#ifndef XM_T_FieldWork
+#define XM_T_FieldWork
+typedef struct FieldWork {
+    s16 unk2078;               
+    s16 unk207A;               
+    s16 effect_steps;          
+    u8 unk207E[2];
+    s32 effect_value[6];       
+    s32 effect_step[6];        
+    s16 unk20B0[2];            
+    void *effect_buffers[4];   
+    FadeChannel fades[2];      
+    u16 open_windows;          
+
+    s16 encounter_inhibition;  
+    s16 terrain_angle;         
+    u16 input_mask;            
+    s32 unk217C;               
+    s32 unk2180;               
+    SVECTOR sprite_angles;     
+    s16 scale;                 
+    s16 sprite_gate;           
+    u8 fog_color[4];           
+    u8 far_color[4];           
+    s16 fog_range[2];          
+    u8 clear_color[3];         
+    u8 party_bits;             
+    s16 unk21A0[6];            
+    s16 emitter_range;         
+    s16 piece_drift[3];        
+    s16 unk21B4;               
+    u8 unk21B6[2];
+    s32 last_sound_effect;     
+    s32 unk21BC[3];            
+    u8 unk21C8[0x21CC - 0x21C8];
+    u8 party_processing_mode;  
+    u8 camera_floor_fixed;     
+    u8 preserve_nonplayer_motion; 
+    u8 forced_position;        
+    u8 script_control[2];      
+    u8 piece_drift_mode;       
+    u8 unk21D3;
+    s16 unk21D4;               
+    s16 text_speed;            
+    s32 camera_counter;        
+    s16 unk21DC[4];            
+    s16 unk21E4[4];            
+    SVECTOR layer_positions[4]; 
+    s32 layer_scales[4];       
+    s16 unk221C[5][3];         
+    u8 unk223A[2];
+    s16 unk223C[3][3];         
+    u8 unk224E[0x225C - 0x224E];
+    u8 unk225C[3];             
+    u8 unk225F[0x2264 - 0x225F]; 
+    s32 unk2264;               
+    s32 unk2268;               
+    s32 controlled;            
+    u16 encounter_music[16];   
+    s16 battle_music;          
+    u8 unk2292[2];
+    s32 unk2294;               
+    s32 unk2298;               
+    s32 unk229C;               
+    u16 unk22A0[32];           
+    s16 unk22E0;               
+    s16 emitter_descriptor[3]; 
+    s16 unk22E8[3][4];         
+    s16 unk2300[3][4];         
+    s32 unk2318[3];            
+    s16 emitter_position[3][4]; 
+    u16 effects_kept;          
+    u16 unk233E;               
+    s16 repeat_delay;          
+    s16 repeat_remaining;      
+    s16 jump_mode;             
+    s16 animation_mode;        
+    u16 unk2348;               
+    s16 unk234A;               
+    s16 gear_riding_lock_override; 
+    s16 followers_idle;        
+    u32 unk2350;               
+    u8 unk2354;                
+    u8 unk2355;                
+    u8 unk2356;                
+    u8 unk2357;                
+    u8 unk2358;                
+    u8 unk2359[0x235C - 0x2359];
+} FieldWork;
+#endif
+#ifndef XM_T_ScriptBlock
+#define XM_T_ScriptBlock
+typedef struct ScriptBlock {
+    u8 pad0[4];
+    s32 *locals;            
+    s32 entries[1];         
+} ScriptBlock;
+#endif
+#ifndef XM_T_SoundBank
+#define XM_T_SoundBank
+typedef struct SoundBank {
+    u8 unk0[0x10];
+    u16 flags;
+    u8 unk12[2];
+    u16 id;
+    u16 unk16;         
+    u16 volumes;       
+    u8 unk1A[2];
+    struct SoundBank *next;
+    u16 effect[1];     
+} SoundBank;
+#endif
+#ifndef XM_T_SoundOwner
+#define XM_T_SoundOwner
+typedef struct SoundOwner {
+    u8 pad0[8];
+    SoundBank *bank;        
+    void *end;              
+} SoundOwner;
+#endif
+#ifndef XM_T_ActorScript
+#define XM_T_ActorScript
+typedef struct ActorScript {
+    u8 pad0[4];
+    ScriptBlock *script;    
+    SoundOwner *owner;      
+} ActorScript;
+#endif
+#ifndef XM_T_ObjectDesc
+#define XM_T_ObjectDesc
+typedef struct {
+    u8 pad0[2];
+    s16 size[3];       
+
+
+    s16 scale;         
+    u8 field2A;        
+
+
+    u8 padB;
+    u16 flags;         
+    u8 channelCount;   
+    u8 padF;
+    u8 imageAnimCount; 
+    u8 pad11;
+    u8 meshCount;      
+    u8 pad13;
+    s16 meshes[1];     
+
+
+} ObjectDesc;
+#endif
+#ifndef XM_T_ObjectHeader
+#define XM_T_ObjectHeader
+typedef struct {
+    u8 pad0[4];
+    ObjectDesc *desc;  
+    void *meshData[1]; 
+} ObjectHeader;
+#endif
+#ifndef XM_T_ObjectModelFile
+#define XM_T_ObjectModelFile
+typedef struct {
+    u8 pad0[4];
+    void *images;         
+    u8 *models;           
+    u16 *hierarchy;       
+
+    ObjectHeader *header; 
+} ObjectModelFile;
+#endif
+#ifndef XM_T_MorphDelta
+#define XM_T_MorphDelta
+typedef struct {
+    s16 dx, dy, dz;
+    s16 index;
+} MorphDelta;
+#endif
+#ifndef XM_T_MorphTarget
+#define XM_T_MorphTarget
+typedef struct {
+    s32 count;
+    void *deltas;
+    MorphDelta *normals;
+} MorphTarget;
+#endif
+#ifndef XM_T_MorphTable
+#define XM_T_MorphTable
+typedef struct {
+    s32 count;
+    MorphTarget targets[1];
+} MorphTable;
+#endif
+#ifndef XM_T_SpriteModel
+#define XM_T_SpriteModel
+typedef struct {
+    u16 flags;          
+    u16 vertex_count;
+    u16 primitive_count;
+    u16 group_count;    
+    SVECTOR *vertices;
+    SVECTOR *normals;
+    u8 *unk10;          
+    u8 *unk14;
+    u8 *unk18;
+    MorphTable *morphs; 
+    SVECTOR box_min;    
+    SVECTOR box_max;
+    s32 aux_size;       
+    s32 packet_size;    
+} SpriteModel;
+#endif
+#ifndef XM_T_ModelTable
+#define XM_T_ModelTable
+typedef struct ModelTable {
+    SpriteModel **models;
+    u32 count;
+} ModelTable;
+#endif
+#ifndef XM_T_EffectEntry
+#define XM_T_EffectEntry
+typedef struct {
+    u8 used;
+    u8 field1;     
+    u8 kind;       
+    u8 tag;        
+    u16 params[6]; 
+    u16 time;      
+    u16 duration;  
+} EffectEntry;
+#endif
+#ifndef XM_T_ModelPart
+#define XM_T_ModelPart
+typedef struct ModelPart {
+    struct ModelPart *parent; 
+    u8 dirty;         
+    u8 rotate;        
+    u8 yxz;           
+    u8 visible;       
+    u16 modelId;      
+    u16 index;        
+    MATRIX transform; 
+    MATRIX world;     
+    s16 scale[3];     
+    u16 field52;      
+
+
+    SVECTOR rotation;        
+    s32 translation[3];      
+    void *packets[2];        
+    EffectEntry *effects[3]; 
+} ModelPart;
+#endif
+#ifndef XM_T_EntryTable
+#define XM_T_EntryTable
+typedef struct EntryTable {
+    s32 count;
+    s32 *entries;
+} EntryTable;
+#endif
+#ifndef XM_T_EffectSprite
+#define XM_T_EffectSprite
+typedef struct {
+    s16 x0, y0, z0, pad06;
+    s16 x1, y1, z1;
+    s16 projected; 
+    s16 x2, y2, z2;
+    s16 age;       
+    s16 x3, y3, z3;
+    s16 lifetime;  
+    u16 color[3];  
+    s16 fade[3];   
+    POLY_FT4 packets[2]; 
+} EffectSprite;
+#endif
+#ifndef XM_T_SpritePool
+#define XM_T_SpritePool
+typedef struct SpritePool {
+    EffectSprite *records;
+    s16 count;
+    s16 next;
+} SpritePool;
+#endif
+#ifndef XM_T_ColorFade
+#define XM_T_ColorFade
+typedef struct ColorFade {
+    s16 id;           
+    u8 solid;         
+    u8 semiTrans;     
+    SpritePool *pool; 
+    EffectSprite *sprite; 
+    SVECTOR ends[2];  
+    union {
+        struct {
+            DVECTOR first[8];
+            DVECTOR second[8];
+        } screen;
+        struct {
+            VECTOR first[2];
+            VECTOR second[2];
+        } world;
+    } history; 
+    s16 time;     
+    s16 count;    
+    s16 max;      
+    s16 duration; 
+    s16 color[3]; 
+    s16 step[3];  
+} ColorFade;
+#endif
+#ifndef XM_T_SurfaceEntry
+#define XM_T_SurfaceEntry
+typedef struct {
+    s16 h0, h2, h4, h6, h8, hA, hC, hE;
+} SurfaceEntry;
+#endif
+#ifndef XM_T_SurfacePoint
+#define XM_T_SurfacePoint
+typedef struct {
+    s16 length;
+    s16 sag;
+    s16 pos[3];
+    u16 normalCount; 
+    s32 normal[3];   
+} SurfacePoint;
+#endif
+#ifndef XM_T_SurfacePoly
+#define XM_T_SurfacePoly
+typedef struct {
+    s16 index[3];
+    u8 pad6[2];
+    POLY_GT3 prim[2];
+} SurfacePoly;
+#endif
+#ifndef XM_T_Surface
+#define XM_T_Surface
+typedef struct Surface {
+    u16 h0;
+    u8 pad2[2];
+    s16 rings;              
+    s16 polys;              
+    s16 points;             
+    s16 entryCount;         
+    u8 b[6];                
+    u8 pad12[2];
+    SVECTOR *centres;       
+    SurfaceEntry *entries;  
+    SurfacePoint **strands; 
+    SurfacePoly *polyList;  
+} Surface;
+#endif
+#ifndef XM_T_ColorRow
+#define XM_T_ColorRow
+typedef struct {
+    u16 c[3];
+} ColorRow;
+#endif
+#ifndef XM_T_FrameCurve
+#define XM_T_FrameCurve
+typedef s16 (*FrameCurve)();
+#endif
+#ifndef XM_T_ImageAnim
+#define XM_T_ImageAnim
+typedef struct ImageAnim {
+    struct ImageAnim *target; 
+    u16 *pixels;              
+    u16 *pixels2;             
+    u16 *work;                
+    u8 mode;                  
+    u8 dirty;                 
+    s16 size;                 
+    u16 time;                 
+    u16 speed;                
+    u16 frame;                
+    u16 active;               
+    ColorRow *colors;         
+    s16 divisor;              
+    s16 base;                 
+    FrameCurve curve;         
+    RECT rect;                
+} ImageAnim;
+#endif
+#ifndef XM_T_Actor
+#define XM_T_Actor
+typedef struct Actor {
+    ModelTable *models;     
+    ModelPart *parts;       
+    s32 *entries;           
+    EntryTable *shared;     
+    s32 pc;                 
+    s32 *locals;            
+    s32 *globals;           
+    s16 scale;              
+    s16 h1E;                
+    u8 index;               
+    u8 b21;                 
+    u8 b22;                 
+    u8 b23;                 
+    s16 size[3];            
+    u8 reference;           
+    u8 depth;               
+    u8 queue_source[4];     
+    u8 queue_entry[4];      
+    u8 active;              
+    u8 b35;                 
+    u8 b36;                 
+    u8 scaled;              
+    u8 b38;                 
+    u8 b39;                 
+    s16 h3A;                
+    u16 h3C;                
+    s16 h3E;                
+    u16 h40;                
+    u16 h42;                
+    u16 h44;                
+    u16 h46;                
+    s16 h48;                
+    u16 flags;              
+
+
+
+    s32 w4C;                
+    s32 w50;                
+    s32 w54;                
+    s16 aim_actor;          
+    s16 aim_node;           
+    u8 parent;              
+    u8 inherit;             
+    s16 parent_node;        
+    s16 groundY;            
+
+
+    u8 b62;                 
+    u8 b63;                 
+    s16 aim_offset[3];      
+    s16 offset[3];          
+    s16 spin[3];            
+    s16 spin_accel[3];      
+    s16 drift[3];           
+    s16 drift_accel[3];     
+    s16 target[3];          
+    s16 h8E;                
+    s16 h90;                
+    s16 h92;                
+    u16 shift_x;            
+    u16 shift_y;            
+    s16 anim_state;         
+    s16 anim_loop;          
+    s16 anim_frame;         
+    s16 anim_frames;        
+    u8 *anim_pos;           
+    u8 *anim_start;         
+    void *group;            
+    void *blockAC;          
+    SoundOwner *ownerB0;    
+    SoundOwner *ownerB4;    
+    POLY_FT4 prims[2];      
+    u8 pad108[2];
+    u16 mask;               
+    u8 channel_count;       
+    u8 surfaceCount;        
+    u8 imageCount;          
+    u8 pad10F;
+    struct ColorFade *channels; 
+    struct Surface *surfaces;   
+    struct ImageAnim *images;   
+    s32 previous[3];        
+    s32 moved[3];           
+
+} Actor;
+#endif
+#ifndef XM_S_field_layer_start
+#define XM_S_field_layer_start
+void xm_field_layer_start(void) __asm__("func_80077AB4");
+#endif
+#ifndef XM_S_field_work
+#define XM_S_field_work
+extern FieldWork xm_field_work __asm__("g_FieldEffects");
+#endif
+#ifndef XM_S_field_music_wait_stream_and_disc_idle
+#define XM_S_field_music_wait_stream_and_disc_idle
+void xm_field_music_wait_stream_and_disc_idle(void) __asm__("func_8008A520");
+#endif
+#ifndef XM_S_field_sync_and_flush_cache
+#define XM_S_field_sync_and_flush_cache
+void xm_field_sync_and_flush_cache(void) __asm__("FieldRenderSyncAndFlush");
+#endif
+#ifndef XM_S_gear_model_init
+#define XM_S_gear_model_init
+void xm_gear_model_init(s32 slot_count) __asm__("func_801E738C");
+#endif
+#ifndef XM_S_gear_model_color_matrix
+#define XM_S_gear_model_color_matrix
+extern MATRIX *xm_gear_model_color_matrix __asm__("D_801E8644");
+#endif
+#ifndef XM_S_SetBackColor
+#define XM_S_SetBackColor
+void xm_SetBackColor(long rbk, long gbk, long bbk) __asm__("SetBackColor");
+#endif
+#ifndef XM_S_gear_model_create_actor
+#define XM_S_gear_model_create_actor
+void xm_gear_model_create_actor(s32 index, u16 flags, ActorScript *script, ObjectModelFile *file, s16 x, s16 y,
+                   s16 z, s16 w, s16 *pos) __asm__("func_801E742C");
+#endif
+#ifndef XM_S_mode_field_layer_script_files
+#define XM_S_mode_field_layer_script_files
+extern void *xm_mode_field_layer_script_files[4] __asm__("D_8005A420");
+#endif
+#ifndef XM_S_mode_field_layer_model_files
+#define XM_S_mode_field_layer_model_files
+extern void *xm_mode_field_layer_model_files[4] __asm__("D_8005A450");
+#endif
+#ifndef XM_S_heap_free
+#define XM_S_heap_free
+s32 xm_heap_free(void *data) __asm__("HeapFree");
+#endif
+#ifndef XM_S_gear_model_actors
+#define XM_S_gear_model_actors
+extern Actor *xm_gear_model_actors[10] __asm__("D_801E8670");
+#endif
+#ifndef XM_S_heap_select_owner_tag
+#define XM_S_heap_select_owner_tag
+void xm_heap_select_owner_tag(s32 tag, char **names) __asm__("HeapChangeCurrentUser");
+#endif
+void func_80077AB4(void) {
+    SVECTOR *position;
+    s32 row;
+    s32 i;
+
+    if (xm_field_work.unk2264 != 0) {
+        xm_field_music_wait_stream_and_disc_idle();
+        xm_field_sync_and_flush_cache();
+        xm_gear_model_init(xm_field_work.unk234A);
+        xm_gear_model_color_matrix = (MATRIX *)xm_field_work.unk223C;
+        xm_SetBackColor(xm_field_work.unk225C[0], xm_field_work.unk225C[1], xm_field_work.unk225C[2]);
+        for (i = 0; i < xm_field_work.unk2264; i++) {
+            position = &xm_field_work.layer_positions[i];
+            position->vx = 0;
+            position->vy = 0;
+            position->vz = 0;
+            row = xm_field_work.unk225F[i];
+            xm_gear_model_create_actor(i, 0, xm_mode_field_layer_script_files[i], xm_mode_field_layer_model_files[i],
+                          (s16)(0x240 - ((i + row) << 6)), 0x100, 0, (s16)(i + 0xFC),
+                          &position->vx);
+            xm_heap_free(xm_mode_field_layer_model_files[i]);
+            xm_field_work.layer_scales[i] = xm_gear_model_actors[i]->scale;
+        }
+        xm_heap_select_owner_tag(8, 0);
+    }
+}
+#endif
 #else
 void func_80077AB4(void) {
     s32 i;

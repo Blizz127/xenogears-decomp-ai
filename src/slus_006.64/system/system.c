@@ -1646,7 +1646,46 @@ s32 SystemRenderStringEntry(void* pString, void* pWork, s32 height, s32 flag) {
     return (s32)(*(s16*)(d + 0xE8)) << 2;
 }
 #else
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", SystemRenderStringEntry);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): window_render_text_line (src/decomp/src/resident/text_windows_and_pads.c:1068). */
+#ifndef XM_S_window_render_text_line
+#define XM_S_window_render_text_line
+s32 xm_window_render_text_line(u8 *text, void *image, s16 width, s32 flags) __asm__("SystemRenderStringEntry");
+#endif
+#ifndef XM_S_window_single_line_window
+#define XM_S_window_single_line_window
+extern Window xm_window_single_line_window __asm__("D_80059FD8");
+#endif
+#ifndef XM_S_window_single_line_layout
+#define XM_S_window_single_line_layout
+extern WindowLine xm_window_single_line_layout __asm__("D_8005A068");
+#endif
+s32 SystemRenderStringEntry(u8 *text, void *image, s16 width, s32 flags) {
+    Window *window = &xm_window_single_line_window;
+
+    window->width = width;
+    width |= 1;
+    window->lines = 1;
+    window->width = width;
+    window->unk8 = width * 4;
+    window->stride = width + 3;
+    window->text = text;
+    window->unk68 = 1;
+    window->unk84 = 0;
+    window->unk6C = 0;
+    window->unk6A = 0;
+    window->image = image;
+    window->flags = 0;
+    window->y = 0;
+    window->x = 0;
+    window->unk69 = 100;
+    window->layout = &xm_window_single_line_layout;
+    xm_window_single_line_layout.width = 0;
+    xm_window_single_line_layout.plane = flags & 1;
+    xm_window_reveal_text(window);
+    return window->layout->width * 4;
+}
+#endif
 #endif
 
 s32 func_80034F98(s32 arg0, s32 arg1) {

@@ -3197,7 +3197,103 @@ extern void func_8001B66C(void);
 extern void func_800859DC(u8* pSrc);
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80085B20);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_music_change_track (src/decomp/src/field/field_event.c:256). */
+#ifndef XM_T_WaveChunk
+#define XM_T_WaveChunk
+typedef struct {
+    u32 words[0x200];
+} WaveChunk;
+#endif
+#ifndef XM_S_field_music_change_track
+#define XM_S_field_music_change_track
+void xm_field_music_change_track(s32 music, s32 unused) __asm__("func_80085B20");
+#endif
+#ifndef XM_S_cd_sync_reads
+#define XM_S_cd_sync_reads
+s32 xm_cd_sync_reads(s32 mode) __asm__("ArchiveCdDataSync");
+#endif
+#ifndef XM_S_mode_stop_music
+#define XM_S_mode_stop_music
+void xm_mode_stop_music(void) __asm__("func_8001B66C");
+#endif
+#ifndef XM_S_mode_music_load_pending
+#define XM_S_mode_music_load_pending
+extern s32 xm_mode_music_load_pending __asm__("D_8004F308");
+#endif
+#ifndef XM_S_cd_select_directory
+#define XM_S_cd_select_directory
+s32 xm_cd_select_directory(s32 group, s32 index) __asm__("ArchiveSetIndex");
+#endif
+#ifndef XM_S_field_music_wave_table
+#define XM_S_field_music_wave_table
+extern u8 xm_field_music_wave_table[73 * 2] __asm__("D_800ADFCC");
+#endif
+#ifndef XM_S_field_music_release_shared_wave_bank
+#define XM_S_field_music_release_shared_wave_bank
+void xm_field_music_release_shared_wave_bank(void) __asm__("func_80086024");
+#endif
+#ifndef XM_S_mode_music_loaded_wave
+#define XM_S_mode_music_loaded_wave
+extern s32 xm_mode_music_loaded_wave __asm__("D_8004F33C");
+#endif
+#ifndef XM_S_field_music_start_stream
+#define XM_S_field_music_start_stream
+void xm_field_music_start_stream(s32 file, s32 unused, void (*callback)(s32)) __asm__("func_80085560");
+#endif
+#ifndef XM_S_field_music_gather_wave_chunk
+#define XM_S_field_music_gather_wave_chunk
+void xm_field_music_gather_wave_chunk(WaveChunk *chunk) __asm__("func_800859DC");
+#endif
+#ifndef XM_S_mode_music_wave_streaming
+#define XM_S_mode_music_wave_streaming
+extern s32 xm_mode_music_wave_streaming __asm__("D_8004F354");
+#endif
+#ifndef XM_S_field_music_chunk_count
+#define XM_S_field_music_chunk_count
+extern s32 xm_field_music_chunk_count __asm__("D_800B2370");
+#endif
+#ifndef XM_S_field_music_gather_buffer
+#define XM_S_field_music_gather_buffer
+extern void *xm_field_music_gather_buffer __asm__("D_800C3A1C");
+#endif
+#ifndef XM_S_heap_alloc
+#define XM_S_heap_alloc
+void *xm_heap_alloc(s32 size, s32 mode) __asm__("HeapAlloc");
+#endif
+#ifndef XM_S_field_music_seq_read_pending
+#define XM_S_field_music_seq_read_pending
+extern s32 xm_field_music_seq_read_pending __asm__("D_800AFC54");
+#endif
+void func_80085B20(s32 music, s32 unused) {
+    u8 wave;
+    s32 file;
+
+    xm_cd_sync_reads(0);
+    xm_mode_stop_music();
+    if (music == 0xFF) {
+        xm_mode_music_load_pending = 0;
+        return;
+    }
+    xm_cd_select_directory(0x1C, 0);
+    if (xm_field_music_wave_table[music * 2 + 1] == 1) {
+        xm_field_music_release_shared_wave_bank();
+    }
+    wave = xm_field_music_wave_table[music * 2];
+    if (wave != 0xFF) {
+        file = wave * 2 + 0x13;
+        if (xm_mode_music_loaded_wave != wave) {
+            xm_field_music_start_stream(file, 1, (void (*)(s32))xm_field_music_gather_wave_chunk);
+            xm_mode_music_wave_streaming = 1;
+            xm_field_music_chunk_count = 0;
+            xm_field_music_gather_buffer = xm_heap_alloc(0x2000, 1);
+        }
+    }
+    xm_cd_select_directory(4, 0);
+    xm_mode_music_load_pending = -1;
+    xm_field_music_seq_read_pending = 1;
+}
+#endif
 #else
 void func_80085B20(s32 a0) {
     u8 archiveFile;
@@ -3408,7 +3504,129 @@ extern void func_80039F9C(s32, s32, s32, s32);
 
 /* Attenuation from distance vs D_800B21AC, scaled by mode. Writes volume to *out. */
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_80086078);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_sound_compute_emitter_volume (src/decomp/src/field/field_event.c:411). */
+#ifndef XM_T_FadeChannel
+#define XM_T_FadeChannel
+typedef struct {
+    DR_MODE modes[2]; 
+    TILE tiles[2];   
+    s32 level[3];
+    s32 step[3];
+    u16 abr;
+    s16 active;
+    s16 steps;
+    u16 pad;
+} FadeChannel;
+#endif
+#ifndef XM_T_FieldWork
+#define XM_T_FieldWork
+typedef struct FieldWork {
+    s16 unk2078;               
+    s16 unk207A;               
+    s16 effect_steps;          
+    u8 unk207E[2];
+    s32 effect_value[6];       
+    s32 effect_step[6];        
+    s16 unk20B0[2];            
+    void *effect_buffers[4];   
+    FadeChannel fades[2];      
+    u16 open_windows;          
+
+    s16 encounter_inhibition;  
+    s16 terrain_angle;         
+    u16 input_mask;            
+    s32 unk217C;               
+    s32 unk2180;               
+    SVECTOR sprite_angles;     
+    s16 scale;                 
+    s16 sprite_gate;           
+    u8 fog_color[4];           
+    u8 far_color[4];           
+    s16 fog_range[2];          
+    u8 clear_color[3];         
+    u8 party_bits;             
+    s16 unk21A0[6];            
+    s16 emitter_range;         
+    s16 piece_drift[3];        
+    s16 unk21B4;               
+    u8 unk21B6[2];
+    s32 last_sound_effect;     
+    s32 unk21BC[3];            
+    u8 unk21C8[0x21CC - 0x21C8];
+    u8 party_processing_mode;  
+    u8 camera_floor_fixed;     
+    u8 preserve_nonplayer_motion; 
+    u8 forced_position;        
+    u8 script_control[2];      
+    u8 piece_drift_mode;       
+    u8 unk21D3;
+    s16 unk21D4;               
+    s16 text_speed;            
+    s32 camera_counter;        
+    s16 unk21DC[4];            
+    s16 unk21E4[4];            
+    SVECTOR layer_positions[4]; 
+    s32 layer_scales[4];       
+    s16 unk221C[5][3];         
+    u8 unk223A[2];
+    s16 unk223C[3][3];         
+    u8 unk224E[0x225C - 0x224E];
+    u8 unk225C[3];             
+    u8 unk225F[0x2264 - 0x225F]; 
+    s32 unk2264;               
+    s32 unk2268;               
+    s32 controlled;            
+    u16 encounter_music[16];   
+    s16 battle_music;          
+    u8 unk2292[2];
+    s32 unk2294;               
+    s32 unk2298;               
+    s32 unk229C;               
+    u16 unk22A0[32];           
+    s16 unk22E0;               
+    s16 emitter_descriptor[3]; 
+    s16 unk22E8[3][4];         
+    s16 unk2300[3][4];         
+    s32 unk2318[3];            
+    s16 emitter_position[3][4]; 
+    u16 effects_kept;          
+    u16 unk233E;               
+    s16 repeat_delay;          
+    s16 repeat_remaining;      
+    s16 jump_mode;             
+    s16 animation_mode;        
+    u16 unk2348;               
+    s16 unk234A;               
+    s16 gear_riding_lock_override; 
+    s16 followers_idle;        
+    u32 unk2350;               
+    u8 unk2354;                
+    u8 unk2355;                
+    u8 unk2356;                
+    u8 unk2357;                
+    u8 unk2358;                
+    u8 unk2359[0x235C - 0x2359];
+} FieldWork;
+#endif
+#ifndef XM_S_field_sound_compute_emitter_volume
+#define XM_S_field_sound_compute_emitter_volume
+void xm_field_sound_compute_emitter_volume(s32 distance, u32 *out, s32 volume) __asm__("func_80086078");
+#endif
+#ifndef XM_S_field_work
+#define XM_S_field_work
+extern FieldWork xm_field_work __asm__("g_FieldEffects");
+#endif
+void func_80086078(s32 distance, u32 *out, s32 volume) {
+    s32 level;
+
+    if (distance > xm_field_work.emitter_range) {
+        distance = xm_field_work.emitter_range;
+    }
+    level = 0x80 - (((0x7F0000 / xm_field_work.emitter_range) * distance) >> 16);
+    *out = ((u32)(level << 16) / 127 * volume) >> 16;
+}
+#endif
 #else
 void func_80086078(s32 distance, s32* outVolume, s32 mode) {
     s32 maxDist = D_800B21AC;
@@ -3585,7 +3803,41 @@ void func_800862CC(s32 soundId, s32 mode, s16 deltaX, s32 distance, s32 actorInd
  * on match, stop the voice (func_8003A20C(i*2)) and free the slot.
  * asm nonmatchings/main/misc8/func_800863E8.s. */
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc8", func_800863E8);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_sound_stop_emitter (src/decomp/src/field/field_event.c:500). */
+#ifndef XM_T_EmitterSlot
+#define XM_T_EmitterSlot
+typedef struct EmitterSlot {
+    u16 actor;  
+    u16 sound;  
+    u16 unk4;
+} EmitterSlot;
+#endif
+#ifndef XM_S_field_sound_stop_emitter
+#define XM_S_field_sound_stop_emitter
+void xm_field_sound_stop_emitter(s32 id) __asm__("func_800863E8");
+#endif
+#ifndef XM_S_field_sound_emitter_slots
+#define XM_S_field_sound_emitter_slots
+extern EmitterSlot xm_field_sound_emitter_slots[3] __asm__("D_800AFE88");
+#endif
+#ifndef XM_S_sound_stop_effect_on_channel
+#define XM_S_sound_stop_effect_on_channel
+void xm_sound_stop_effect_on_channel(s32 sound) __asm__("func_8003A20C");
+#endif
+void func_800863E8(s32 id) {
+    s32 i;
+
+    for (i = 0; i < 3; i++) {
+        if (xm_field_sound_emitter_slots[i].actor == id) {
+            xm_sound_stop_effect_on_channel(i * 2);
+            xm_field_sound_emitter_slots[i].sound = 0xFFFF;
+            xm_field_sound_emitter_slots[i].actor = 0xFFFF;
+            return;
+        }
+    }
+}
+#endif
 #else
 void func_800863E8(s32 actorIdx) {
     s32 i;

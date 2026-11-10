@@ -277,9 +277,8 @@ void func_800897AC(OtPair *layer, s32 x, s32 y, s32 w, s32 h, s32 second) {
     layer->flags |= 0xC;
 }
 #endif
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_800898BC);
 #ifndef XENO_PC_PORT
-/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_node_aim_rig_camera (src/decomp/src/menu/arena_scene_graph_and_opponent.c:363). */
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_look_at_build_matrix (src/decomp/src/menu/arena_scene_graph_and_opponent.c:332). */
 #ifndef XM_T_MATRIX
 #define XM_T_MATRIX
 typedef struct {
@@ -299,6 +298,76 @@ typedef struct {
     long vx, vy, vz, pad;
 } VECTOR;
 #endif
+#ifndef XM_S_arena_look_at_build_matrix
+#define XM_S_arena_look_at_build_matrix
+void xm_arena_look_at_build_matrix(MATRIX *m, SVECTOR *eye, SVECTOR *at, SVECTOR *up) __asm__("func_800898BC");
+#endif
+#ifndef XM_S_arena_look_at_forward
+#define XM_S_arena_look_at_forward
+extern VECTOR xm_arena_look_at_forward __asm__("D_8009A0C8");
+#endif
+#ifndef XM_S_arena_look_at_axis_y
+#define XM_S_arena_look_at_axis_y
+extern VECTOR xm_arena_look_at_axis_y __asm__("D_8009A918");
+#endif
+#ifndef XM_S_VectorNormal
+#define XM_S_VectorNormal
+long xm_VectorNormal(VECTOR *v0, VECTOR *v1) __asm__("VectorNormal");
+#endif
+#ifndef XM_S_arena_look_at_axis_z
+#define XM_S_arena_look_at_axis_z
+extern VECTOR xm_arena_look_at_axis_z __asm__("D_80096F98");
+#endif
+#ifndef XM_S_OuterProduct12
+#define XM_S_OuterProduct12
+void xm_OuterProduct12(VECTOR *v0, VECTOR *v1, VECTOR *v2) __asm__("OuterProduct12");
+#endif
+#ifndef XM_S_arena_look_at_axis_x
+#define XM_S_arena_look_at_axis_x
+extern VECTOR xm_arena_look_at_axis_x __asm__("D_80097000");
+#endif
+#ifndef XM_S_ApplyMatrix
+#define XM_S_ApplyMatrix
+VECTOR *xm_ApplyMatrix(MATRIX *m, SVECTOR *v0, VECTOR *v1) __asm__("ApplyMatrix");
+#endif
+#ifndef XM_S_MulMatrix2
+#define XM_S_MulMatrix2
+MATRIX *xm_MulMatrix2(MATRIX *m0, MATRIX *m1) __asm__("MulMatrix2");
+#endif
+#ifndef XM_S_arena_display_screen_scale
+#define XM_S_arena_display_screen_scale
+extern MATRIX xm_arena_display_screen_scale __asm__("D_80096FE0");
+#endif
+void func_800898BC(MATRIX *m, SVECTOR *eye, SVECTOR *at, SVECTOR *up) {
+    xm_arena_look_at_forward.vx = at->vx - eye->vx;
+    xm_arena_look_at_forward.vy = at->vy - eye->vy;
+    xm_arena_look_at_forward.vz = at->vz - eye->vz;
+    xm_arena_look_at_axis_y.vx = up->vx;
+    xm_arena_look_at_axis_y.vy = up->vy;
+    xm_arena_look_at_axis_y.vz = up->vz;
+    xm_VectorNormal(&xm_arena_look_at_forward, &xm_arena_look_at_axis_z);
+    xm_OuterProduct12(&xm_arena_look_at_axis_y, &xm_arena_look_at_axis_z, &xm_arena_look_at_forward);
+    xm_VectorNormal(&xm_arena_look_at_forward, &xm_arena_look_at_axis_x);
+    xm_OuterProduct12(&xm_arena_look_at_axis_z, &xm_arena_look_at_axis_x, &xm_arena_look_at_forward);
+    xm_VectorNormal(&xm_arena_look_at_forward, &xm_arena_look_at_axis_y);
+    m->m[0][0] = xm_arena_look_at_axis_x.vx;
+    m->m[0][1] = xm_arena_look_at_axis_x.vy;
+    m->m[0][2] = xm_arena_look_at_axis_x.vz;
+    m->m[1][0] = xm_arena_look_at_axis_y.vx;
+    m->m[1][1] = xm_arena_look_at_axis_y.vy;
+    m->m[1][2] = xm_arena_look_at_axis_y.vz;
+    m->m[2][0] = xm_arena_look_at_axis_z.vx;
+    m->m[2][1] = xm_arena_look_at_axis_z.vy;
+    m->m[2][2] = xm_arena_look_at_axis_z.vz;
+    xm_ApplyMatrix(m, eye, &xm_arena_look_at_forward);
+    xm_MulMatrix2(&xm_arena_display_screen_scale, m);
+    m->t[0] = -xm_arena_look_at_forward.vx;
+    m->t[1] = -xm_arena_look_at_forward.vy;
+    m->t[2] = -xm_arena_look_at_forward.vz;
+}
+#endif
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_node_aim_rig_camera (src/decomp/src/menu/arena_scene_graph_and_opponent.c:363). */
 #ifndef XM_T_Node
 #define XM_T_Node
 typedef struct Node {
@@ -336,10 +405,6 @@ void xm_arena_node_aim_rig_camera(LightRig *view, VECTOR *position, VECTOR *focu
 #ifndef XM_S_arena_view_origin
 #define XM_S_arena_view_origin
 extern VECTOR xm_arena_view_origin __asm__("D_80096FA8");
-#endif
-#ifndef XM_S_arena_look_at_build_matrix
-#define XM_S_arena_look_at_build_matrix
-void xm_arena_look_at_build_matrix(MATRIX *m, SVECTOR *eye, SVECTOR *at, SVECTOR *up) __asm__("func_800898BC");
 #endif
 void func_80089A98(LightRig *view, VECTOR *position, VECTOR *focus) {
     SVECTOR up;
@@ -2980,9 +3045,8 @@ void func_8008E6F8(void *arg0) {
     *(s32 **)((s8*)(arg0) + 0x1664) = var_v0;
 }
 
-INCLUDE_ASM("asm/battling/nonmatchings/main", func_8008E78C);
 #ifndef XENO_PC_PORT
-/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_sound_update_voices (src/decomp/src/menu/arena_scene_graph_and_opponent.c:2312). */
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_sound_start_voice (src/decomp/src/menu/arena_scene_graph_and_opponent.c:2273). */
 #ifndef XM_T_SoundVoice
 #define XM_T_SoundVoice
 typedef struct {
@@ -2997,6 +3061,61 @@ typedef struct {
     VECTOR *follow; 
 } SoundVoice;
 #endif
+#ifndef XM_S_arena_sound_start_voice
+#define XM_S_arena_sound_start_voice
+void xm_arena_sound_start_voice(s32 sound, s32 mode, VECTOR *pos, s32 tag) __asm__("func_8008E78C");
+#endif
+#ifndef XM_S_arena_sound_voices
+#define XM_S_arena_sound_voices
+extern SoundVoice xm_arena_sound_voices[4] __asm__("D_80096EA0");
+#endif
+#ifndef XM_S_arena_sound_age_voices
+#define XM_S_arena_sound_age_voices
+void xm_arena_sound_age_voices(void) __asm__("func_8008E67C");
+#endif
+#ifndef XM_S_sound_play_effect_on_channel_volume_pan
+#define XM_S_sound_play_effect_on_channel_volume_pan
+void xm_sound_play_effect_on_channel_volume_pan(s32 effect, s16 channel, s16 volume, s16 pan) __asm__("func_80039F9C");
+#endif
+void func_8008E78C(s32 sound, s32 mode, VECTOR *pos, s32 tag) {
+    s32 oldest = 0;
+    SoundVoice *chosen = &xm_arena_sound_voices[3];
+    SoundVoice *voice;
+    s32 i;
+
+    for (i = 0; i < 4; i++) {
+        voice = &xm_arena_sound_voices[i];
+        if (voice->active == 0) {
+            chosen = voice;
+            break;
+        }
+        if (mode == 0 && voice->mode == 0) {
+            chosen = voice;
+            break;
+        }
+        if (oldest < voice->age) {
+            oldest = voice->age;
+            chosen = voice;
+        }
+    }
+    xm_arena_sound_age_voices();
+    voice = chosen;
+    voice->mode = mode;
+    voice->sound = sound;
+    voice->active = 1;
+    voice->unk3 = tag;
+    voice->follow = pos;
+    if (pos != NULL) {
+        voice->pos = *pos;
+    }
+    voice->age = 0;
+    if (mode == 0) {
+        xm_sound_play_effect_on_channel_volume_pan(voice->sound, voice->voice, 0x7F, 0x40);
+    }
+}
+#endif
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): arena_sound_update_voices (src/decomp/src/menu/arena_scene_graph_and_opponent.c:2312). */
 #ifndef XM_T_gte_stsz
 #define XM_T_gte_stsz
 #define gte_stsz(r0) __asm__ volatile("swc2 $19, 0(%0)" : : "r"(r0) : "memory")
@@ -3005,10 +3124,6 @@ typedef struct {
 #define XM_S_arena_sound_update_voices
 void xm_arena_sound_update_voices(void) __asm__("func_8008E8B0");
 #endif
-#ifndef XM_S_arena_sound_voices
-#define XM_S_arena_sound_voices
-extern SoundVoice xm_arena_sound_voices[4] __asm__("D_80096EA0");
-#endif
 #ifndef XM_S_sound_set_effect_pan_on_channel
 #define XM_S_sound_set_effect_pan_on_channel
 void xm_sound_set_effect_pan_on_channel(s32 sound, s32 pan) __asm__("func_8003A55C");
@@ -3016,14 +3131,6 @@ void xm_sound_set_effect_pan_on_channel(s32 sound, s32 pan) __asm__("func_8003A5
 #ifndef XM_S_sound_set_effect_volume_on_channel
 #define XM_S_sound_set_effect_volume_on_channel
 void xm_sound_set_effect_volume_on_channel(s32 sound, s32 volume) __asm__("func_8003A344");
-#endif
-#ifndef XM_S_sound_play_effect_on_channel_volume_pan
-#define XM_S_sound_play_effect_on_channel_volume_pan
-void xm_sound_play_effect_on_channel_volume_pan(s32 effect, s16 channel, s16 volume, s16 pan) __asm__("func_80039F9C");
-#endif
-#ifndef XM_S_arena_sound_age_voices
-#define XM_S_arena_sound_age_voices
-void xm_arena_sound_age_voices(void) __asm__("func_8008E67C");
 #endif
 void func_8008E8B0(void) {
     SVECTOR v;

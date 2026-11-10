@@ -582,7 +582,105 @@ void FieldZoomFadeEffectUpdate(void) {
 #endif /* XENO_PC_PORT */
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc5", FieldZoomFadeEffectInitialize);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_screen_pieces_init (src/decomp/src/field/field_screen.c:878). */
+#ifndef XM_T_ScreenPieces
+#define XM_T_ScreenPieces
+typedef struct ScreenPieces {
+    DR_MODE modes[5][2];   
+    RECT windows[5][2];    
+    POLY_FT4 quads[5][2];  
+    SVECTOR corners[5][4]; 
+} ScreenPieces;
+#endif
+#ifndef XM_S_field_screen_pieces_init
+#define XM_S_field_screen_pieces_init
+void xm_field_screen_pieces_init(s32 semitrans, s32 abr) __asm__("FieldZoomFadeEffectInitialize");
+#endif
+#ifndef XM_S_field_screen_pieces_scale
+#define XM_S_field_screen_pieces_scale
+extern s32 xm_field_screen_pieces_scale __asm__("D_800C2684");
+#endif
+#ifndef XM_S_field_screen_pieces_rotation
+#define XM_S_field_screen_pieces_rotation
+extern SVECTOR xm_field_screen_pieces_rotation __asm__("D_800B00B8");
+#endif
+#ifndef XM_S_field_screen_pieces
+#define XM_S_field_screen_pieces
+extern ScreenPieces xm_field_screen_pieces __asm__("g_FieldZoomFadeEffect");
+#endif
+#ifndef XM_S_SetPolyFT4
+#define XM_S_SetPolyFT4
+void xm_SetPolyFT4(POLY_FT4 *p) __asm__("SetPolyFT4");
+#endif
+#ifndef XM_S_SetDrawMode
+#define XM_S_SetDrawMode
+void xm_SetDrawMode(DR_MODE *p, int dfe, int dtd, int tpage, RECT *tw) __asm__("SetDrawMode");
+#endif
+#ifndef XM_S_GetTPage
+#define XM_S_GetTPage
+u_short xm_GetTPage(int tp, int abr, int x, int y) __asm__("GetTPage");
+#endif
+#ifndef XM_S_SetSemiTrans
+#define XM_S_SetSemiTrans
+void xm_SetSemiTrans(void *p, int abe) __asm__("SetSemiTrans");
+#endif
+void FieldZoomFadeEffectInitialize(s32 semitrans, s32 abr) {
+    POLY_FT4 *quad;
+    POLY_FT4 *copy;
+    SVECTOR *corners;
+    s32 i;
+
+    xm_field_screen_pieces_scale = 0x1000;
+    xm_field_screen_pieces_rotation.vx = 0;
+    xm_field_screen_pieces_rotation.vy = 0;
+    xm_field_screen_pieces_rotation.vz = 0;
+    for (i = 0; i < 5; i++) {
+        quad = &xm_field_screen_pieces.quads[i][0];
+        copy = &xm_field_screen_pieces.quads[i][1];
+        corners = xm_field_screen_pieces.corners[i];
+        xm_SetPolyFT4(quad);
+        corners[0].vx = i * 0x20 - 0x50;
+        corners[0].vy = -0x38;
+        corners[0].vz = 0;
+        corners[1].vx = i * 0x20 - 0x30;
+        corners[1].vy = -0x38;
+        corners[1].vz = 0;
+        corners[2].vx = i * 0x20 - 0x50;
+        corners[2].vy = 0x38;
+        corners[2].vz = 0;
+        corners[3].vx = i * 0x20 - 0x30;
+        corners[3].vy = 0x38;
+        corners[3].vz = 0;
+        quad->x0 = i << 6;
+        quad->y0 = 0;
+        quad->x1 = (i << 6) + 0x40;
+        quad->y1 = 0;
+        quad->x2 = i << 6;
+        quad->y2 = 0xDF;
+        quad->x3 = (i << 6) + 0x40;
+        quad->y3 = 0xDF;
+        setRECT(&xm_field_screen_pieces.windows[i][0], 0, 0, 0xFF, 0xFF);
+        setRECT(&xm_field_screen_pieces.windows[i][1], 0, 0, 0xFF, 0xFF);
+        xm_SetDrawMode(&xm_field_screen_pieces.modes[i][0], 0, 0, xm_GetTPage(2, abr, 0x2C0 + i * 0x40, 0x100),
+                    &xm_field_screen_pieces.windows[i][0]);
+        xm_SetDrawMode(&xm_field_screen_pieces.modes[i][1], 0, 0, xm_GetTPage(2, abr, 0x2C0 + i * 0x40, 0x100),
+                    &xm_field_screen_pieces.windows[i][1]);
+        setRGB0(quad, 0x80, 0x80, 0x80);
+        xm_SetSemiTrans(quad, semitrans);
+        quad->u0 = 0;
+        quad->v0 = 0;
+        quad->u1 = 0x40;
+        quad->v1 = 0;
+        quad->u2 = 0;
+        quad->v2 = 0xDF;
+        quad->u3 = 0x40;
+        quad->v3 = 0xDF;
+        quad->tpage = xm_GetTPage(2, abr, 0x2C0 + i * 0x40, 0x100);
+        *copy = *quad;
+    }
+}
+#endif
 #else
 void FieldZoomFadeEffectInitialize(int semiTrans, int abr) {
     int i;
@@ -825,14 +923,6 @@ void *xm_heap_alloc(s32 size, s32 mode) __asm__("HeapAlloc");
 #ifndef XM_S_SetPolyGT4
 #define XM_S_SetPolyGT4
 void xm_SetPolyGT4(POLY_GT4 *p) __asm__("SetPolyGT4");
-#endif
-#ifndef XM_S_GetTPage
-#define XM_S_GetTPage
-u_short xm_GetTPage(int tp, int abr, int x, int y) __asm__("GetTPage");
-#endif
-#ifndef XM_S_SetSemiTrans
-#define XM_S_SetSemiTrans
-void xm_SetSemiTrans(void *p, int abe) __asm__("SetSemiTrans");
 #endif
 void func_800A6E70(void) {
     POLY_GT4 *quad;
@@ -1103,7 +1193,58 @@ extern void* D_8005A418;
 extern void* D_8005A41C;
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A73E8);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_movie_park_party_sprites (src/decomp/src/field/field_screen.c:1173). */
+#ifndef XM_S_field_movie_park_party_sprites
+#define XM_S_field_movie_park_party_sprites
+void xm_field_movie_park_party_sprites(void) __asm__("func_800A73E8");
+#endif
+#ifndef XM_S_field_movie_mode
+#define XM_S_field_movie_mode
+extern s32 xm_field_movie_mode __asm__("D_800ADB74");
+#endif
+#ifndef XM_S_heap_unprotect_block
+#define XM_S_heap_unprotect_block
+void xm_heap_unprotect_block(void *data) __asm__("HeapUnpinBlock");
+#endif
+#ifndef XM_S_mode_party_sprite_blocks
+#define XM_S_mode_party_sprite_blocks
+extern void *xm_mode_party_sprite_blocks[3] __asm__("g_PartyDataBuffers");
+#endif
+#ifndef XM_S_heap_free
+#define XM_S_heap_free
+s32 xm_heap_free(void *data) __asm__("HeapFree");
+#endif
+#ifndef XM_S_LoadImage
+#define XM_S_LoadImage
+int xm_LoadImage(RECT *rect, u_long *p) __asm__("LoadImage");
+#endif
+#ifndef XM_S_DrawSync
+#define XM_S_DrawSync
+int xm_DrawSync(int mode) __asm__("DrawSync");
+#endif
+void func_800A73E8(void) {
+    RECT rect;
+
+    if (xm_field_movie_mode == 2) {
+        xm_heap_unprotect_block(xm_mode_party_sprite_blocks[1]);
+        xm_heap_unprotect_block(xm_mode_party_sprite_blocks[2]);
+        xm_heap_free(xm_mode_party_sprite_blocks[1]);
+        xm_heap_free(xm_mode_party_sprite_blocks[2]);
+    } else {
+        setRECT(&rect, 0x200, 0, 0x140, 0x80);
+        xm_LoadImage(&rect, xm_mode_party_sprite_blocks[1]);
+        xm_DrawSync(0);
+        setRECT(&rect, 0x200, 0x80, 0x140, 0x80);
+        xm_LoadImage(&rect, xm_mode_party_sprite_blocks[2]);
+        xm_DrawSync(0);
+        xm_heap_unprotect_block(xm_mode_party_sprite_blocks[1]);
+        xm_heap_unprotect_block(xm_mode_party_sprite_blocks[2]);
+        xm_heap_free(xm_mode_party_sprite_blocks[1]);
+        xm_heap_free(xm_mode_party_sprite_blocks[2]);
+    }
+}
+#endif
 #else
 void func_800A73E8(void) {
     if (D_800ADB74 == 2) {
@@ -1140,7 +1281,103 @@ extern s32 func_80029AFC(StreamDataQueueEntry* entries, s32 arg1, s32 arg2);
 extern u32 LZSSDecompress(void* source, void* destination);
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A74F8);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_movie_restore_party_sprites (src/decomp/src/field/field_screen.c:1198). */
+#ifndef XM_T_FileRequest
+#define XM_T_FileRequest
+typedef struct FileRequest {
+    u16 file;
+    void *destination;
+} FileRequest;
+#endif
+#ifndef XM_S_field_movie_restore_party_sprites
+#define XM_S_field_movie_restore_party_sprites
+void xm_field_movie_restore_party_sprites(void) __asm__("func_800A74F8");
+#endif
+#ifndef XM_S_heap_protect_block
+#define XM_S_heap_protect_block
+void xm_heap_protect_block(void *data) __asm__("HeapPinBlock");
+#endif
+#ifndef XM_S_cd_select_directory
+#define XM_S_cd_select_directory
+s32 xm_cd_select_directory(s32 group, s32 index) __asm__("ArchiveSetIndex");
+#endif
+#ifndef XM_S_mode_party_file_ids
+#define XM_S_mode_party_file_ids
+extern s32 xm_mode_party_file_ids[3] __asm__("g_GamePartyMemberSkins");
+#endif
+#ifndef XM_S_mode_party_file_blocks
+#define XM_S_mode_party_file_blocks
+extern void *xm_mode_party_file_blocks[3] __asm__("g_PartyStreamDataPointers");
+#endif
+#ifndef XM_S_cd_get_aligned_file_size
+#define XM_S_cd_get_aligned_file_size
+s32 xm_cd_get_aligned_file_size(s32 file) __asm__("ArchiveDecodeAlignedSize");
+#endif
+#ifndef XM_S_cd_read_file_list
+#define XM_S_cd_read_file_list
+s32 xm_cd_read_file_list(FileRequest *list, s32 mode, s32 unused) __asm__("func_80029AFC");
+#endif
+#ifndef XM_S_cd_sync_reads
+#define XM_S_cd_sync_reads
+s32 xm_cd_sync_reads(s32 mode) __asm__("ArchiveCdDataSync");
+#endif
+#ifndef XM_S_mode_party_members
+#define XM_S_mode_party_members
+extern s32 xm_mode_party_members[3] __asm__("g_GamePartyMembers");
+#endif
+#ifndef XM_S_text_unpack_lzss
+#define XM_S_text_unpack_lzss
+void *xm_text_unpack_lzss(void *source, void *destination) __asm__("LZSSDecompress");
+#endif
+#ifndef XM_S_StoreImage
+#define XM_S_StoreImage
+int xm_StoreImage(RECT *rect, u_long *p) __asm__("StoreImage");
+#endif
+void func_800A74F8(void) {
+    RECT rect;
+    FileRequest requests[4];
+    s32 count;
+    s32 i;
+
+    if (xm_field_movie_mode == 2) {
+        xm_mode_party_sprite_blocks[1] = xm_heap_alloc(0x14000, 0);
+        xm_mode_party_sprite_blocks[2] = xm_heap_alloc(0x14000, 0);
+        xm_heap_protect_block(xm_mode_party_sprite_blocks[1]);
+        xm_heap_protect_block(xm_mode_party_sprite_blocks[2]);
+        xm_cd_select_directory(4, 0);
+        count = 0;
+        for (i = 1; i < 3; i++) {
+            if (xm_mode_party_file_ids[i] != 0xFF) {
+                requests[count].file = xm_mode_party_file_ids[i] + 5;
+                requests[count].destination = xm_mode_party_file_blocks[i] = xm_heap_alloc(xm_cd_get_aligned_file_size(xm_mode_party_file_ids[i] + 5), 1);
+                count++;
+            }
+        }
+        requests[count].destination = NULL;
+        requests[count].file = 0;
+        xm_cd_read_file_list(requests, 0, 0);
+        xm_cd_sync_reads(0);
+        for (i = 1; i < 3; i++) {
+            if (xm_mode_party_members[i] != 0xFF) {
+                xm_text_unpack_lzss(xm_mode_party_file_blocks[i], xm_mode_party_sprite_blocks[i]);
+                xm_heap_free(xm_mode_party_file_blocks[i]);
+            }
+        }
+        return;
+    }
+    xm_mode_party_sprite_blocks[1] = xm_heap_alloc(0x14000, 0);
+    xm_mode_party_sprite_blocks[2] = xm_heap_alloc(0x14000, 0);
+    xm_heap_protect_block(xm_mode_party_sprite_blocks[1]);
+    xm_heap_protect_block(xm_mode_party_sprite_blocks[2]);
+    setRECT(&rect, 0x200, 0, 0x140, 0x80);
+    xm_StoreImage(&rect, xm_mode_party_sprite_blocks[1]);
+    xm_DrawSync(0);
+    setRECT(&rect, 0x200, 0x80, 0x140, 0x80);
+    xm_StoreImage(&rect, xm_mode_party_sprite_blocks[2]);
+    xm_DrawSync(0);
+}
+#endif
 #else
 void func_800A74F8(void) {
     s32 slot;

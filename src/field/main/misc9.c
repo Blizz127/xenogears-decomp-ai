@@ -154,7 +154,75 @@ extern s32 D_800C3A5C;
 extern s32 D_800C3A60;
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800AAA74);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_instance_is_off_screen (src/decomp/src/field/field_effect.c:626). */
+#ifndef XM_S_field_instance_is_off_screen
+#define XM_S_field_instance_is_off_screen
+s32 xm_field_instance_is_off_screen(FieldInstance *instance) __asm__("func_800AAA74");
+#endif
+#ifndef XM_S_RotTrans
+#define XM_S_RotTrans
+void xm_RotTrans(SVECTOR *v0, VECTOR *v1, long *flag) __asm__("RotTrans");
+#endif
+#ifndef XM_S_field_instance_cull_matrix
+#define XM_S_field_instance_cull_matrix
+extern MATRIX xm_field_instance_cull_matrix __asm__("D_800B00E8");
+#endif
+#ifndef XM_S_SetRotMatrix
+#define XM_S_SetRotMatrix
+void xm_SetRotMatrix(MATRIX *m) __asm__("SetRotMatrix");
+#endif
+#ifndef XM_S_SetTransMatrix
+#define XM_S_SetTransMatrix
+void xm_SetTransMatrix(MATRIX *m) __asm__("SetTransMatrix");
+#endif
+#ifndef XM_S_RotTransPers
+#define XM_S_RotTransPers
+long xm_RotTransPers(SVECTOR *v0, long *sxy, long *p, long *flag) __asm__("RotTransPers");
+#endif
+#ifndef XM_S_field_model_cull_margin_y
+#define XM_S_field_model_cull_margin_y
+extern s32 xm_field_model_cull_margin_y __asm__("D_800C3A60");
+#endif
+#ifndef XM_S_field_model_cull_margin_x
+#define XM_S_field_model_cull_margin_x
+extern s32 xm_field_model_cull_margin_x __asm__("D_800C3A5C");
+#endif
+s32 func_800AAA74(FieldInstance *instance) {
+    VECTOR position;
+    SVECTOR corner;
+    long flag;
+    long sxy;
+    long depth;
+    s32 radius;
+    s32 top;
+    s32 left;
+    s32 bottom;
+    s32 right;
+
+    xm_RotTrans((SVECTOR *)instance->center, &position, &flag);
+    xm_field_instance_cull_matrix.t[0] = position.vx;
+    xm_field_instance_cull_matrix.t[1] = position.vy;
+    xm_field_instance_cull_matrix.t[2] = position.vz;
+    xm_SetRotMatrix(&xm_field_instance_cull_matrix);
+    xm_SetTransMatrix(&xm_field_instance_cull_matrix);
+    radius = instance->radius;
+    corner.vy = corner.vx = -radius;
+    corner.vz = 0;
+    xm_RotTransPers(&corner, &sxy, &depth, &flag);
+    top = sxy >> 16;
+    left = (s16)sxy;
+    corner.vy = corner.vx = radius;
+    corner.vz = 0;
+    xm_RotTransPers(&corner, &sxy, &depth, &flag);
+    bottom = sxy >> 16;
+    right = (s16)sxy;
+    if (top < xm_field_model_cull_margin_y + 0xE0 && -xm_field_model_cull_margin_y < bottom && left < xm_field_model_cull_margin_x + 0x140 && -xm_field_model_cull_margin_x < right) {
+        return 0;
+    }
+    return -1;
+}
+#endif
 #else
 s32 func_800AAA74(void* pModelData) {
     u8* pModel = (u8*)pModelData;
@@ -1228,7 +1296,114 @@ extern u8 D_800AF824[];
 extern void* D_800AF770;
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800AC3AC);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_staff_roll_init (src/decomp/src/field/field_effect.c:1170). */
+#ifndef XM_T_TextRollLine
+#define XM_T_TextRollLine
+typedef struct {
+    DR_MODE modes[2][4]; 
+    SPRT sprites[2][4];  
+} TextRollLine;
+#endif
+#ifndef XM_S_field_staff_roll_init
+#define XM_S_field_staff_roll_init
+void xm_field_staff_roll_init(void) __asm__("func_800AC3AC");
+#endif
+#ifndef XM_S_SetPolyGT4
+#define XM_S_SetPolyGT4
+void xm_SetPolyGT4(POLY_GT4 *p) __asm__("SetPolyGT4");
+#endif
+#ifndef XM_S_field_staff_roll_fade_quads
+#define XM_S_field_staff_roll_fade_quads
+extern POLY_GT4 xm_field_staff_roll_fade_quads[2][2] __asm__("D_800AF788");
+#endif
+#ifndef XM_S_GetTPage
+#define XM_S_GetTPage
+u_short xm_GetTPage(int tp, int abr, int x, int y) __asm__("GetTPage");
+#endif
+#ifndef XM_S_GetClut
+#define XM_S_GetClut
+u_short xm_GetClut(int x, int y) __asm__("GetClut");
+#endif
+#ifndef XM_S_SetSemiTrans
+#define XM_S_SetSemiTrans
+void xm_SetSemiTrans(void *p, int abe) __asm__("SetSemiTrans");
+#endif
+#ifndef XM_S_field_staff_roll_line_sprites
+#define XM_S_field_staff_roll_line_sprites
+extern TextRollLine *xm_field_staff_roll_line_sprites __asm__("D_800AF770");
+#endif
+#ifndef XM_S_SetSprt
+#define XM_S_SetSprt
+void xm_SetSprt(SPRT *p) __asm__("SetSprt");
+#endif
+#ifndef XM_S_SetDrawMode
+#define XM_S_SetDrawMode
+void xm_SetDrawMode(DR_MODE *p, int dfe, int dtd, int tpage, RECT *tw) __asm__("SetDrawMode");
+#endif
+void func_800AC3AC(void) {
+    SPRT *sprite;
+    s32 i;
+    s32 k;
+
+    xm_SetPolyGT4(&xm_field_staff_roll_fade_quads[0][0]);
+    xm_SetPolyGT4(&xm_field_staff_roll_fade_quads[1][0]);
+    xm_field_staff_roll_fade_quads[0][0].r0 = xm_field_staff_roll_fade_quads[0][0].g0 = xm_field_staff_roll_fade_quads[0][0].b0 = 0xFF;
+    xm_field_staff_roll_fade_quads[0][0].r1 = xm_field_staff_roll_fade_quads[0][0].g1 = xm_field_staff_roll_fade_quads[0][0].b1 = 0xFF;
+    xm_field_staff_roll_fade_quads[1][0].r2 = xm_field_staff_roll_fade_quads[1][0].g2 = xm_field_staff_roll_fade_quads[1][0].b2 = 0xFF;
+    xm_field_staff_roll_fade_quads[1][0].r3 = xm_field_staff_roll_fade_quads[1][0].g3 = xm_field_staff_roll_fade_quads[1][0].b3 = 0xFF;
+    xm_field_staff_roll_fade_quads[0][0].r2 = xm_field_staff_roll_fade_quads[0][0].g2 = xm_field_staff_roll_fade_quads[0][0].b2 = 0;
+    xm_field_staff_roll_fade_quads[0][0].r3 = xm_field_staff_roll_fade_quads[0][0].g3 = xm_field_staff_roll_fade_quads[0][0].b3 = 0;
+    xm_field_staff_roll_fade_quads[1][0].r0 = xm_field_staff_roll_fade_quads[1][0].g0 = xm_field_staff_roll_fade_quads[1][0].b0 = 0;
+    xm_field_staff_roll_fade_quads[1][0].r1 = xm_field_staff_roll_fade_quads[1][0].g1 = xm_field_staff_roll_fade_quads[1][0].b1 = 0;
+    setXY4(&xm_field_staff_roll_fade_quads[0][0], 0, 0, 0x280, 0, 0, 0x18, 0x280, 0x18);
+    setXY4(&xm_field_staff_roll_fade_quads[1][0], 0, 0xC8, 0x280, 0xC8, 0, 0xE0, 0x280, 0xE0);
+    xm_field_staff_roll_fade_quads[0][0].u0 = 0;
+    xm_field_staff_roll_fade_quads[0][0].v0 = 0;
+    xm_field_staff_roll_fade_quads[0][0].u1 = 2;
+    xm_field_staff_roll_fade_quads[0][0].v1 = 0;
+    xm_field_staff_roll_fade_quads[0][0].u2 = 0;
+    xm_field_staff_roll_fade_quads[0][0].v2 = 2;
+    xm_field_staff_roll_fade_quads[0][0].u3 = 2;
+    xm_field_staff_roll_fade_quads[0][0].v3 = 2;
+    setUV4(&xm_field_staff_roll_fade_quads[1][0], 0, 0, 2, 0, 0, 2, 2, 2);
+    xm_field_staff_roll_fade_quads[0][0].tpage = xm_GetTPage(1, 2, 0x3C0, 0x100);
+    xm_field_staff_roll_fade_quads[1][0].tpage = xm_GetTPage(1, 2, 0x3C0, 0x100);
+    xm_field_staff_roll_fade_quads[0][0].clut = xm_GetClut(0, 0x1FF);
+    xm_field_staff_roll_fade_quads[1][0].clut = xm_GetClut(0, 0x1FF);
+    xm_SetSemiTrans(&xm_field_staff_roll_fade_quads[0][0], 1);
+    xm_SetSemiTrans(&xm_field_staff_roll_fade_quads[1][0], 1);
+    xm_field_staff_roll_fade_quads[0][1] = xm_field_staff_roll_fade_quads[0][0];
+    xm_field_staff_roll_fade_quads[1][1] = xm_field_staff_roll_fade_quads[1][0];
+    xm_field_staff_roll_line_sprites = xm_heap_alloc(16 * sizeof(TextRollLine), 1);
+    for (i = 0; i < 16; i++) {
+        sprite = &xm_field_staff_roll_line_sprites[i].sprites[0][0];
+        xm_SetSprt(sprite);
+        setRGB0(sprite, 0x80, 0x80, 0x80);
+        xm_SetSemiTrans(sprite, 0);
+        sprite->clut = xm_GetClut(0, 0x1FF);
+        sprite->u0 = 0;
+        sprite->v0 = i * 16;
+        sprite->w = 0x80;
+        sprite->h = 0x10;
+        sprite->x0 = 0x40;
+        sprite->y0 = i * 16;
+        sprite[4] = *sprite;
+        sprite[1] = *sprite;
+        sprite[5] = *sprite;
+        sprite[2] = *sprite;
+        sprite[6] = *sprite;
+        sprite[3] = *sprite;
+        sprite[7] = *sprite;
+        for (k = 0; k < 4; k++) {
+            xm_field_staff_roll_line_sprites[i].sprites[0][k].x0 = 0x40 + k * 0x80;
+            xm_field_staff_roll_line_sprites[i].sprites[1][k].x0 = 0x40 + k * 0x80;
+            xm_SetDrawMode(&xm_field_staff_roll_line_sprites[i].modes[0][k], 0, 0, xm_GetTPage(1, 0, 0x300 + k * 0x40, 0), NULL);
+            xm_SetDrawMode(&xm_field_staff_roll_line_sprites[i].modes[1][k], 0, 0, xm_GetTPage(1, 0, 0x300 + k * 0x40, 0), NULL);
+        }
+    }
+}
+#endif
 #else
 void func_800AC3AC(void) {
     POLY_GT4* first = (POLY_GT4*)D_800AF788;

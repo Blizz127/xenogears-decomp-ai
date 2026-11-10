@@ -160,7 +160,759 @@ extern void func_8001B66C(), func_80085B20(), func_80085EEC(), func_800A31E8();
 extern void func_800A91F0(), func_80077DAC(), func_80078B5C(), func_8007554C();
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_80078D44);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_enter_map (src/decomp/src/field/field.c:3208). */
+#ifndef XM_T_FadeChannel
+#define XM_T_FadeChannel
+typedef struct {
+    DR_MODE modes[2]; 
+    TILE tiles[2];   
+    s32 level[3];
+    s32 step[3];
+    u16 abr;
+    s16 active;
+    s16 steps;
+    u16 pad;
+} FadeChannel;
+#endif
+#ifndef XM_T_FieldWork
+#define XM_T_FieldWork
+typedef struct FieldWork {
+    s16 unk2078;               
+    s16 unk207A;               
+    s16 effect_steps;          
+    u8 unk207E[2];
+    s32 effect_value[6];       
+    s32 effect_step[6];        
+    s16 unk20B0[2];            
+    void *effect_buffers[4];   
+    FadeChannel fades[2];      
+    u16 open_windows;          
+
+    s16 encounter_inhibition;  
+    s16 terrain_angle;         
+    u16 input_mask;            
+    s32 unk217C;               
+    s32 unk2180;               
+    SVECTOR sprite_angles;     
+    s16 scale;                 
+    s16 sprite_gate;           
+    u8 fog_color[4];           
+    u8 far_color[4];           
+    s16 fog_range[2];          
+    u8 clear_color[3];         
+    u8 party_bits;             
+    s16 unk21A0[6];            
+    s16 emitter_range;         
+    s16 piece_drift[3];        
+    s16 unk21B4;               
+    u8 unk21B6[2];
+    s32 last_sound_effect;     
+    s32 unk21BC[3];            
+    u8 unk21C8[0x21CC - 0x21C8];
+    u8 party_processing_mode;  
+    u8 camera_floor_fixed;     
+    u8 preserve_nonplayer_motion; 
+    u8 forced_position;        
+    u8 script_control[2];      
+    u8 piece_drift_mode;       
+    u8 unk21D3;
+    s16 unk21D4;               
+    s16 text_speed;            
+    s32 camera_counter;        
+    s16 unk21DC[4];            
+    s16 unk21E4[4];            
+    SVECTOR layer_positions[4]; 
+    s32 layer_scales[4];       
+    s16 unk221C[5][3];         
+    u8 unk223A[2];
+    s16 unk223C[3][3];         
+    u8 unk224E[0x225C - 0x224E];
+    u8 unk225C[3];             
+    u8 unk225F[0x2264 - 0x225F]; 
+    s32 unk2264;               
+    s32 unk2268;               
+    s32 controlled;            
+    u16 encounter_music[16];   
+    s16 battle_music;          
+    u8 unk2292[2];
+    s32 unk2294;               
+    s32 unk2298;               
+    s32 unk229C;               
+    u16 unk22A0[32];           
+    s16 unk22E0;               
+    s16 emitter_descriptor[3]; 
+    s16 unk22E8[3][4];         
+    s16 unk2300[3][4];         
+    s32 unk2318[3];            
+    s16 emitter_position[3][4]; 
+    u16 effects_kept;          
+    u16 unk233E;               
+    s16 repeat_delay;          
+    s16 repeat_remaining;      
+    s16 jump_mode;             
+    s16 animation_mode;        
+    u16 unk2348;               
+    s16 unk234A;               
+    s16 gear_riding_lock_override; 
+    s16 followers_idle;        
+    u32 unk2350;               
+    u8 unk2354;                
+    u8 unk2355;                
+    u8 unk2356;                
+    u8 unk2357;                
+    u8 unk2358;                
+    u8 unk2359[0x235C - 0x2359];
+} FieldWork;
+#endif
+#ifndef XM_T_SoundSeqHeader
+#define XM_T_SoundSeqHeader
+typedef struct SoundSeqHeader {
+    u8 unk0[0x10];
+    u16 unk10;
+    u8 unk12[2];
+    u8 channels;
+    u8 entries;        
+    u16 unk16;
+    u16 unk18;
+    u8 reverb_type;
+    u8 reverb_depth;   
+    u8 reverb_delay;
+    u8 reverb_feedback;
+    u16 unk1E;
+    u16 table;         
+    u16 channel[1];    
+} SoundSeqHeader;
+#endif
+#ifndef XM_T_Fixed
+#define XM_T_Fixed
+typedef union {
+    s32 value;
+    struct {
+        u16 fraction;
+        s16 whole;
+    } part;
+} Fixed;
+#endif
+#ifndef XM_T_SoundEffectId
+#define XM_T_SoundEffectId
+typedef union {
+    s32 full;
+    struct {
+        u16 effect;
+        s16 bank;
+    } part;
+} SoundEffectId;
+#endif
+#ifndef XM_T_SoundInstrument
+#define XM_T_SoundInstrument
+typedef struct {
+    u32 start;         
+    u16 loop;          
+    s16 note;          
+    u32 envelope;      
+    u16 modes;         
+    u8 unkE[2];
+} SoundInstrument;
+#endif
+#ifndef XM_T_SoundSequence
+#define XM_T_SoundSequence
+typedef struct SoundSequence {
+    u8 unk0[0x10];
+    s32 header_size;   
+    s32 size;          
+    s32 offset;        
+    u8 unk1C[2];
+    u16 volume;
+    u16 key;
+    u8 unk22[6];
+    s32 address;       
+    struct SoundSequence *next;
+    SoundInstrument instrument[1];
+} SoundSequence;
+#endif
+#ifndef XM_T_SoundEnvelope
+#define XM_T_SoundEnvelope
+typedef struct {
+    u8 attack_mode;
+    u8 sustain_mode;
+    u8 release_mode;
+    u8 attack_rate;
+    u8 decay_rate;
+    u8 sustain_rate;
+    u8 release_rate;
+    u8 sustain_level;
+} SoundEnvelope;
+#endif
+#ifndef XM_T_SoundChannel
+#define XM_T_SoundChannel
+typedef struct SoundChannel {
+    u16 voice;         
+    u16 mode;          
+    s16 priority;
+    u16 flags;         
+
+
+    s16 volume_left;
+    s16 volume_right;
+    u16 unkC;
+    u16 unkE;
+    u8 unk10[4];
+    u16 pitch;
+    u8 unk16[6];
+    u32 sample_start;  
+    u32 sample_loop;
+    SoundEnvelope envelope;
+} SoundChannel;
+#endif
+#ifndef XM_T_SoundLoop
+#define XM_T_SoundLoop
+typedef struct {
+    u8 count;          
+    u8 unk1;
+    u8 transpose;      
+    u8 exit_transpose; 
+    u8 *start;
+    u8 *end;
+} SoundLoop;
+#endif
+#ifndef XM_T_SoundModulator
+#define XM_T_SoundModulator
+typedef struct SoundModulator {
+    s32 (*wave)(struct SoundModulator *modulator);
+    s32 phase;         
+    s32 slope;
+    s32 step;
+    u16 count;         
+    u16 rate;          
+    u16 delay_count;
+    s16 delay;
+    s16 period_count;
+    s16 period;
+    u8 target;         
+    u8 shape;
+    u16 flags;         
+} SoundModulator;
+#endif
+#ifndef XM_T_SoundSeqChannel
+#define XM_T_SoundSeqChannel
+typedef struct {
+    u16 flags;         
+    u16 flags2;        
+    u16 flags3;        
+    u8 voice_bit;      
+    u8 priority;
+    SoundEffectId id;
+    u32 stamp;         
+    u8 *start;         
+    u8 *position;      
+    u8 *loop;          
+    s32 unk1C;
+    u16 unk20;
+    u8 unk22;
+    u8 unk23;
+    u8 unk24;
+    u8 unk25;
+    u8 instrument;
+    u8 voice;          
+    u8 unk28;
+    u8 unk29[3];
+    struct SoundSequence *instruments;
+    SoundChannel state;
+    s16 unk5C;         
+    u16 unk5E;         
+    u8 duration_adjust; 
+    u8 unk61;
+    u16 gate_fraction; 
+    u8 previous_note;
+    u8 current_note;
+    s16 transpose;     
+    Fixed note;   
+    s16 unk6C;
+    s16 detune;
+    u16 unk70;
+    u16 loop_depth;    
+    s16 pan;           
+    s16 volume;
+    Fixed level;  
+    s32 unk7C;
+    s16 unk80;
+    s16 unk82;
+    s32 unk84;
+    s32 unk88;
+    s16 volume_step;
+    s16 volume_target;
+    s16 pan_step;
+    s16 pan_target;
+    u16 unk94;         
+    u16 unk96;         
+    u16 pan_frames;
+    u16 volume_frames;
+    SoundLoop loops[4];
+    u16 modulator_index; 
+    u16 modulators;    
+    s16 pitch_mod;     
+    s16 level_mod;
+    s16 pan_mod;
+    u8 unkD6[2];
+    SoundModulator modulator[4];
+} SoundSeqChannel;
+#endif
+#ifndef XM_T_SoundSeq
+#define XM_T_SoundSeq
+typedef struct SoundSeq {
+    struct SoundSeq *next;
+    struct SoundSeq *snapshot; 
+    struct SoundSeqHeader *header; 
+    u32 *table;        
+    u16 flags;         
+
+    u16 unk12;
+    u8 channels;
+    u8 unk15;
+    s16 unk16;         
+    u16 unk18;
+    u8 unk1A;
+    u8 unk1B;
+    u16 noise_clock;
+    u16 unk1E;
+    s32 unk20;
+    u32 unk24;
+    u32 ticks;
+    u32 unk2C;
+    u16 unk30;
+    u16 unk32;
+    u16 unk34;
+    u16 unk36;
+    u16 unk38;
+    u16 unk3A;
+    s16 unk3C;
+    s16 unk3E;
+    u8 unk40;
+    u8 reverb_type;
+    u8 reverb_delay;
+    u8 reverb_feedback;
+    s16 reverb_depth;
+    u8 unk46[2];
+    u32 voices;        
+    u32 muted;         
+    s32 unk50;
+    s32 tick_step;     
+    Fixed rate;   
+    s32 rate_step;
+    u16 rate_frames;
+    u16 rate_target;
+    Fixed tempo;  
+    s32 tempo_step;
+    s16 tempo_frames;
+    s16 tempo_target;
+    Fixed fade;   
+    s32 fade_step;
+    s16 fade_frames;
+    s16 fade_target;
+    Fixed pitch;  
+    s32 pitch_step;
+    s16 pitch_frames;
+    s16 pitch_target;
+    Fixed pan;    
+    s32 pan_step;
+    s16 pan_frames;
+    s16 pan_target;
+    SoundSeqChannel channel[1];
+} SoundSeq;
+#endif
+#ifndef XM_S_field_enter_map
+#define XM_S_field_enter_map
+void xm_field_enter_map(void) __asm__("func_80078D44");
+#endif
+#ifndef XM_S_field_load_text_palette
+#define XM_S_field_load_text_palette
+void xm_field_load_text_palette(void) __asm__("func_80077544");
+#endif
+#ifndef XM_S_field_vram_column_save
+#define XM_S_field_vram_column_save
+void xm_field_vram_column_save(void) __asm__("func_800A915C");
+#endif
+#ifndef XM_S_cd_select_directory
+#define XM_S_cd_select_directory
+s32 xm_cd_select_directory(s32 group, s32 index) __asm__("ArchiveSetIndex");
+#endif
+#ifndef XM_S_field_wait_map_read_ahead
+#define XM_S_field_wait_map_read_ahead
+void xm_field_wait_map_read_ahead(void) __asm__("func_800777DC");
+#endif
+#ifndef XM_S_field_sync_draw_and_vsync
+#define XM_S_field_sync_draw_and_vsync
+void xm_field_sync_draw_and_vsync(void) __asm__("FieldRenderSync");
+#endif
+#ifndef XM_S_mode_field_entered_once
+#define XM_S_mode_field_entered_once
+extern s32 xm_mode_field_entered_once __asm__("D_8004F2F8");
+#endif
+#ifndef XM_S_field_screen_convert_24bit_to_15bit
+#define XM_S_field_screen_convert_24bit_to_15bit
+void xm_field_screen_convert_24bit_to_15bit(s32 unused) __asm__("FieldImageConvert24BitTo15Bit");
+#endif
+#ifndef XM_S_field_draw_init_display
+#define XM_S_field_draw_init_display
+void xm_field_draw_init_display(void) __asm__("FieldInitializeRenderContexts");
+#endif
+#ifndef XM_S_MoveImage
+#define XM_S_MoveImage
+int xm_MoveImage(RECT *rect, int x, int y) __asm__("MoveImage");
+#endif
+#ifndef XM_S_field_draw_buffer_index
+#define XM_S_field_draw_buffer_index
+extern s32 xm_field_draw_buffer_index __asm__("g_FieldCurRenderContextIndex");
+#endif
+#ifndef XM_S_field_screen_save_copy
+#define XM_S_field_screen_save_copy
+void xm_field_screen_save_copy(void) __asm__("func_800A4748");
+#endif
+#ifndef XM_S_field_screen_copy_to
+#define XM_S_field_screen_copy_to
+void xm_field_screen_copy_to(s32 x, s32 y) __asm__("func_800A476C");
+#endif
+#ifndef XM_S_DrawSync
+#define XM_S_DrawSync
+int xm_DrawSync(int mode) __asm__("DrawSync");
+#endif
+#ifndef XM_S_field_draw_swap_and_clear_ots
+#define XM_S_field_draw_swap_and_clear_ots
+void xm_field_draw_swap_and_clear_ots(void) __asm__("FieldClearAndSwapOTag");
+#endif
+#ifndef XM_S_mode_result_code
+#define XM_S_mode_result_code
+extern u8 xm_mode_result_code __asm__("D_800594D0");
+#endif
+#ifndef XM_S_mode_battle_return_fade
+#define XM_S_mode_battle_return_fade
+extern u8 xm_mode_battle_return_fade __asm__("D_8005942C");
+#endif
+#ifndef XM_S_field_screen_pieces_show
+#define XM_S_field_screen_pieces_show
+void xm_field_screen_pieces_show() __asm__("func_800A5884");
+#endif
+#ifndef XM_S_cd_sync_reads
+#define XM_S_cd_sync_reads
+s32 xm_cd_sync_reads(s32 mode) __asm__("ArchiveCdDataSync");
+#endif
+#ifndef XM_S_field_load_from_bundle
+#define XM_S_field_load_from_bundle
+void xm_field_load_from_bundle(void) __asm__("FieldLoad");
+#endif
+#ifndef XM_S_field_map_stream_start
+#define XM_S_field_map_stream_start
+void xm_field_map_stream_start(void) __asm__("func_80070488");
+#endif
+#ifndef XM_S_field_dialogue_open_blocked
+#define XM_S_field_dialogue_open_blocked
+extern s32 xm_field_dialogue_open_blocked __asm__("D_800AFD04");
+#endif
+#ifndef XM_S_field_work
+#define XM_S_field_work
+extern FieldWork xm_field_work __asm__("g_FieldEffects");
+#endif
+#ifndef XM_S_gear_model_set_instant_keyframes
+#define XM_S_gear_model_set_instant_keyframes
+void xm_gear_model_set_instant_keyframes(s32 value) __asm__("func_801E7378");
+#endif
+#ifndef XM_S_field_map_stream_running
+#define XM_S_field_map_stream_running
+extern s32 xm_field_map_stream_running __asm__("D_800ADB60");
+#endif
+#ifndef XM_S_field_screen_pieces_draw
+#define XM_S_field_screen_pieces_draw
+void xm_field_screen_pieces_draw(void) __asm__("FieldZoomFadeEffectUpdate");
+#endif
+#ifndef XM_S_field_draw_present_overlay
+#define XM_S_field_draw_present_overlay
+void xm_field_draw_present_overlay(void) __asm__("FieldDisplay");
+#endif
+#ifndef XM_S_field_screen_pieces_scale
+#define XM_S_field_screen_pieces_scale
+extern s32 xm_field_screen_pieces_scale __asm__("D_800C2684");
+#endif
+#ifndef XM_S_field_screen_pieces_set_shade
+#define XM_S_field_screen_pieces_set_shade
+void xm_field_screen_pieces_set_shade(s32 shade) __asm__("func_800A5600");
+#endif
+#ifndef XM_S_cd_get_pending_read_count
+#define XM_S_cd_get_pending_read_count
+s32 xm_cd_get_pending_read_count(void) __asm__("ArchiveDataSync");
+#endif
+#ifndef XM_S_heap_free
+#define XM_S_heap_free
+s32 xm_heap_free(void *data) __asm__("HeapFree");
+#endif
+#ifndef XM_S_field_map_stream_ring
+#define XM_S_field_map_stream_ring
+extern void *xm_field_map_stream_ring __asm__("D_800ADC14");
+#endif
+#ifndef XM_S_field_brighten_text_strip
+#define XM_S_field_brighten_text_strip
+void xm_field_brighten_text_strip(void) __asm__("func_80078C5C");
+#endif
+#ifndef XM_S_mode_worldmap_area_load_count
+#define XM_S_mode_worldmap_area_load_count
+extern s32 xm_mode_worldmap_area_load_count __asm__("D_8004F304");
+#endif
+#ifndef XM_S_sound_stop_seq
+#define XM_S_sound_stop_seq
+void xm_sound_stop_seq(SoundSeq *seq) __asm__("func_80039C4C");
+#endif
+#ifndef XM_S_mode_music_seq
+#define XM_S_mode_music_seq
+extern s32 xm_mode_music_seq __asm__("D_80062528");
+#endif
+#ifndef XM_S_sound_release_seq
+#define XM_S_sound_release_seq
+void xm_sound_release_seq(SoundSeq *seq) __asm__("func_800399D4");
+#endif
+#ifndef XM_S_sound_release_wave_bank
+#define XM_S_sound_release_wave_bank
+void xm_sound_release_wave_bank(SoundSequence *bank) __asm__("SoundFreeWdsEntry");
+#endif
+#ifndef XM_S_mode_music_wave_bank
+#define XM_S_mode_music_wave_bank
+extern struct SoundSequence *xm_mode_music_wave_bank __asm__("g_GameCurLoadedWDS");
+#endif
+#ifndef XM_S_field_finish_return_to_field
+#define XM_S_field_finish_return_to_field
+void xm_field_finish_return_to_field(void) __asm__("func_800A24C4");
+#endif
+#ifndef XM_S_mode_unread_arena_departure_count
+#define XM_S_mode_unread_arena_departure_count
+extern s32 xm_mode_unread_arena_departure_count __asm__("D_8004F310");
+#endif
+#ifndef XM_S_mode_field_return_pending
+#define XM_S_mode_field_return_pending
+extern s32 xm_mode_field_return_pending __asm__("g_GamePartySkinsInitialized");
+#endif
+#ifndef XM_S_pad_clear_queue
+#define XM_S_pad_clear_queue
+void xm_pad_clear_queue(void) __asm__("ControllerResetState");
+#endif
+#ifndef XM_S_mode_music_load_pending
+#define XM_S_mode_music_load_pending
+extern s32 xm_mode_music_load_pending __asm__("D_8004F308");
+#endif
+#ifndef XM_S_mode_music_selected_track
+#define XM_S_mode_music_selected_track
+extern s32 xm_mode_music_selected_track __asm__("D_8004F324");
+#endif
+#ifndef XM_S_field_music_release_cached_seq
+#define XM_S_field_music_release_cached_seq
+void xm_field_music_release_cached_seq(void) __asm__("func_80085EEC");
+#endif
+#ifndef XM_S_mode_music_loaded_track
+#define XM_S_mode_music_loaded_track
+extern s32 xm_mode_music_loaded_track __asm__("D_8004F338");
+#endif
+#ifndef XM_S_mode_stop_music
+#define XM_S_mode_stop_music
+void xm_mode_stop_music(void) __asm__("func_8001B66C");
+#endif
+#ifndef XM_S_mode_music_cached_seq
+#define XM_S_mode_music_cached_seq
+extern s32 xm_mode_music_cached_seq __asm__("D_8004F2FC");
+#endif
+#ifndef XM_S_mode_music_reuse_seq
+#define XM_S_mode_music_reuse_seq
+extern s32 xm_mode_music_reuse_seq __asm__("D_8004F348");
+#endif
+#ifndef XM_S_field_music_change_track
+#define XM_S_field_music_change_track
+void xm_field_music_change_track(s32 music, s32 unused) __asm__("func_80085B20");
+#endif
+#ifndef XM_S_field_update_play_record
+#define XM_S_field_update_play_record
+void xm_field_update_play_record(void) __asm__("func_800A31E8");
+#endif
+#ifndef XM_S_field_fade_in
+#define XM_S_field_fade_in
+void xm_field_fade_in(s32 steps) __asm__("FieldFadeToBlack");
+#endif
+#ifndef XM_S_field_run_pre_frame
+#define XM_S_field_run_pre_frame
+void xm_field_run_pre_frame(void) __asm__("func_80077DAC");
+#endif
+#ifndef XM_S_field_run_frame
+#define XM_S_field_run_frame
+void xm_field_run_frame(void) __asm__("func_8007554C");
+#endif
+#ifndef XM_S_field_run_post_frame
+#define XM_S_field_run_post_frame
+s32 xm_field_run_post_frame(void) __asm__("func_80078B5C");
+#endif
+#ifndef XM_S_field_vram_column_restore
+#define XM_S_field_vram_column_restore
+void xm_field_vram_column_restore(void) __asm__("func_800A91F0");
+#endif
+#ifndef XM_S_heap_coalesce
+#define XM_S_heap_coalesce
+void xm_heap_coalesce(void) __asm__("HeapConsolidate");
+#endif
+#ifndef XM_S_console_close
+#define XM_S_console_close
+void xm_console_close(void) __asm__("FontFree");
+#endif
+void func_80078D44(void) {
+    RECT rect;
+    s32 grow;
+    s32 shade;
+    s32 i;
+
+    xm_field_load_text_palette();
+    xm_field_vram_column_save();
+    xm_cd_select_directory(4, 0);
+    xm_field_wait_map_read_ahead();
+    xm_field_sync_draw_and_vsync();
+    if (xm_mode_field_entered_once == 0) {
+        xm_field_screen_convert_24bit_to_15bit(0);
+    }
+    xm_field_draw_init_display();
+    if (xm_mode_field_entered_once == 0) {
+        rect.y = 0x100;
+        rect.w = 0x140;
+        rect.x = 0;
+        rect.h = 0xE0;
+        xm_MoveImage(&rect, 0, 0);
+    }
+    xm_field_draw_buffer_index = 1;
+    xm_field_screen_save_copy();
+    xm_field_screen_copy_to(0, 0x100);
+    xm_DrawSync(0);
+    xm_field_draw_swap_and_clear_ots();
+    xm_field_sync_draw_and_vsync();
+    if (xm_mode_result_code == 1 || xm_mode_battle_return_fade == 1) {
+        xm_field_screen_pieces_show(0, 0);
+    } else {
+        xm_field_screen_pieces_show(1, 1);
+    }
+    xm_mode_field_entered_once = 1;
+    xm_cd_sync_reads(0);
+    xm_cd_select_directory(4, 0);
+    xm_field_load_from_bundle();
+    xm_field_map_stream_start();
+    xm_field_dialogue_open_blocked = 1;
+    if (xm_field_work.unk2264 != 0) {
+        xm_gear_model_set_instant_keyframes(1);
+    }
+    if (xm_mode_result_code == 1 || xm_mode_battle_return_fade == 1) {
+        grow = 0;
+    } else {
+        grow = 0x20;
+    }
+    shade = 0x800000;
+    if (xm_field_map_stream_running == 1) {
+    stream:
+            xm_field_draw_swap_and_clear_ots();
+            xm_field_screen_pieces_draw();
+            xm_field_draw_present_overlay();
+            if (xm_mode_battle_return_fade != 1) {
+                if (xm_field_screen_pieces_scale < 0x22C0) {
+                    xm_field_screen_pieces_scale += grow;
+                }
+            } else {
+                xm_field_screen_pieces_set_shade(shade >> 16);
+                shade -= 0x40000;
+                if (shade < 0) {
+                    shade = 0;
+                }
+            }
+        if (xm_cd_get_pending_read_count() != 0) {
+            goto stream;
+        }
+        xm_DrawSync(0);
+        xm_heap_free(xm_field_map_stream_ring);
+        xm_field_map_stream_running = 0;
+        xm_field_brighten_text_strip();
+    }
+    if (xm_mode_battle_return_fade == 1) {
+        do {
+            xm_field_draw_swap_and_clear_ots();
+            xm_field_screen_pieces_draw();
+            xm_field_draw_present_overlay();
+            xm_field_screen_pieces_set_shade(shade >> 16);
+            shade -= 0x40000;
+        } while (shade >= 0);
+    }
+    if (xm_mode_result_code == 1) {
+        rect.w = 0x140;
+        rect.y = 0;
+        rect.x = 0;
+        rect.h = 0xE0;
+        xm_MoveImage(&rect, 0x200, 0);
+    }
+    if (xm_mode_worldmap_area_load_count != 0) {
+        xm_sound_stop_seq((SoundSeq *)xm_mode_music_seq);
+        xm_sound_release_seq((SoundSeq *)xm_mode_music_seq);
+        xm_sound_release_wave_bank(xm_mode_music_wave_bank);
+        xm_mode_worldmap_area_load_count = 0;
+    }
+    xm_field_finish_return_to_field();
+    xm_mode_unread_arena_departure_count = 0;
+    xm_mode_field_return_pending = 0;
+    xm_field_sync_draw_and_vsync();
+    xm_pad_clear_queue();
+    xm_mode_music_load_pending = 0;
+    if (xm_mode_result_code == 1) {
+        xm_mode_music_selected_track = 0xE;
+        xm_field_music_release_cached_seq();
+    }
+    if (xm_mode_music_loaded_track != xm_mode_music_selected_track) {
+        xm_mode_stop_music();
+        xm_mode_music_load_pending = -1;
+        if (xm_mode_music_cached_seq != 0) {
+            xm_mode_music_reuse_seq = 1;
+        }
+        xm_field_music_change_track(xm_mode_music_selected_track, 1);
+    } else {
+        xm_field_music_release_cached_seq();
+    }
+    xm_field_update_play_record();
+    if (xm_mode_result_code != 1) {
+        if (xm_mode_battle_return_fade != 1) {
+            xm_field_fade_in(0x20);
+            shade = 0x800000;
+            for (i = 0; i < 0x20; i++) {
+                xm_field_run_pre_frame();
+                xm_field_screen_pieces_draw();
+                xm_field_run_frame();
+                xm_field_run_post_frame();
+                if (xm_mode_result_code != 1) {
+                    xm_field_screen_pieces_set_shade(shade >> 16);
+                    shade -= 0x40000;
+                    if (shade < 0) {
+                        shade = 0;
+                    }
+                    if (xm_field_screen_pieces_scale < 0x22C0) {
+                        xm_field_screen_pieces_scale += grow;
+                    }
+                }
+            }
+        } else {
+            xm_field_fade_in(0x20);
+        }
+    } else {
+        for (i = 0; i < 8; i++) {
+            xm_field_run_pre_frame();
+            xm_field_screen_pieces_draw();
+            xm_field_run_frame();
+            xm_field_run_post_frame();
+        }
+    }
+    if (xm_field_work.unk2264 != 0) {
+        xm_gear_model_set_instant_keyframes(0);
+    }
+    xm_field_vram_column_restore();
+    xm_heap_coalesce();
+    xm_console_close();
+    xm_field_load_text_palette();
+    xm_field_dialogue_open_blocked = 0;
+}
+#endif
 #else
 void func_80078D44(void) {
     RECT rect;
@@ -337,7 +1089,133 @@ extern void  func_80281204(s32);
 extern void *LoadGameStateOverlay(unsigned int);
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_80079288);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_encounter_count_down (src/decomp/src/field/field.c:3370). */
+#ifndef XM_S_field_encounter_count_down
+#define XM_S_field_encounter_count_down
+s32 xm_field_encounter_count_down(void) __asm__("func_80079288");
+#endif
+#ifndef XM_S_field_battle_not_requested
+#define XM_S_field_battle_not_requested
+extern s32 xm_field_battle_not_requested __asm__("D_800ADBDC");
+#endif
+#ifndef XM_S_field_worldmap_exit_not_requested
+#define XM_S_field_worldmap_exit_not_requested
+extern s32 xm_field_worldmap_exit_not_requested __asm__("D_800ADBE4");
+#endif
+#ifndef XM_S_field_map_change_not_requested
+#define XM_S_field_map_change_not_requested
+extern s32 xm_field_map_change_not_requested __asm__("D_800ADBEC");
+#endif
+#ifndef XM_S_field_music_stream_running
+#define XM_S_field_music_stream_running
+extern s32 xm_field_music_stream_running __asm__("D_800ADB2C");
+#endif
+#ifndef XM_S_field_encounters_enabled
+#define XM_S_field_encounters_enabled
+extern u8 xm_field_encounters_enabled __asm__("D_800ADB04");
+#endif
+#ifndef XM_S_field_encounter_draw_steps
+#define XM_S_field_encounter_draw_steps
+void xm_field_encounter_draw_steps(void) __asm__("func_8008E718");
+#endif
+#ifndef XM_S_formation_encounter_weights
+#define XM_S_formation_encounter_weights
+extern u8 xm_formation_encounter_weights[16] __asm__("D_80065ADC");
+#endif
+#ifndef XM_S_rand
+#define XM_S_rand
+int xm_rand(void) __asm__("rand");
+#endif
+#ifndef XM_S_formation_selected_index
+#define XM_S_formation_selected_index
+extern u8 xm_formation_selected_index __asm__("D_80059508");
+#endif
+#ifndef XM_S_mode_battle_standalone
+#define XM_S_mode_battle_standalone
+extern u8 xm_mode_battle_standalone __asm__("D_800594F8");
+#endif
+#ifndef XM_S_mode_field_standalone
+#define XM_S_mode_field_standalone
+extern s32 xm_mode_field_standalone __asm__("D_8004F370");
+#endif
+#ifndef XM_S_mode_load_overlay_block
+#define XM_S_mode_load_overlay_block
+void *xm_mode_load_overlay_block(s32 mode) __asm__("LoadGameStateOverlay");
+#endif
+#ifndef XM_S_field_encounter_battle_pending
+#define XM_S_field_encounter_battle_pending
+extern s32 xm_field_encounter_battle_pending __asm__("D_800ADBD0");
+#endif
+#ifndef XM_S_field_monitor_absent
+#define XM_S_field_monitor_absent
+extern s32 xm_field_monitor_absent __asm__("g_FieldSystemMode");
+#endif
+#ifndef XM_S_field_debug_count_encounter
+#define XM_S_field_debug_count_encounter
+void xm_field_debug_count_encounter(s32 formation) __asm__("func_80281204");
+#endif
+s32 func_80079288(void) {
+    s32 start[16];
+    u8 *weights;
+    s32 total;
+    s32 sum;
+    s32 found;
+    s32 i;
+
+    if (xm_field_battle_not_requested == 0 || xm_field_worldmap_exit_not_requested == 0 || xm_field_map_change_not_requested == 0 || xm_mode_music_load_pending == -1 || xm_field_work.unk2298 == 0
+        || xm_field_work.encounter_inhibition == -1 || xm_field_music_stream_running == 1 || xm_field_encounters_enabled == 0) {
+        return;
+    }
+    if (--xm_field_work.unk2294 == 0) {
+        xm_field_encounter_draw_steps();
+    }
+    for (i = 0; i < xm_field_work.unk229C; i++) {
+        if (xm_field_work.unk22A0[i] != 0xFFFF) {
+            xm_field_work.unk22A0[i]--;
+        }
+    }
+    for (i = 0; i < xm_field_work.unk229C; i++) {
+        if (xm_field_work.unk22A0[i] == 0) {
+            xm_field_work.unk22A0[i] = 0xFFFF;
+            goto draw;
+        }
+    }
+    return;
+draw:
+    weights = xm_formation_encounter_weights;
+    total = 0;
+    for (i = 0; i < 16; i++) {
+        total += weights[i];
+    }
+    sum = 0;
+    for (i = 0; i < 16; i++) {
+        start[i] = sum;
+        sum += weights[i];
+    }
+    total = (xm_rand() * (total + 1)) >> 15;
+    found = 0;
+    for (i = 15; i >= 0; i--) {
+        if (weights[i] != 0 && start[i] < total) {
+            found++;
+            break;
+        }
+    }
+    if (found != 0) {
+        xm_formation_selected_index = i;
+        xm_mode_battle_standalone = 0;
+        xm_field_work.battle_music = xm_field_work.encounter_music[i];
+        if (xm_mode_field_standalone == 0) {
+            xm_mode_load_overlay_block(2);
+        }
+        xm_field_battle_not_requested = 0;
+        xm_field_encounter_battle_pending = 1;
+        if (xm_field_monitor_absent == 0) {
+            xm_field_debug_count_encounter(i);
+        }
+    }
+}
+#endif
 #else
 void func_80079288(void) {
     u16 *timers = (u16 *)D_800B22A0;
@@ -1163,7 +2041,87 @@ extern s16 D_800ADE30[][8];
 extern u8 D_800ADE70[][8];
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007A5C4);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_compass_build_quadrant_quads (src/decomp/src/field/field_motion.c:240). */
+#ifndef XM_T_FieldMarker
+#define XM_T_FieldMarker
+typedef struct FieldMarker {
+    SVECTOR v[4];
+    POLY_FT4 poly[2];
+} FieldMarker;
+#endif
+#ifndef XM_S_field_compass_build_quadrant_quads
+#define XM_S_field_compass_build_quadrant_quads
+void xm_field_compass_build_quadrant_quads(void) __asm__("func_8007A5C4");
+#endif
+#ifndef XM_S_field_compass_markers
+#define XM_S_field_compass_markers
+extern FieldMarker xm_field_compass_markers[25] __asm__("D_800B06BC");
+#endif
+#ifndef XM_S_SetPolyFT4
+#define XM_S_SetPolyFT4
+void xm_SetPolyFT4(POLY_FT4 *p) __asm__("SetPolyFT4");
+#endif
+#ifndef XM_S_field_compass_quadrant_corners
+#define XM_S_field_compass_quadrant_corners
+extern s16 xm_field_compass_quadrant_corners[32] __asm__("D_800ADE30");
+#endif
+#ifndef XM_S_field_set_quad_uvs_clamped
+#define XM_S_field_set_quad_uvs_clamped
+void xm_field_set_quad_uvs_clamped(POLY_FT4 *poly, s16 u0, s16 v0, s16 u1, s16 v1, s16 u2, s16 v2, s16 u3, s16 v3) __asm__("FieldClampPolyFT4UVs");
+#endif
+#ifndef XM_S_field_compass_quadrant_uvs
+#define XM_S_field_compass_quadrant_uvs
+extern u8 xm_field_compass_quadrant_uvs[32] __asm__("D_800ADE70");
+#endif
+#ifndef XM_S_SetSemiTrans
+#define XM_S_SetSemiTrans
+void xm_SetSemiTrans(void *p, int abe) __asm__("SetSemiTrans");
+#endif
+#ifndef XM_S_GetTPage
+#define XM_S_GetTPage
+u_short xm_GetTPage(int tp, int abr, int x, int y) __asm__("GetTPage");
+#endif
+#ifndef XM_S_GetClut
+#define XM_S_GetClut
+u_short xm_GetClut(int x, int y) __asm__("GetClut");
+#endif
+void func_8007A5C4(void) {
+    FieldMarker *record;
+    POLY_FT4 *quad;
+    POLY_FT4 *copy;
+    s32 i;
+
+    for (i = 0; i < 4; i++) {
+        record = &xm_field_compass_markers[i + 21];
+        copy = &xm_field_compass_markers[i + 21].poly[1];
+        quad = &xm_field_compass_markers[i + 21].poly[0];
+        xm_SetPolyFT4(quad);
+        record->v[0].vx = xm_field_compass_quadrant_corners[i * 8];
+        record->v[0].vy = 0;
+        record->v[0].vz = xm_field_compass_quadrant_corners[i * 8 + 1];
+        record->v[1].vx = xm_field_compass_quadrant_corners[i * 8 + 2];
+        record->v[1].vy = 0;
+        record->v[1].vz = xm_field_compass_quadrant_corners[i * 8 + 3];
+        record->v[2].vx = xm_field_compass_quadrant_corners[i * 8 + 4];
+        record->v[2].vy = 0;
+        record->v[2].vz = xm_field_compass_quadrant_corners[i * 8 + 5];
+        record->v[3].vx = xm_field_compass_quadrant_corners[i * 8 + 6];
+        record->v[3].vy = 0;
+        record->v[3].vz = xm_field_compass_quadrant_corners[i * 8 + 7];
+        quad->r0 = 0x80;
+        quad->g0 = 0x80;
+        quad->b0 = 0x80;
+        xm_field_set_quad_uvs_clamped(quad, xm_field_compass_quadrant_uvs[i * 8], xm_field_compass_quadrant_uvs[i * 8 + 1] + 0xC0, xm_field_compass_quadrant_uvs[i * 8 + 2],
+                      xm_field_compass_quadrant_uvs[i * 8 + 3] + 0xC0, xm_field_compass_quadrant_uvs[i * 8 + 4], xm_field_compass_quadrant_uvs[i * 8 + 5] + 0xC0, xm_field_compass_quadrant_uvs[i * 8 + 6],
+                      xm_field_compass_quadrant_uvs[i * 8 + 7] + 0xC0);
+        xm_SetSemiTrans(quad, 1);
+        quad->tpage = xm_GetTPage(0, 2, 0x280, 0x1C0);
+        quad->clut = xm_GetClut(0x100, 0xF2);
+        *copy = *quad;
+    }
+}
+#endif
 #else
 void func_8007A5C4(void) {
     s32 i;
@@ -1737,7 +2695,31 @@ s32 func_8007B478(SVECTOR* p0, SVECTOR* p1, SVECTOR* p2, SVECTOR* pTest) {
 extern s16 D_800B218C;
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007B614);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_compute_offset_at_angle (src/decomp/src/field/field_motion.c:581). */
+#ifndef XM_S_field_compute_offset_at_angle
+#define XM_S_field_compute_offset_at_angle
+void xm_field_compute_offset_at_angle(VECTOR *out, s32 distance, s32 angle) __asm__("func_8007B614");
+#endif
+#ifndef XM_S_gpu_get_cos
+#define XM_S_gpu_get_cos
+s32 xm_gpu_get_cos(s32 angle) __asm__("rsin");
+#endif
+#ifndef XM_S_gpu_get_sin
+#define XM_S_gpu_get_sin
+s32 xm_gpu_get_sin(s32 angle) __asm__("rcos");
+#endif
+void func_8007B614(VECTOR *out, s32 distance, s32 angle) {
+    s32 heading;
+
+    distance *= 16;
+    distance = (distance * xm_field_work.scale) >> 12;
+    heading = angle & 0xFFF;
+    out->vx = xm_gpu_get_cos(heading) * distance;
+    out->vz = -(xm_gpu_get_sin(heading) * distance);
+    out->vy = 0;
+}
+#endif
 #else
 void func_8007B614(s32* pOut, s16 scale, s16 angle) {
     s32 magnitude = (scale << 4) * D_800B218C;

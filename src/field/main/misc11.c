@@ -77,7 +77,54 @@ extern s16 D_800AF728[];
 extern u16 D_800AF768;
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc11", func_80091ADC);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_vram_move_or_clear_rect (src/decomp/src/field/field_event.c:4458). */
+#ifndef XM_S_field_vram_move_or_clear_rect
+#define XM_S_field_vram_move_or_clear_rect
+void xm_field_vram_move_or_clear_rect(s32 x, s32 y, s32 w, s32 h, s32 dx, s32 dy, s32 clear) __asm__("func_80091ADC");
+#endif
+#ifndef XM_S_field_vram_ring_count
+#define XM_S_field_vram_ring_count
+extern u16 xm_field_vram_ring_count __asm__("D_800AF768");
+#endif
+#ifndef XM_S_field_vram_ring_rects
+#define XM_S_field_vram_ring_rects
+extern RECT xm_field_vram_ring_rects[32] __asm__("D_800AF5E8");
+#endif
+#ifndef XM_S_field_vram_ring_destination_x_table
+#define XM_S_field_vram_ring_destination_x_table
+extern s16 xm_field_vram_ring_destination_x_table[32] __asm__("D_800AF6E8");
+#endif
+#ifndef XM_S_field_vram_ring_unread_destination_y_table
+#define XM_S_field_vram_ring_unread_destination_y_table
+extern s16 xm_field_vram_ring_unread_destination_y_table[32] __asm__("D_800AF728");
+#endif
+#ifndef XM_S_MoveImage
+#define XM_S_MoveImage
+int xm_MoveImage(RECT *rect, int x, int y) __asm__("MoveImage");
+#endif
+#ifndef XM_S_ClearImage
+#define XM_S_ClearImage
+int xm_ClearImage(RECT *rect, u_char r, u_char g, u_char b) __asm__("ClearImage");
+#endif
+void func_80091ADC(s32 x, s32 y, s32 w, s32 h, s32 dx, s32 dy, s32 clear) {
+    s32 slot;
+
+    slot = xm_field_vram_ring_count & 0x1F;
+    xm_field_vram_ring_rects[slot].y = y;
+    xm_field_vram_ring_rects[slot].x = x;
+    xm_field_vram_ring_rects[slot].w = w;
+    xm_field_vram_ring_rects[slot].h = h;
+    xm_field_vram_ring_destination_x_table[slot] = dx;
+    xm_field_vram_ring_unread_destination_y_table[slot] = dy;
+    if (clear == 0) {
+        xm_MoveImage(&xm_field_vram_ring_rects[slot], xm_field_vram_ring_destination_x_table[slot], (s16)dy);
+    } else {
+        xm_ClearImage(&xm_field_vram_ring_rects[slot], 0, 0, 0);
+    }
+    xm_field_vram_ring_count++;
+}
+#endif
 #else
 void func_80091ADC(s16 x, s16 y, s16 w, s16 h, s16 extra, s16 mode, s32 doMove) {
     u16 idx = D_800AF768 & 0x1F;

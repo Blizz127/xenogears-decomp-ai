@@ -1439,7 +1439,140 @@ extern s16 D_800B2328[];
 extern s16 D_800B22E2[];
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_80089DCC);
+#ifndef XENO_PC_PORT
+/* Adopted from EtherAura xenogears (GPL-3.0, github.com/EtherAura/xenogears @e54f35a): OPX_89 (src/field/f_80086D8C.c). */
+#ifndef XM_T_MechaFieldArgs2
+#define XM_T_MechaFieldArgs2
+typedef MATRIX MechaFieldArgs2;
+#endif
+#ifndef XM_T_FieldBss_800B2184
+#define XM_T_FieldBss_800B2184
+typedef struct {
+     SVECTOR m0_renderModelRotationAngles; 
+     s16 m8_entityMoveSpeedFactor;              
+     s16 mA_isFogSetup;              
+     u8 mC_fogNearColor[3];            
+     u8 mF;
+     u8 m10_fogFarColor[3];           
+     u8 m13;
+     s16 m14_fogNear;             
+     s16 m16_fogFar;             
+     u8 m18_backgroundClearColor[4];           
+     s16 m1C_OPX_0CParams0[3];          
+     s16 m22_OPX_0CParams1[3];          
+     s16 m28_soundMaxDistance;             
+     s16 m2A_objectStepX;             
+     s16 m2C_objectStepZ;             
+     s16 m2E_objectStepY;             
+     s16 m30_spriteTurnSpeed;             
+     s16 m32;
+     s32 m34_lastSoundEffectId;             
+     s32 m38_objectOffsetX;             
+     s32 m3C_objectOffsetY;             
+     s32 m40_objectOffsetZ;             
+     s32 m44;
+     u8 m48_noUpdatesToPartyMembers;              
+     u8 m49_cameraFollowHeight;              
+     u8 m4A_partyPositioned;              
+     u8 m4B_partyFollowDisabled;              
+     u8 m4C_menuDisabled;              
+     u8 m4D_compassDisabled;              
+     u8 m4E_objectMoveFlags;              
+     u8 m4F;
+     s16 m50_linkOTIndex; 
+     s16 m52_dialogWindowOpenAnimationNumFrames;             
+     s32 m54_cameraSnapFrames;             
+     s16 m58_mechaList[4];     
+     s16 m60_mechaCurrentAnimation[4]; 
+     u8 m68[0x30];
+     MechaFieldArgs2 m98_mechaFieldArgs2[2]; 
+     u8 mD8_mechaBackColor[3]; 
+     u8 mDB;
+     s32 mDC;
+     s32 mE0_numMechas;             
+     s32 mE4_partySpriteSetupBase;             
+     s32 mE8_playerControlledActor;             
+     s16 mEC_encounterMusicIds[16];         
+     s16 m10C_battleMusicId;            
+     s16 m10E;
+     s32 m110_encounterDataCountdown;            
+     s32 m114_encounterTimer;            
+     s32 m118_encounterCount;            
+     u16 m11C_encounterTriggerTimes[32];        
+     s16 m15C_cameraTrackingMode;            
+     s16 m15E_lightActorIds[3];         
+     SVECTOR m164_lightNearColors[3];       
+     SVECTOR m17C_lightFarColors[3];       
+     s32 m194_lightRadii[3];           
+     SVECTOR m1A0_lightPositions[3];       
+     u16 m1B8_keptSoundChannels;            
+     u16 m1BA_actorCameraTracked; 
+     s16 m1BC_jumpCooldownReset;
+     s16 m1BE_jumpCooldown;            
+     s16 m1C0_customJumpMode;            
+     s16 m1C2_jumpAnimationId; 
+     s16 m1C4_warpPartyRequest;            
+     s16 m1C6_numMaxMechaOverlayEntries; 
+     s16 m1C8_gearSwitchOverride;            
+     s16 m1CA_playerIsntPartyLeader;            
+     s32 m1CC_savedPlayerScriptFlags;            
+     u8 m1D0_reverseDpadDirections;             
+     u8 m1D1_randomBattleTransitionEffect;             
+     u8 m1D2_fieldBattleTransitionEffect;             
+     u8 m1D3_spriteFogDisabled;             
+     u8 m1D4_pauseDisabled;             
+     u8 m1D5[7];
+     s32 m1DC_partyToFollowStructMapping[3]; 
+} FieldBss_800B2184;
+#endif
+#ifndef XM_S_OPX_89
+#define XM_S_OPX_89
+void xm_OPX_89(void) __asm__("func_80089DCC");
+#endif
+#ifndef XM_S_getVar80
+#define XM_S_getVar80
+s32 xm_getVar80(s32 offset, s32 flags) __asm__("FieldScriptArgument1");
+#endif
+#ifndef XM_S_pCurrentFieldScriptFile
+#define XM_S_pCurrentFieldScriptFile
+extern u8 * xm_pCurrentFieldScriptFile __asm__("g_FieldScriptVMCurScriptData");
+#endif
+#ifndef XM_S_op9DVar1
+#define XM_S_op9DVar1
+extern FieldBss_800B2184 xm_op9DVar1 __asm__("D_800B2184");
+#endif
+#ifndef XM_S_getVar40
+#define XM_S_getVar40
+s32 xm_getVar40(s32 offset, s32 flags) __asm__("FieldScriptArgument2");
+#endif
+#ifndef XM_S_getVar20
+#define XM_S_getVar20
+s32 xm_getVar20(s32 offset, s32 flags) __asm__("FieldScriptArgument3");
+#endif
+#ifndef XM_S_getVar10
+#define XM_S_getVar10
+s32 xm_getVar10(s32 offset, s32 flags) __asm__("FieldScriptArgument4");
+#endif
+#ifndef XM_S_readCharacter
+#define XM_S_readCharacter
+s32 xm_readCharacter(s32 offset) __asm__("FieldScriptVMGetActorIndex");
+#endif
+void func_80089DCC(void) {
+    s32 i = xm_getVar80(1, xm_pCurrentFieldScriptFile[xm_pCurrentFieldScriptActor->mCC_scriptPC + 9]);
+    s32 actor;
+
+    xm_op9DVar1.m1A0_lightPositions[i].vx = xm_getVar40(3, xm_pCurrentFieldScriptFile[xm_pCurrentFieldScriptActor->mCC_scriptPC + 9]);
+    xm_op9DVar1.m1A0_lightPositions[i].vz = xm_getVar20(5, xm_pCurrentFieldScriptFile[xm_pCurrentFieldScriptActor->mCC_scriptPC + 9]);
+    xm_op9DVar1.m1A0_lightPositions[i].vy = xm_getVar10(7, xm_pCurrentFieldScriptFile[xm_pCurrentFieldScriptActor->mCC_scriptPC + 9]);
+    actor = xm_readCharacter(0xA);
+    if (actor != 0xFF) {
+        xm_op9DVar1.m15E_lightActorIds[i] = actor;
+    } else {
+        xm_op9DVar1.m15E_lightActorIds[i] = -1;
+    }
+    xm_pCurrentFieldScriptActor->mCC_scriptPC += 0xB;
+}
+#endif
 #else
 void func_80089DCC(void) {
     u8 mask;
@@ -3371,10 +3504,6 @@ void func_8008D808(s32 arg0, s32 arg1, s32 arg2) {
 #ifndef XM_S_emitScriptWalkToPosition
 #define XM_S_emitScriptWalkToPosition
 void xm_emitScriptWalkToPosition(s32 a, s32 b) __asm__("func_8008DA04");
-#endif
-#ifndef XM_S_pCurrentFieldScriptFile
-#define XM_S_pCurrentFieldScriptFile
-extern u8 * xm_pCurrentFieldScriptFile __asm__("g_FieldScriptVMCurScriptData");
 #endif
 #ifndef XM_S_writeU16ToScript
 #define XM_S_writeU16ToScript

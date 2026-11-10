@@ -8893,7 +8893,64 @@ void func_801D3674(void) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D36E0);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): menu_name_label_layout (src/decomp/src/slot39/menu_framework.c:4980). */
+#ifndef XM_S_menu_name_label_layout
+#define XM_S_menu_name_label_layout
+void xm_menu_name_label_layout(MenuLabel *label, u8 slot, u8 gear, u8 mode) __asm__("func_801D36E0");
+#endif
+#ifndef XM_S_menu_quad_init
+#define XM_S_menu_quad_init
+void xm_menu_quad_init(POLY_FT4 *poly) __asm__("func_801E927C");
+#endif
+#ifndef XM_S_text_plane1_clut
+#define XM_S_text_plane1_clut
+extern u16 xm_text_plane1_clut __asm__("g_SystemPalette2");
+#endif
+#ifndef XM_S_text_plane0_clut
+#define XM_S_text_plane0_clut
+extern u16 xm_text_plane0_clut __asm__("g_SystemPalette1");
+#endif
+#ifndef XM_S_menu_name_label_x_table
+#define XM_S_menu_name_label_x_table
+extern s32 xm_menu_name_label_x_table[4] __asm__("D_801EA17C");
+#endif
+#ifndef XM_S_menu_name_label_y_table
+#define XM_S_menu_name_label_y_table
+extern s32 xm_menu_name_label_y_table[4] __asm__("D_801EA18C");
+#endif
+#ifndef XM_S_menu_name_image_vram_x_table
+#define XM_S_menu_name_image_vram_x_table
+extern s32 xm_menu_name_image_vram_x_table[19] __asm__("D_801EA578");
+#endif
+#ifndef XM_S_menu_name_image_vram_y_table
+#define XM_S_menu_name_image_vram_y_table
+extern s32 xm_menu_name_image_vram_y_table[19] __asm__("D_801EA5C4");
+#endif
+void func_801D36E0(MenuLabel *label, u8 slot, u8 gear, u8 mode) {
+    s32 x;
+    s32 w;
+
+    xm_menu_quad_init(&label->polys[xm_menu_state_current->buffer_index]);
+    label->polys[xm_menu_state_current->buffer_index].tpage = xm_GetTPage(0, 0, 0x180, 0);
+    if (!gear) {
+        w = 0x48;
+        label->polys[xm_menu_state_current->buffer_index].clut = (xm_menu_state_current->flags->party[slot] & 1) ? xm_text_plane1_clut : xm_text_plane0_clut;
+        x = xm_menu_name_label_x_table[mode] - 0x24;
+        xm_menu_quad_place(&label->polys[xm_menu_state_current->buffer_index], (u16)x, (u16)xm_menu_name_label_y_table[mode],
+                      (u8)(xm_menu_name_image_vram_x_table[slot] * 4), (u8)xm_menu_name_image_vram_y_table[slot], w, 13);
+    } else {
+        w = 0x60;
+        label->polys[xm_menu_state_current->buffer_index].clut =
+            ((xm_game_data.characters[xm_menu_state_current->flags->party[slot]].gearId + 11) & 1) ? xm_text_plane1_clut : xm_text_plane0_clut;
+        x = xm_menu_name_label_x_table[mode] - 0x30;
+        xm_menu_quad_place(&label->polys[xm_menu_state_current->buffer_index], (u16)x, (u16)xm_menu_name_label_y_table[mode],
+                      (u8)(xm_menu_name_image_vram_x_table[slot + 3] * 4), (u8)xm_menu_name_image_vram_y_table[slot + 3], w, 13);
+    }
+    xm_menu_set_rect_verts(label->verts, x, xm_menu_name_label_y_table[mode], w, 13);
+    label->buffer = xm_menu_state_current->buffer_index;
+}
+#endif
 #else
 extern u16 g_SystemPalette1;
 extern u16 g_SystemPalette2;
@@ -9425,18 +9482,6 @@ void func_801D4EA0(s32 windowIndex) {
 #define XM_S_menu_field_block_layout_portrait
 void xm_menu_field_block_layout_portrait(u8 index, u8 mode, s32 x, s32 y) __asm__("func_801D4F2C");
 #endif
-#ifndef XM_S_menu_quad_init
-#define XM_S_menu_quad_init
-void xm_menu_quad_init(POLY_FT4 *poly) __asm__("func_801E927C");
-#endif
-#ifndef XM_S_text_plane1_clut
-#define XM_S_text_plane1_clut
-extern u16 xm_text_plane1_clut __asm__("g_SystemPalette2");
-#endif
-#ifndef XM_S_text_plane0_clut
-#define XM_S_text_plane0_clut
-extern u16 xm_text_plane0_clut __asm__("g_SystemPalette1");
-#endif
 #ifndef XM_S_menu_field_block_name_x
 #define XM_S_menu_field_block_name_x
 extern s32 xm_menu_field_block_name_x __asm__("D_801E9B58");
@@ -9444,14 +9489,6 @@ extern s32 xm_menu_field_block_name_x __asm__("D_801E9B58");
 #ifndef XM_S_menu_field_block_name_y
 #define XM_S_menu_field_block_name_y
 extern s32 xm_menu_field_block_name_y __asm__("D_801E9B5C");
-#endif
-#ifndef XM_S_menu_name_image_vram_x_table
-#define XM_S_menu_name_image_vram_x_table
-extern s32 xm_menu_name_image_vram_x_table[19] __asm__("D_801EA578");
-#endif
-#ifndef XM_S_menu_name_image_vram_y_table
-#define XM_S_menu_name_image_vram_y_table
-extern s32 xm_menu_name_image_vram_y_table[19] __asm__("D_801EA5C4");
 #endif
 void func_801D4F2C(u8 index, u8 mode, s32 x, s32 y) {
     MenuFieldBlock *block = xm_menu_state_current->field_blocks[index];

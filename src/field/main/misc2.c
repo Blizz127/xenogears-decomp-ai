@@ -1543,7 +1543,228 @@ extern u8 D_80065848;
 extern void func_8007AE78(s32 arg0, void* arg1);
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc2", FieldPollControllers);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_pad_drain_queue (src/decomp/src/field/field.c:1837). */
+#ifndef XM_T_FadeChannel
+#define XM_T_FadeChannel
+typedef struct {
+    DR_MODE modes[2]; 
+    TILE tiles[2];   
+    s32 level[3];
+    s32 step[3];
+    u16 abr;
+    s16 active;
+    s16 steps;
+    u16 pad;
+} FadeChannel;
+#endif
+#ifndef XM_T_FieldWork
+#define XM_T_FieldWork
+typedef struct FieldWork {
+    s16 unk2078;               
+    s16 unk207A;               
+    s16 effect_steps;          
+    u8 unk207E[2];
+    s32 effect_value[6];       
+    s32 effect_step[6];        
+    s16 unk20B0[2];            
+    void *effect_buffers[4];   
+    FadeChannel fades[2];      
+    u16 open_windows;          
+
+    s16 encounter_inhibition;  
+    s16 terrain_angle;         
+    u16 input_mask;            
+    s32 unk217C;               
+    s32 unk2180;               
+    SVECTOR sprite_angles;     
+    s16 scale;                 
+    s16 sprite_gate;           
+    u8 fog_color[4];           
+    u8 far_color[4];           
+    s16 fog_range[2];          
+    u8 clear_color[3];         
+    u8 party_bits;             
+    s16 unk21A0[6];            
+    s16 emitter_range;         
+    s16 piece_drift[3];        
+    s16 unk21B4;               
+    u8 unk21B6[2];
+    s32 last_sound_effect;     
+    s32 unk21BC[3];            
+    u8 unk21C8[0x21CC - 0x21C8];
+    u8 party_processing_mode;  
+    u8 camera_floor_fixed;     
+    u8 preserve_nonplayer_motion; 
+    u8 forced_position;        
+    u8 script_control[2];      
+    u8 piece_drift_mode;       
+    u8 unk21D3;
+    s16 unk21D4;               
+    s16 text_speed;            
+    s32 camera_counter;        
+    s16 unk21DC[4];            
+    s16 unk21E4[4];            
+    SVECTOR layer_positions[4]; 
+    s32 layer_scales[4];       
+    s16 unk221C[5][3];         
+    u8 unk223A[2];
+    s16 unk223C[3][3];         
+    u8 unk224E[0x225C - 0x224E];
+    u8 unk225C[3];             
+    u8 unk225F[0x2264 - 0x225F]; 
+    s32 unk2264;               
+    s32 unk2268;               
+    s32 controlled;            
+    u16 encounter_music[16];   
+    s16 battle_music;          
+    u8 unk2292[2];
+    s32 unk2294;               
+    s32 unk2298;               
+    s32 unk229C;               
+    u16 unk22A0[32];           
+    s16 unk22E0;               
+    s16 emitter_descriptor[3]; 
+    s16 unk22E8[3][4];         
+    s16 unk2300[3][4];         
+    s32 unk2318[3];            
+    s16 emitter_position[3][4]; 
+    u16 effects_kept;          
+    u16 unk233E;               
+    s16 repeat_delay;          
+    s16 repeat_remaining;      
+    s16 jump_mode;             
+    s16 animation_mode;        
+    u16 unk2348;               
+    s16 unk234A;               
+    s16 gear_riding_lock_override; 
+    s16 followers_idle;        
+    u32 unk2350;               
+    u8 unk2354;                
+    u8 unk2355;                
+    u8 unk2356;                
+    u8 unk2357;                
+    u8 unk2358;                
+    u8 unk2359[0x235C - 0x2359];
+} FieldWork;
+#endif
+#ifndef XM_S_field_pad_drain_queue
+#define XM_S_field_pad_drain_queue
+void xm_field_pad_drain_queue(void) __asm__("FieldPollControllers");
+#endif
+#ifndef XM_S_field_pad_port0_held
+#define XM_S_field_pad_port0_held
+extern u16 xm_field_pad_port0_held __asm__("D_800AFE9C");
+#endif
+#ifndef XM_S_field_pad_port1_held
+#define XM_S_field_pad_port1_held
+extern u16 xm_field_pad_port1_held __asm__("D_800AFEA0");
+#endif
+#ifndef XM_S_field_pad_port0_pressed
+#define XM_S_field_pad_port0_pressed
+extern u16 xm_field_pad_port0_pressed __asm__("D_800C2694");
+#endif
+#ifndef XM_S_field_pad_unread_port1_pressed
+#define XM_S_field_pad_unread_port1_pressed
+extern u16 xm_field_pad_unread_port1_pressed __asm__("D_800C38F8");
+#endif
+#ifndef XM_S_field_pad_port0_repeated
+#define XM_S_field_pad_port0_repeated
+extern u16 xm_field_pad_port0_repeated __asm__("D_800C3900");
+#endif
+#ifndef XM_S_field_pad_port1_repeated
+#define XM_S_field_pad_port1_repeated
+extern u16 xm_field_pad_port1_repeated __asm__("D_800C3908");
+#endif
+#ifndef XM_S_pad_dequeue_state
+#define XM_S_pad_dequeue_state
+u32 xm_pad_dequeue_state(void) __asm__("ControllerPopState");
+#endif
+#ifndef XM_S_pad_port0_held
+#define XM_S_pad_port0_held
+extern u16 xm_pad_port0_held __asm__("g_C1ButtonState");
+#endif
+#ifndef XM_S_field_work
+#define XM_S_field_work
+extern FieldWork xm_field_work __asm__("g_FieldEffects");
+#endif
+#ifndef XM_S_pad_port1_held
+#define XM_S_pad_port1_held
+extern u16 xm_pad_port1_held __asm__("g_C2ButtonState");
+#endif
+#ifndef XM_S_pad_port0_pressed
+#define XM_S_pad_port0_pressed
+extern u16 xm_pad_port0_pressed __asm__("g_C1ButtonStateReleased");
+#endif
+#ifndef XM_S_pad_port1_pressed
+#define XM_S_pad_port1_pressed
+extern u16 xm_pad_port1_pressed __asm__("g_C2ButtonStateReleased");
+#endif
+#ifndef XM_S_pad_port0_repeated
+#define XM_S_pad_port0_repeated
+extern u16 xm_pad_port0_repeated __asm__("g_C1ButtonStatePressedOnce");
+#endif
+#ifndef XM_S_pad_port1_repeated
+#define XM_S_pad_port1_repeated
+extern u16 xm_pad_port1_repeated __asm__("g_C2ButtonStatePressedOnce");
+#endif
+#ifndef XM_S_field_pad_port0_allowed_mask
+#define XM_S_field_pad_port0_allowed_mask
+extern u16 xm_field_pad_port0_allowed_mask __asm__("D_800ADB00");
+#endif
+#ifndef XM_S_pad_clear_queue
+#define XM_S_pad_clear_queue
+void xm_pad_clear_queue(void) __asm__("ControllerResetState");
+#endif
+#ifndef XM_S_field_pointer_read
+#define XM_S_field_pointer_read
+s32 xm_field_pointer_read(s32 port, s32 *out) __asm__("func_8007AE78");
+#endif
+#ifndef XM_S_mode_field_pointer_state
+#define XM_S_mode_field_pointer_state
+extern s32 xm_mode_field_pointer_state[5] __asm__("D_80065848");
+#endif
+#ifndef XM_S_field_camera_cut_timer
+#define XM_S_field_camera_cut_timer
+extern s32 xm_field_camera_cut_timer __asm__("D_800ADC18");
+#endif
+#ifndef XM_S_field_battle_not_requested
+#define XM_S_field_battle_not_requested
+extern s32 xm_field_battle_not_requested __asm__("D_800ADBDC");
+#endif
+void FieldPollControllers(void) {
+    xm_field_pad_port0_held = 0;
+    xm_field_pad_port1_held = 0;
+    xm_field_pad_port0_pressed = 0;
+    xm_field_pad_unread_port1_pressed = 0;
+    xm_field_pad_port0_repeated = 0;
+    xm_field_pad_port1_repeated = 0;
+    while (xm_pad_dequeue_state() != 0) {
+        xm_field_pad_port0_held |= xm_pad_port0_held & xm_field_work.input_mask;
+        xm_field_pad_port1_held |= xm_pad_port1_held;
+        xm_field_pad_port0_pressed |= xm_pad_port0_pressed & xm_field_work.input_mask;
+        xm_field_pad_unread_port1_pressed |= xm_pad_port1_pressed;
+        xm_field_pad_port0_repeated |= xm_pad_port0_repeated & xm_field_work.input_mask;
+        xm_field_pad_port1_repeated |= xm_pad_port1_repeated;
+    }
+    xm_field_pad_port0_held &= xm_field_pad_port0_allowed_mask;
+    xm_field_pad_port0_pressed &= xm_field_pad_port0_allowed_mask;
+    xm_field_pad_port0_repeated &= xm_field_pad_port0_allowed_mask;
+    xm_pad_clear_queue();
+    xm_field_pointer_read(1, xm_mode_field_pointer_state);
+    if (xm_field_camera_cut_timer != 0) {
+        xm_field_pad_port0_held = 0;
+        xm_field_pad_port1_held = 0;
+        xm_field_pad_port0_pressed = 0;
+        xm_field_pad_unread_port1_pressed = 0;
+        xm_field_pad_port0_repeated = 0;
+        xm_field_pad_port1_repeated = 0;
+    }
+    if (xm_field_battle_not_requested == 0) {
+        xm_field_pad_port0_pressed &= ~0x80;
+    }
+}
+#endif
 #else
 void FieldPollControllers(void) {
     D_800AFE9C = 0;
