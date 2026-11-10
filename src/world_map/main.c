@@ -423,6 +423,9 @@ void func_80097718(s32 arg0, s32 arg1);
 void func_80098044(void);
 #endif
 
+#ifndef XENO_PC_PORT
+INCLUDE_RODATA("asm/world_map/nonmatchings/main", D_8006FAF0);
+#endif
 INCLUDE_ASM("asm/world_map/nonmatchings/main", WorldMapMain);
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_800712D0);
