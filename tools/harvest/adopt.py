@@ -218,13 +218,13 @@ def jt_setup(tu):
 def jt_markers(blizz_name):
     """one .xeno_jt marker per jump table of the retail function (mode 4 = tight, 8 = natural .align 3)"""
     if not JT[0]: return []
-    fs=glob.glob('asm/%s/nonmatchings/**/%s.s'%(MOD,blizz_name),recursive=True)
+    fs=glob.glob("asm/%s/*matchings/**/%s.s"%(MOD,blizz_name),recursive=True)
     if not fs: return []
     t=open(fs[0]).read(); out=[]
     for m in re.finditer(r'dlabel jtbl_([0-9A-Fa-f]{8})\n(.*?)\.size jtbl_',t,re.S):
         a=int(m.group(1),16); n=len(re.findall(r'\.word',m.group(2)))
         out.append((a,'4' if (a-JT[1])%8==4 else '8',4*n))
-    return ['__asm__(".xeno_jt %s %d");'%(md,tot) for a,md,tot in sorted(out)]
+    return ['__asm__(".xeno_jt %s %d jtbl_%08X");'%(md,tot,a) for a,md,tot in sorted(out)]
 def analyze(row,fe,mode=''):
     """Return (block_text) or raise Reject."""
     name=row['xem_name']; src=fe['src']

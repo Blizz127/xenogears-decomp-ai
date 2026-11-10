@@ -1893,7 +1893,7 @@ void xm_worldmap_choose_movement_mode(void) __asm__("func_80073300");
 #define XM_S_worldmap_movement_mode
 extern s32 xm_worldmap_movement_mode __asm__("D_8009BE10");
 #endif
-__asm__(".xeno_jt 4 24");
+__asm__(".xeno_jt 4 24 jtbl_8006FB0C");
 void func_80073300(void) {
     if (xm_game_data.worldmap.flags & 0x4000) {
         switch (xm_game_data.worldmap.flags & 0x1FFF) {
@@ -1938,7 +1938,7 @@ extern s32 xm_worldmap_player_heading __asm__("D_8009C584");
 #define XM_S_worldmap_load_flying_vehicle_position
 void xm_worldmap_load_flying_vehicle_position(VECTOR *position) __asm__("func_8008DFF4");
 #endif
-__asm__(".xeno_jt 4 28");
+__asm__(".xeno_jt 4 28 jtbl_8006FB24");
 void func_80073398(void) {
     xm_game_data.worldmap.unk6A = 0;
     switch (xm_worldmap_movement_mode) {
@@ -5975,8 +5975,8 @@ extern SVECTOR xm_worldmap_scene12_shot_path1_points[14] __asm__("D_8009A4F8");
 #define XM_S_worldmap_scene12_shot_path2_points
 extern SVECTOR xm_worldmap_scene12_shot_path2_points[7] __asm__("D_8009A568");
 #endif
-__asm__(".xeno_jt 8 24");
-__asm__(".xeno_jt 8 28");
+__asm__(".xeno_jt 8 24 jtbl_8006FD58");
+__asm__(".xeno_jt 8 28 jtbl_8006FD70");
 s32 func_8007C7D8(s32 index) {
     WorldmapActor *actor;
     ShotScratch *scratch;
@@ -7654,7 +7654,7 @@ s32 xm_worldmap_scene18_lift_update(s32 index) __asm__("func_80084068");
 #define XM_S_worldmap_step_value_toward
 s32 xm_worldmap_step_value_toward(s32 value, s32 target, s32 delta) __asm__("func_800771D8");
 #endif
-__asm__(".xeno_jt 8 20");
+__asm__(".xeno_jt 8 20 jtbl_800704C8");
 s32 func_80084068(s32 index) {
     WorldmapActor *actor;
     ActorScratch *scratch;
@@ -12362,7 +12362,7 @@ s32 xm_worldmap_stream_step(void) {
 #define XM_S_worldmap_stream_wait
 extern s32 xm_worldmap_stream_wait __asm__("D_8009BD2C");
 #endif
-__asm__(".xeno_jt 8 24");
+__asm__(".xeno_jt 8 24 jtbl_80070CA0");
 s32 func_800968E0(void) {
     switch (xm_worldmap_stream_state) {
     case 0:

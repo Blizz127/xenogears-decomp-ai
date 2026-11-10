@@ -20,11 +20,11 @@ if "-o" in args:
     out=args[args.index("-o")+1]
     t=open(out).read()
     if ".xeno_jt" in t:
-        L=t.split("\n"); res=[]; q=[]; i=0; cur=None; n=0
+        L=t.split("\n"); res=[]; q=[]; i=0; cur=None; n=0; ren=[]
         while i<len(L):
             l=L[i]
             if l.strip().startswith(".xeno_jt"):
-                p=l.split(); q.append((p[1],int(p[2]))); i+=1; continue
+                p=l.split(); q.append((p[1],int(p[2]),p[3] if len(p)>3 else None)); i+=1; continue
             if cur is not None:
                 if l.split()[:1]==[".word"]:
                     n+=1; res.append(l); i+=1; continue
@@ -35,8 +35,14 @@ if "-o" in args:
                 cur=q.pop(0); n=0; res.append(l)
                 res.append("\t.align\t2" if cur[0]=="4" else L[i+1]); i+=2
                 while i<len(L) and L[i].startswith("$L") and L[i].rstrip().endswith(":"):
-                    res.append(L[i]); i+=1
+                    if cur[2]:
+                        ren.append((L[i].rstrip()[:-1],cur[2])); res.append("\t.globl\t"+cur[2]); res.append(cur[2]+":")
+                    else: res.append(L[i])
+                    i+=1
                 continue
             res.append(l); i+=1
-        open(out,"w").write("\n".join(res))
+        txt="\n".join(res)
+        import re
+        for a_,b_ in ren: txt=re.sub(re.escape(a_)+r"(?![0-9A-Za-z_$])",b_,txt)
+        open(out,"w").write(txt)
 sys.exit(0)

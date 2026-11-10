@@ -13311,7 +13311,7 @@ void xm_menu_markers_hide(void) __asm__("func_801D2484");
 void xm_menu_list_cursor_free(u8 index) __asm__("func_801DB340");
 #endif
 u8 xm_menu_item_screen_run(void) __asm__("func_801DBE54");
-__asm__(".xeno_jt 4 48");
+__asm__(".xeno_jt 4 48 jtbl_801C50FC");
 u8 xm_menu_item_screen_run(void) {
     u8 running;
     u8 windows;
@@ -14203,7 +14203,7 @@ void xm_menu_arts_screen_use_art(u8 slot, s32 row, u8 kind) __asm__("func_801DD7
 #define XM_S_menu_step_party_slot
 s32 xm_menu_step_party_slot(s32 slot, u8 dir, u8 readyOnly) __asm__("func_801D9704");
 #endif
-__asm__(".xeno_jt 4 48");
+__asm__(".xeno_jt 4 48 jtbl_801C512C");
 void func_801DDF24(u8 member, u8 zoom, u8 kind) {
     s32 cursor;
     s32 cursorShown;
@@ -15985,7 +15985,7 @@ void xm_menu_arts_screen_close(u8 kind) __asm__("func_801DC2CC");
 u8 xm_menu_deathblow_screen_run(u8 slot) __asm__("func_801E20C8");
 #endif
 u8 xm_menu_character_command_run(void) __asm__("func_801E2BE4");
-__asm__(".xeno_jt 4 40");
+__asm__(".xeno_jt 4 40 jtbl_801C51B4");
 u8 xm_menu_character_command_run(void) {
     s32 slot;
     u8 shown;
@@ -16140,7 +16140,7 @@ void xm_menu_equip_command_close(void) __asm__("func_801DE400");
 void xm_menu_character_command_close(void) __asm__("func_801E2B80");
 #endif
 void xm_menu_top_command_close(u8 offset) __asm__("func_801E3088");
-__asm__(".xeno_jt 4 40");
+__asm__(".xeno_jt 4 40 jtbl_801C51DC");
 void xm_menu_top_command_close(u8 offset) {
     switch (xm_menu_state_current->cursor + offset) {
     case 1:
@@ -16385,7 +16385,7 @@ void func_801E35BC(void* pCtx, u8 charIdx, u8 statIdx, u8 slotIdx, u8 isReverse)
 #ifndef XENO_PC_PORT
 #ifndef XENO_PC_PORT
 /* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): menu_compute_character_equipment (src/decomp/src/slot39/menu_member_screens.c:2496). */
-__asm__(".xeno_jt 4 40");
+__asm__(".xeno_jt 4 40 jtbl_801C5204");
 void func_801E36D4(MenuTables *tables, u8 id) {
     CharacterRecord *chara;
     AccessoryInfo *accessory;
