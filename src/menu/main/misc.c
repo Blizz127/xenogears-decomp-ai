@@ -4161,56 +4161,49 @@ void func_801D17C4(void) {
 INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801D1914);
 #else
 void func_801D1914(void) {
-    void* pMenu = g_Menu;
     void* pManager = g_Menu->pManager;
+    /* Retail g_Menu+0x438 is unk42C[3]; +0x1D4 is pGfxEnv. Native SystemMenu
+     * inflates those fields, so a host-width load at the retail byte offsets
+     * reads unrelated menu state. */
     if (*(u8*)((u8*)pManager + 0x4D) != 0) {
         s32 i;
         u32 off1 = 0x680;
         for (i = 0; i < 0xD; i++) {
-            pMenu = g_Menu;
             {
-                u8* pData = *(u8**)((u8*)pMenu + 0x438);
+                u8* pData = MenuRawPointer(0x438);
                 if (*(u8*)(pData + 0x2596 + i) != 0) {
                     u8* pSlot = pData + i * 0x80;
                     u8 idx = *(u8*)(pSlot + 0x7D);
-                    u8* pOT = *(u8**)((u8*)pMenu + 0x1D4) + 0x80;
-                    AddPrim(pOT, pSlot + idx * 0x28);
-                    pMenu = g_Menu;
-                    pData = *(u8**)((u8*)pMenu + 0x438);
+                    AddPrim(&g_Menu->pGfxEnv->ot[4], pSlot + idx * 0x28);
+                    pData = MenuRawPointer(0x438);
                     pSlot = pData + i * 0x80;
                     idx = *(u8*)(pSlot + 0x7D);
-                    pOT = *(u8**)((u8*)pMenu + 0x1D4) + 0x80;
-                    AddPrim(pOT, pData + off1 + idx * 0x28);
+                    AddPrim(&g_Menu->pGfxEnv->ot[4], pData + off1 + idx * 0x28);
                 }
             }
             off1 += 0x80;
         }
-        pMenu = g_Menu;
         {
-            u8* pData = *(u8**)((u8*)pMenu + 0x438);
+            u8* pData = MenuRawPointer(0x438);
             func_801CE198(1, pData + 0xD50, pData + 0xD00, *(u8*)(pData + 0xD7D));
-            pMenu = g_Menu;
-            pData = *(u8**)((u8*)pMenu + 0x438);
+            pData = MenuRawPointer(0x438);
             {
                 u32 off2 = 0xD80;
                 u32 off3 = 0x21D0;
                 for (i = 0; i < 0xD; i++) {
-                    pMenu = g_Menu;
-                    pData = *(u8**)((u8*)pMenu + 0x438);
+                    pData = MenuRawPointer(0x438);
                     {
                         u8* pSlot2 = pData + i;
                         u8 a = *(u8*)(pSlot2 + 0x257C);
                         u8 b = *(u8*)(pSlot2 + 0x2589);
                         func_801CE2B4(a, pData + off2, b);
                     }
-                    pMenu = g_Menu;
-                    pData = *(u8**)((u8*)pMenu + 0x438);
+                    pData = MenuRawPointer(0x438);
                     {
                         u8* pSlot3 = pData + i;
                         if (*(u8*)(pSlot3 + 0x25A3) != 0) {
                             u8 idx2 = *(u8*)(pSlot3 + 0x25B0);
-                            u8* pOT2 = *(u8**)((u8*)pMenu + 0x1D4) + 0x80;
-                            AddPrim(pOT2, pData + off3 + idx2 * 0x28);
+                            AddPrim(&g_Menu->pGfxEnv->ot[4], pData + off3 + idx2 * 0x28);
                         }
                     }
                     off2 += 0x190;
@@ -9396,7 +9389,16 @@ void func_801E1398(void) {
     func_801E8044(2, (u8*)(g_Menu->pManager) + 0x4E);
     func_801C72BC(0x14);
     pMenu = g_Menu;
+    /* Retail g_Menu+0x438 is the Status work-buffer slot (unk42C[3]). A native
+     * void** load at that byte offset on the inflated SystemMenu HeapFrees
+     * unrelated menu state. MENU_RAW maps the slot; keep the pMenu form on
+     * PSX so the matched body is unchanged. */
+#ifdef XENO_PC_PORT
+    HeapFree(MENU_RAW(0x438));
+    (void)pMenu;
+#else
     HeapFree(*(void**)((u8*)pMenu + 0x438));
+#endif
 }
 
 #ifndef XENO_PC_PORT
