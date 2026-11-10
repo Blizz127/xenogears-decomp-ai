@@ -1556,7 +1556,98 @@ extern s32 g_GamePartyMemberSkins[];
 extern s32 GameCharacterGetGearID(s32 charId);
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc", func_8008A7DC);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_party_read_member_sprite (src/decomp/src/field/field_event.c:1884). */
+#ifndef XM_S_field_party_read_member_sprite
+#define XM_S_field_party_read_member_sprite
+void xm_field_party_read_member_sprite(s32 member, s32 slot) __asm__("func_8008A7DC");
+#endif
+#ifndef XM_S_field_party_sprite_load_slot
+#define XM_S_field_party_sprite_load_slot
+extern s32 xm_field_party_sprite_load_slot __asm__("D_800ADBCC");
+#endif
+#ifndef XM_S_field_party_sprite_load_member
+#define XM_S_field_party_sprite_load_member
+extern s32 xm_field_party_sprite_load_member __asm__("D_800ADBC8");
+#endif
+#ifndef XM_S_cd_select_directory
+#define XM_S_cd_select_directory
+s32 xm_cd_select_directory(s32 group, s32 index) __asm__("ArchiveSetIndex");
+#endif
+#ifndef XM_S_field_event_runs_per_frame
+#define XM_S_field_event_runs_per_frame
+extern s32 xm_field_event_runs_per_frame __asm__("D_800ADB1C");
+#endif
+#ifndef XM_S_cd_sync_reads
+#define XM_S_cd_sync_reads
+s32 xm_cd_sync_reads(s32 mode) __asm__("ArchiveCdDataSync");
+#endif
+#ifndef XM_S_mode_field_map_id
+#define XM_S_mode_field_map_id
+extern s32 xm_mode_field_map_id __asm__("g_GameSceneMapNum");
+#endif
+#ifndef XM_S_cd_get_aligned_file_size
+#define XM_S_cd_get_aligned_file_size
+s32 xm_cd_get_aligned_file_size(s32 file) __asm__("ArchiveDecodeAlignedSize");
+#endif
+#ifndef XM_S_mode_party_file_ids
+#define XM_S_mode_party_file_ids
+extern s32 xm_mode_party_file_ids[3] __asm__("g_GamePartyMemberSkins");
+#endif
+#ifndef XM_S_field_party_sprite_load_buffer
+#define XM_S_field_party_sprite_load_buffer
+extern void *xm_field_party_sprite_load_buffer __asm__("D_800ADBC0");
+#endif
+#ifndef XM_S_heap_alloc
+#define XM_S_heap_alloc
+void *xm_heap_alloc(s32 size, s32 mode) __asm__("HeapAlloc");
+#endif
+#ifndef XM_S_cd_read_file
+#define XM_S_cd_read_file
+s32 xm_cd_read_file(s32 file, void *destination, s32 mode, s32 flags) __asm__("ArchiveReadFileToBuffer");
+#endif
+#ifndef XM_S_mode_get_character_gear_id
+#define XM_S_mode_get_character_gear_id
+s32 xm_mode_get_character_gear_id(s32 index) __asm__("GameCharacterGetGearID");
+#endif
+#ifndef XM_S_field_party_sprite_load_pending
+#define XM_S_field_party_sprite_load_pending
+extern s32 xm_field_party_sprite_load_pending __asm__("D_800ADBC4");
+#endif
+void func_8008A7DC(s32 member, s32 slot) {
+    s32 file;
+    s32 size;
+    s32 sprite;
+
+    xm_field_party_sprite_load_slot = slot;
+    xm_field_party_sprite_load_member = member;
+    xm_cd_select_directory(4, 0);
+    if (xm_field_event_runs_per_frame == 0) {
+        xm_cd_sync_reads(0);
+    }
+    if (!(xm_mode_field_map_id & 0xC000)) {
+        file = member + 5;
+        size = xm_cd_get_aligned_file_size(file);
+        xm_mode_party_file_ids[xm_field_party_sprite_load_slot] = member;
+        xm_field_party_sprite_load_buffer = xm_heap_alloc(size, 0);
+        xm_cd_read_file(file, xm_field_party_sprite_load_buffer, 0, 0x80);
+    } else {
+        sprite = xm_mode_get_character_gear_id(member);
+        if (sprite == 0xFF) {
+            sprite = 0;
+        }
+        sprite += 0x10;
+        file = sprite + 5;
+        xm_field_party_sprite_load_buffer = xm_heap_alloc(xm_cd_get_aligned_file_size(file), 0);
+        xm_mode_party_file_ids[xm_field_party_sprite_load_slot] = sprite;
+        xm_cd_read_file(file, xm_field_party_sprite_load_buffer, 0, 0x80);
+    }
+    if (xm_field_event_runs_per_frame == 0) {
+        xm_cd_sync_reads(0);
+    }
+    xm_field_party_sprite_load_pending = 1;
+}
+#endif
 #else
 void func_8008A7DC(s32 charId, s32 slot) {
     s32 fileId;

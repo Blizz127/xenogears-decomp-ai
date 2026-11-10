@@ -14,7 +14,183 @@ void func_80034874(void* arg0, u8 arg1);
 int func_8003487C(void* arg0);
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/dialogue/text_box_render", func_8007DCF8);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_dialogue_update_choice (src/decomp/src/field/field_motion.c:1533). */
+#ifndef XM_T_WindowLine
+#define XM_T_WindowLine
+typedef struct {
+    SPRT sprite[2][2];
+    RECT rect;       
+    s16 width;       
+    u8 plane;        
+    u8 slot;
+    u8 row;          
+    u8 unk5D;
+    u16 clut;
+} WindowLine;
+#endif
+#ifndef XM_T_WindowQueue
+#define XM_T_WindowQueue
+typedef struct WindowQueue {
+    struct WindowQueue *next;
+    s32 message;
+} WindowQueue;
+#endif
+#ifndef XM_T_Window
+#define XM_T_Window
+typedef struct Window {
+    s16 x;          
+    s16 y;          
+    s16 unk4;
+    s16 unk6;
+    s16 unk8;
+    s16 width;
+    s16 lines;
+    s16 unkE;
+    u16 flags;
+    s16 stride;
+    s16 unk14;
+    s16 unk16;
+    s16 unk18;      
+    u8 unk1A[2];
+    u8 *text;
+    u8 *resume;     
+    u8 unk24[4];
+    WindowLine *layout;
+    void *image;
+    u8 unk30[0xC];  
+    u8 unk3C[0xC];  
+    TILE tile[2];   
+    u8 unk68;
+    u8 unk69;
+    u8 unk6A;
+    u8 unk6B;
+    u8 unk6C;
+    u8 unk6D;
+    u8 unk6E;
+    u8 unk6F;
+    s32 values[4];  
+    s16 selection; 
+    s16 queued;
+    s16 unk84;      
+    s16 unk86;      
+    s16 unk88;      
+    u8 unk8A[2];
+    WindowQueue *queue;
+} Window;
+#endif
+#ifndef XM_T_DialogueFrame
+#define XM_T_DialogueFrame
+typedef struct {
+    RECT rect;                  
+    u8 unk08[0x18 - 0x08];
+    DR_MODE back_modes[2];      
+    TILE back[2];               
+    DR_MODE border_modes[2][10]; 
+    SPRT border[2][10];         
+} DialogueFrame;
+#endif
+#ifndef XM_T_DialogueChoice
+#define XM_T_DialogueChoice
+typedef struct {
+    s16 status;       
+    s16 first;        
+    s16 count;        
+    s16 index;        
+    DR_MODE modes[2]; 
+    SPRT cursor[2];   
+} DialogueChoice;
+#endif
+#ifndef XM_T_DialoguePrompt
+#define XM_T_DialoguePrompt
+typedef struct {
+    s16 status;       
+    u8 unk02[2];
+    DR_MODE modes[2]; 
+    SPRT sprite[2];   
+} DialoguePrompt;
+#endif
+#ifndef XM_T_Fixed
+#define XM_T_Fixed
+typedef union {
+    s32 value;
+    struct {
+        u16 fraction;
+        s16 whole;
+    } part;
+} Fixed;
+#endif
+#ifndef XM_T_DialogueWindow
+#define XM_T_DialogueWindow
+typedef struct DialogueWindow {
+    DR_MODE modes[2]; 
+    Window text;     
+    s32 message;     
+    DialogueFrame frame; 
+    DialogueChoice choice; 
+    DialoguePrompt prompt; 
+    s16 timer;       
+    s16 prompt_delay; 
+    u16 style;       
+
+    s16 busy;        
+    u16 age;         
+    s16 unk412;      
+    s16 cleared;     
+    s16 owner;       
+    s16 unk418;      
+    u8 unk41A[2];
+    Fixed slide[2];  
+    s32 slide_step[2]; 
+    DR_MODE icon_modes[2]; 
+    POLY_FT4 icon[2];  
+    u8 unk494;       
+    u8 unk495;       
+    u8 unk496[0x498 - 0x496];
+} DialogueWindow;
+#endif
+#ifndef XM_S_field_dialogue_update_choice
+#define XM_S_field_dialogue_update_choice
+void xm_field_dialogue_update_choice(s32 window, u_long *ot, s32 buffer) __asm__("func_8007DCF8");
+#endif
+#ifndef XM_S_field_dialogue_windows
+#define XM_S_field_dialogue_windows
+extern DialogueWindow xm_field_dialogue_windows[4] __asm__("g_FieldTextBoxes");
+#endif
+#ifndef XM_S_field_pad_port0_repeated
+#define XM_S_field_pad_port0_repeated
+extern u16 xm_field_pad_port0_repeated __asm__("D_800C3900");
+#endif
+#ifndef XM_S_window_highlight_line
+#define XM_S_window_highlight_line
+void xm_window_highlight_line(Window *window, s32 value) __asm__("func_80034874");
+#endif
+#ifndef XM_S_window_clear_highlight
+#define XM_S_window_clear_highlight
+void xm_window_clear_highlight(Window *window) __asm__("func_8003487C");
+#endif
+void func_8007DCF8(s32 window, u_long *ot, s32 buffer) {
+    if (xm_field_dialogue_windows[window].choice.status == 0 && xm_field_dialogue_windows[window].timer == 0) {
+        if (xm_field_dialogue_windows[window].age == 0) {
+            if (xm_field_pad_port0_repeated & 0x4000) {
+                xm_field_dialogue_windows[window].choice.index++;
+                if (xm_field_dialogue_windows[window].choice.count - 1 < xm_field_dialogue_windows[window].choice.index) {
+                    xm_field_dialogue_windows[window].choice.index = 0;
+                }
+            }
+            if (xm_field_pad_port0_repeated & 0x1000) {
+                xm_field_dialogue_windows[window].choice.index--;
+                if (xm_field_dialogue_windows[window].choice.index < 0) {
+                    xm_field_dialogue_windows[window].choice.index = xm_field_dialogue_windows[window].choice.count - 1;
+                }
+            }
+            xm_window_highlight_line(&xm_field_dialogue_windows[window].text, xm_field_dialogue_windows[window].choice.index + xm_field_dialogue_windows[window].choice.first);
+        } else {
+            xm_window_clear_highlight(&xm_field_dialogue_windows[window].text);
+        }
+    }
+}
+#endif
 #else
 void func_8007DCF8(s32 index, void* ot, s32 renderContextIndex) {
     (void)ot;
@@ -525,7 +701,178 @@ void FieldTextBoxInitializePrimitives(int index) {
 extern u8 D_800ADF34[];
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/dialogue/text_box_render", func_8007F5AC);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_dialogue_set_portrait_frame (src/decomp/src/field/field_motion.c:1861). */
+#ifndef XM_T_WindowLine
+#define XM_T_WindowLine
+typedef struct {
+    SPRT sprite[2][2];
+    RECT rect;       
+    s16 width;       
+    u8 plane;        
+    u8 slot;
+    u8 row;          
+    u8 unk5D;
+    u16 clut;
+} WindowLine;
+#endif
+#ifndef XM_T_WindowQueue
+#define XM_T_WindowQueue
+typedef struct WindowQueue {
+    struct WindowQueue *next;
+    s32 message;
+} WindowQueue;
+#endif
+#ifndef XM_T_Window
+#define XM_T_Window
+typedef struct Window {
+    s16 x;          
+    s16 y;          
+    s16 unk4;
+    s16 unk6;
+    s16 unk8;
+    s16 width;
+    s16 lines;
+    s16 unkE;
+    u16 flags;
+    s16 stride;
+    s16 unk14;
+    s16 unk16;
+    s16 unk18;      
+    u8 unk1A[2];
+    u8 *text;
+    u8 *resume;     
+    u8 unk24[4];
+    WindowLine *layout;
+    void *image;
+    u8 unk30[0xC];  
+    u8 unk3C[0xC];  
+    TILE tile[2];   
+    u8 unk68;
+    u8 unk69;
+    u8 unk6A;
+    u8 unk6B;
+    u8 unk6C;
+    u8 unk6D;
+    u8 unk6E;
+    u8 unk6F;
+    s32 values[4];  
+    s16 selection; 
+    s16 queued;
+    s16 unk84;      
+    s16 unk86;      
+    s16 unk88;      
+    u8 unk8A[2];
+    WindowQueue *queue;
+} Window;
+#endif
+#ifndef XM_T_DialogueFrame
+#define XM_T_DialogueFrame
+typedef struct {
+    RECT rect;                  
+    u8 unk08[0x18 - 0x08];
+    DR_MODE back_modes[2];      
+    TILE back[2];               
+    DR_MODE border_modes[2][10]; 
+    SPRT border[2][10];         
+} DialogueFrame;
+#endif
+#ifndef XM_T_DialogueChoice
+#define XM_T_DialogueChoice
+typedef struct {
+    s16 status;       
+    s16 first;        
+    s16 count;        
+    s16 index;        
+    DR_MODE modes[2]; 
+    SPRT cursor[2];   
+} DialogueChoice;
+#endif
+#ifndef XM_T_DialoguePrompt
+#define XM_T_DialoguePrompt
+typedef struct {
+    s16 status;       
+    u8 unk02[2];
+    DR_MODE modes[2]; 
+    SPRT sprite[2];   
+} DialoguePrompt;
+#endif
+#ifndef XM_T_Fixed
+#define XM_T_Fixed
+typedef union {
+    s32 value;
+    struct {
+        u16 fraction;
+        s16 whole;
+    } part;
+} Fixed;
+#endif
+#ifndef XM_T_DialogueWindow
+#define XM_T_DialogueWindow
+typedef struct DialogueWindow {
+    DR_MODE modes[2]; 
+    Window text;     
+    s32 message;     
+    DialogueFrame frame; 
+    DialogueChoice choice; 
+    DialoguePrompt prompt; 
+    s16 timer;       
+    s16 prompt_delay; 
+    u16 style;       
+
+    s16 busy;        
+    u16 age;         
+    s16 unk412;      
+    s16 cleared;     
+    s16 owner;       
+    s16 unk418;      
+    u8 unk41A[2];
+    Fixed slide[2];  
+    s32 slide_step[2]; 
+    DR_MODE icon_modes[2]; 
+    POLY_FT4 icon[2];  
+    u8 unk494;       
+    u8 unk495;       
+    u8 unk496[0x498 - 0x496];
+} DialogueWindow;
+#endif
+#ifndef XM_S_field_dialogue_set_portrait_frame
+#define XM_S_field_dialogue_set_portrait_frame
+void xm_field_dialogue_set_portrait_frame(s32 window, s32 frame) __asm__("func_8007F5AC");
+#endif
+#ifndef XM_S_field_dialogue_windows
+#define XM_S_field_dialogue_windows
+extern DialogueWindow xm_field_dialogue_windows[4] __asm__("g_FieldTextBoxes");
+#endif
+#ifndef XM_S_field_dialogue_portrait_uv_origins
+#define XM_S_field_dialogue_portrait_uv_origins
+extern DVECTOR xm_field_dialogue_portrait_uv_origins[8] __asm__("D_800ADF34");
+#endif
+#ifndef XM_S_GetClut
+#define XM_S_GetClut
+u_short xm_GetClut(int x, int y) __asm__("GetClut");
+#endif
+void func_8007F5AC(s32 window, s32 frame) {
+    DialogueWindow *w;
+    DVECTOR *tex;
+    s16 *u;
+    s16 *v;
+
+    w = &xm_field_dialogue_windows[window];
+    tex = xm_field_dialogue_portrait_uv_origins;
+    u = &tex[frame].vx;
+    v = &xm_field_dialogue_portrait_uv_origins[frame].vy;
+    xm_field_dialogue_windows[window].icon[1].u0 = w->icon[0].u0 = *u;
+    xm_field_dialogue_windows[window].icon[1].v0 = w->icon[0].v0 = *v;
+    xm_field_dialogue_windows[window].icon[1].u1 = w->icon[0].u1 = *u + 0x40;
+    xm_field_dialogue_windows[window].icon[1].v1 = w->icon[0].v1 = *v;
+    xm_field_dialogue_windows[window].icon[1].u2 = w->icon[0].u2 = *u;
+    xm_field_dialogue_windows[window].icon[1].v2 = w->icon[0].v2 = *v + 0x40;
+    xm_field_dialogue_windows[window].icon[1].u3 = w->icon[0].u3 = *u + 0x40;
+    xm_field_dialogue_windows[window].icon[1].v3 = w->icon[0].v3 = *v + 0x40;
+    xm_field_dialogue_windows[window].icon[1].clut = w->icon[0].clut = xm_GetClut(0, frame + 0xE0);
+}
+#endif
 #else
 void func_8007F5AC(s32 textBoxIndex, s32 faceDirection) {
     /* Retail 8007F5AC .. 8007F6F8: both portrait primitives are written

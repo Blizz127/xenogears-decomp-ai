@@ -958,7 +958,36 @@ int FieldScriptVMGetVariableValue(int index) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/scripts/virtual_machine", FieldScriptMemoryWriteU16);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_event_write_variable (src/decomp/src/field/field_event.c:10859). */
+#ifndef XM_T_EventPackage
+#define XM_T_EventPackage
+typedef struct {
+    u32 unsigned_bits[32]; 
+    s32 count;             
+    u16 entries[32];       
+} EventPackage;
+#endif
+#ifndef XM_S_field_event_write_variable
+#define XM_S_field_event_write_variable
+void xm_field_event_write_variable(s32 reference, s32 value) __asm__("FieldScriptMemoryWriteU16");
+#endif
+#ifndef XM_S_field_event_package
+#define XM_S_field_event_package
+extern EventPackage *xm_field_event_package __asm__("g_FieldCurScriptFile");
+#endif
+#ifndef XM_S_field_event_variables
+#define XM_S_field_event_variables
+extern s16 xm_field_event_variables[0x400] __asm__("g_FieldScriptMemory");
+#endif
+void FieldScriptMemoryWriteU16(s32 reference, s32 value) {
+    if (xm_field_event_package->unsigned_bits[reference >> 6] & (1 << ((reference >> 1) & 0x1F))) {
+        xm_field_event_variables[reference >> 1] = (u16)value;
+    } else {
+        xm_field_event_variables[reference >> 1] = value;
+    }
+}
+#endif
 #else
 /* g_FieldScriptMemory is declared `void*` (an 8-byte object) in field/actor.h
  * but is the 0x800-byte script variable buffer (g_FieldBss_800C38F8+0x170).

@@ -14,7 +14,111 @@
 
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800AA9DC);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_instance_set_bounds (src/decomp/src/field/field_effect.c:600). */
+#ifndef XM_T_MorphDelta
+#define XM_T_MorphDelta
+typedef struct {
+    s16 dx, dy, dz;
+    s16 index;
+} MorphDelta;
+#endif
+#ifndef XM_T_MorphTarget
+#define XM_T_MorphTarget
+typedef struct {
+    s32 count;
+    void *deltas;
+    MorphDelta *normals;
+} MorphTarget;
+#endif
+#ifndef XM_T_MorphTable
+#define XM_T_MorphTable
+typedef struct {
+    s32 count;
+    MorphTarget targets[1];
+} MorphTable;
+#endif
+#ifndef XM_T_SpriteModel
+#define XM_T_SpriteModel
+typedef struct {
+    u16 flags;          
+    u16 vertex_count;
+    u16 primitive_count;
+    u16 group_count;    
+    SVECTOR *vertices;
+    SVECTOR *normals;
+    u8 *unk10;          
+    u8 *unk14;
+    u8 *unk18;
+    MorphTable *morphs; 
+    SVECTOR box_min;    
+    SVECTOR box_max;
+    s32 aux_size;       
+    s32 packet_size;    
+} SpriteModel;
+#endif
+#ifndef XM_T_MorphChannel
+#define XM_T_MorphChannel
+typedef struct MorphChannel {
+    s32 (*update)(struct MorphChannel *channel);
+    s32 target;
+    s32 weight;
+    s32 step;
+    u8 unk10[0x10];
+} MorphChannel;
+#endif
+#ifndef XM_T_MorphState
+#define XM_T_MorphState
+typedef struct {
+    SpriteModel *model;
+    SVECTOR *vertices;
+    SVECTOR *normals;
+    s32 count;
+    MorphChannel *channels;
+} MorphState;
+#endif
+#ifndef XM_T_FieldInstance
+#define XM_T_FieldInstance
+typedef struct {
+    u8 unk00[4];
+    SpriteModel *mesh; 
+    void *packets[2]; 
+    u8 unk10[2];
+    s16 mode;        
+    MorphState *anims; 
+    s16 center[3];   
+    s16 unk1E;
+    s16 radius;      
+} FieldInstance;
+#endif
+#ifndef XM_S_field_instance_set_bounds
+#define XM_S_field_instance_set_bounds
+void xm_field_instance_set_bounds(FieldInstance *instance) __asm__("func_800AA9DC");
+#endif
+void func_800AA9DC(FieldInstance *instance) {
+    s32 min_x;
+    s32 min_y;
+    s32 min_z;
+    s32 dx;
+    s32 dy;
+    s32 dz;
+    s32 size;
+
+    dx = size = instance->mesh->box_max.vx - (min_x = instance->mesh->box_min.vx);
+    dy = instance->mesh->box_max.vy - (min_y = instance->mesh->box_min.vy);
+    dz = instance->mesh->box_max.vz - (min_z = instance->mesh->box_min.vz);
+    if (size < dy) {
+        size = dy;
+    }
+    if (size < dz) {
+        size = dz;
+    }
+    instance->center[0] = dx / 2 + min_x;
+    instance->center[1] = dy / 2 + min_y;
+    instance->center[2] = dz / 2 + min_z;
+    instance->radius = size * 2 + 1;
+}
+#endif
 #else
 void func_800AA9DC(void* pModelData) {
     u8* pModel = pModelData;
@@ -438,7 +542,230 @@ extern void FieldPollControllers(void);
 extern int ArchiveSetIndex(int directoryIndex, int entryIndex);
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800ABA98);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_picture_show (src/decomp/src/field/field_effect.c:940). */
+#ifndef XM_T_PICTURE_WORDS
+#define XM_T_PICTURE_WORDS
+#define PICTURE_WORDS 8
+#endif
+#ifndef XM_T_PICTURE_MAP
+#define XM_T_PICTURE_MAP
+#define PICTURE_MAP 0
+#endif
+#ifndef XM_T_PICTURE_ITEM
+#define XM_T_PICTURE_ITEM
+#define PICTURE_ITEM 4
+#endif
+#ifndef XM_T_PICTURE_UNK04
+#define XM_T_PICTURE_UNK04
+#define PICTURE_UNK04 1
+#endif
+#ifndef XM_T_PICTURE_UNK08
+#define XM_T_PICTURE_UNK08
+#define PICTURE_UNK08 2
+#endif
+#ifndef XM_T_PICTURE_FILE
+#define XM_T_PICTURE_FILE
+#define PICTURE_FILE 3
+#endif
+#ifndef XM_T_PICTURE_X
+#define XM_T_PICTURE_X
+#define PICTURE_X 5
+#endif
+#ifndef XM_T_PICTURE_Y
+#define XM_T_PICTURE_Y
+#define PICTURE_Y 6
+#endif
+#ifndef XM_T_PICTURE_PIECES
+#define XM_T_PICTURE_PIECES
+#define PICTURE_PIECES 7
+#endif
+#ifndef XM_T_ScreenPieces
+#define XM_T_ScreenPieces
+typedef struct ScreenPieces {
+    DR_MODE modes[5][2];   
+    RECT windows[5][2];    
+    POLY_FT4 quads[5][2];  
+    SVECTOR corners[5][4]; 
+} ScreenPieces;
+#endif
+#ifndef XM_T_PictureMarks
+#define XM_T_PictureMarks
+typedef struct PictureMarks {
+    DR_MODE modes[16][2]; 
+    SPRT sprites[16][2];  
+} PictureMarks;
+#endif
+#ifndef XM_S_field_picture_show
+#define XM_S_field_picture_show
+void xm_field_picture_show(void) __asm__("func_800ABA98");
+#endif
+#ifndef XM_S_field_picture_table
+#define XM_S_field_picture_table
+extern s32 xm_field_picture_table[10 * 8 + 1] __asm__("D_800AF47C");
+#endif
+#ifndef XM_S_mode_field_map_id
+#define XM_S_mode_field_map_id
+extern s32 xm_mode_field_map_id __asm__("g_GameSceneMapNum");
+#endif
+#ifndef XM_S_field_inventory_is_item_not_held
+#define XM_S_field_inventory_is_item_not_held
+s32 xm_field_inventory_is_item_not_held(s32 item) __asm__("func_800AB328");
+#endif
+#ifndef XM_S_field_picture_marker_scale_x
+#define XM_S_field_picture_marker_scale_x
+extern s32 xm_field_picture_marker_scale_x __asm__("D_800C3914");
+#endif
+#ifndef XM_S_field_picture_marker_scale_z
+#define XM_S_field_picture_marker_scale_z
+extern s32 xm_field_picture_marker_scale_z __asm__("D_800C3A18");
+#endif
+#ifndef XM_S_field_picture_marker_origin_x
+#define XM_S_field_picture_marker_origin_x
+extern s32 xm_field_picture_marker_origin_x __asm__("D_800AFE78");
+#endif
+#ifndef XM_S_field_picture_marker_origin_y
+#define XM_S_field_picture_marker_origin_y
+extern s32 xm_field_picture_marker_origin_y __asm__("D_800AFE7C");
+#endif
+#ifndef XM_S_heap_alloc
+#define XM_S_heap_alloc
+void *xm_heap_alloc(s32 size, s32 mode) __asm__("HeapAlloc");
+#endif
+#ifndef XM_S_StoreImage
+#define XM_S_StoreImage
+int xm_StoreImage(RECT *rect, u_long *p) __asm__("StoreImage");
+#endif
+#ifndef XM_S_DrawSync
+#define XM_S_DrawSync
+int xm_DrawSync(int mode) __asm__("DrawSync");
+#endif
+#ifndef XM_S_cd_sync_reads
+#define XM_S_cd_sync_reads
+s32 xm_cd_sync_reads(s32 mode) __asm__("ArchiveCdDataSync");
+#endif
+#ifndef XM_S_cd_select_directory
+#define XM_S_cd_select_directory
+s32 xm_cd_select_directory(s32 group, s32 index) __asm__("ArchiveSetIndex");
+#endif
+#ifndef XM_S_cd_get_aligned_file_size
+#define XM_S_cd_get_aligned_file_size
+s32 xm_cd_get_aligned_file_size(s32 file) __asm__("ArchiveDecodeAlignedSize");
+#endif
+#ifndef XM_S_cd_read_file
+#define XM_S_cd_read_file
+s32 xm_cd_read_file(s32 file, void *destination, s32 mode, s32 flags) __asm__("ArchiveReadFileToBuffer");
+#endif
+#ifndef XM_S_field_load_tim_at
+#define XM_S_field_load_tim_at
+void xm_field_load_tim_at(u32 *tim, s16 x, s16 y, s16 clut_x, s16 clut_y, s16 clut_w, s16 clut_h) __asm__("FieldLoadTIMWithClut");
+#endif
+#ifndef XM_S_heap_free
+#define XM_S_heap_free
+s32 xm_heap_free(void *data) __asm__("HeapFree");
+#endif
+#ifndef XM_S_field_picture_add_flagged_pieces
+#define XM_S_field_picture_add_flagged_pieces
+void xm_field_picture_add_flagged_pieces(void) __asm__("func_800AB808");
+#endif
+#ifndef XM_S_field_picture_init
+#define XM_S_field_picture_init
+void xm_field_picture_init(void) __asm__("func_800AAF80");
+#endif
+#ifndef XM_S_field_draw_swap_and_clear_ots
+#define XM_S_field_draw_swap_and_clear_ots
+void xm_field_draw_swap_and_clear_ots(void) __asm__("FieldClearAndSwapOTag");
+#endif
+#ifndef XM_S_field_picture_draw
+#define XM_S_field_picture_draw
+void xm_field_picture_draw(s32 level) __asm__("func_800AB378");
+#endif
+#ifndef XM_S_field_draw_present_overlay
+#define XM_S_field_draw_present_overlay
+void xm_field_draw_present_overlay(void) __asm__("FieldDisplay");
+#endif
+#ifndef XM_S_field_pad_drain_queue
+#define XM_S_field_pad_drain_queue
+void xm_field_pad_drain_queue(void) __asm__("FieldPollControllers");
+#endif
+#ifndef XM_S_field_pad_port0_repeated
+#define XM_S_field_pad_port0_repeated
+extern u16 xm_field_pad_port0_repeated __asm__("D_800C3900");
+#endif
+#ifndef XM_S_field_picture_pieces
+#define XM_S_field_picture_pieces
+extern ScreenPieces *xm_field_picture_pieces __asm__("D_800C3A3C");
+#endif
+#ifndef XM_S_field_picture_marker_sprites
+#define XM_S_field_picture_marker_sprites
+extern PictureMarks *xm_field_picture_marker_sprites __asm__("D_800B1DF0");
+#endif
+#ifndef XM_S_LoadImage
+#define XM_S_LoadImage
+int xm_LoadImage(RECT *rect, u_long *p) __asm__("LoadImage");
+#endif
+void func_800ABA98(void) {
+    RECT rect;
+    u8 *saved;
+    u32 *file;
+    s32 picture;
+    s32 i;
+
+    for (i = 0;; i++) {
+        if (xm_field_picture_table[i * PICTURE_WORDS + PICTURE_MAP] == 0xFFFF) {
+            return;
+        }
+        if ((xm_mode_field_map_id & 0x3FFF) == xm_field_picture_table[i * PICTURE_WORDS + PICTURE_MAP]) {
+            break;
+        }
+    }
+    if (xm_field_inventory_is_item_not_held(xm_field_picture_table[i * PICTURE_WORDS + PICTURE_ITEM]) == -1) {
+        return;
+    }
+    xm_field_picture_marker_scale_x = xm_field_picture_table[i * PICTURE_WORDS + PICTURE_UNK04];
+    xm_field_picture_marker_scale_z = xm_field_picture_table[i * PICTURE_WORDS + PICTURE_UNK08];
+    picture = xm_field_picture_table[i * PICTURE_WORDS + PICTURE_FILE];
+    xm_field_picture_marker_origin_x = xm_field_picture_table[i * PICTURE_WORDS + PICTURE_X];
+    xm_field_picture_marker_origin_y = xm_field_picture_table[i * PICTURE_WORDS + PICTURE_Y];
+    setRECT(&rect, 0x300, 0x100, 0xA0, 0x100);
+    saved = xm_heap_alloc(0x14000, 0);
+    xm_StoreImage(&rect, (u_long *)saved);
+    xm_DrawSync(0);
+    xm_cd_sync_reads(0);
+    xm_cd_select_directory(4, 0);
+    file = xm_heap_alloc(xm_cd_get_aligned_file_size(picture + 0x7FB), 0);
+    xm_cd_read_file(picture + 0x7FB, file, 0, 0x80);
+    xm_cd_sync_reads(0);
+    xm_field_load_tim_at(file, 0x300, 0x100, 0, 0xF6, 0, 0);
+    xm_heap_free(file);
+    if (xm_field_picture_table[i * PICTURE_WORDS + PICTURE_PIECES] == 1) {
+        xm_field_picture_add_flagged_pieces();
+    }
+    xm_field_picture_init();
+    for (i = 0; i < 16; i++) {
+        xm_field_draw_swap_and_clear_ots();
+        xm_field_picture_draw(i * 8);
+        xm_field_draw_present_overlay();
+    }
+    do {
+        xm_field_draw_swap_and_clear_ots();
+        xm_field_picture_draw(0x80);
+        xm_field_draw_present_overlay();
+        xm_field_pad_drain_queue();
+    } while (!(xm_field_pad_port0_repeated & 0x100));
+    for (i = 16; i > 0; i--) {
+        xm_field_draw_swap_and_clear_ots();
+        xm_field_picture_draw(i * 8);
+        xm_field_draw_present_overlay();
+    }
+    xm_DrawSync(0);
+    xm_heap_free(xm_field_picture_pieces);
+    xm_heap_free(xm_field_picture_marker_sprites);
+    xm_LoadImage(&rect, (u_long *)saved);
+    xm_DrawSync(0);
+    xm_heap_free(saved);
+}
+#endif
 #else
 void func_800ABA98(void) {
     RECT rect;
@@ -690,7 +1017,108 @@ void func_800AC03C(u8* pOut, u16* pData, s32 count) {
 extern s32 D_800AF780;
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc9", func_800AC0F0);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_staff_roll_write_line (src/decomp/src/field/field_effect.c:1098). */
+#ifndef XM_T_GlyphCell
+#define XM_T_GlyphCell
+typedef struct {
+    u8 pixels[16][18]; 
+} GlyphCell;
+#endif
+#ifndef XM_T_GLYPH_CELL_BYTES
+#define XM_T_GLYPH_CELL_BYTES
+#define GLYPH_CELL_BYTES (16 * 18)
+#endif
+#ifndef XM_T_GLYPH_LINE_CELLS
+#define XM_T_GLYPH_LINE_CELLS
+#define GLYPH_LINE_CELLS 28
+#endif
+#ifndef XM_S_field_staff_roll_write_line
+#define XM_S_field_staff_roll_write_line
+u8 *xm_field_staff_roll_write_line(u8 *text, s32 left, s32 row) __asm__("func_800AC0F0");
+#endif
+#ifndef XM_S_field_staff_roll_bytes_left
+#define XM_S_field_staff_roll_bytes_left
+extern s32 xm_field_staff_roll_bytes_left __asm__("D_800AF780");
+#endif
+#ifndef XM_S_field_staff_roll_get_glyph
+#define XM_S_field_staff_roll_get_glyph
+s32 xm_field_staff_roll_get_glyph(u8 *text, s32 *own) __asm__("func_800ABFDC");
+#endif
+#ifndef XM_S_MoveImage
+#define XM_S_MoveImage
+int xm_MoveImage(RECT *rect, int x, int y) __asm__("MoveImage");
+#endif
+#ifndef XM_S_field_staff_roll_expand_rom_glyph
+#define XM_S_field_staff_roll_expand_rom_glyph
+void xm_field_staff_roll_expand_rom_glyph(u8 *cell, u16 *rows) __asm__("func_800AC03C");
+#endif
+#ifndef XM_S_LoadImage
+#define XM_S_LoadImage
+int xm_LoadImage(RECT *rect, u_long *p) __asm__("LoadImage");
+#endif
+#ifndef XM_S_DrawSync
+#define XM_S_DrawSync
+int xm_DrawSync(int mode) __asm__("DrawSync");
+#endif
+u8 *func_800AC0F0(u8 *text, s32 left, s32 row) {
+    GlyphCell cell;
+    RECT dest;
+    RECT source;
+    u8 line[0x40];
+    s32 own;
+    s32 used;
+    s32 count;
+    s32 glyph;
+    s32 x;
+    s32 i;
+
+    dest.w = 9;
+    dest.h = 16;
+    dest.y = row * 16;
+    for (i = 0; i < 0x40; i++) {
+        line[i] = text[i];
+    }
+    for (i = GLYPH_CELL_BYTES - 1; i >= 0; i--) {
+        cell.pixels[0][i] = 0;
+    }
+    used = 0;
+    if (xm_field_staff_roll_bytes_left <= 0) {
+        count = 0;
+    } else {
+        for (count = 0, x = left; count < GLYPH_LINE_CELLS; count++, x += 9) {
+            if (line[used] == '\r') {
+                used++;
+                break;
+            }
+            glyph = xm_field_staff_roll_get_glyph(&line[used], &own);
+            used += 2;
+            if (own == 1) {
+                source.w = 9;
+                source.h = 16;
+                source.x = glyph % 7 * 9 + 0x380;
+                source.y = glyph / 7 * 16 + 0x100;
+                xm_MoveImage(&source, x, row * 16);
+            } else {
+                xm_field_staff_roll_expand_rom_glyph(cell.pixels[0], (u16 *)glyph);
+                dest.x = x;
+                xm_LoadImage(&dest, (u_long *)&cell);
+            }
+            xm_DrawSync(0);
+        }
+    }
+    for (i = GLYPH_CELL_BYTES - 1; i >= 0; i--) {
+        cell.pixels[0][i] = 0;
+    }
+    for (; count < GLYPH_LINE_CELLS; count++) {
+        dest.x = count * 9 + left;
+        xm_LoadImage(&dest, (u_long *)&cell);
+        xm_DrawSync(0);
+    }
+    xm_field_staff_roll_bytes_left -= used;
+    return text + used;
+}
+#endif
 #else
 void* func_800AC0F0(void* pStream, s32 destinationX, s32 renderContext) {
     u8 image[0x120];

@@ -628,7 +628,79 @@ void ArchiveStreamFreeQueueData(StreamDataQueueEntry* pEntries) {
 
 #ifndef XENO_PC_PORT
 /* retail func_8002A57C; the port names it ArchiveStreamAllocQueueData */
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/archive", func_8002A57C);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): cd_alloc_directory_file_table (src/decomp/src/resident/cd_reads_and_streams.c:1522). */
+#ifndef XM_T_FileEntry
+#define XM_T_FileEntry
+typedef struct {
+    u16 id;
+    void *data;
+} FileEntry;
+#endif
+#ifndef XM_S_cd_alloc_directory_file_table
+#define XM_S_cd_alloc_directory_file_table
+FileEntry *xm_cd_alloc_directory_file_table(s32 first, FileEntry *table) __asm__("func_8002A57C");
+#endif
+#ifndef XM_S_cd_get_directory_file_count
+#define XM_S_cd_get_directory_file_count
+s16 xm_cd_get_directory_file_count(s32 file) __asm__("ArchiveDecodeSizeAbsolute");
+#endif
+#ifndef XM_S_heap_alloc
+#define XM_S_heap_alloc
+void *xm_heap_alloc(s32 size, s32 mode) __asm__("HeapAlloc");
+#endif
+#ifndef XM_S_cd_get_aligned_file_size
+#define XM_S_cd_get_aligned_file_size
+s32 xm_cd_get_aligned_file_size(s32 file) __asm__("ArchiveDecodeAlignedSize");
+#endif
+#ifndef XM_S_cd_free_file_table
+#define XM_S_cd_free_file_table
+void xm_cd_free_file_table(FileEntry *table) __asm__("ArchiveStreamFreeQueueData");
+#endif
+#ifndef XM_S_heap_free
+#define XM_S_heap_free
+s32 xm_heap_free(void *data) __asm__("HeapFree");
+#endif
+FileEntry *func_8002A57C(s32 first, FileEntry *table) {
+    u8 unused[8]; 
+    s32 count;
+    s32 owned = 0;
+    s32 i;
+
+    count = xm_cd_get_directory_file_count(first);
+    if (count > 0) {
+        if (table == NULL) {
+            table = xm_heap_alloc((count + 1) * 8, 0);
+            owned = 1;
+            if (table == NULL) {
+                return NULL;
+            }
+        }
+        i = 0;
+        if (count > 0) {
+        next:
+            table[i].id = first + i + 1;
+            table[i].data = xm_heap_alloc(xm_cd_get_aligned_file_size(first + i + 1), 0);
+            if (table[i].data == NULL) {
+                xm_cd_free_file_table(table);
+                if (owned > 0) {
+                    xm_heap_free(table);
+                }
+                return NULL;
+            }
+            if (++i < count) {
+                goto next;
+            }
+        }
+        i = count;
+        table[i].id = 0;
+        table[i].data = NULL;
+    } else {
+        table = NULL;
+    }
+    return table;
+}
+#endif
 #else
 StreamDataQueueEntry* ArchiveStreamAllocQueueData(int archiveIndex, StreamDataQueueEntry* pEntries) {
     int entryIndex;

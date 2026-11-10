@@ -789,7 +789,102 @@ void func_800A6C40(void) {
 extern void* D_800B00C4;
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc5", func_800A6E70);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_screen_grid_build (src/decomp/src/field/field_screen.c:1038). */
+#ifndef XM_T_GRID_ROWS
+#define XM_T_GRID_ROWS
+#define GRID_ROWS 14
+#endif
+#ifndef XM_T_GRID_COLUMNS
+#define XM_T_GRID_COLUMNS
+#define GRID_COLUMNS 20
+#endif
+#ifndef XM_T_GRID_QUADS
+#define XM_T_GRID_QUADS
+#define GRID_QUADS (GRID_ROWS * GRID_COLUMNS)
+#endif
+#ifndef XM_T_ScreenGrid
+#define XM_T_ScreenGrid
+typedef struct ScreenGrid {
+    POLY_GT4 quads[2][GRID_QUADS]; 
+    s16 shade[4][GRID_QUADS];      
+} ScreenGrid;
+#endif
+#ifndef XM_S_field_screen_grid_build
+#define XM_S_field_screen_grid_build
+void xm_field_screen_grid_build(void) __asm__("func_800A6E70");
+#endif
+#ifndef XM_S_field_screen_grid
+#define XM_S_field_screen_grid
+extern ScreenGrid *xm_field_screen_grid __asm__("D_800B00C4");
+#endif
+#ifndef XM_S_heap_alloc
+#define XM_S_heap_alloc
+void *xm_heap_alloc(s32 size, s32 mode) __asm__("HeapAlloc");
+#endif
+#ifndef XM_S_SetPolyGT4
+#define XM_S_SetPolyGT4
+void xm_SetPolyGT4(POLY_GT4 *p) __asm__("SetPolyGT4");
+#endif
+#ifndef XM_S_GetTPage
+#define XM_S_GetTPage
+u_short xm_GetTPage(int tp, int abr, int x, int y) __asm__("GetTPage");
+#endif
+#ifndef XM_S_SetSemiTrans
+#define XM_S_SetSemiTrans
+void xm_SetSemiTrans(void *p, int abe) __asm__("SetSemiTrans");
+#endif
+void func_800A6E70(void) {
+    POLY_GT4 *quad;
+    POLY_GT4 *copy;
+    s32 row;
+    s32 column;
+    s32 k;
+
+    xm_field_screen_grid = xm_heap_alloc(sizeof(ScreenGrid), 1);
+    for (row = 0; row < GRID_ROWS; row++) {
+        for (column = 0; column < GRID_COLUMNS; column++) {
+            k = row * GRID_COLUMNS + column;
+            quad = &xm_field_screen_grid->quads[0][k];
+            copy = &xm_field_screen_grid->quads[1][k];
+            xm_field_screen_grid->shade[0][k] = 0x80;
+            xm_field_screen_grid->shade[1][k] = 0x80;
+            xm_field_screen_grid->shade[2][k] = 0x80;
+            xm_field_screen_grid->shade[3][k] = 0x80;
+            xm_SetPolyGT4(quad);
+            setRGB0(quad, 0x80, 0x80, 0x80);
+            quad->r1 = 0x80;
+            quad->g1 = 0x80;
+            quad->b1 = 0x80;
+            quad->r2 = 0x80;
+            quad->g2 = 0x80;
+            quad->b2 = 0x80;
+            quad->r3 = 0x80;
+            quad->g3 = 0x80;
+            quad->b3 = 0x80;
+            quad->x0 = column * 16;
+            quad->y0 = row * 16;
+            quad->x1 = column * 16 + 16;
+            quad->y1 = row * 16;
+            quad->x2 = column * 16;
+            quad->y2 = row * 16 + 16;
+            quad->x3 = column * 16 + 16;
+            quad->y3 = row * 16 + 16;
+            quad->u0 = (column * 16) & 0x3F;
+            quad->v0 = row * 16;
+            quad->u1 = ((column * 16) & 0x3F) + 16;
+            quad->v1 = row * 16;
+            quad->u2 = (column * 16) & 0x3F;
+            quad->v2 = row * 16 + 16;
+            quad->u3 = ((column * 16) & 0x3F) + 16;
+            quad->v3 = row * 16 + 16;
+            quad->tpage = xm_GetTPage(2, 1, 0x2C0 + column / 4 * 0x40, 0x100);
+            xm_SetSemiTrans(quad, 1);
+            *copy = *quad;
+        }
+    }
+}
+#endif
 #else
 void func_800A6E70(void) {
     u8* pBuf;

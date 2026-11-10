@@ -415,7 +415,202 @@ extern void func_8002804C(s32, s32, s32, s32);
 __attribute__((weak))
 #endif
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/libarchive", func_80028B14);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): stream_get_next_chunk (src/decomp/src/resident/cd_reads_and_streams.c:738). */
+#ifndef XM_T_StreamSlot
+#define XM_T_StreamSlot
+typedef struct {
+    u16 state;
+    u16 sequence;
+    u16 length; 
+    u16 w6;
+} StreamSlot;
+#endif
+#ifndef XM_T_StreamRing
+#define XM_T_StreamRing
+typedef struct {
+    s32 count;
+    StreamSlot slots[1];
+} StreamRing;
+#endif
+#ifndef XM_T_FileRequest
+#define XM_T_FileRequest
+typedef struct FileRequest {
+    u16 file;
+    void *destination;
+} FileRequest;
+#endif
+#ifndef XM_S_stream_get_next_chunk
+#define XM_S_stream_get_next_chunk
+u8 *xm_stream_get_next_chunk(void) __asm__("func_80028B14");
+#endif
+#ifndef XM_S_stream_current_ring
+#define XM_S_stream_current_ring
+extern StreamRing *xm_stream_current_ring __asm__("g_ArchiveCurStreamFile");
+#endif
+#ifndef XM_S_cd_pc_file_names
+#define XM_S_cd_pc_file_names
+extern char *xm_cd_pc_file_names __asm__("g_ArchiveDebugTable");
+#endif
+#ifndef XM_S_cd_pc_file_descriptor
+#define XM_S_cd_pc_file_descriptor
+extern s32 xm_cd_pc_file_descriptor __asm__("D_8004FE4C");
+#endif
+#ifndef XM_S_cd_read_bytes_left
+#define XM_S_cd_read_bytes_left
+extern s32 xm_cd_read_bytes_left __asm__("g_ArchiveCurFileSize");
+#endif
+#ifndef XM_S_stream_slot_count
+#define XM_S_stream_slot_count
+extern s32 xm_stream_slot_count __asm__("D_8004FE40");
+#endif
+#ifndef XM_S_stream_slots
+#define XM_S_stream_slots
+extern StreamSlot *xm_stream_slots __asm__("D_8004FE2C");
+#endif
+#ifndef XM_S_cd_read_cursor
+#define XM_S_cd_read_cursor
+extern s32 xm_cd_read_cursor __asm__("D_8004FE10");
+#endif
+#ifndef XM_S_PCread
+#define XM_S_PCread
+int xm_PCread(int fd, char *buff, int len) __asm__("PCread");
+#endif
+#ifndef XM_S_read
+#define XM_S_read
+long xm_read(long fd, void *buf, long n) __asm__("read");
+#endif
+#ifndef XM_S_cd_draw_error_indicator
+#define XM_S_cd_draw_error_indicator
+void xm_cd_draw_error_indicator(s32 level, s32 r, s32 g, s32 b) __asm__("func_8002804C");
+#endif
+#ifndef XM_S_PCclose
+#define XM_S_PCclose
+int xm_PCclose(int fd) __asm__("PCclose");
+#endif
+#ifndef XM_S_cd_current_file_list
+#define XM_S_cd_current_file_list
+extern FileRequest *xm_cd_current_file_list __asm__("D_8004FE0C");
+#endif
+#ifndef XM_S_cd_file_being_read
+#define XM_S_cd_file_being_read
+extern s32 xm_cd_file_being_read __asm__("D_80059F0C");
+#endif
+#ifndef XM_S_cd_get_pc_file_name
+#define XM_S_cd_get_pc_file_name
+char *xm_cd_get_pc_file_name(s32 file) __asm__("ArchiveGetFilePath");
+#endif
+#ifndef XM_S_PCopen
+#define XM_S_PCopen
+int xm_PCopen(char *name, int flags, int perms) __asm__("PCopen");
+#endif
+#ifndef XM_S_cd_get_aligned_file_size_in_reading_directory
+#define XM_S_cd_get_aligned_file_size_in_reading_directory
+s32 xm_cd_get_aligned_file_size_in_reading_directory(s32 file) __asm__("ArchiveDecodeSizeAligned");
+#endif
+#ifndef XM_S_cd_pending_read_count
+#define XM_S_cd_pending_read_count
+extern s32 xm_cd_pending_read_count __asm__("D_8004FDFC");
+#endif
+#ifndef XM_S_stream_next_chunk_sequence
+#define XM_S_stream_next_chunk_sequence
+extern u16 xm_stream_next_chunk_sequence __asm__("D_8004FE24");
+#endif
+u8 *func_80028B14(void) {
+    StreamRing *ring = xm_stream_current_ring;
+    u8 *payload;
+    StreamSlot *slot;
+    FileRequest *request;
+    s32 count;
+    s32 index;
+    s32 i;
+    s32 file;
+    char *name;
+
+    if (ring == NULL) {
+        return NULL;
+    }
+    payload = (u8 *)ring;
+    slot = ring->slots;
+    count = ring->count;
+    payload = payload + count * 8 + 0x24;
+    if (xm_cd_pc_file_names != NULL) {
+        if (xm_cd_pc_file_descriptor == -1) {
+            return NULL;
+        }
+        if (xm_cd_read_bytes_left <= 0) {
+            return NULL;
+        }
+        for (i = 0; i < xm_stream_slot_count; i++) {
+            slot = &xm_stream_slots[xm_cd_read_cursor];
+            index = xm_cd_read_cursor;
+            if (++xm_cd_read_cursor >= xm_stream_slot_count) {
+                xm_cd_read_cursor = 0;
+            }
+            if (slot->state == 0) {
+                goto found;
+            }
+        }
+        if (slot->state != 0) {
+            return NULL;
+        }
+    found:
+        slot->state = 3;
+        payload += index << 11;
+        for (i = 0; i < 4; i++) {
+            if (xm_PCread(xm_cd_pc_file_descriptor, payload, 0x800) != 0) {
+                goto xm_read;
+            }
+            xm_cd_draw_error_indicator(i, 0, 0xFF, 0);
+        }
+        return NULL;
+    xm_read:
+        xm_cd_read_bytes_left -= 0x800;
+        if (xm_cd_read_bytes_left > 0) {
+            return payload;
+        }
+        xm_cd_read_bytes_left = 0;
+        for (i = 0; i < 4; i++) {
+            if (xm_PCclose(xm_cd_pc_file_descriptor) == 0) {
+                break;
+            }
+            xm_cd_draw_error_indicator(i, 0, 0, 0xFF);
+        }
+        xm_cd_pc_file_descriptor = -1;
+        if (xm_cd_current_file_list != NULL) {
+            request = &xm_cd_current_file_list[++xm_cd_read_cursor];
+            file = request->file;
+            xm_cd_file_being_read = file;
+            if (file > 0 && request->destination != NULL) {
+                name = xm_cd_get_pc_file_name(file);
+                for (i = 0; i < 4; i++) {
+                    xm_cd_pc_file_descriptor = xm_PCopen(name, 0, 0);
+                    if (xm_cd_pc_file_descriptor != -1) {
+                        break;
+                    }
+                    xm_cd_draw_error_indicator(i, 0xFF, 0, 0);
+                }
+                xm_cd_read_bytes_left = xm_cd_get_aligned_file_size_in_reading_directory(file);
+                xm_cd_pending_read_count--;
+                return payload;
+            }
+            xm_cd_read_bytes_left = 0;
+        }
+        xm_cd_pending_read_count = 0;
+        return payload;
+    }
+    for (i = 0; i < count; i++, slot++) {
+        if (slot->state == 3 && slot->sequence == xm_stream_next_chunk_sequence) {
+            break;
+        }
+    }
+    if (i == xm_stream_slot_count) {
+        return NULL;
+    }
+    xm_stream_next_chunk_sequence++;
+    return payload + (i << 11);
+}
+#endif
 #else
 s32 func_80028B14(void) {
     u8* pStreamFile;
@@ -604,7 +799,231 @@ extern u16 D_8005A4B8;
 extern u8 D_800596F8[];
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/libarchive", func_80028F30);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): stream_get_next_movie_frame (src/decomp/src/resident/cd_reads_and_streams.c:866). */
+#ifndef XM_T_StreamFrame
+#define XM_T_StreamFrame
+typedef struct {
+    u8 unknown0[6];
+    u16 sectors; 
+    u16 word8;   
+} StreamFrame;
+#endif
+#ifndef XM_T_StreamSlot
+#define XM_T_StreamSlot
+typedef struct {
+    u16 state;
+    u16 sequence;
+    u16 length; 
+    u16 w6;
+} StreamSlot;
+#endif
+#ifndef XM_T_StreamRing
+#define XM_T_StreamRing
+typedef struct {
+    s32 count;
+    StreamSlot slots[1];
+} StreamRing;
+#endif
+#ifndef XM_S_stream_get_next_movie_frame
+#define XM_S_stream_get_next_movie_frame
+s32 xm_stream_get_next_movie_frame(u8 **data, StreamFrame **frame) __asm__("func_80028F30");
+#endif
+#ifndef XM_S_stream_current_ring
+#define XM_S_stream_current_ring
+extern StreamRing *xm_stream_current_ring __asm__("g_ArchiveCurStreamFile");
+#endif
+#ifndef XM_S_cd_pc_file_names
+#define XM_S_cd_pc_file_names
+extern char *xm_cd_pc_file_names __asm__("g_ArchiveDebugTable");
+#endif
+#ifndef XM_S_cd_pc_file_descriptor
+#define XM_S_cd_pc_file_descriptor
+extern s32 xm_cd_pc_file_descriptor __asm__("D_8004FE4C");
+#endif
+#ifndef XM_S_cd_read_bytes_left
+#define XM_S_cd_read_bytes_left
+extern s32 xm_cd_read_bytes_left __asm__("g_ArchiveCurFileSize");
+#endif
+#ifndef XM_S_stream_frame_sector_index
+#define XM_S_stream_frame_sector_index
+extern s16 xm_stream_frame_sector_index __asm__("D_80059F60");
+#endif
+#ifndef XM_S_stream_slot_count
+#define XM_S_stream_slot_count
+extern s32 xm_stream_slot_count __asm__("D_8004FE40");
+#endif
+#ifndef XM_S_stream_slots
+#define XM_S_stream_slots
+extern StreamSlot *xm_stream_slots __asm__("D_8004FE2C");
+#endif
+#ifndef XM_S_cd_setmode_parameter
+#define XM_S_cd_setmode_parameter
+extern u8 xm_cd_setmode_parameter __asm__("D_80059F18");
+#endif
+#ifndef XM_S_PCread
+#define XM_S_PCread
+int xm_PCread(int fd, char *buff, int len) __asm__("PCread");
+#endif
+#ifndef XM_S_cd_sector_buffer
+#define XM_S_cd_sector_buffer
+extern u8 xm_cd_sector_buffer[0x800] __asm__("D_800596F8");
+#endif
+#ifndef XM_S_stream_frame_headers
+#define XM_S_stream_frame_headers
+extern u8 *xm_stream_frame_headers __asm__("D_80059F54");
+#endif
+#ifndef XM_S_cd_read_destination
+#define XM_S_cd_read_destination
+extern void *xm_cd_read_destination __asm__("D_8004FE08");
+#endif
+#ifndef XM_S_stream_frame_sector_count
+#define XM_S_stream_frame_sector_count
+extern s16 xm_stream_frame_sector_count __asm__("D_80059F5C");
+#endif
+#ifndef XM_S_stream_frame_number
+#define XM_S_stream_frame_number
+extern u16 xm_stream_frame_number __asm__("D_8005A4B8");
+#endif
+#ifndef XM_S_PClseek
+#define XM_S_PClseek
+int xm_PClseek(int fd, int offset, int mode) __asm__("PClseek");
+#endif
+#ifndef XM_S_stream_next_store_sequence
+#define XM_S_stream_next_store_sequence
+extern u16 xm_stream_next_store_sequence __asm__("D_8004FE26");
+#endif
+#ifndef XM_S_stream_merge_free_slots
+#define XM_S_stream_merge_free_slots
+void xm_stream_merge_free_slots(s32 index) __asm__("ArchiveConsolidateStreamFileEntry");
+#endif
+#ifndef XM_S_stream_frame_payloads
+#define XM_S_stream_frame_payloads
+extern u8 *xm_stream_frame_payloads __asm__("D_80059F58");
+#endif
+#ifndef XM_S_cd_read_cursor
+#define XM_S_cd_read_cursor
+extern s32 xm_cd_read_cursor __asm__("D_8004FE10");
+#endif
+#ifndef XM_S_stream_next_chunk_sequence
+#define XM_S_stream_next_chunk_sequence
+extern u16 xm_stream_next_chunk_sequence __asm__("D_8004FE24");
+#endif
+#ifndef XM_S_stream_has_slot_mismatch
+#define XM_S_stream_has_slot_mismatch
+s32 xm_stream_has_slot_mismatch(s32 index, s32 count, s32 state) __asm__("func_80028E60");
+#endif
+s32 func_80028F30(u8 **data, StreamFrame **frame) {
+    StreamRing *ring = xm_stream_current_ring;
+    StreamSlot *slots;
+    u16 *slot;
+    StreamFrame *header;
+    u8 *payload;
+    s32 count;
+    s32 offset;
+    s32 rest;
+    s32 i;
+
+    if (ring == NULL) {
+        return 1;
+    }
+    payload = (u8 *)ring;
+    slots = ring->slots;
+    count = ring->count;
+    payload = payload + count * 8 + 0x24;
+    if (xm_cd_pc_file_names != NULL && xm_cd_pc_file_descriptor != -1 && xm_cd_read_bytes_left > 0) {
+        if (xm_stream_frame_sector_index == 0) {
+            for (i = 0; i < xm_stream_slot_count; i += slot[2]) {
+                slot = (u16 *)&xm_stream_slots[i];
+                if (slot[0] == 0) {
+                    break;
+                }
+            }
+            if (i >= xm_stream_slot_count) {
+                goto search;
+            }
+            if (xm_cd_setmode_parameter & 8) {
+                xm_PCread(xm_cd_pc_file_descriptor, xm_cd_sector_buffer, 8);
+                if (xm_cd_sector_buffer[0] == 1) {
+                    goto skip;
+                }
+            }
+            offset = i << 11;
+            xm_stream_frame_headers = (u8 *)xm_cd_read_destination + offset;
+            header = (StreamFrame *)xm_stream_frame_headers;
+            xm_PCread(xm_cd_pc_file_descriptor, (u8 *)header, 0x20);
+            xm_stream_frame_sector_count = header->sectors;
+            xm_stream_frame_number = header->word8;
+            if (slot[2] < xm_stream_frame_sector_count) {
+                if (xm_cd_setmode_parameter & 8) {
+                    xm_PClseek(xm_cd_pc_file_descriptor, -0x28, 1);
+                } else {
+                    xm_PClseek(xm_cd_pc_file_descriptor, -0x20, 1);
+                }
+                goto search;
+            }
+            slot[1] = xm_stream_next_store_sequence;
+            slot[0] = 3;
+            rest = slot[2] - xm_stream_frame_sector_count;
+            if (rest >= 3) {
+                slot[2] = xm_stream_frame_sector_count + 1;
+                slot[(xm_stream_frame_sector_count + 1) * 4 + 2] = rest - 1;
+                slot[(xm_stream_frame_sector_count + 1) * 4] = 0;
+                xm_stream_merge_free_slots(xm_stream_frame_sector_count + 1);
+            }
+            xm_stream_next_store_sequence++;
+            xm_stream_frame_payloads = (u8 *)xm_cd_read_destination + offset + xm_stream_frame_sector_count * 32;
+            xm_PCread(xm_cd_pc_file_descriptor, xm_stream_frame_payloads, 0x7E0);
+            if (xm_cd_setmode_parameter & 8) {
+                xm_PClseek(xm_cd_pc_file_descriptor, 0x118, 1);
+            }
+            xm_cd_read_cursor = i;
+            xm_cd_read_bytes_left -= 0x800;
+            xm_stream_frame_sector_index++;
+        } else {
+            if (xm_cd_setmode_parameter & 8) {
+                xm_PCread(xm_cd_pc_file_descriptor, xm_cd_sector_buffer, 8);
+                if (xm_cd_sector_buffer[0] == 1) {
+                skip:
+                    xm_PClseek(xm_cd_pc_file_descriptor, 0x918, 1);
+                    goto search;
+                }
+            }
+            slot = (u16 *)&xm_stream_slots[++xm_cd_read_cursor];
+            slot[1] = xm_stream_next_store_sequence;
+            slot[0] = 3;
+            xm_stream_next_store_sequence++;
+            xm_PCread(xm_cd_pc_file_descriptor, xm_stream_frame_headers + xm_stream_frame_sector_index * 32, 0x20);
+            xm_PCread(xm_cd_pc_file_descriptor, xm_stream_frame_payloads + xm_stream_frame_sector_index * 0x7E0, 0x7E0);
+            if (xm_cd_setmode_parameter & 8) {
+                xm_PClseek(xm_cd_pc_file_descriptor, 0x118, 1);
+            }
+            xm_cd_read_bytes_left -= 0x800;
+            if (++xm_stream_frame_sector_index >= xm_stream_frame_sector_count) {
+                xm_stream_frame_sector_index = 0;
+            }
+        }
+    }
+search:
+    *frame = NULL;
+    for (i = 0; i < count; i++, slots++) {
+        if (slots->state == 3 && slots->sequence == xm_stream_next_chunk_sequence) {
+            break;
+        }
+    }
+    if (i == xm_stream_slot_count) {
+        return 1;
+    }
+    header = (StreamFrame *)(payload + (i << 11));
+    *frame = header;
+    *data = (u8 *)header + header->sectors * 32;
+    if (xm_stream_has_slot_mismatch(i, header->sectors, 3) != 0) {
+        return 1;
+    }
+    xm_stream_next_chunk_sequence += header->sectors;
+    return 0;
+}
+#endif
 #else
 /* Output slots retain the retail 32-bit address ABI. Native callers must
  * receive them in u32 locals and widen explicitly, not pass void**. Port

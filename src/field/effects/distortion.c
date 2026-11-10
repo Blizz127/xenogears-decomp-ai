@@ -72,7 +72,240 @@ void FieldDistortionFree(void) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/effects/distortion", FieldDistortionInitialize);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_distortion_start (src/decomp/src/field/field_screen.c:192). */
+#ifndef XM_T_FadeChannel
+#define XM_T_FadeChannel
+typedef struct {
+    DR_MODE modes[2]; 
+    TILE tiles[2];   
+    s32 level[3];
+    s32 step[3];
+    u16 abr;
+    s16 active;
+    s16 steps;
+    u16 pad;
+} FadeChannel;
+#endif
+#ifndef XM_T_FieldWork
+#define XM_T_FieldWork
+typedef struct FieldWork {
+    s16 unk2078;               
+    s16 unk207A;               
+    s16 effect_steps;          
+    u8 unk207E[2];
+    s32 effect_value[6];       
+    s32 effect_step[6];        
+    s16 unk20B0[2];            
+    void *effect_buffers[4];   
+    FadeChannel fades[2];      
+    u16 open_windows;          
+
+    s16 encounter_inhibition;  
+    s16 terrain_angle;         
+    u16 input_mask;            
+    s32 unk217C;               
+    s32 unk2180;               
+    SVECTOR sprite_angles;     
+    s16 scale;                 
+    s16 sprite_gate;           
+    u8 fog_color[4];           
+    u8 far_color[4];           
+    s16 fog_range[2];          
+    u8 clear_color[3];         
+    u8 party_bits;             
+    s16 unk21A0[6];            
+    s16 emitter_range;         
+    s16 piece_drift[3];        
+    s16 unk21B4;               
+    u8 unk21B6[2];
+    s32 last_sound_effect;     
+    s32 unk21BC[3];            
+    u8 unk21C8[0x21CC - 0x21C8];
+    u8 party_processing_mode;  
+    u8 camera_floor_fixed;     
+    u8 preserve_nonplayer_motion; 
+    u8 forced_position;        
+    u8 script_control[2];      
+    u8 piece_drift_mode;       
+    u8 unk21D3;
+    s16 unk21D4;               
+    s16 text_speed;            
+    s32 camera_counter;        
+    s16 unk21DC[4];            
+    s16 unk21E4[4];            
+    SVECTOR layer_positions[4]; 
+    s32 layer_scales[4];       
+    s16 unk221C[5][3];         
+    u8 unk223A[2];
+    s16 unk223C[3][3];         
+    u8 unk224E[0x225C - 0x224E];
+    u8 unk225C[3];             
+    u8 unk225F[0x2264 - 0x225F]; 
+    s32 unk2264;               
+    s32 unk2268;               
+    s32 controlled;            
+    u16 encounter_music[16];   
+    s16 battle_music;          
+    u8 unk2292[2];
+    s32 unk2294;               
+    s32 unk2298;               
+    s32 unk229C;               
+    u16 unk22A0[32];           
+    s16 unk22E0;               
+    s16 emitter_descriptor[3]; 
+    s16 unk22E8[3][4];         
+    s16 unk2300[3][4];         
+    s32 unk2318[3];            
+    s16 emitter_position[3][4]; 
+    u16 effects_kept;          
+    u16 unk233E;               
+    s16 repeat_delay;          
+    s16 repeat_remaining;      
+    s16 jump_mode;             
+    s16 animation_mode;        
+    u16 unk2348;               
+    s16 unk234A;               
+    s16 gear_riding_lock_override; 
+    s16 followers_idle;        
+    u32 unk2350;               
+    u8 unk2354;                
+    u8 unk2355;                
+    u8 unk2356;                
+    u8 unk2357;                
+    u8 unk2358;                
+    u8 unk2359[0x235C - 0x2359];
+} FieldWork;
+#endif
+#ifndef XM_S_field_distortion_start
+#define XM_S_field_distortion_start
+void xm_field_distortion_start(s32 resume) __asm__("FieldDistortionInitialize");
+#endif
+#ifndef XM_S_field_work
+#define XM_S_field_work
+extern FieldWork xm_field_work __asm__("g_FieldEffects");
+#endif
+#ifndef XM_S_field_distortion_buffers_allocated
+#define XM_S_field_distortion_buffers_allocated
+extern s32 xm_field_distortion_buffers_allocated __asm__("D_800ADB24");
+#endif
+#ifndef XM_S_heap_alloc
+#define XM_S_heap_alloc
+void *xm_heap_alloc(s32 size, s32 mode) __asm__("HeapAlloc");
+#endif
+#ifndef XM_S_SetPolyFT4
+#define XM_S_SetPolyFT4
+void xm_SetPolyFT4(POLY_FT4 *p) __asm__("SetPolyFT4");
+#endif
+#ifndef XM_S_SetSemiTrans
+#define XM_S_SetSemiTrans
+void xm_SetSemiTrans(void *p, int abe) __asm__("SetSemiTrans");
+#endif
+#ifndef XM_S_GetTPage
+#define XM_S_GetTPage
+u_short xm_GetTPage(int tp, int abr, int x, int y) __asm__("GetTPage");
+#endif
+#ifndef XM_S_SetDrawMove
+#define XM_S_SetDrawMove
+void xm_SetDrawMove(DR_MOVE *p, RECT *rect, int x, int y) __asm__("SetDrawMove");
+#endif
+#ifndef XM_S_field_distortion_strip_sources
+#define XM_S_field_distortion_strip_sources
+extern DVECTOR xm_field_distortion_strip_sources[15] __asm__("D_800AEB24");
+#endif
+#ifndef XM_S_field_distortion_set_targets
+#define XM_S_field_distortion_set_targets
+void xm_field_distortion_set_targets(s32 a, s32 b, s32 c, s32 d, s32 e, s32 f, s32 steps) __asm__("FieldDistortionSetTarget");
+#endif
+#ifndef XM_S_field_event_read_imm_or_var
+#define XM_S_field_event_read_imm_or_var
+s32 xm_field_event_read_imm_or_var(s32 offset) __asm__("FieldScriptVMGetArgument");
+#endif
+void FieldDistortionInitialize(s32 resume) {
+    RECT rect;
+    s32 row;
+    s32 column;
+    POLY_FT4 *poly;
+    DVECTOR *strips;
+    POLY_FT4 *copy;
+    s32 u;
+
+    xm_field_work.unk2078 = 1;
+    if (xm_field_distortion_buffers_allocated == 0) {
+        xm_field_work.effect_buffers[0] = xm_heap_alloc(0x180, 0);
+        xm_field_work.effect_buffers[1] = xm_heap_alloc(0x180, 0);
+        xm_field_work.effect_buffers[2] = xm_heap_alloc(0x3840, 0);
+        xm_field_work.effect_buffers[3] = xm_heap_alloc(0x3840, 0);
+        xm_field_distortion_buffers_allocated = 1;
+        for (row = 0; row < 17; row++) {
+            for (column = 0; column < 20; column++) {
+                poly = (POLY_FT4 *)xm_field_work.effect_buffers[2] + (column + row * 20);
+                copy = (POLY_FT4 *)xm_field_work.effect_buffers[3] + (column + row * 20);
+                xm_SetPolyFT4(poly);
+                xm_SetSemiTrans(poly, 0);
+                poly->r0 = 0x80;
+                poly->g0 = 0x80;
+                poly->b0 = 0x80;
+                poly->x0 = column * 16;
+                poly->y0 = row * 16;
+                poly->x1 = column * 16 + 16;
+                poly->y1 = row * 16;
+                poly->x2 = column * 16;
+                poly->y2 = row * 16 + 16;
+                poly->x3 = column * 16 + 16;
+                poly->y3 = row * 16 + 16;
+                if (row >= 14) {
+                    u = (column * 16) & 0x3F;
+                    poly->u0 = u;
+                    poly->v0 = (column >> 2) * 16 + (row - 14) * 80;
+                    poly->u1 = u + 16;
+                    poly->v1 = (column >> 2) * 16 + (row - 14) * 80;
+                    poly->u2 = u;
+                    poly->v2 = (column >> 2) * 16 + ((row - 14) * 80 + 16);
+                    poly->u3 = u + 16;
+                    poly->v3 = (column >> 2) * 16 + ((row - 14) * 80 + 16);
+                    poly->tpage = xm_GetTPage(2, 0, 0x3C0, 0);
+                    *copy = *poly;
+                } else {
+                    poly->u0 = (column * 16) & 0x3F;
+                    poly->v0 = row * 16;
+                    poly->u1 = ((column * 16) & 0x3F) + 16;
+                    poly->v1 = row * 16;
+                    poly->u2 = (column * 16) & 0x3F;
+                    poly->v2 = row * 16 + 16;
+                    poly->u3 = ((column * 16) & 0x3F) + 16;
+                    poly->v3 = row * 16 + 16;
+                    poly->tpage = xm_GetTPage(2, 0, (column * 16) & 0xFFC0, 0);
+                    *copy = *poly;
+                    copy->tpage = xm_GetTPage(2, 0, (column * 16) & 0xFFC0, 0x100);
+                }
+            }
+        }
+        rect.x = 0;
+        rect.y = 0x20;
+        rect.w = 0x140;
+        rect.h = 0xC0;
+        xm_SetDrawMove(xm_field_work.effect_buffers[0], &rect, 0, 0);
+        rect.y = 0x120;
+        xm_SetDrawMove(xm_field_work.effect_buffers[1], &rect, 0, 0x100);
+        rect.w = 0x40;
+        rect.h = 0x10;
+        strips = xm_field_distortion_strip_sources;
+        for (row = 0; row < 15; row++) {
+            rect.x = strips[row].vx;
+            rect.y = xm_field_distortion_strip_sources[row].vy;
+            xm_SetDrawMove((DR_MOVE *)xm_field_work.effect_buffers[0] + (row + 1), &rect, 0x3C0, row * 16);
+            rect.y = xm_field_distortion_strip_sources[row].vy + 0x100;
+            xm_SetDrawMove((DR_MOVE *)xm_field_work.effect_buffers[1] + (row + 1), &rect, 0x3C0, row * 16);
+        }
+    }
+    if (resume == 0) {
+        xm_field_distortion_set_targets(xm_field_event_read_imm_or_var(1), xm_field_event_read_imm_or_var(3), xm_field_event_read_imm_or_var(5), xm_field_event_read_imm_or_var(7),
+                      xm_field_event_read_imm_or_var(9), xm_field_event_read_imm_or_var(11), xm_field_event_read_imm_or_var(13));
+    }
+    xm_field_work.unk207A = 0;
+}
+#endif
 #else
 void FieldDistortionInitialize(int useExistingTarget) {
     POLY_FT4* pPoly;

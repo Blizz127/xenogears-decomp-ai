@@ -686,7 +686,81 @@ u32 func_8002C3D8(void) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002C3E8);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): model_relocate_group (src/decomp/src/resident/model_renderer.c:123). */
+#ifndef XM_T_ModelListEntry
+#define XM_T_ModelListEntry
+typedef struct {
+    s32 unk0;
+    u8 *first;
+    u8 *second;
+} ModelListEntry;
+#endif
+#ifndef XM_T_ModelList
+#define XM_T_ModelList
+typedef struct {
+    s32 last;
+    ModelListEntry entries[1];
+} ModelList;
+#endif
+#ifndef XM_T_Model
+#define XM_T_Model
+typedef struct {
+    u8 unk0[4];
+    u8 *table0;
+    u8 *table4;
+    u8 *table8;
+    u8 *primitives;
+    u8 unk14[4];
+    ModelList *list; 
+    u8 unk1C[0x1C];
+} Model;
+#endif
+#ifndef XM_T_ModelGroup
+#define XM_T_ModelGroup
+typedef struct {
+    s32 count;
+    s32 flags;       
+    u8 unk8[0xC];
+    Model models[1];
+} ModelGroup;
+#endif
+#ifndef XM_S_model_relocate_group
+#define XM_S_model_relocate_group
+s32 xm_model_relocate_group(ModelGroup *group) __asm__("func_8002C3E8");
+#endif
+s32 func_8002C3E8(ModelGroup *group) {
+    s32 i = group->flags; 
+    s32 count = group->count;
+    Model *model;
+    ModelList *list;
+    ModelListEntry *entries;
+    s32 n;
+
+    if (!(i & 1)) {
+        group->flags = i | 1;
+        for (i = 0, model = group->models; i < count; i++, model++) {
+            model->table0 += (s32)group;
+            model->table4 += (s32)group;
+            model->table8 += (s32)group;
+            model->primitives += (s32)group;
+            if (model->list != NULL) {
+                list = (ModelList *)((u8 *)model->list + (s32)group);
+                model->list = list;
+                entries = list->entries;
+                n = list->last;
+                if (n != -1) {
+                    for (; n != -1; n--) {
+                        entries[n].first += (s32)group;
+                        entries[n].second += (s32)group;
+                    }
+                }
+            }
+        }
+    }
+    return count;
+}
+#endif
 #else
 /* Relocates a model's internal offset fields to absolute addresses (adds the model
  * base). Runs once per model (guarded by flag bit 0x1 at +0x4). For each of the
@@ -742,7 +816,81 @@ int func_8002C3E8(u8* pModel) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002C4BC);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): model_unrelocate_group (src/decomp/src/resident/model_renderer.c:157). */
+#ifndef XM_T_ModelListEntry
+#define XM_T_ModelListEntry
+typedef struct {
+    s32 unk0;
+    u8 *first;
+    u8 *second;
+} ModelListEntry;
+#endif
+#ifndef XM_T_ModelList
+#define XM_T_ModelList
+typedef struct {
+    s32 last;
+    ModelListEntry entries[1];
+} ModelList;
+#endif
+#ifndef XM_T_Model
+#define XM_T_Model
+typedef struct {
+    u8 unk0[4];
+    u8 *table0;
+    u8 *table4;
+    u8 *table8;
+    u8 *primitives;
+    u8 unk14[4];
+    ModelList *list; 
+    u8 unk1C[0x1C];
+} Model;
+#endif
+#ifndef XM_T_ModelGroup
+#define XM_T_ModelGroup
+typedef struct {
+    s32 count;
+    s32 flags;       
+    u8 unk8[0xC];
+    Model models[1];
+} ModelGroup;
+#endif
+#ifndef XM_S_model_unrelocate_group
+#define XM_S_model_unrelocate_group
+s32 xm_model_unrelocate_group(ModelGroup *group) __asm__("func_8002C4BC");
+#endif
+s32 func_8002C4BC(ModelGroup *group) {
+    s32 i = group->flags; 
+    s32 count = group->count;
+    Model *model;
+    ModelList *list;
+    ModelListEntry *entries;
+    s32 n;
+
+    if (i & 1) {
+        group->flags = i & ~1;
+        for (i = 0, model = group->models; i < count; i++, model++) {
+            model->table0 -= (s32)group;
+            model->table4 -= (s32)group;
+            model->table8 -= (s32)group;
+            model->primitives -= (s32)group;
+            if (model->list != NULL) {
+                list = model->list;
+                entries = list->entries;
+                n = list->last;
+                if (n != -1) {
+                    for (; n != -1; n--) {
+                        entries[n].first -= (s32)group;
+                        entries[n].second -= (s32)group;
+                    }
+                }
+                model->list = (ModelList *)((u8 *)model->list - (s32)group);
+            }
+        }
+    }
+    return count;
+}
+#endif
 #else
 s32 func_8002C4BC(u8* pBlock) {
     u32 flags = *(u32*)(pBlock + 4);
@@ -782,7 +930,79 @@ s32 func_8002C4BC(u8* pBlock) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002C59C);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): model_relocate_sprite_model (src/decomp/src/resident/model_renderer.c:190). */
+#ifndef XM_T_MorphDelta
+#define XM_T_MorphDelta
+typedef struct {
+    s16 dx, dy, dz;
+    s16 index;
+} MorphDelta;
+#endif
+#ifndef XM_T_MorphTarget
+#define XM_T_MorphTarget
+typedef struct {
+    s32 count;
+    void *deltas;
+    MorphDelta *normals;
+} MorphTarget;
+#endif
+#ifndef XM_T_MorphTable
+#define XM_T_MorphTable
+typedef struct {
+    s32 count;
+    MorphTarget targets[1];
+} MorphTable;
+#endif
+#ifndef XM_T_SpriteModel
+#define XM_T_SpriteModel
+typedef struct {
+    u16 flags;          
+    u16 vertex_count;
+    u16 primitive_count;
+    u16 group_count;    
+    SVECTOR *vertices;
+    SVECTOR *normals;
+    u8 *unk10;          
+    u8 *unk14;
+    u8 *unk18;
+    MorphTable *morphs; 
+    SVECTOR box_min;    
+    SVECTOR box_max;
+    s32 aux_size;       
+    s32 packet_size;    
+} SpriteModel;
+#endif
+#ifndef XM_S_model_relocate_sprite_model
+#define XM_S_model_relocate_sprite_model
+void xm_model_relocate_sprite_model(SpriteModel *model) __asm__("func_8002C59C");
+#endif
+void func_8002C59C(SpriteModel *model) {
+    MorphTable *table;
+    MorphTarget *targets;
+    s32 n;
+
+    if (!(model->flags & 0x20)) {
+        model->flags |= 0x20;
+        model->vertices = (SVECTOR *)((u8 *)model->vertices + (s32)model);
+        model->normals = (SVECTOR *)((u8 *)model->normals + (s32)model);
+        model->unk10 += (s32)model;
+        model->unk14 += (s32)model;
+        if (model->morphs != NULL) {
+            table = (MorphTable *)((u8 *)model->morphs + (s32)model);
+            targets = table->targets;
+            model->morphs = table;
+            n = table->count;
+            if (n != -1) {
+                for (; n != -1; n--) {
+                    targets[n].deltas = (u8 *)targets[n].deltas + (s32)model;
+                    targets[n].normals = (MorphDelta *)((u8 *)targets[n].normals + (s32)model);
+                }
+            }
+        }
+    }
+}
+#endif
 #else
 void func_8002C59C(u8* pBlock) {
     u16 flags = *(u16*)(pBlock);
@@ -1947,7 +2167,53 @@ extern void OuterProduct0(VECTOR* v0, VECTOR* v1, VECTOR* out);
 s32 func_8002DC9C(s32 x, s32 y, s32 z);
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_8002DB84);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): model_compute_face_normal (src/decomp/src/resident/model_renderer.c:766). */
+#ifndef XM_S_model_compute_face_normal
+#define XM_S_model_compute_face_normal
+void xm_model_compute_face_normal(SVECTOR *v0, SVECTOR *v1, SVECTOR *v2, SVECTOR *normal) __asm__("func_8002DB84");
+#endif
+#ifndef XM_S_OuterProduct0
+#define XM_S_OuterProduct0
+void xm_OuterProduct0(VECTOR *v0, VECTOR *v1, VECTOR *v2) __asm__("OuterProduct0");
+#endif
+#ifndef XM_S_model_get_largest_component
+#define XM_S_model_get_largest_component
+s32 xm_model_get_largest_component(s32 x, s32 y, s32 z) __asm__("func_8002DC9C");
+#endif
+#ifndef XM_S_SquareRoot0
+#define XM_S_SquareRoot0
+long xm_SquareRoot0(long a) __asm__("SquareRoot0");
+#endif
+#ifndef XM_S_VectorNormalS
+#define XM_S_VectorNormalS
+long xm_VectorNormalS(VECTOR *v0, SVECTOR *v1) __asm__("VectorNormalS");
+#endif
+void func_8002DB84(SVECTOR *v0, SVECTOR *v1, SVECTOR *v2, SVECTOR *normal) {
+    VECTOR a;
+    VECTOR b;
+    VECTOR cross;
+    s32 largest;
+    s32 length;
+
+    a.vx = v1->vx - v0->vx;
+    a.vy = v1->vy - v0->vy;
+    a.vz = v1->vz - v0->vz;
+    b.vx = v2->vx - v0->vx;
+    b.vy = v2->vy - v0->vy;
+    b.vz = v2->vz - v0->vz;
+    xm_OuterProduct0(&b, &a, &cross);
+    largest = xm_model_get_largest_component(cross.vx, cross.vy, cross.vz);
+    if (largest < 0) {
+        largest = -largest;
+    }
+    length = xm_SquareRoot0(largest);
+    cross.vx /= length;
+    cross.vy /= length;
+    cross.vz /= length;
+    xm_VectorNormalS(&cross, normal);
+}
+#endif
 #else
 static s32 func_8002DB84_div(s32 n, s32 d) {
     if (d == 0) {
@@ -2513,7 +2779,33 @@ void func_800301C8(u8* pDst, u8* pSrc, s32 count, s16* pIndices) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80030228);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): model_add_morph_deltas (src/decomp/src/resident/model_renderer.c:991). */
+#ifndef XM_T_MorphDelta
+#define XM_T_MorphDelta
+typedef struct {
+    s16 dx, dy, dz;
+    s16 index;
+} MorphDelta;
+#endif
+#ifndef XM_S_model_add_morph_deltas
+#define XM_S_model_add_morph_deltas
+void xm_model_add_morph_deltas(SVECTOR *vertices, MorphDelta *deltas, s32 count, s32 weight) __asm__("func_80030228");
+#endif
+void func_80030228(SVECTOR *vertices, MorphDelta *deltas, s32 count, s32 weight) {
+    s32 k;
+
+    if (weight != 0) {
+        while (--count != -1) {
+            k = deltas->index;
+            vertices[k].vx += (deltas->dx * weight) >> 12;
+            vertices[k].vy += (deltas->dy * weight) >> 12;
+            vertices[k].vz += (deltas->dz * weight) >> 12;
+            deltas++;
+        }
+    }
+}
+#endif
 #else
 void func_80030228(u8* pVertices, s16* pDeltas, s32 count, s32 scale) {
     u32 n;
@@ -2535,7 +2827,38 @@ void func_80030228(u8* pVertices, s16* pDeltas, s32 count, s32 scale) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_800302D4);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): model_add_morph_normal_deltas (src/decomp/src/resident/model_renderer.c:1007). */
+#ifndef XM_T_MorphDelta
+#define XM_T_MorphDelta
+typedef struct {
+    s16 dx, dy, dz;
+    s16 index;
+} MorphDelta;
+#endif
+#ifndef XM_S_model_add_morph_normal_deltas
+#define XM_S_model_add_morph_normal_deltas
+void xm_model_add_morph_normal_deltas(SVECTOR *normals, MorphDelta *deltas, s32 count, s32 weight) __asm__("func_800302D4");
+#endif
+#ifndef XM_S_VectorNormalSS
+#define XM_S_VectorNormalSS
+void xm_VectorNormalSS(SVECTOR *v0, SVECTOR *v1) __asm__("VectorNormalSS");
+#endif
+void func_800302D4(SVECTOR *normals, MorphDelta *deltas, s32 count, s32 weight) {
+    s32 k;
+
+    if (weight != 0) {
+        while (--count != -1) {
+            k = deltas->index;
+            normals[k].vx += (deltas->dx * weight) >> 12;
+            normals[k].vy += (deltas->dy * weight) >> 12;
+            normals[k].vz += (deltas->dz * weight) >> 12;
+            xm_VectorNormalSS(&normals[k], &normals[k]);
+            deltas++;
+        }
+    }
+}
+#endif
 #else
 void func_800302D4(u8* pNormals, s16* pDeltas, s32 count, s32 scale) {
     u32 n;
@@ -2640,7 +2963,109 @@ void* func_800303C8(u8* a0, s32 a1) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_800305D8);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): model_update_morph (src/decomp/src/resident/model_renderer.c:1071). */
+#ifndef XM_T_MorphDelta
+#define XM_T_MorphDelta
+typedef struct {
+    s16 dx, dy, dz;
+    s16 index;
+} MorphDelta;
+#endif
+#ifndef XM_T_MorphTarget
+#define XM_T_MorphTarget
+typedef struct {
+    s32 count;
+    void *deltas;
+    MorphDelta *normals;
+} MorphTarget;
+#endif
+#ifndef XM_T_MorphTable
+#define XM_T_MorphTable
+typedef struct {
+    s32 count;
+    MorphTarget targets[1];
+} MorphTable;
+#endif
+#ifndef XM_T_SpriteModel
+#define XM_T_SpriteModel
+typedef struct {
+    u16 flags;          
+    u16 vertex_count;
+    u16 primitive_count;
+    u16 group_count;    
+    SVECTOR *vertices;
+    SVECTOR *normals;
+    u8 *unk10;          
+    u8 *unk14;
+    u8 *unk18;
+    MorphTable *morphs; 
+    SVECTOR box_min;    
+    SVECTOR box_max;
+    s32 aux_size;       
+    s32 packet_size;    
+} SpriteModel;
+#endif
+#ifndef XM_T_MorphChannel
+#define XM_T_MorphChannel
+typedef struct MorphChannel {
+    s32 (*update)(struct MorphChannel *channel);
+    s32 target;
+    s32 weight;
+    s32 step;
+    u8 unk10[0x10];
+} MorphChannel;
+#endif
+#ifndef XM_T_MorphState
+#define XM_T_MorphState
+typedef struct {
+    SpriteModel *model;
+    SVECTOR *vertices;
+    SVECTOR *normals;
+    s32 count;
+    MorphChannel *channels;
+} MorphState;
+#endif
+#ifndef XM_S_model_update_morph
+#define XM_S_model_update_morph
+void xm_model_update_morph(MorphState *state) __asm__("func_800305D8");
+#endif
+#ifndef XM_S_model_copy_indexed_vertices
+#define XM_S_model_copy_indexed_vertices
+void xm_model_copy_indexed_vertices(SVECTOR *out, SVECTOR *in, s32 count, s16 *indices) __asm__("func_800301C8");
+#endif
+#ifndef XM_S_model_add_morph_deltas
+#define XM_S_model_add_morph_deltas
+void xm_model_add_morph_deltas(SVECTOR *vertices, MorphDelta *deltas, s32 count, s32 weight) __asm__("func_80030228");
+#endif
+#ifndef XM_S_model_add_morph_normal_deltas
+#define XM_S_model_add_morph_normal_deltas
+void xm_model_add_morph_normal_deltas(SVECTOR *normals, MorphDelta *deltas, s32 count, s32 weight) __asm__("func_800302D4");
+#endif
+void func_800305D8(MorphState *state) {
+    SpriteModel *model;
+    MorphTarget *target;
+    MorphChannel *channel;
+    s32 count;
+    s32 weight;
+    s32 i;
+
+    if (state != NULL) {
+        model = state->model;
+        count = state->count;
+        target = model->morphs->targets;
+        channel = state->channels;
+        xm_model_copy_indexed_vertices(model->vertices, state->vertices, target[count].count, target[count].deltas);
+        for (i = 0; i < count; channel++, i++) {
+            weight = channel->update(channel);
+            xm_model_add_morph_deltas(model->vertices, target[i].deltas, target[i].count, weight);
+            if (model->flags & 0x10) {
+                xm_model_add_morph_normal_deltas(model->normals, target[i].normals, target[i].count, weight);
+            }
+        }
+    }
+}
+#endif
 #else
 /* Retail 0x800305D8, re-translated from the asm (the earlier port arm passed the wrong
  * func_800301C8 operands: it used pJoint/count/joint[count].+0 instead of *(anim+4),
@@ -2883,7 +3308,44 @@ MATRIX D_80059F84;
 
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/temp2", func_80030A30);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): model_set_light (src/decomp/src/resident/model_renderer.c:1122). */
+#ifndef XM_T_ModelLight
+#define XM_T_ModelLight
+typedef struct {
+    s32 vx, vy, vz;
+    u16 r, g, b;
+} ModelLight;
+#endif
+#ifndef XM_S_model_set_light
+#define XM_S_model_set_light
+void xm_model_set_light(u16 index, ModelLight *light) __asm__("func_80030A30");
+#endif
+#ifndef XM_S_VectorNormalS
+#define XM_S_VectorNormalS
+long xm_VectorNormalS(VECTOR *v0, SVECTOR *v1) __asm__("VectorNormalS");
+#endif
+#ifndef XM_S_model_light_directions
+#define XM_S_model_light_directions
+extern MATRIX xm_model_light_directions __asm__("D_80059F64");
+#endif
+#ifndef XM_S_model_light_colors
+#define XM_S_model_light_colors
+extern MATRIX xm_model_light_colors __asm__("D_80059F84");
+#endif
+void func_80030A30(u16 index, ModelLight *light) {
+    VECTOR reverse;
+
+    reverse.vx = -light->vx;
+    reverse.vy = -light->vy;
+    reverse.vz = -light->vz;
+    xm_VectorNormalS(&reverse, (SVECTOR *)xm_model_light_directions.m[index]);
+    xm_model_light_colors.m[0][index] = light->r;
+    xm_model_light_colors.m[1][index] = light->g;
+    xm_model_light_colors.m[2][index] = light->b;
+    gte_SetColorMatrix(&xm_model_light_colors);
+}
+#endif
 #else
 void func_80030A30(s32 lightId, void* pLight) {
     VECTOR lightDirection;

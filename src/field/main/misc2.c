@@ -187,7 +187,41 @@ s32 func_80072398(u32 mask, u32 index) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_800723E4);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_compute_line_intersection (src/decomp/src/field/field.c:1044). */
+#ifndef XM_S_field_compute_line_intersection
+#define XM_S_field_compute_line_intersection
+void xm_field_compute_line_intersection(DVECTOR *a, DVECTOR *b, DVECTOR *out) __asm__("func_800723E4");
+#endif
+#ifndef XM_S_VectorNormal
+#define XM_S_VectorNormal
+long xm_VectorNormal(VECTOR *v0, VECTOR *v1) __asm__("VectorNormal");
+#endif
+void func_800723E4(DVECTOR *a, DVECTOR *b, DVECTOR *out) {
+    VECTOR ua;
+    VECTOR ub;
+    VECTOR d;
+    s32 cross;
+    s32 t;
+
+    d.vx = a[1].vx - a[0].vx;
+    d.vy = 0;
+    d.vz = a[1].vy - a[0].vy;
+    xm_VectorNormal(&d, &ua);
+    d.vx = b[1].vx - b[0].vx;
+    d.vy = 0;
+    d.vz = b[1].vy - b[0].vy;
+    xm_VectorNormal(&d, &ub);
+    cross = (ub.vx * ua.vz - ub.vz * ua.vx) >> 12;
+    if (cross == 0) {
+        t = 0;
+    } else {
+        t = ((b[0].vy - a[0].vy) * ua.vx - (b[0].vx - a[0].vx) * ua.vz) / cross;
+    }
+    out->vx = b[0].vx + ((t * ub.vx) >> 12);
+    out->vy = b[0].vy + ((t * ub.vz) >> 12);
+}
+#endif
 #else
 void func_800723E4(void* arg0, void* arg1, void* arg2) {
     VECTOR delta;
@@ -3326,7 +3360,21 @@ void func_80076AC0(s32 actorIndex, s32 skinIndex, void* pAnimPackage, s32 sprite
 #endif /* XENO_PC_PORT */
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc2", func_800771B0);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_set_pixels_stp_bit (src/decomp/src/field/field.c:2597). */
+#ifndef XM_S_field_set_pixels_stp_bit
+#define XM_S_field_set_pixels_stp_bit
+void xm_field_set_pixels_stp_bit(u32 *pixels, s32 count) __asm__("func_800771B0");
+#endif
+void func_800771B0(u32 *pixels, s32 count) {
+    s32 i;
+
+    i = count / 2;
+    while (--i != -1) {
+        *pixels++ |= 0x80008000;
+    }
+}
+#endif
 #else
 void func_800771B0(u32* pBuf, s32 count) {
     s32 i;

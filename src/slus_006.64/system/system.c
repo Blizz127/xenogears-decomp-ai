@@ -77,7 +77,181 @@ void func_80033DF0(void* arg0);
 int func_80034F98(s32 arg0, s32 arg1);
 void func_80034FFC(s32 arg0, s32 arg1, void* arg2, s32 arg3, s32 arg4);
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80032F54);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): window_open (src/decomp/src/resident/text_windows_and_pads.c:106). */
+#ifndef XM_T_WindowLine
+#define XM_T_WindowLine
+typedef struct {
+    SPRT sprite[2][2];
+    RECT rect;       
+    s16 width;       
+    u8 plane;        
+    u8 slot;
+    u8 row;          
+    u8 unk5D;
+    u16 clut;
+} WindowLine;
+#endif
+#ifndef XM_T_WindowQueue
+#define XM_T_WindowQueue
+typedef struct WindowQueue {
+    struct WindowQueue *next;
+    s32 message;
+} WindowQueue;
+#endif
+#ifndef XM_T_Window
+#define XM_T_Window
+typedef struct Window {
+    s16 x;          
+    s16 y;          
+    s16 unk4;
+    s16 unk6;
+    s16 unk8;
+    s16 width;
+    s16 lines;
+    s16 unkE;
+    u16 flags;
+    s16 stride;
+    s16 unk14;
+    s16 unk16;
+    s16 unk18;      
+    u8 unk1A[2];
+    u8 *text;
+    u8 *resume;     
+    u8 unk24[4];
+    WindowLine *layout;
+    void *image;
+    u8 unk30[0xC];  
+    u8 unk3C[0xC];  
+    TILE tile[2];   
+    u8 unk68;
+    u8 unk69;
+    u8 unk6A;
+    u8 unk6B;
+    u8 unk6C;
+    u8 unk6D;
+    u8 unk6E;
+    u8 unk6F;
+    s32 values[4];  
+    s16 selection; 
+    s16 queued;
+    s16 unk84;      
+    s16 unk86;      
+    s16 unk88;      
+    u8 unk8A[2];
+    WindowQueue *queue;
+} Window;
+#endif
+#ifndef XM_S_window_open
+#define XM_S_window_open
+void xm_window_open(Window *window, s16 vram_x, s16 vram_y, s16 x, u16 y,
+                   u16 columns, u16 rows) __asm__("func_80032F54");
+#endif
+#ifndef XM_S_heap_set_next_class
+#define XM_S_heap_set_next_class
+void xm_heap_set_next_class(s32 kind) __asm__("HeapSetCurrentContentType");
+#endif
+#ifndef XM_S_heap_alloc
+#define XM_S_heap_alloc
+void *xm_heap_alloc(s32 size, s32 mode) __asm__("HeapAlloc");
+#endif
+#ifndef XM_S_SetSemiTrans
+#define XM_S_SetSemiTrans
+void xm_SetSemiTrans(void *p, int abe) __asm__("SetSemiTrans");
+#endif
+#ifndef XM_S_text_plane0_clut
+#define XM_S_text_plane0_clut
+extern u16 xm_text_plane0_clut __asm__("g_SystemPalette1");
+#endif
+#ifndef XM_S_text_plane1_clut
+#define XM_S_text_plane1_clut
+extern u16 xm_text_plane1_clut __asm__("g_SystemPalette2");
+#endif
+#ifndef XM_S_SetDrawMode
+#define XM_S_SetDrawMode
+void xm_SetDrawMode(DR_MODE *p, int dfe, int dtd, int tpage, RECT *tw) __asm__("SetDrawMode");
+#endif
+#ifndef XM_S_GetTPage
+#define XM_S_GetTPage
+u_short xm_GetTPage(int tp, int abr, int x, int y) __asm__("GetTPage");
+#endif
+void func_80032F54(Window *window, s16 vram_x, s16 vram_y, s16 x, u16 y,
+                   u16 columns, u16 rows) {
+    s32 i;
+    s32 half_row;
+    s32 plane;
+    s32 uv;
+    s16 texture_y;
+    SPRT *sprite;
+
+    window->unk4 = x;
+    window->flags = 0;
+    window->unk84 = 0;
+    window->queue = NULL;
+    window->queued = 0;
+    window->unk14 = 14;
+    window->unk68 = 1;
+    window->unk69 = 1;
+    window->width = columns;
+    window->unk6C = 0;
+    window->unk6A = 0;
+    window->unk6D = 0;
+    window->unk6B = 0;
+    window->unk6E = 0xFF;
+    window->unkE = vram_y;
+    window->unk6 = y;
+    window->lines = rows;
+    window->width |= 1;
+    window->unk8 = (u16)window->width * 4;
+    window->stride = (u16)window->width + 3;
+    xm_heap_set_next_class(0x29);
+    window->layout = xm_heap_alloc(window->lines * sizeof(WindowLine), 2);
+    xm_heap_set_next_class(0x28);
+    window->image = xm_heap_alloc(window->stride * 28, 2);
+    setlen(&window->tile[0], 3);
+    *(u32 *)&window->tile[0].r0 = 0x60000000;
+    *(u32 *)&window->tile[0].x0 = (window->unk4 - 7) | ((window->unk6 - 5) << 16);
+    *(u32 *)&window->tile[0].w = (window->width * 4 + 13) |
+                                 ((window->lines * window->unk14 + 10) << 16);
+    xm_SetSemiTrans(&window->tile[0], 1);
+    window->tile[1] = window->tile[0];
+    for (i = 0; i < window->lines; i++) {
+        *(u32 *)&window->layout[i].sprite[0][0].x0 = window->unk4 |
+                                        ((window->unk6 + window->unk14 * i) << 16);
+        *(u32 *)&window->layout[i].sprite[0][1].x0 = (window->unk4 + 256) |
+                                        ((window->unk6 + window->unk14 * i) << 16);
+        half_row = i / 2;
+        plane = i & 1;
+        *(u32 *)&window->layout[i].sprite[0][0].w =
+            window->unk8 < 257 ? window->unk8 | 0xD0000 : 0xD0100;
+        *(u32 *)&window->layout[i].sprite[0][1].w =
+            window->unk8 >= 257 ? (window->unk8 - 240) | 0xD0000 : 0xD0000;
+        texture_y = vram_y + half_row * 13;
+        uv = (vram_x & 0x3F) * 4 | ((texture_y & 0xFF) << 8);
+        *(u16 *)&window->layout[i].sprite[0][0].u0 = uv;
+        *(u16 *)&window->layout[i].sprite[0][1].u0 = uv;
+        setSprt(&window->layout[i].sprite[0][0]);
+        setSprt(&window->layout[i].sprite[0][1]);
+        setShadeTex(&window->layout[i].sprite[0][0], 1);
+        setShadeTex(&window->layout[i].sprite[0][1], 1);
+        sprite = (SPRT *)(i * sizeof(WindowLine) + (s32)window->layout);
+        window->layout[i].sprite[1][0] = *sprite;
+        sprite = (SPRT *)(i * sizeof(WindowLine) + (s32)window->layout + sizeof(SPRT));
+        window->layout[i].sprite[1][1] = *sprite;
+        window->layout[i].rect.x = vram_x;
+        window->layout[i].rect.y = texture_y;
+        window->layout[i].rect.w = window->stride;
+        window->layout[i].rect.h = 13;
+        window->layout[i].width = 0;
+        window->layout[i].clut = plane == 0 ? xm_text_plane0_clut : xm_text_plane1_clut;
+        window->layout[i].row = vram_y + half_row * 13;
+        window->layout[i].plane = plane;
+        window->layout[i].slot = i;
+    }
+    xm_SetDrawMode((DR_MODE *)window->unk30, 0, 0, xm_GetTPage(0, 0, vram_x, vram_y), NULL);
+    xm_SetDrawMode((DR_MODE *)window->unk3C, 0, 0, xm_GetTPage(0, 0, vram_x + 64, vram_y), NULL);
+}
+#endif
 #else
 void func_80032F54(void* arg0, s32 tpageX, s32 tpageY, s32 x, s32 y, s32 width, s32 mode, s32 height) {
     u8* pWindow = arg0;
@@ -398,7 +572,46 @@ void* func_80033A8C(s32 index) {
 extern u8 D_8005A0E4[];
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033ABC);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): text_decode_codes_to_buffer (src/decomp/src/resident/text_windows_and_pads.c:393). */
+#ifndef XM_T_CharPair
+#define XM_T_CharPair
+typedef struct {
+    u8 first;
+    u8 second;
+} CharPair;
+#endif
+#ifndef XM_S_text_decode_codes_to_buffer
+#define XM_S_text_decode_codes_to_buffer
+void xm_text_decode_codes_to_buffer(u16 *codes) __asm__("func_80033ABC");
+#endif
+#ifndef XM_S_text_decoded_buffer
+#define XM_S_text_decoded_buffer
+extern u8 xm_text_decoded_buffer[0x18] __asm__("D_8005A0E4");
+#endif
+#ifndef XM_S_text_system_resources
+#define XM_S_text_system_resources
+extern u8 * *xm_text_system_resources __asm__("g_SystemDataEntries");
+#endif
+void func_80033ABC(u16 *codes) {
+    u8 *out = xm_text_decoded_buffer;
+    CharPair *pairs = (CharPair *)xm_text_system_resources[27];
+    CharPair *pair;
+    u16 code;
+
+    for (code = *codes; code != 0xFFFF; code = *codes) {
+        pair = (CharPair *)(code * 2 + (u32)pairs);
+        codes++;
+        if (pair->first != 0) {
+            *out++ = pair->first;
+            *out++ = pair->second;
+        } else {
+            *out++ = pair->second;
+        }
+    }
+    *out = 0;
+}
+#endif
 #else
 /* Expands glyph indices to their one- or two-byte codes in D_8005A0E4. */
 void func_80033ABC(u16* pIndices) {
@@ -427,7 +640,40 @@ void func_80033ABC(u16* pIndices) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80033B34);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): text_decode_codes (src/decomp/src/resident/text_windows_and_pads.c:413). */
+#ifndef XM_T_CharPair
+#define XM_T_CharPair
+typedef struct {
+    u8 first;
+    u8 second;
+} CharPair;
+#endif
+#ifndef XM_S_text_decode_codes
+#define XM_S_text_decode_codes
+void xm_text_decode_codes(u16 *codes, u8 *out, u32 count) __asm__("func_80033B34");
+#endif
+#ifndef XM_S_text_system_resources
+#define XM_S_text_system_resources
+extern u8 * *xm_text_system_resources __asm__("g_SystemDataEntries");
+#endif
+void func_80033B34(u16 *codes, u8 *out, u32 count) {
+    CharPair *pairs = (CharPair *)xm_text_system_resources[27];
+    CharPair *pair;
+
+    while (count--) {
+        pair = (CharPair *)(*codes * 2 + (u32)pairs);
+        codes++;
+        if (pair->first != 0) {
+            *out++ = pair->first;
+            *out++ = pair->second;
+        } else {
+            *out++ = pair->second;
+        }
+    }
+    *out = 0;
+}
+#endif
 #else
 /* Save-format name decode (asm 80033B34): each u16 char code indexes a
  * 2-byte glyph pair in the table at g_SystemDataEntries+0x6C; byte 0 is
@@ -953,7 +1199,103 @@ void func_800346D4(void* arg0) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80034714);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): window_queue_message (src/decomp/src/resident/text_windows_and_pads.c:895). */
+#ifndef XM_T_WindowLine
+#define XM_T_WindowLine
+typedef struct {
+    SPRT sprite[2][2];
+    RECT rect;       
+    s16 width;       
+    u8 plane;        
+    u8 slot;
+    u8 row;          
+    u8 unk5D;
+    u16 clut;
+} WindowLine;
+#endif
+#ifndef XM_T_WindowQueue
+#define XM_T_WindowQueue
+typedef struct WindowQueue {
+    struct WindowQueue *next;
+    s32 message;
+} WindowQueue;
+#endif
+#ifndef XM_T_Window
+#define XM_T_Window
+typedef struct Window {
+    s16 x;          
+    s16 y;          
+    s16 unk4;
+    s16 unk6;
+    s16 unk8;
+    s16 width;
+    s16 lines;
+    s16 unkE;
+    u16 flags;
+    s16 stride;
+    s16 unk14;
+    s16 unk16;
+    s16 unk18;      
+    u8 unk1A[2];
+    u8 *text;
+    u8 *resume;     
+    u8 unk24[4];
+    WindowLine *layout;
+    void *image;
+    u8 unk30[0xC];  
+    u8 unk3C[0xC];  
+    TILE tile[2];   
+    u8 unk68;
+    u8 unk69;
+    u8 unk6A;
+    u8 unk6B;
+    u8 unk6C;
+    u8 unk6D;
+    u8 unk6E;
+    u8 unk6F;
+    s32 values[4];  
+    s16 selection; 
+    s16 queued;
+    s16 unk84;      
+    s16 unk86;      
+    s16 unk88;      
+    u8 unk8A[2];
+    WindowQueue *queue;
+} Window;
+#endif
+#ifndef XM_S_window_queue_message
+#define XM_S_window_queue_message
+s16 xm_window_queue_message(Window *window, s32 message) __asm__("func_80034714");
+#endif
+#ifndef XM_S_heap_set_next_class
+#define XM_S_heap_set_next_class
+void xm_heap_set_next_class(s32 kind) __asm__("HeapSetCurrentContentType");
+#endif
+#ifndef XM_S_heap_alloc
+#define XM_S_heap_alloc
+void *xm_heap_alloc(s32 size, s32 mode) __asm__("HeapAlloc");
+#endif
+s16 func_80034714(Window *window, s32 message) {
+    WindowQueue *last = window->queue;
+    WindowQueue *entry;
+
+    window->queued++;
+    xm_heap_set_next_class(0x2A);
+    entry = xm_heap_alloc(sizeof(WindowQueue), 2);
+    entry->message = message;
+    entry->next = NULL;
+    if (last == NULL) {
+        window->queue = entry;
+        return window->queued;
+    }
+    while (last->next != NULL) {
+        last = last->next;
+    }
+    last->next = entry;
+    return window->queued;
+}
+#endif
 #else
 void func_80034714(void* arg0, void* arg1) {
     u8* pWindow = arg0;
@@ -1054,7 +1396,208 @@ int func_8003487C(void* arg0) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/system", func_80034888);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): window_draw_frame (src/decomp/src/resident/text_windows_and_pads.c:957). */
+#ifndef XM_T_WindowLine
+#define XM_T_WindowLine
+typedef struct {
+    SPRT sprite[2][2];
+    RECT rect;       
+    s16 width;       
+    u8 plane;        
+    u8 slot;
+    u8 row;          
+    u8 unk5D;
+    u16 clut;
+} WindowLine;
+#endif
+#ifndef XM_T_WindowQueue
+#define XM_T_WindowQueue
+typedef struct WindowQueue {
+    struct WindowQueue *next;
+    s32 message;
+} WindowQueue;
+#endif
+#ifndef XM_T_Window
+#define XM_T_Window
+typedef struct Window {
+    s16 x;          
+    s16 y;          
+    s16 unk4;
+    s16 unk6;
+    s16 unk8;
+    s16 width;
+    s16 lines;
+    s16 unkE;
+    u16 flags;
+    s16 stride;
+    s16 unk14;
+    s16 unk16;
+    s16 unk18;      
+    u8 unk1A[2];
+    u8 *text;
+    u8 *resume;     
+    u8 unk24[4];
+    WindowLine *layout;
+    void *image;
+    u8 unk30[0xC];  
+    u8 unk3C[0xC];  
+    TILE tile[2];   
+    u8 unk68;
+    u8 unk69;
+    u8 unk6A;
+    u8 unk6B;
+    u8 unk6C;
+    u8 unk6D;
+    u8 unk6E;
+    u8 unk6F;
+    s32 values[4];  
+    s16 selection; 
+    s16 queued;
+    s16 unk84;      
+    s16 unk86;      
+    s16 unk88;      
+    u8 unk8A[2];
+    WindowQueue *queue;
+} Window;
+#endif
+#ifndef XM_S_window_draw_frame
+#define XM_S_window_draw_frame
+void xm_window_draw_frame(Window *window, u_long *ot, s32 buffer) __asm__("func_80034888");
+#endif
+#ifndef XM_S_heap_free
+#define XM_S_heap_free
+s32 xm_heap_free(void *data) __asm__("HeapFree");
+#endif
+#ifndef XM_S_text_plane0_clut
+#define XM_S_text_plane0_clut
+extern u16 xm_text_plane0_clut __asm__("g_SystemPalette1");
+#endif
+#ifndef XM_S_gpu_ot_link_sprt
+#define XM_S_gpu_ot_link_sprt
+void xm_gpu_ot_link_sprt(u_long *ot, void *prim) __asm__("func_80031798");
+#endif
+#ifndef XM_S_AddPrim
+#define XM_S_AddPrim
+void xm_AddPrim(void *ot, void *p) __asm__("AddPrim");
+#endif
+#ifndef XM_S_window_reveal_text
+#define XM_S_window_reveal_text
+void xm_window_reveal_text(Window *window) __asm__("func_80033DF0");
+#endif
+#ifndef XM_S_LoadImage
+#define XM_S_LoadImage
+int xm_LoadImage(RECT *rect, u_long *p) __asm__("LoadImage");
+#endif
+void func_80034888(Window *window, u_long *ot, s32 buffer) {
+    WindowQueue *entry;
+    s32 i;
+    s32 line;
+
+    if (!(window->flags & 4)) {
+        if (window->queued == 0) {
+            return;
+        }
+        entry = window->queue;
+        window->text = (u8 *)entry->message;
+        window->queue = window->queue->next;
+        xm_heap_free(entry);
+        window->queued--;
+        window->flags = (window->flags & 2) | 0x24;
+        if (window->unk6A != 0) {
+            window->unk68 = window->unk6A;
+            window->unk69 = window->unk6A;
+            window->unk6A = 0;
+        }
+        window->unk88 = 0;
+        window->unk86 = 0;
+        window->unk69 = window->unk68;
+    }
+    if (window->flags & 0x100) {
+        window->unk69 = window->unk68 * 3;
+    } else {
+        window->unk69 = window->unk68;
+    }
+    if (window->flags & 0x40) {
+        if (!(window->flags & 8)) {
+            window->flags = (window->flags & ~0x40) | 0x20;
+        }
+    }
+    if (window->flags & 0x20) {
+        window->unk16 = 0;
+        window->unk18 = 0;
+        window->y = 0;
+        window->x = 0;
+        window->layout[0].row = window->unkE;
+        window->layout[0].clut = xm_text_plane0_clut;
+        window->layout[0].plane = 0;
+        window->layout[0].rect.y = window->unkE;
+        for (line = 0; line < window->lines; line++) {
+            window->layout[line].width = 0;
+        }
+        window->flags &= ~0x21;
+    }
+
+    line = window->unk16;
+    for (i = 0; i < window->lines; line++, i++) {
+        if (line >= window->lines) {
+            line = 0;
+        }
+        setShadeTex(&window->layout[line].sprite[buffer][1], window->unk6E != i);
+        if (window->layout[line].width > 0x40) {
+            window->layout[line].sprite[buffer][1].v0 = window->layout[line].row;
+            window->layout[line].sprite[buffer][1].clut = window->layout[line].clut;
+            window->layout[line].sprite[buffer][1].y0 = window->unk6 + window->unk14 * i;
+            window->layout[line].sprite[buffer][1].w = (window->layout[line].width - 0x40) * 4;
+            xm_gpu_ot_link_sprt(ot, &window->layout[line].sprite[buffer][1]);
+        }
+    }
+    xm_AddPrim(ot, window->unk3C);
+    line = window->unk16;
+    for (i = 0; i < window->lines; line++, i++) {
+        if (line >= window->lines) {
+            line = 0;
+        }
+        setShadeTex(&window->layout[line].sprite[buffer][0], window->unk6E != i);
+        if (window->layout[line].width != 0) {
+            window->layout[line].sprite[buffer][0].v0 = window->layout[line].row;
+            window->layout[line].sprite[buffer][0].clut = window->layout[line].clut;
+            window->layout[line].sprite[buffer][0].y0 = window->unk6 + window->unk14 * i;
+            if (window->layout[line].width > 0x40) {
+                window->layout[line].sprite[buffer][0].w = 0x100;
+            } else {
+                window->layout[line].sprite[buffer][0].w = window->layout[line].width * 4;
+            }
+            xm_gpu_ot_link_sprt(ot, &window->layout[line].sprite[buffer][0]);
+        }
+    }
+
+    if (window->unk84 != 0) {
+        window->unk84--;
+    } else if (window->unk86 != 0) {
+        window->unk86--;
+    } else {
+        window->unk86 = window->unk88;
+        if (!(window->flags & 0x58)) {
+            xm_window_reveal_text(window);
+            xm_LoadImage(&window->layout[window->y].rect, window->image);
+        }
+    }
+    if (window->unk84 != 0) {
+        if (--window->unk84 == -1) {
+            window->flags &= ~0x10;
+        }
+    }
+    if (!(window->flags & 2)) {
+        *(u32 *)&window->tile[buffer].x0 = (window->unk4 - 7) | ((window->unk6 - 5) << 16);
+        *(u32 *)&window->tile[buffer].w = ((s16)(window->width | 1) * 4 + 0xD) |
+                                          ((window->lines * window->unk14 + 10) << 16);
+        addPrim(ot, &window->tile[buffer]);
+    }
+    window->flags &= ~0x100;
+    xm_AddPrim(ot, window->unk30);
+}
+#endif
 #else
 void func_80034888(void* arg0, void* ot, s32 renderContextIndex) {
     u8* pWindow = arg0;

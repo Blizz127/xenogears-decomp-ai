@@ -1509,7 +1509,41 @@ void func_8007AF74(s32 mouseIndex) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007B07C);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_collision_compute_plane_height (src/decomp/src/field/field_motion.c:444). */
+#ifndef XM_S_field_collision_compute_plane_height
+#define XM_S_field_collision_compute_plane_height
+void xm_field_collision_compute_plane_height(SVECTOR *a, SVECTOR *b, SVECTOR *c, SVECTOR *p, VECTOR *normal) __asm__("func_8007B07C");
+#endif
+#ifndef XM_S_VectorNormal
+#define XM_S_VectorNormal
+long xm_VectorNormal(VECTOR *v0, VECTOR *v1) __asm__("VectorNormal");
+#endif
+#ifndef XM_S_OuterProduct12
+#define XM_S_OuterProduct12
+void xm_OuterProduct12(VECTOR *v0, VECTOR *v1, VECTOR *v2) __asm__("OuterProduct12");
+#endif
+void func_8007B07C(SVECTOR *a, SVECTOR *b, SVECTOR *c, SVECTOR *p, VECTOR *normal) {
+    VECTOR edge_b;
+    VECTOR edge_c;
+    VECTOR d;
+
+    d.vx = b->vx - a->vx;
+    d.vy = b->vy - a->vy;
+    d.vz = b->vz - a->vz;
+    xm_VectorNormal(&d, &edge_b);
+    d.vx = c->vx - a->vx;
+    d.vy = c->vy - a->vy;
+    d.vz = c->vz - a->vz;
+    xm_VectorNormal(&d, &edge_c);
+    xm_OuterProduct12(&edge_b, &edge_c, normal);
+    if (normal->vy == 0) {
+        p->vy = 0;
+        return;
+    }
+    p->vy = a->vy + (-(normal->vx * (p->vx - a->vx)) - normal->vz * (p->vz - a->vz)) / normal->vy;
+}
+#endif
 #else
 void func_8007B07C(s16* arg0, s16* arg1, s16* arg2, s16* arg3, VECTOR* arg4) {
     VECTOR vec0;
@@ -1617,7 +1651,54 @@ s16 func_8007B1C4(s16 posX, s16 posZ, s32 idx, s16* pOut, s32* pState) {
 #endif /* XENO_PC_PORT */
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007B478);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_collision_is_outside_triangle (src/decomp/src/field/field_motion.c:542). */
+#ifndef XM_S_field_collision_is_outside_triangle
+#define XM_S_field_collision_is_outside_triangle
+s32 xm_field_collision_is_outside_triangle(SVECTOR *a, SVECTOR *b, SVECTOR *c, SVECTOR *p) __asm__("func_8007B478");
+#endif
+#ifndef XM_S_OuterProduct0
+#define XM_S_OuterProduct0
+void xm_OuterProduct0(VECTOR *v0, VECTOR *v1, VECTOR *v2) __asm__("OuterProduct0");
+#endif
+s32 func_8007B478(SVECTOR *a, SVECTOR *b, SVECTOR *c, SVECTOR *p) {
+    VECTOR edge;
+    VECTOR to_p;
+    VECTOR cross;
+
+    edge.vx = b->vx - a->vx;
+    edge.vy = 0;
+    edge.vz = b->vz - a->vz;
+    to_p.vx = p->vx - a->vx;
+    to_p.vy = 0;
+    to_p.vz = p->vz - a->vz;
+    xm_OuterProduct0(&edge, &to_p, &cross);
+    if (cross.vy < 0) {
+        return -1;
+    }
+    edge.vx = c->vx - b->vx;
+    edge.vy = 0;
+    edge.vz = c->vz - b->vz;
+    to_p.vx = p->vx - b->vx;
+    to_p.vy = 0;
+    to_p.vz = p->vz - b->vz;
+    xm_OuterProduct0(&edge, &to_p, &cross);
+    if (cross.vy < 0) {
+        return -1;
+    }
+    edge.vx = a->vx - c->vx;
+    edge.vy = 0;
+    edge.vz = a->vz - c->vz;
+    to_p.vx = p->vx - c->vx;
+    to_p.vy = 0;
+    to_p.vz = p->vz - c->vz;
+    xm_OuterProduct0(&edge, &to_p, &cross);
+    if (cross.vy < 0) {
+        return -1;
+    }
+    return 0;
+}
+#endif
 #else
 s32 func_8007B478(SVECTOR* p0, SVECTOR* p1, SVECTOR* p2, SVECTOR* pTest) {
     VECTOR edge1, edge2, cross;
@@ -1677,7 +1758,60 @@ s32 func_8007B694(s32* arg0) {
 extern long FieldGetVec2Magnitude(long x, long y);
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("asm/field/nonmatchings/main/misc4", func_8007B6C4);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): field_collision_slide_along_edge (src/decomp/src/field/field_motion.c:602). */
+#ifndef XM_S_field_collision_slide_along_edge
+#define XM_S_field_collision_slide_along_edge
+s32 xm_field_collision_slide_along_edge(s16 heading, SVECTOR *edge, VECTOR *velocity, s32 unused) __asm__("func_8007B6C4");
+#endif
+#ifndef XM_S_ratan2
+#define XM_S_ratan2
+long xm_ratan2(long y, long x) __asm__("ratan2");
+#endif
+#ifndef XM_S_VectorNormal
+#define XM_S_VectorNormal
+long xm_VectorNormal(VECTOR *v0, VECTOR *v1) __asm__("VectorNormal");
+#endif
+#ifndef XM_S_field_compute_planar_length
+#define XM_S_field_compute_planar_length
+s32 xm_field_compute_planar_length(s32 dx, s32 dz) __asm__("FieldGetVec2Magnitude");
+#endif
+s32 func_8007B6C4(s16 heading, SVECTOR *edge, VECTOR *velocity, s32 unused) {
+    VECTOR d;
+    VECTOR n;
+    s16 angle;
+    s32 relative;
+    s16 result;
+    s32 speed;
+
+    relative = (0xC00 - heading) & 0xFFF;
+    angle = -xm_ratan2(edge[1].vz - edge[0].vz, edge[1].vx - edge[0].vx) & 0xFFF;
+    relative = (relative + angle) & 0xFFF;
+    result = angle;
+    if (relative - 0x80 > 0xF00U) {
+        velocity->vx = 0;
+        velocity->vy = 0;
+        velocity->vz = 0;
+        return angle;
+    }
+    if (relative < 0x800) {
+        d.vx = edge[0].vx - edge[1].vx;
+        d.vy = 0;
+        d.vz = edge[0].vz - edge[1].vz;
+        result = (angle + 0x800) & 0xFFF;
+    } else {
+        d.vx = edge[1].vx - edge[0].vx;
+        d.vy = 0;
+        d.vz = edge[1].vz - edge[0].vz;
+    }
+    xm_VectorNormal(&d, &n);
+    speed = xm_field_compute_planar_length(velocity->vx >> 12, velocity->vz >> 12);
+    velocity->vx = n.vx * speed;
+    velocity->vy = 0;
+    velocity->vz = n.vz * speed;
+    return result;
+}
+#endif
 #else
 s32 func_8007B6C4(s16 angle, s16* edge, s32* vec) {
     VECTOR side;
