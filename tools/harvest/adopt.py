@@ -254,6 +254,15 @@ def analyze(row,fe,mode=''):
         inprog.discard(n)
         key=hashlib.md5(e['src'].encode()).hexdigest()
         if key not in [k for k,_ in typeents]: typeents.append((key,(n,e['src'])))
+        if '{' not in e['src'] and re.match(r'\s*typedef\s+struct\s+\w+\s+\w+\s*;',e['src']):
+            dfs=[x for x in idx.get('tag:'+n,[]) if '{' in x['src']]
+            if dfs:
+                inprog.add(n)
+                for t2 in ident_tokens(dfs[0]['src']):
+                    if t2!=n: resolve(t2,dfs[0]['src'],in_type=True)
+                inprog.discard(n)
+                key2=hashlib.md5(dfs[0]['src'].encode()).hexdigest()
+                if key2 not in [k for k,_ in typeents]: typeents.append((key2,(n+'__def',dfs[0]['src'])))
     def decl_for(n):
         addr,ty=xsym[n]; is_func=('func' in ty) 
         bn=blizz_name(addr,is_func)
@@ -325,6 +334,7 @@ def analyze(row,fe,mode=''):
                 s=re.sub(r'(?<![\w.>])(?<!struct )%s\b(?=\s*\*)'%re.escape(f_),'struct '+f_,s)
         if s.lstrip().startswith('#'):
             for n0,r0 in renames.items(): s=re.sub(r'(?<![\w.>])%s\b'%re.escape(n0),r0,s)
+            s=tren(s)
         else: s=tren(s)
         out.append('#ifndef XM_T_%s\n#define XM_T_%s\n%s\n#endif'%(tmap.get(n,n),tmap.get(n,n),s))
     for n,d in symdone.items():
@@ -363,8 +373,8 @@ def _load_xmac():
         XMAC[m.group(1)]=m.group(0)
 def _load_xmac2():
     import glob as _g
-    pat=re.compile(r"^#define (SCRIPT_VECTOR|SCRATCH_SVECTOR|GROUND_SCROLL|SPRITE_HIDDEN|VIEW_VECTORS|\w*_SCRATCH_?\w*)[ \t]+(\(\((?:SVECTOR|VECTOR|s32|s16|u8|u16|u32) \*\)(?:0x[0-9A-Fa-f]+|&\w+)\)|\d+)[ \t]*(?:/\*.*\*/)?[ \t]*$",re.M)
-    for f in _g.glob(WORK+'/ext/xem/src/decomp/src/worldmap/*.[hc]'):
+    pat=re.compile(r"^#define (SCRIPT_VECTOR|SCRATCH_SVECTOR|GROUND_SCROLL|SPRITE_HIDDEN|VIEW_VECTORS|\w*_SCRATCH_?\w*)[ \t]+(\(\((?:\w+) \*\)(?:0x[0-9A-Fa-f]+|&\w+)\)|\d+)[ \t]*(?:/\*.*\*/)?[ \t]*$",re.M)
+    for f in _g.glob(WORK+'/ext/xem/src/decomp/src/*/*.[hc]'):
         try: t=open(f,errors='ignore').read()
         except: continue
         for m in pat.finditer(t):
