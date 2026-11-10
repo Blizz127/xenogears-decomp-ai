@@ -436,12 +436,81 @@ s32 func_80071A50(void) {
 }
 
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80071A58);
-
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80071B9C);
-
 #ifndef XENO_PC_PORT
-/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_read_party_models (src/decomp/src/worldmap/worldmap.c:390). */
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_open_map_frame_update (src/decomp/src/worldmap/worldmap.c:327). */
+#ifndef XM_T_SVECTOR
+#define XM_T_SVECTOR
+typedef struct {
+    short vx, vy, vz, pad;
+} SVECTOR;
+#endif
+#ifndef XM_T_VECTOR
+#define XM_T_VECTOR
+typedef struct {
+    long vx, vy, vz, pad;
+} VECTOR;
+#endif
+#ifndef XM_T_ViewSetup
+#define XM_T_ViewSetup
+typedef struct ViewSetup {
+    SVECTOR eye;
+    SVECTOR at;
+    VECTOR up;
+} ViewSetup;
+#endif
+#ifndef XM_T_Camera
+#define XM_T_Camera
+typedef struct Camera {
+    VECTOR target;
+} Camera;
+#endif
+#ifndef XM_T_RECT
+#define XM_T_RECT
+typedef struct {
+    short x, y;
+    short w, h;
+} RECT;
+#endif
+#ifndef XM_T_DR_ENV
+#define XM_T_DR_ENV
+typedef struct {
+    u_long tag;
+    u_long code[15];
+} DR_ENV;
+#endif
+#ifndef XM_T_DRAWENV
+#define XM_T_DRAWENV
+typedef struct {
+    RECT clip;
+    short ofs[2];
+    RECT tw;
+    u_short tpage;
+    u_char dtd;
+    u_char dfe;
+    u_char isbg;
+    u_char r0, g0, b0;
+    DR_ENV dr_env;
+} DRAWENV;
+#endif
+#ifndef XM_T_DISPENV
+#define XM_T_DISPENV
+typedef struct {
+    RECT disp;
+    RECT screen;
+    u_char isinter;
+    u_char isrgb24;
+    u_char pad0, pad1;
+} DISPENV;
+#endif
+#ifndef XM_T_DisplayBuffer
+#define XM_T_DisplayBuffer
+typedef struct DisplayBuffer {
+    DRAWENV draw;
+    DISPENV disp;
+    u_long *ot;    
+    void *packets; 
+} DisplayBuffer;
+#endif
 #ifndef XM_T_CharacterEntry
 #define XM_T_CharacterEntry
 typedef struct {
@@ -757,6 +826,151 @@ typedef struct GameData {
     u8 unk2356[0x2358 - 0x2356];
 } GameData;
 #endif
+#ifndef XM_S_worldmap_open_map_frame_update
+#define XM_S_worldmap_open_map_frame_update
+s32 xm_worldmap_open_map_frame_update(void) __asm__("func_80071A58");
+#endif
+#ifndef XM_S_worldmap_view_kind
+#define XM_S_worldmap_view_kind
+extern s32 xm_worldmap_view_kind __asm__("D_8009D144");
+#endif
+#ifndef XM_S_worldmap_camera_build_from_angles
+#define XM_S_worldmap_camera_build_from_angles
+void xm_worldmap_camera_build_from_angles(void *) __asm__("func_80097440");
+#endif
+#ifndef XM_S_worldmap_view_setup
+#define XM_S_worldmap_view_setup
+extern ViewSetup xm_worldmap_view_setup __asm__("D_8009BD40");
+#endif
+#ifndef XM_S_worldmap_camera_build_look_at
+#define XM_S_worldmap_camera_build_look_at
+void xm_worldmap_camera_build_look_at(void *) __asm__("func_80097244");
+#endif
+#ifndef XM_S_worldmap_effects_run_emitters
+#define XM_S_worldmap_effects_run_emitters
+void xm_worldmap_effects_run_emitters(void) __asm__("func_80089748");
+#endif
+#ifndef XM_S_worldmap_effects_draw_particles
+#define XM_S_worldmap_effects_draw_particles
+void xm_worldmap_effects_draw_particles(void) __asm__("func_80089C78");
+#endif
+#ifndef XM_S_worldmap_actor_draw_sprites
+#define XM_S_worldmap_actor_draw_sprites
+void xm_worldmap_actor_draw_sprites(void) __asm__("func_80085CDC");
+#endif
+#ifndef XM_S_worldmap_billboards_draw
+#define XM_S_worldmap_billboards_draw
+void xm_worldmap_billboards_draw(void) __asm__("func_8008615C");
+#endif
+#ifndef XM_S_worldmap_footprints_draw
+#define XM_S_worldmap_footprints_draw
+void xm_worldmap_footprints_draw(void) __asm__("func_800747DC");
+#endif
+#ifndef XM_S_worldmap_objects_draw
+#define XM_S_worldmap_objects_draw
+void xm_worldmap_objects_draw(void) __asm__("func_800848F4");
+#endif
+#ifndef XM_S_worldmap_terrain_wrap_origin
+#define XM_S_worldmap_terrain_wrap_origin
+void xm_worldmap_terrain_wrap_origin(void *) __asm__("func_800980D4");
+#endif
+#ifndef XM_S_worldmap_terrain_origin
+#define XM_S_worldmap_terrain_origin
+extern VECTOR xm_worldmap_terrain_origin __asm__("D_8009BBB4");
+#endif
+#ifndef XM_S_worldmap_terrain_crossed_edges
+#define XM_S_worldmap_terrain_crossed_edges
+extern s16 xm_worldmap_terrain_crossed_edges __asm__("D_8009D558");
+#endif
+#ifndef XM_S_worldmap_terrain_update_grid
+#define XM_S_worldmap_terrain_update_grid
+void xm_worldmap_terrain_update_grid(Camera *) __asm__("func_800981C8");
+#endif
+#ifndef XM_S_worldmap_camera
+#define XM_S_worldmap_camera
+extern Camera xm_worldmap_camera __asm__("D_8009BE28");
+#endif
+#ifndef XM_S_worldmap_stream_wait_for_slot
+#define XM_S_worldmap_stream_wait_for_slot
+void xm_worldmap_stream_wait_for_slot(void) __asm__("func_80096130");
+#endif
+#ifndef XM_S_worldmap_terrain_load_new_edges
+#define XM_S_worldmap_terrain_load_new_edges
+void xm_worldmap_terrain_load_new_edges(void) __asm__("func_80098CC0");
+#endif
+#ifndef XM_S_worldmap_terrain_classify_blocks
+#define XM_S_worldmap_terrain_classify_blocks
+void xm_worldmap_terrain_classify_blocks(Camera *) __asm__("func_800983A0");
+#endif
+#ifndef XM_S_worldmap_terrain_draw
+#define XM_S_worldmap_terrain_draw
+void xm_worldmap_terrain_draw(u_long *ot, s32, Camera *) __asm__("func_8009932C");
+#endif
+#ifndef XM_S_worldmap_current_display_buffer
+#define XM_S_worldmap_current_display_buffer
+extern DisplayBuffer *xm_worldmap_current_display_buffer __asm__("D_8009BE3C");
+#endif
+#ifndef XM_S_worldmap_wave_phase_x
+#define XM_S_worldmap_wave_phase_x
+extern s32 xm_worldmap_wave_phase_x __asm__("D_8009C5BC");
+#endif
+#ifndef XM_S_worldmap_horizon_draw
+#define XM_S_worldmap_horizon_draw
+void xm_worldmap_horizon_draw(void) __asm__("func_80073B04");
+#endif
+#ifndef XM_S_worldmap_sky_draw
+#define XM_S_worldmap_sky_draw
+void xm_worldmap_sky_draw(void) __asm__("func_800737EC");
+#endif
+#ifndef XM_S_worldmap_clouds_draw
+#define XM_S_worldmap_clouds_draw
+void xm_worldmap_clouds_draw(void) __asm__("func_80086798");
+#endif
+#ifndef XM_S_game_data
+#define XM_S_game_data
+extern GameData xm_game_data __asm__("g_GameState");
+#endif
+#ifndef XM_S_worldmap_map_overlay_draw
+#define XM_S_worldmap_map_overlay_draw
+void xm_worldmap_map_overlay_draw(void) __asm__("func_800740B8");
+#endif
+s32 func_80071A58(void) {
+    SVECTOR unused; 
+
+    if (xm_worldmap_view_kind == 0) {
+        xm_worldmap_camera_build_from_angles(&xm_worldmap_view_setup);
+    } else {
+        xm_worldmap_camera_build_look_at(&xm_worldmap_view_setup);
+    }
+    xm_worldmap_effects_run_emitters();
+    xm_worldmap_effects_draw_particles();
+    xm_worldmap_actor_draw_sprites();
+    xm_worldmap_billboards_draw();
+    xm_worldmap_footprints_draw();
+    xm_worldmap_objects_draw();
+    xm_worldmap_terrain_wrap_origin(&xm_worldmap_terrain_origin);
+    if (xm_worldmap_terrain_crossed_edges != 0) {
+        xm_worldmap_terrain_update_grid(&xm_worldmap_camera);
+        xm_worldmap_stream_wait_for_slot();
+        xm_worldmap_terrain_load_new_edges();
+    }
+    xm_worldmap_terrain_classify_blocks(&xm_worldmap_camera);
+    xm_worldmap_terrain_draw(xm_worldmap_current_display_buffer->ot, (s32)xm_worldmap_current_display_buffer->packets, &xm_worldmap_camera);
+    xm_worldmap_wave_phase_x += 0x40;
+    xm_worldmap_horizon_draw();
+    xm_worldmap_sky_draw();
+    xm_worldmap_clouds_draw();
+    if (xm_game_data.worldmap.unk76 == 0) {
+        xm_worldmap_map_overlay_draw();
+    }
+    return 1;
+}
+#endif
+
+INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80071B9C);
+
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_read_party_models (src/decomp/src/worldmap/worldmap.c:390). */
 #ifndef XM_T_FileRequest
 #define XM_T_FileRequest
 typedef struct FileRequest {
@@ -767,10 +981,6 @@ typedef struct FileRequest {
 #ifndef XM_S_worldmap_read_party_models
 #define XM_S_worldmap_read_party_models
 void xm_worldmap_read_party_models(void) __asm__("func_80071CDC");
-#endif
-#ifndef XM_S_game_data
-#define XM_S_game_data
-extern GameData xm_game_data __asm__("g_GameState");
 #endif
 #ifndef XM_S_worldmap_character_models
 #define XM_S_worldmap_character_models
@@ -960,9 +1170,716 @@ void func_800721E4(void) {
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80072238);
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8007299C);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_open_map_leave (src/decomp/src/worldmap/worldmap_open_map.c:393). */
+#ifndef XM_T_SoundSeqHeader
+#define XM_T_SoundSeqHeader
+typedef struct SoundSeqHeader {
+    u8 unk0[0x10];
+    u16 unk10;
+    u8 unk12[2];
+    u8 channels;
+    u8 entries;        
+    u16 unk16;
+    u16 unk18;
+    u8 reverb_type;
+    u8 reverb_depth;   
+    u8 reverb_delay;
+    u8 reverb_feedback;
+    u16 unk1E;
+    u16 table;         
+    u16 channel[1];    
+} SoundSeqHeader;
+#endif
+#ifndef XM_T_Fixed
+#define XM_T_Fixed
+typedef union {
+    s32 value;
+    struct {
+        u16 fraction;
+        s16 whole;
+    } part;
+} Fixed;
+#endif
+#ifndef XM_T_SoundEffectId
+#define XM_T_SoundEffectId
+typedef union {
+    s32 full;
+    struct {
+        u16 effect;
+        s16 bank;
+    } part;
+} SoundEffectId;
+#endif
+#ifndef XM_T_SoundInstrument
+#define XM_T_SoundInstrument
+typedef struct {
+    u32 start;         
+    u16 loop;          
+    s16 note;          
+    u32 envelope;      
+    u16 modes;         
+    u8 unkE[2];
+} SoundInstrument;
+#endif
+#ifndef XM_T_SoundSequence
+#define XM_T_SoundSequence
+typedef struct SoundSequence {
+    u8 unk0[0x10];
+    s32 header_size;   
+    s32 size;          
+    s32 offset;        
+    u8 unk1C[2];
+    u16 volume;
+    u16 key;
+    u8 unk22[6];
+    s32 address;       
+    struct SoundSequence *next;
+    SoundInstrument instrument[1];
+} SoundSequence;
+#endif
+#ifndef XM_T_SoundEnvelope
+#define XM_T_SoundEnvelope
+typedef struct {
+    u8 attack_mode;
+    u8 sustain_mode;
+    u8 release_mode;
+    u8 attack_rate;
+    u8 decay_rate;
+    u8 sustain_rate;
+    u8 release_rate;
+    u8 sustain_level;
+} SoundEnvelope;
+#endif
+#ifndef XM_T_SoundChannel
+#define XM_T_SoundChannel
+typedef struct SoundChannel {
+    u16 voice;         
+    u16 mode;          
+    s16 priority;
+    u16 flags;         
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80072BB0);
+
+    s16 volume_left;
+    s16 volume_right;
+    u16 unkC;
+    u16 unkE;
+    u8 unk10[4];
+    u16 pitch;
+    u8 unk16[6];
+    u32 sample_start;  
+    u32 sample_loop;
+    SoundEnvelope envelope;
+} SoundChannel;
+#endif
+#ifndef XM_T_SoundLoop
+#define XM_T_SoundLoop
+typedef struct {
+    u8 count;          
+    u8 unk1;
+    u8 transpose;      
+    u8 exit_transpose; 
+    u8 *start;
+    u8 *end;
+} SoundLoop;
+#endif
+#ifndef XM_T_SoundModulator
+#define XM_T_SoundModulator
+typedef struct SoundModulator {
+    s32 (*wave)(struct SoundModulator *modulator);
+    s32 phase;         
+    s32 slope;
+    s32 step;
+    u16 count;         
+    u16 rate;          
+    u16 delay_count;
+    s16 delay;
+    s16 period_count;
+    s16 period;
+    u8 target;         
+    u8 shape;
+    u16 flags;         
+} SoundModulator;
+#endif
+#ifndef XM_T_SoundSeqChannel
+#define XM_T_SoundSeqChannel
+typedef struct {
+    u16 flags;         
+    u16 flags2;        
+    u16 flags3;        
+    u8 voice_bit;      
+    u8 priority;
+    SoundEffectId id;
+    u32 stamp;         
+    u8 *start;         
+    u8 *position;      
+    u8 *loop;          
+    s32 unk1C;
+    u16 unk20;
+    u8 unk22;
+    u8 unk23;
+    u8 unk24;
+    u8 unk25;
+    u8 instrument;
+    u8 voice;          
+    u8 unk28;
+    u8 unk29[3];
+    struct SoundSequence *instruments;
+    SoundChannel state;
+    s16 unk5C;         
+    u16 unk5E;         
+    u8 duration_adjust; 
+    u8 unk61;
+    u16 gate_fraction; 
+    u8 previous_note;
+    u8 current_note;
+    s16 transpose;     
+    Fixed note;   
+    s16 unk6C;
+    s16 detune;
+    u16 unk70;
+    u16 loop_depth;    
+    s16 pan;           
+    s16 volume;
+    Fixed level;  
+    s32 unk7C;
+    s16 unk80;
+    s16 unk82;
+    s32 unk84;
+    s32 unk88;
+    s16 volume_step;
+    s16 volume_target;
+    s16 pan_step;
+    s16 pan_target;
+    u16 unk94;         
+    u16 unk96;         
+    u16 pan_frames;
+    u16 volume_frames;
+    SoundLoop loops[4];
+    u16 modulator_index; 
+    u16 modulators;    
+    s16 pitch_mod;     
+    s16 level_mod;
+    s16 pan_mod;
+    u8 unkD6[2];
+    SoundModulator modulator[4];
+} SoundSeqChannel;
+#endif
+#ifndef XM_T_SoundSeq
+#define XM_T_SoundSeq
+typedef struct SoundSeq {
+    struct SoundSeq *next;
+    struct SoundSeq *snapshot; 
+    struct SoundSeqHeader *header; 
+    u32 *table;        
+    u16 flags;         
+
+    u16 unk12;
+    u8 channels;
+    u8 unk15;
+    s16 unk16;         
+    u16 unk18;
+    u8 unk1A;
+    u8 unk1B;
+    u16 noise_clock;
+    u16 unk1E;
+    s32 unk20;
+    u32 unk24;
+    u32 ticks;
+    u32 unk2C;
+    u16 unk30;
+    u16 unk32;
+    u16 unk34;
+    u16 unk36;
+    u16 unk38;
+    u16 unk3A;
+    s16 unk3C;
+    s16 unk3E;
+    u8 unk40;
+    u8 reverb_type;
+    u8 reverb_delay;
+    u8 reverb_feedback;
+    s16 reverb_depth;
+    u8 unk46[2];
+    u32 voices;        
+    u32 muted;         
+    s32 unk50;
+    s32 tick_step;     
+    Fixed rate;   
+    s32 rate_step;
+    u16 rate_frames;
+    u16 rate_target;
+    Fixed tempo;  
+    s32 tempo_step;
+    s16 tempo_frames;
+    s16 tempo_target;
+    Fixed fade;   
+    s32 fade_step;
+    s16 fade_frames;
+    s16 fade_target;
+    Fixed pitch;  
+    s32 pitch_step;
+    s16 pitch_frames;
+    s16 pitch_target;
+    Fixed pan;    
+    s32 pan_step;
+    s16 pan_frames;
+    s16 pan_target;
+    SoundSeqChannel channel[1];
+} SoundSeq;
+#endif
+#ifndef XM_T_SoundBank
+#define XM_T_SoundBank
+typedef struct SoundBank {
+    u8 unk0[0x10];
+    u16 flags;
+    u8 unk12[2];
+    u16 id;
+    u16 unk16;         
+    u16 volumes;       
+    u8 unk1A[2];
+    struct SoundBank *next;
+    u16 effect[1];     
+} SoundBank;
+#endif
+#ifndef XM_T_MATRIX
+#define XM_T_MATRIX
+typedef struct {
+    short m[3][3];
+    long t[3];
+} MATRIX;
+#endif
+#ifndef XM_T_SpritePart
+#define XM_T_SpritePart
+typedef struct {
+    s16 x, y;              
+    u8 u, v;               
+    u8 w, h;               
+    u8 byte8, byte9;       
+    u16 tpage;             
+    u16 clut;              
+    u8 unknowne[2];
+    u32 colour;            
+    u32 flags;             
+} SpritePart;
+#endif
+#ifndef XM_T_SpriteRendererEntry
+#define XM_T_SpriteRendererEntry
+typedef struct {
+    s8 byte0;              
+    s8 byte1;              
+    s16 half2;
+    s16 half4;
+    s16 half6;
+} SpriteRendererEntry;
+#endif
+#ifndef XM_T_SpriteOffset
+#define XM_T_SpriteOffset
+typedef struct {
+    s8 x, y;
+} SpriteOffset;
+#endif
+#ifndef XM_T_SpriteRenderer
+#define XM_T_SpriteRenderer
+typedef struct {
+    s16 angle_x, angle_y, angle_z; 
+    s16 scale_x, scale_y, scale_z; 
+    MATRIX matrix;                 
+    SpritePart *parts[2];          
+    SpriteRendererEntry *pointer34; 
+    struct Sprite *next_pending;   
+    SpriteOffset offset;           
+    u8 unknown3e[2];
+    s32 word40;                    
+    SVECTOR light_angles;          
+    u16 light_colour[3];           
+} SpriteRenderer;
+#endif
+#ifndef XM_T_Sprite
+#define XM_T_Sprite
+typedef struct Sprite {
+    s32 x, y, z;                
+    s32 speed_x, speed_y, speed_z; 
+    s32 speed;                  
+    s32 gravity;                
+    SpriteRenderer *renderer;   
+    void *image;                
+    u8 red, green, blue;     
+    u8 colour_flags;         
+    s16 scale;               
+    s16 depth;               
+    s16 half30;              
+    s16 direction;           
+    u16 frame;               
+    u16 height;              
+    u16 extent_depth;        
+    u16 rate;                
+    union {
+        u32 word;
+        struct {
+        unsigned sides : 2;      
+        unsigned unknown2 : 1;
+        unsigned flip : 1;       
+        unsigned flip_y : 1;
+        unsigned blend : 3;      
+        unsigned unknown8 : 8;
+        unsigned field16 : 4;
+        unsigned mode : 4;       
+        unsigned no_view : 1;    
+        unsigned unknown25 : 3;
+        unsigned dirty : 1;      
+        unsigned unknown29 : 3;
+        } bits;
+        u8 bytes[4];         
+    } render;                
+    u32 flags;               
+    s32 *resource_block;     
+    s32 *animations;         
+    s32 resource;            
+    s32 word50;              
+    u16 *frame_table;        
+    u16 *animation;          
+    u16 *facings;            
+    u16 *word60;             
+    u8 *script;              
+    void (*callback)(struct Sprite *sprite); 
+    void *block;             
+    struct Sprite *parent;   
+    struct Sprite *partner;  
+    s32 word78;              
+    void *sequencer;         
+    u16 word80;              
+    u16 word82;              
+    s16 ground;              
+    u16 size;                
+    u8 *frames;              
+    s8 stack_top;            
+    u8 unknown8d;
+    u8 stack[0x10];          
+    s16 countdown;           
+    s16 target_x, target_y, target_z; 
+    u8 unknowna6[2];
+    struct {
+        unsigned sequencer_owned : 1; 
+        unsigned bounce : 10;    
+        unsigned frame : 6;      
+        unsigned step : 3;       
+        unsigned phase : 2;      
+        unsigned field22 : 6;    
+        unsigned field28 : 2;
+        unsigned unknown30 : 2;
+    } frame_bits;            
+    union {
+        u32 word;
+        struct {
+        unsigned unknown0 : 2;
+        unsigned mirror : 1;     
+        unsigned frame_flip : 1; 
+        unsigned unknown4 : 1;
+        unsigned owns_children : 1; 
+        unsigned double_step : 1;
+        unsigned divisor : 12;   
+        unsigned unknown19 : 13;
+        } bits;
+        u8 bytes[4];
+    } motion;                
+    union {
+        u32 wordb0;          
+        u8 byteb0;
+        struct {
+            unsigned unknown0 : 8;
+            unsigned passive_children : 1; 
+            unsigned share_rate : 1;       
+            unsigned unknown10 : 22;
+        } bits;
+    } b0;                    
+} Sprite;
+#endif
+#ifndef XM_T_WorldmapActor
+#define XM_T_WorldmapActor
+typedef struct WorldmapActor {
+    s16 command;     
+    s16 command_arg;
+    s16 unk4;
+    s16 unk6;
+    s32 unk8;
+    s32 unkC;
+    s32 unk10;
+    s32 unk14;
+    s32 kind;        
+    s32 update;      
+    s16 state;       
+    s16 wait;        
+    s16 unk24;
+    s16 unk26;
+    VECTOR position; 
+    VECTOR motion;   
+    s16 heading;     
+    s16 turn;        
+    Sprite *handle;  
+    union {
+        s16 *script; 
+        u16 value;   
+        s32 step;
+    } u;             
+    s32 unk54;
+    s32 unk58;
+    s32 unk5C;
+    s32 unk60;
+    s32 unk64;
+    s32 unk68;
+    s32 unk6C;
+    s32 unk70;
+    s32 unk74;
+    s32 unk78;
+    s32 unk7C;
+} WorldmapActor;
+#endif
+#ifndef XM_S_worldmap_open_map_leave
+#define XM_S_worldmap_open_map_leave
+void xm_worldmap_open_map_leave(void) __asm__("func_8007299C");
+#endif
+#ifndef XM_S_worldmap_loop_result
+#define XM_S_worldmap_loop_result
+extern s32 xm_worldmap_loop_result __asm__("D_8009D7CC");
+#endif
+#ifndef XM_S_sound_set_seq_fade
+#define XM_S_sound_set_seq_fade
+void xm_sound_set_seq_fade(SoundSeq *seq, s32 fade, s32 frames) __asm__("func_8003A89C");
+#endif
+#ifndef XM_S_mode_music_seq
+#define XM_S_mode_music_seq
+extern s32 xm_mode_music_seq __asm__("D_80062528");
+#endif
+#ifndef XM_S_sound_stop_all_effects
+#define XM_S_sound_stop_all_effects
+void xm_sound_stop_all_effects(void) __asm__("func_80039FF8");
+#endif
+#ifndef XM_S_sound_remove_effect_bank
+#define XM_S_sound_remove_effect_bank
+void xm_sound_remove_effect_bank(SoundBank *bank) __asm__("func_8003852C");
+#endif
+#ifndef XM_S_sound_effect_bank
+#define XM_S_sound_effect_bank
+extern struct SoundBank *xm_sound_effect_bank __asm__("D_8006259C");
+#endif
+#ifndef XM_S_heap_free
+#define XM_S_heap_free
+s32 xm_heap_free(void *data) __asm__("HeapFree");
+#endif
+#ifndef XM_S_worldmap_actor_slots
+#define XM_S_worldmap_actor_slots
+extern WorldmapActor *xm_worldmap_actor_slots __asm__("D_8009BE24");
+#endif
+#ifndef XM_S_sprite_destroy
+#define XM_S_sprite_destroy
+void xm_sprite_destroy(Sprite *sprite) __asm__("func_800230A8");
+#endif
+#ifndef XM_S_worldmap_save_state
+#define XM_S_worldmap_save_state
+void xm_worldmap_save_state(void) __asm__("func_80075460");
+#endif
+#ifndef XM_S_worldmap_path_window_close
+#define XM_S_worldmap_path_window_close
+void xm_worldmap_path_window_close(void) __asm__("func_80092DD0");
+#endif
+#ifndef XM_S_worldmap_destination_window_close
+#define XM_S_worldmap_destination_window_close
+void xm_worldmap_destination_window_close(void) __asm__("func_800931B0");
+#endif
+#ifndef XM_S_worldmap_objects_free
+#define XM_S_worldmap_objects_free
+void xm_worldmap_objects_free(void) __asm__("func_80084818");
+#endif
+#ifndef XM_S_worldmap_billboards_free_quads
+#define XM_S_worldmap_billboards_free_quads
+void xm_worldmap_billboards_free_quads(void) __asm__("func_80086124");
+#endif
+#ifndef XM_S_sprite_free_queues
+#define XM_S_sprite_free_queues
+void xm_sprite_free_queues(void) __asm__("GfxFreeWorkBuffers");
+#endif
+#ifndef XM_S_worldmap_clouds_free
+#define XM_S_worldmap_clouds_free
+void xm_worldmap_clouds_free(void) __asm__("func_80086568");
+#endif
+#ifndef XM_S_worldmap_clouds_free_quads
+#define XM_S_worldmap_clouds_free_quads
+void xm_worldmap_clouds_free_quads(void) __asm__("func_800866C8");
+#endif
+#ifndef XM_S_worldmap_footprints_free
+#define XM_S_worldmap_footprints_free
+void xm_worldmap_footprints_free(void) __asm__("func_8007474C");
+#endif
+#ifndef XM_S_worldmap_texture_anim_free
+#define XM_S_worldmap_texture_anim_free
+void xm_worldmap_texture_anim_free(void) __asm__("func_80074F04");
+#endif
+#ifndef XM_S_worldmap_texture_anim2_free
+#define XM_S_worldmap_texture_anim2_free
+void xm_worldmap_texture_anim2_free(void) __asm__("func_800750DC");
+#endif
+#ifndef XM_S_worldmap_effects_free_slots
+#define XM_S_worldmap_effects_free_slots
+void xm_worldmap_effects_free_slots(void) __asm__("func_80088FF4");
+#endif
+#ifndef XM_S_worldmap_effects_free_quads
+#define XM_S_worldmap_effects_free_quads
+void xm_worldmap_effects_free_quads(void) __asm__("func_80089128");
+#endif
+#ifndef XM_S_worldmap_terrain_free_blocks
+#define XM_S_worldmap_terrain_free_blocks
+void xm_worldmap_terrain_free_blocks(void) __asm__("func_80097D64");
+#endif
+#ifndef XM_S_worldmap_display_buffers
+#define XM_S_worldmap_display_buffers
+extern DisplayBuffer xm_worldmap_display_buffers[2] __asm__("D_8009BBC8");
+#endif
+#ifndef XM_S_worldmap_actor_free_slots
+#define XM_S_worldmap_actor_free_slots
+void xm_worldmap_actor_free_slots(void) __asm__("func_800976A0");
+#endif
+#ifndef XM_S_worldmap_stream_free
+#define XM_S_worldmap_stream_free
+void xm_worldmap_stream_free(void) __asm__("func_800960BC");
+#endif
+void func_8007299C(void) {
+    s32 i;
+
+    if (xm_worldmap_loop_result == 0) {
+        xm_sound_set_seq_fade((SoundSeq *)xm_mode_music_seq, 0, 0xF0);
+    }
+    xm_sound_stop_all_effects();
+    xm_sound_remove_effect_bank(xm_sound_effect_bank);
+    xm_heap_free(xm_sound_effect_bank);
+    for (i = 0; i < 0x40; i++) {
+        if (xm_worldmap_actor_slots[i].handle != NULL) {
+            xm_sprite_destroy(xm_worldmap_actor_slots[i].handle);
+            xm_worldmap_actor_slots[i].handle = NULL;
+        }
+    }
+    if (xm_worldmap_loop_result == 1) {
+        xm_worldmap_save_state();
+        xm_game_data.entry[2] |= 0x8000;
+    }
+    xm_worldmap_path_window_close();
+    xm_worldmap_destination_window_close();
+    xm_worldmap_objects_free();
+    xm_worldmap_billboards_free_quads();
+    xm_sprite_free_queues();
+    xm_worldmap_clouds_free();
+    xm_worldmap_clouds_free_quads();
+    xm_worldmap_footprints_free();
+    xm_worldmap_texture_anim_free();
+    xm_worldmap_texture_anim2_free();
+    xm_worldmap_effects_free_slots();
+    xm_worldmap_effects_free_quads();
+    xm_worldmap_terrain_free_blocks();
+    xm_heap_free(xm_worldmap_display_buffers[0].ot);
+    xm_heap_free(xm_worldmap_display_buffers[1].ot);
+    xm_heap_free(xm_worldmap_display_buffers[0].packets);
+    xm_heap_free(xm_worldmap_display_buffers[1].packets);
+    xm_heap_free(xm_worldmap_area_data);
+    for (i = 0; i < 3; i++) {
+        if (xm_worldmap_character_models[i] != NULL) {
+            xm_heap_free(xm_worldmap_character_models[i]);
+        }
+        if (xm_worldmap_gear_models[i] != NULL) {
+            xm_heap_free(xm_worldmap_gear_models[i]);
+        }
+    }
+    xm_worldmap_actor_free_slots();
+    xm_worldmap_stream_free();
+}
+#endif
+
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_init_display (src/decomp/src/worldmap/worldmap_open_map.c:443). */
+#ifndef XM_S_worldmap_init_display
+#define XM_S_worldmap_init_display
+void xm_worldmap_init_display(void) __asm__("func_80072BB0");
+#endif
+#ifndef XM_S_ResetGraph
+#define XM_S_ResetGraph
+int xm_ResetGraph(int mode) __asm__("ResetGraph");
+#endif
+#ifndef XM_S_worldmap_projection_distance
+#define XM_S_worldmap_projection_distance
+extern s32 xm_worldmap_projection_distance __asm__("D_8009BCDC");
+#endif
+#ifndef XM_S_SetGeomScreen
+#define XM_S_SetGeomScreen
+void xm_SetGeomScreen(long h) __asm__("SetGeomScreen");
+#endif
+#ifndef XM_S_SetDefDrawEnv
+#define XM_S_SetDefDrawEnv
+DRAWENV *xm_SetDefDrawEnv(DRAWENV *env, int x, int y, int w, int h) __asm__("SetDefDrawEnv");
+#endif
+#ifndef XM_S_SetDefDispEnv
+#define XM_S_SetDefDispEnv
+DISPENV *xm_SetDefDispEnv(DISPENV *env, int x, int y, int w, int h) __asm__("SetDefDispEnv");
+#endif
+#ifndef XM_S_model_set_color
+#define XM_S_model_set_color
+void xm_model_set_color(s32 r, s32 g, s32 b) __asm__("func_8002C6E0");
+#endif
+#ifndef XM_S_SetBackColor
+#define XM_S_SetBackColor
+void xm_SetBackColor(long rbk, long gbk, long bbk) __asm__("SetBackColor");
+#endif
+#ifndef XM_S_SetFarColor
+#define XM_S_SetFarColor
+void xm_SetFarColor(long r, long g, long b) __asm__("SetFarColor");
+#endif
+#ifndef XM_S_worldmap_background_color
+#define XM_S_worldmap_background_color
+extern u8 xm_worldmap_background_color[3] __asm__("D_8009BB48");
+#endif
+#ifndef XM_S_SetFogNearFar
+#define XM_S_SetFogNearFar
+void xm_SetFogNearFar(long a, long b, long h) __asm__("func_80048AB0");
+#endif
+void func_80072BB0(void) {
+    xm_ResetGraph(1);
+    xm_worldmap_projection_distance = 0x100;
+    xm_SetGeomScreen(0x100);
+    xm_SetDefDrawEnv(&xm_worldmap_display_buffers[0].draw, 0, 0, 0x140, 0xD8);
+    xm_SetDefDrawEnv(&xm_worldmap_display_buffers[1].draw, 0, 0xD8, 0x140, 0xD8);
+    xm_SetDefDispEnv(&xm_worldmap_display_buffers[0].disp, 0, 0xD8, 0x140, 0xD8);
+    xm_SetDefDispEnv(&xm_worldmap_display_buffers[1].disp, 0, 0, 0x140, 0xD8);
+    xm_worldmap_display_buffers[1].draw.isbg = 1;
+    xm_worldmap_display_buffers[0].draw.isbg = 1;
+    xm_worldmap_display_buffers[1].draw.dtd = 1;
+    xm_worldmap_display_buffers[0].draw.dtd = 1;
+    if (xm_worldmap_loop_result == 2) {
+        xm_worldmap_display_buffers[0].draw.r0 = 0;
+        xm_worldmap_display_buffers[0].draw.g0 = 0;
+        xm_worldmap_display_buffers[0].draw.b0 = 0;
+        xm_worldmap_display_buffers[1].draw.r0 = 0;
+        xm_worldmap_display_buffers[1].draw.g0 = 0;
+        xm_worldmap_display_buffers[1].draw.b0 = 0;
+    } else {
+        xm_worldmap_display_buffers[0].draw.r0 = 0;
+        xm_worldmap_display_buffers[0].draw.g0 = 0;
+        xm_worldmap_display_buffers[0].draw.b0 = 0x70;
+        xm_worldmap_display_buffers[1].draw.r0 = 0;
+        xm_worldmap_display_buffers[1].draw.g0 = 0;
+        xm_worldmap_display_buffers[1].draw.b0 = 0x70;
+    }
+    xm_worldmap_display_buffers[1].disp.screen.y = 0xA;
+    xm_worldmap_display_buffers[0].disp.screen.y = 0xA;
+    xm_worldmap_display_buffers[1].disp.screen.w = 0x100;
+    xm_worldmap_display_buffers[0].disp.screen.w = 0x100;
+    xm_worldmap_display_buffers[1].disp.screen.x = 0;
+    xm_worldmap_display_buffers[0].disp.screen.x = 0;
+    xm_worldmap_display_buffers[1].disp.screen.h = 0xD8;
+    xm_worldmap_display_buffers[0].disp.screen.h = 0xD8;
+    xm_model_set_color(0x80, 0x80, 0x80);
+    xm_SetBackColor(0x80, 0x80, 0x80);
+    xm_SetFarColor(xm_worldmap_background_color[0], xm_worldmap_background_color[1], xm_worldmap_background_color[2]);
+    xm_SetFogNearFar(xm_worldmap_loop_result == 2 ? 0xB00 : 0x800, 0xE80, xm_worldmap_projection_distance);
+}
+#endif
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80072DB4);
 
@@ -980,12 +1897,6 @@ typedef struct WorldmapSpot {
     s16 z;
     s16 pad;
 } WorldmapSpot;
-#endif
-#ifndef XM_T_VECTOR
-#define XM_T_VECTOR
-typedef struct {
-    long vx, vy, vz, pad;
-} VECTOR;
 #endif
 #ifndef XM_S_worldmap_place_player_at_arrival_point
 #define XM_S_worldmap_place_player_at_arrival_point
@@ -1057,12 +1968,6 @@ typedef struct BillboardList {
     s32 count;
 } BillboardList;
 #endif
-#ifndef XM_T_SVECTOR
-#define XM_T_SVECTOR
-typedef struct {
-    short vx, vy, vz, pad;
-} SVECTOR;
-#endif
 #ifndef XM_T_AreaObject
 #define XM_T_AreaObject
 typedef struct AreaObject {
@@ -1102,10 +2007,6 @@ void xm_worldmap_unpack_area_data(void) __asm__("func_80073530");
 #ifndef XM_S_text_unpack_lzss_alloc
 #define XM_S_text_unpack_lzss_alloc
 void *xm_text_unpack_lzss_alloc(void *data, s32 mode) __asm__("LZSSHeapDecompress");
-#endif
-#ifndef XM_S_heap_free
-#define XM_S_heap_free
-s32 xm_heap_free(void *data) __asm__("HeapFree");
 #endif
 #ifndef XM_S_worldmap_object_models
 #define XM_S_worldmap_object_models
@@ -1195,13 +2096,6 @@ INCLUDE_ASM("asm/world_map/nonmatchings/main", func_800737EC);
 
 #ifndef XENO_PC_PORT
 /* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_horizon_init (src/decomp/src/worldmap/worldmap_open_map.c:732). */
-#ifndef XM_T_RECT
-#define XM_T_RECT
-typedef struct {
-    short x, y;
-    short w, h;
-} RECT;
-#endif
 #ifndef XM_T_POLY_FT4
 #define XM_T_POLY_FT4
 typedef struct {
@@ -1595,199 +2489,6 @@ void func_8007528C(void) {
 
 #ifndef XENO_PC_PORT
 /* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_save_state (src/decomp/src/worldmap/worldmap_open_map.c:1268). */
-#ifndef XM_T_MATRIX
-#define XM_T_MATRIX
-typedef struct {
-    short m[3][3];
-    long t[3];
-} MATRIX;
-#endif
-#ifndef XM_T_SpritePart
-#define XM_T_SpritePart
-typedef struct {
-    s16 x, y;              
-    u8 u, v;               
-    u8 w, h;               
-    u8 byte8, byte9;       
-    u16 tpage;             
-    u16 clut;              
-    u8 unknowne[2];
-    u32 colour;            
-    u32 flags;             
-} SpritePart;
-#endif
-#ifndef XM_T_SpriteRendererEntry
-#define XM_T_SpriteRendererEntry
-typedef struct {
-    s8 byte0;              
-    s8 byte1;              
-    s16 half2;
-    s16 half4;
-    s16 half6;
-} SpriteRendererEntry;
-#endif
-#ifndef XM_T_SpriteOffset
-#define XM_T_SpriteOffset
-typedef struct {
-    s8 x, y;
-} SpriteOffset;
-#endif
-#ifndef XM_T_SpriteRenderer
-#define XM_T_SpriteRenderer
-typedef struct {
-    s16 angle_x, angle_y, angle_z; 
-    s16 scale_x, scale_y, scale_z; 
-    MATRIX matrix;                 
-    SpritePart *parts[2];          
-    SpriteRendererEntry *pointer34; 
-    struct Sprite *next_pending;   
-    SpriteOffset offset;           
-    u8 unknown3e[2];
-    s32 word40;                    
-    SVECTOR light_angles;          
-    u16 light_colour[3];           
-} SpriteRenderer;
-#endif
-#ifndef XM_T_Sprite
-#define XM_T_Sprite
-typedef struct Sprite {
-    s32 x, y, z;                
-    s32 speed_x, speed_y, speed_z; 
-    s32 speed;                  
-    s32 gravity;                
-    SpriteRenderer *renderer;   
-    void *image;                
-    u8 red, green, blue;     
-    u8 colour_flags;         
-    s16 scale;               
-    s16 depth;               
-    s16 half30;              
-    s16 direction;           
-    u16 frame;               
-    u16 height;              
-    u16 extent_depth;        
-    u16 rate;                
-    union {
-        u32 word;
-        struct {
-        unsigned sides : 2;      
-        unsigned unknown2 : 1;
-        unsigned flip : 1;       
-        unsigned flip_y : 1;
-        unsigned blend : 3;      
-        unsigned unknown8 : 8;
-        unsigned field16 : 4;
-        unsigned mode : 4;       
-        unsigned no_view : 1;    
-        unsigned unknown25 : 3;
-        unsigned dirty : 1;      
-        unsigned unknown29 : 3;
-        } bits;
-        u8 bytes[4];         
-    } render;                
-    u32 flags;               
-    s32 *resource_block;     
-    s32 *animations;         
-    s32 resource;            
-    s32 word50;              
-    u16 *frame_table;        
-    u16 *animation;          
-    u16 *facings;            
-    u16 *word60;             
-    u8 *script;              
-    void (*callback)(struct Sprite *sprite); 
-    void *block;             
-    struct Sprite *parent;   
-    struct Sprite *partner;  
-    s32 word78;              
-    void *sequencer;         
-    u16 word80;              
-    u16 word82;              
-    s16 ground;              
-    u16 size;                
-    u8 *frames;              
-    s8 stack_top;            
-    u8 unknown8d;
-    u8 stack[0x10];          
-    s16 countdown;           
-    s16 target_x, target_y, target_z; 
-    u8 unknowna6[2];
-    struct {
-        unsigned sequencer_owned : 1; 
-        unsigned bounce : 10;    
-        unsigned frame : 6;      
-        unsigned step : 3;       
-        unsigned phase : 2;      
-        unsigned field22 : 6;    
-        unsigned field28 : 2;
-        unsigned unknown30 : 2;
-    } frame_bits;            
-    union {
-        u32 word;
-        struct {
-        unsigned unknown0 : 2;
-        unsigned mirror : 1;     
-        unsigned frame_flip : 1; 
-        unsigned unknown4 : 1;
-        unsigned owns_children : 1; 
-        unsigned double_step : 1;
-        unsigned divisor : 12;   
-        unsigned unknown19 : 13;
-        } bits;
-        u8 bytes[4];
-    } motion;                
-    union {
-        u32 wordb0;          
-        u8 byteb0;
-        struct {
-            unsigned unknown0 : 8;
-            unsigned passive_children : 1; 
-            unsigned share_rate : 1;       
-            unsigned unknown10 : 22;
-        } bits;
-    } b0;                    
-} Sprite;
-#endif
-#ifndef XM_T_WorldmapActor
-#define XM_T_WorldmapActor
-typedef struct WorldmapActor {
-    s16 command;     
-    s16 command_arg;
-    s16 unk4;
-    s16 unk6;
-    s32 unk8;
-    s32 unkC;
-    s32 unk10;
-    s32 unk14;
-    s32 kind;        
-    s32 update;      
-    s16 state;       
-    s16 wait;        
-    s16 unk24;
-    s16 unk26;
-    VECTOR position; 
-    VECTOR motion;   
-    s16 heading;     
-    s16 turn;        
-    Sprite *handle;  
-    union {
-        s16 *script; 
-        u16 value;   
-        s32 step;
-    } u;             
-    s32 unk54;
-    s32 unk58;
-    s32 unk5C;
-    s32 unk60;
-    s32 unk64;
-    s32 unk68;
-    s32 unk6C;
-    s32 unk70;
-    s32 unk74;
-    s32 unk78;
-    s32 unk7C;
-} WorldmapActor;
-#endif
 #ifndef XM_T_ActorSet
 #define XM_T_ActorSet
 typedef struct {
@@ -1834,23 +2535,9 @@ typedef struct {
     VECTOR camera_target;  
 } WorldmapSave;
 #endif
-#ifndef XM_T_Camera
-#define XM_T_Camera
-typedef struct Camera {
-    VECTOR target;
-} Camera;
-#endif
-#ifndef XM_S_worldmap_save_state
-#define XM_S_worldmap_save_state
-void xm_worldmap_save_state(void) __asm__("func_80075460");
-#endif
 #ifndef XM_S_mode_snapshot_block
 #define XM_S_mode_snapshot_block
 extern u8 xm_mode_snapshot_block[] __asm__("D_8005A4E4");
-#endif
-#ifndef XM_S_worldmap_actor_slots
-#define XM_S_worldmap_actor_slots
-extern WorldmapActor *xm_worldmap_actor_slots __asm__("D_8009BE24");
 #endif
 #ifndef XM_S_worldmap_camera_follow_target
 #define XM_S_worldmap_camera_follow_target
@@ -1883,14 +2570,6 @@ extern s32 xm_worldmap_view_center_y __asm__("D_8009BE0C");
 #ifndef XM_S_worldmap_camera_block_cell
 #define XM_S_worldmap_camera_block_cell
 extern SVECTOR xm_worldmap_camera_block_cell __asm__("D_8009C838");
-#endif
-#ifndef XM_S_worldmap_terrain_origin
-#define XM_S_worldmap_terrain_origin
-extern VECTOR xm_worldmap_terrain_origin __asm__("D_8009BBB4");
-#endif
-#ifndef XM_S_worldmap_camera
-#define XM_S_worldmap_camera
-extern Camera xm_worldmap_camera __asm__("D_8009BE28");
 #endif
 void func_80075460(void) {
     WorldmapSave *save;
@@ -1951,41 +2630,147 @@ void func_8007565C(void) {
 }
 #endif
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_800758C0);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_suspend_open_map (src/decomp/src/worldmap/worldmap_open_map.c:1322). */
+#ifndef XM_S_worldmap_suspend_open_map
+#define XM_S_worldmap_suspend_open_map
+void xm_worldmap_suspend_open_map(void) __asm__("func_800758C0");
+#endif
+#ifndef XM_S_worldmap_saved_gear_riding_lock
+#define XM_S_worldmap_saved_gear_riding_lock
+extern s32 xm_worldmap_saved_gear_riding_lock __asm__("D_8009D14C");
+#endif
+#ifndef XM_S_mode_gear_riding_lock
+#define XM_S_mode_gear_riding_lock
+extern u8 xm_mode_gear_riding_lock __asm__("D_80059179");
+#endif
+#ifndef XM_S_worldmap_terrain_get_layer
+#define XM_S_worldmap_terrain_get_layer
+s16 xm_worldmap_terrain_get_layer(VECTOR *position) __asm__("func_80093F18");
+#endif
+#ifndef XM_S_worldmap_stream_drain
+#define XM_S_worldmap_stream_drain
+void xm_worldmap_stream_drain(void) __asm__("func_80096694");
+#endif
+#ifndef XM_S_worldmap_suspend_memory
+#define XM_S_worldmap_suspend_memory
+extern void *xm_worldmap_suspend_memory __asm__("D_8009C7E4");
+#endif
+#ifndef XM_S_worldmap_read_shared_files
+#define XM_S_worldmap_read_shared_files
+void xm_worldmap_read_shared_files(void) __asm__("func_80071FEC");
+#endif
+#ifndef XM_S_worldmap_saved_vram_page
+#define XM_S_worldmap_saved_vram_page
+extern void *xm_worldmap_saved_vram_page __asm__("D_8009C800");
+#endif
+#ifndef XM_S_worldmap_saved_vram_cluts
+#define XM_S_worldmap_saved_vram_cluts
+extern void *xm_worldmap_saved_vram_cluts __asm__("D_8009C890");
+#endif
+#ifndef XM_S_StoreImage
+#define XM_S_StoreImage
+int xm_StoreImage(RECT *rect, u_long *p) __asm__("StoreImage");
+#endif
+#ifndef XM_S_worldmap_display_buffer_index
+#define XM_S_worldmap_display_buffer_index
+extern s32 xm_worldmap_display_buffer_index __asm__("D_8009D7F0");
+#endif
+#ifndef XM_S_MoveImage
+#define XM_S_MoveImage
+int xm_MoveImage(RECT *rect, int x, int y) __asm__("MoveImage");
+#endif
+#ifndef XM_S_DrawSync
+#define XM_S_DrawSync
+int xm_DrawSync(int mode) __asm__("DrawSync");
+#endif
+#ifndef XM_S_worldmap_fade_saved_screen
+#define XM_S_worldmap_fade_saved_screen
+void xm_worldmap_fade_saved_screen(s32 frames, s32 level, s32 step, s32 abr) __asm__("func_80072DB4");
+#endif
+#ifndef XM_S_cd_get_pending_read_count
+#define XM_S_cd_get_pending_read_count
+s32 xm_cd_get_pending_read_count(void) __asm__("ArchiveDataSync");
+#endif
+#ifndef XM_S_text_unpack_lzss
+#define XM_S_text_unpack_lzss
+void *xm_text_unpack_lzss(void *source, void *destination) __asm__("LZSSDecompress");
+#endif
+#ifndef XM_S_worldmap_packed_menu_overlay
+#define XM_S_worldmap_packed_menu_overlay
+extern void *xm_worldmap_packed_menu_overlay __asm__("D_8009D528");
+#endif
+#ifndef XM_S_cd_sync_reads
+#define XM_S_cd_sync_reads
+s32 xm_cd_sync_reads(s32 mode) __asm__("ArchiveCdDataSync");
+#endif
+void func_800758C0(void) {
+    RECT rect;
+    void *block;
+    s32 i;
+
+    xm_game_data.worldmap.unk6A = 1;
+    xm_game_data.entry[0] = (xm_worldmap_camera_angle.vy + 0x2000) & 0x3FFF;
+    for (i = 0; i < 3; i++) {
+        (&xm_game_data.worldmap.unk70)[i] = xm_game_data.inGear[i];
+    }
+    xm_worldmap_saved_gear_riding_lock = xm_mode_gear_riding_lock;
+    if (xm_worldmap_terrain_get_layer(&xm_worldmap_camera_follow_target.target) == 4) {
+        xm_mode_gear_riding_lock = 1;
+    }
+    xm_worldmap_stream_drain();
+    xm_worldmap_billboards_free_quads();
+    xm_worldmap_clouds_free_quads();
+    xm_worldmap_effects_free_quads();
+    xm_heap_free(xm_worldmap_display_buffers[0].packets);
+    xm_heap_free(xm_worldmap_display_buffers[1].packets);
+    block = xm_heap_alloc(4, 1);
+    xm_heap_free(block);
+    block = (void *)((u32)block & 0xFFFFFF);
+    xm_worldmap_suspend_memory = xm_heap_alloc((u32)block - 0x1C4FFC, 1);
+    xm_worldmap_read_shared_files();
+    xm_worldmap_saved_vram_page = xm_heap_alloc(0x10000, 0);
+    xm_worldmap_saved_vram_cluts = xm_heap_alloc(0xC800, 0);
+    rect.x = 0x180;
+    rect.y = 0x100;
+    rect.w = 0x80;
+    rect.h = 0x100;
+    xm_StoreImage(&rect, xm_worldmap_saved_vram_page);
+    rect.x = 0;
+    rect.y = 0x1B0;
+    rect.w = 0x140;
+    rect.h = 0x50;
+    xm_StoreImage(&rect, xm_worldmap_saved_vram_cluts);
+    if (xm_worldmap_display_buffer_index == 0) {
+        rect.x = 0;
+        rect.y = 0xD8;
+        rect.w = 0x140;
+        rect.h = 0xD8;
+        xm_MoveImage(&rect, 0, 0);
+    }
+    rect.x = 0;
+    rect.y = 0;
+    rect.w = 0x140;
+    rect.h = 0xD8;
+    xm_MoveImage(&rect, 0x2C0, 0x100);
+    xm_DrawSync(0);
+    xm_worldmap_fade_saved_screen(0x10, 0, 8, 2);
+    while (xm_cd_get_pending_read_count() >= 2) {
+    }
+    xm_text_unpack_lzss(xm_worldmap_packed_menu_overlay, xm_worldmap_suspend_memory);
+    xm_heap_free(xm_worldmap_packed_menu_overlay);
+    rect.x = 0;
+    rect.y = 0;
+    rect.w = 0x140;
+    rect.h = 0xD8;
+    xm_MoveImage(&rect, 0, 0xE0);
+    xm_DrawSync(0);
+    xm_cd_sync_reads(0);
+}
+#endif
 
 #ifndef XENO_PC_PORT
 /* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_resume_open_map (src/decomp/src/worldmap/worldmap_open_map.c:1388). */
-#ifndef XM_T_DR_ENV
-#define XM_T_DR_ENV
-typedef struct {
-    u_long tag;
-    u_long code[15];
-} DR_ENV;
-#endif
-#ifndef XM_T_DRAWENV
-#define XM_T_DRAWENV
-typedef struct {
-    RECT clip;
-    short ofs[2];
-    RECT tw;
-    u_short tpage;
-    u_char dtd;
-    u_char dfe;
-    u_char isbg;
-    u_char r0, g0, b0;
-    DR_ENV dr_env;
-} DRAWENV;
-#endif
-#ifndef XM_T_DISPENV
-#define XM_T_DISPENV
-typedef struct {
-    RECT disp;
-    RECT screen;
-    u_char isinter;
-    u_char isrgb24;
-    u_char pad0, pad1;
-} DISPENV;
-#endif
 #ifndef XM_T_SPRT_16
 #define XM_T_SPRT_16
 typedef struct {
@@ -2019,19 +2804,6 @@ typedef struct {
     short w, h;
 } TILE;
 #endif
-#ifndef XM_T_DisplayBuffer
-#define XM_T_DisplayBuffer
-typedef struct DisplayBuffer {
-    DRAWENV draw;      
-    DISPENV disp;      
-    u32 ot;            
-    SPRT_16 sprite;    
-    u8 unk84[0x4C];
-    DR_AREA area;      
-    DR_OFFSET offset;  
-    TILE background;   
-} DisplayBuffer;
-#endif
 #ifndef XM_S_worldmap_resume_open_map
 #define XM_S_worldmap_resume_open_map
 void xm_worldmap_resume_open_map(void) __asm__("func_80075B58");
@@ -2048,53 +2820,17 @@ s32 xm_cd_select_directory(s32 group, s32 index) __asm__("ArchiveSetIndex");
 #define XM_S_menu_state_resource_file
 extern void *xm_menu_state_resource_file __asm__("D_8005945C");
 #endif
-#ifndef XM_S_worldmap_suspend_memory
-#define XM_S_worldmap_suspend_memory
-extern void *xm_worldmap_suspend_memory __asm__("D_8009C7E4");
-#endif
-#ifndef XM_S_worldmap_init_display
-#define XM_S_worldmap_init_display
-void xm_worldmap_init_display(void) __asm__("func_80072BB0");
-#endif
 #ifndef XM_S_cd_read_file
 #define XM_S_cd_read_file
 s32 xm_cd_read_file(s32 file, void *destination, s32 mode, s32 flags) __asm__("ArchiveReadFileToBuffer");
-#endif
-#ifndef XM_S_worldmap_fade_saved_screen
-#define XM_S_worldmap_fade_saved_screen
-void xm_worldmap_fade_saved_screen(s32 frames, s32 level, s32 step, s32 abr) __asm__("func_80072DB4");
-#endif
-#ifndef XM_S_MoveImage
-#define XM_S_MoveImage
-int xm_MoveImage(RECT *rect, int x, int y) __asm__("MoveImage");
 #endif
 #ifndef XM_S_ClearOTagR
 #define XM_S_ClearOTagR
 u_long *xm_ClearOTagR(u_long *ot, int n) __asm__("ClearOTagR");
 #endif
-#ifndef XM_S_worldmap_current_display_buffer
-#define XM_S_worldmap_current_display_buffer
-extern DisplayBuffer *xm_worldmap_current_display_buffer __asm__("D_8009BE3C");
-#endif
-#ifndef XM_S_cd_sync_reads
-#define XM_S_cd_sync_reads
-s32 xm_cd_sync_reads(s32 mode) __asm__("ArchiveCdDataSync");
-#endif
 #ifndef XM_S_worldmap_upload_area_image
 #define XM_S_worldmap_upload_area_image
 void xm_worldmap_upload_area_image(void) __asm__("func_8008440C");
-#endif
-#ifndef XM_S_worldmap_saved_vram_page
-#define XM_S_worldmap_saved_vram_page
-extern void *xm_worldmap_saved_vram_page __asm__("D_8009C800");
-#endif
-#ifndef XM_S_worldmap_saved_vram_cluts
-#define XM_S_worldmap_saved_vram_cluts
-extern void *xm_worldmap_saved_vram_cluts __asm__("D_8009C890");
-#endif
-#ifndef XM_S_DrawSync
-#define XM_S_DrawSync
-int xm_DrawSync(int mode) __asm__("DrawSync");
 #endif
 #ifndef XM_S_worldmap_terrain_alloc_packets
 #define XM_S_worldmap_terrain_alloc_packets
@@ -2127,14 +2863,6 @@ void xm_pad_clear_queue(void) __asm__("ControllerResetState");
 #ifndef XM_S_worldmap_menu_requested
 #define XM_S_worldmap_menu_requested
 extern s32 xm_worldmap_menu_requested __asm__("D_8009D804");
-#endif
-#ifndef XM_S_mode_gear_riding_lock
-#define XM_S_mode_gear_riding_lock
-extern u8 xm_mode_gear_riding_lock __asm__("D_80059179");
-#endif
-#ifndef XM_S_worldmap_saved_gear_riding_lock
-#define XM_S_worldmap_saved_gear_riding_lock
-extern s32 xm_worldmap_saved_gear_riding_lock __asm__("D_8009D14C");
 #endif
 #ifndef XM_S_worldmap_apply_party_riding_changes
 #define XM_S_worldmap_apply_party_riding_changes
@@ -2301,10 +3029,6 @@ s32 xm_worldmap_encounter_roll(VECTOR *position, s32 scene) __asm__("func_80075E
 #ifndef XM_S_worldmap_terrain_get_cell_flags
 #define XM_S_worldmap_terrain_get_cell_flags
 s32 xm_worldmap_terrain_get_cell_flags(VECTOR *position) __asm__("func_80094028");
-#endif
-#ifndef XM_S_worldmap_terrain_get_layer
-#define XM_S_worldmap_terrain_get_layer
-s16 xm_worldmap_terrain_get_layer(VECTOR *position) __asm__("func_80093F18");
 #endif
 #ifndef XM_S_worldmap_layer4_encounter_kinds
 #define XM_S_worldmap_layer4_encounter_kinds
@@ -2479,20 +3203,6 @@ typedef struct EntryTable {
     s32 count;
     s32 *entries;
 } EntryTable;
-#endif
-#ifndef XM_T_SoundBank
-#define XM_T_SoundBank
-typedef struct SoundBank {
-    u8 unk0[0x10];
-    u16 flags;
-    u8 unk12[2];
-    u16 id;
-    u16 unk16;         
-    u16 volumes;       
-    u8 unk1A[2];
-    struct SoundBank *next;
-    u16 effect[1];     
-} SoundBank;
 #endif
 #ifndef XM_T_SoundOwner
 #define XM_T_SoundOwner
@@ -2804,10 +3514,6 @@ extern MATRIX *xm_gear_model_color_matrix __asm__("D_801E8644");
 #define XM_S_worldmap_light_color_matrix
 extern MATRIX xm_worldmap_light_color_matrix __asm__("D_8009A140");
 #endif
-#ifndef XM_S_SetBackColor
-#define XM_S_SetBackColor
-void xm_SetBackColor(long rbk, long gbk, long bbk) __asm__("SetBackColor");
-#endif
 #ifndef XM_S_gear_model_step_and_draw
 #define XM_S_gear_model_step_and_draw
 void xm_gear_model_step_and_draw(MATRIX *m, MATRIX *light, u_long *ot, s32 buffer, s32 elapsed) __asm__("func_801E7D14");
@@ -2815,10 +3521,6 @@ void xm_gear_model_step_and_draw(MATRIX *m, MATRIX *light, u_long *ot, s32 buffe
 #ifndef XM_S_worldmap_light_direction_matrix
 #define XM_S_worldmap_light_direction_matrix
 extern MATRIX xm_worldmap_light_direction_matrix __asm__("D_8009A160");
-#endif
-#ifndef XM_S_worldmap_display_buffer_index
-#define XM_S_worldmap_display_buffer_index
-extern s32 xm_worldmap_display_buffer_index __asm__("D_8009D7F0");
 #endif
 void func_80076098(void) {
     s32 *flag;
@@ -2874,9 +3576,197 @@ void func_800762FC(void) {
 #endif
 
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8007634C);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_run_pause_screen (src/decomp/src/worldmap/worldmap_open_map.c:1607). */
+#ifndef XM_S_worldmap_run_pause_screen
+#define XM_S_worldmap_run_pause_screen
+void xm_worldmap_run_pause_screen(void) __asm__("func_8007634C");
+#endif
+#ifndef XM_S_pad_vblank_count
+#define XM_S_pad_vblank_count
+extern s32 xm_pad_vblank_count __asm__("D_80059488");
+#endif
+#ifndef XM_S_PutDispEnv
+#define XM_S_PutDispEnv
+DISPENV *xm_PutDispEnv(DISPENV *env) __asm__("PutDispEnv");
+#endif
+#ifndef XM_S_PutDrawEnv
+#define XM_S_PutDrawEnv
+DRAWENV *xm_PutDrawEnv(DRAWENV *env) __asm__("PutDrawEnv");
+#endif
+#ifndef XM_S_sound_silence_voices
+#define XM_S_sound_silence_voices
+void xm_sound_silence_voices(void) __asm__("SoundMuteAllSpuChannels");
+#endif
+#ifndef XM_S_sprite_upload_pause_image
+#define XM_S_sprite_upload_pause_image
+void xm_sprite_upload_pause_image(s32 x, s32 y) __asm__("GraphicsDrawPauseLetters");
+#endif
+#ifndef XM_S_worldmap_pad_unread_port1_repeated
+#define XM_S_worldmap_pad_unread_port1_repeated
+extern u16 xm_worldmap_pad_unread_port1_repeated __asm__("D_8009BD1C");
+#endif
+#ifndef XM_S_worldmap_pad_unread_port1_pressed
+#define XM_S_worldmap_pad_unread_port1_pressed
+extern u16 xm_worldmap_pad_unread_port1_pressed __asm__("D_8009BD14");
+#endif
+#ifndef XM_S_worldmap_pad_unread_port1_held
+#define XM_S_worldmap_pad_unread_port1_held
+extern u16 xm_worldmap_pad_unread_port1_held __asm__("D_8009CD50");
+#endif
+#ifndef XM_S_worldmap_pad_unread_port0_repeated
+#define XM_S_worldmap_pad_unread_port0_repeated
+extern u16 xm_worldmap_pad_unread_port0_repeated __asm__("D_8009BD18");
+#endif
+#ifndef XM_S_worldmap_pad_port0_pressed
+#define XM_S_worldmap_pad_port0_pressed
+extern u16 xm_worldmap_pad_port0_pressed __asm__("D_8009BD10");
+#endif
+#ifndef XM_S_worldmap_pad_port0_held
+#define XM_S_worldmap_pad_port0_held
+extern u16 xm_worldmap_pad_port0_held __asm__("D_8009CD4C");
+#endif
+#ifndef XM_S_pad_dequeue_state
+#define XM_S_pad_dequeue_state
+u32 xm_pad_dequeue_state(void) __asm__("ControllerPopState");
+#endif
+#ifndef XM_S_pad_port0_held
+#define XM_S_pad_port0_held
+extern u16 xm_pad_port0_held __asm__("g_C1ButtonState");
+#endif
+#ifndef XM_S_pad_port1_held
+#define XM_S_pad_port1_held
+extern u16 xm_pad_port1_held __asm__("g_C2ButtonState");
+#endif
+#ifndef XM_S_pad_port0_pressed
+#define XM_S_pad_port0_pressed
+extern u16 xm_pad_port0_pressed __asm__("g_C1ButtonStateReleased");
+#endif
+#ifndef XM_S_pad_port1_pressed
+#define XM_S_pad_port1_pressed
+extern u16 xm_pad_port1_pressed __asm__("g_C2ButtonStateReleased");
+#endif
+#ifndef XM_S_pad_port0_repeated
+#define XM_S_pad_port0_repeated
+extern u16 xm_pad_port0_repeated __asm__("g_C1ButtonStatePressedOnce");
+#endif
+#ifndef XM_S_pad_port1_repeated
+#define XM_S_pad_port1_repeated
+extern u16 xm_pad_port1_repeated __asm__("g_C2ButtonStatePressedOnce");
+#endif
+#ifndef XM_S_sound_restore_voices
+#define XM_S_sound_restore_voices
+void xm_sound_restore_voices(void) __asm__("SoundEnableAllSpuChannels");
+#endif
+void func_8007634C(void) {
+    RECT rect;
+    s32 saved;
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80076594);
+    saved = xm_pad_vblank_count;
+    xm_DrawSync(0);
+    xm_VSync(0);
+    if (xm_worldmap_display_buffer_index == 0) {
+        rect.x = 0;
+        rect.y = 0xD8;
+        rect.w = 0x140;
+        rect.h = 0xD8;
+        xm_MoveImage(&rect, 0, 0);
+    }
+    xm_PutDispEnv(&xm_worldmap_display_buffers[1].disp);
+    xm_PutDrawEnv(&xm_worldmap_display_buffers[1].draw);
+    xm_sound_silence_voices();
+    do {
+        xm_DrawSync(0);
+        xm_VSync(0);
+        xm_sprite_upload_pause_image(0x88, 0x64);
+        xm_worldmap_pad_unread_port1_repeated = 0;
+        xm_worldmap_pad_unread_port1_pressed = 0;
+        xm_worldmap_pad_unread_port1_held = 0;
+        xm_worldmap_pad_unread_port0_repeated = 0;
+        xm_worldmap_pad_port0_pressed = 0;
+        xm_worldmap_pad_port0_held = 0;
+        while (xm_pad_dequeue_state() != 0) {
+            xm_worldmap_pad_port0_held |= xm_pad_port0_held;
+            xm_worldmap_pad_unread_port1_held |= xm_pad_port1_held;
+            xm_worldmap_pad_port0_pressed |= xm_pad_port0_pressed;
+            xm_worldmap_pad_unread_port1_pressed |= xm_pad_port1_pressed;
+            xm_worldmap_pad_unread_port0_repeated |= xm_pad_port0_repeated;
+            xm_worldmap_pad_unread_port1_repeated |= xm_pad_port1_repeated;
+        }
+    } while (!(xm_worldmap_pad_port0_pressed & 0x800));
+    xm_sound_restore_voices();
+    xm_DrawSync(0);
+    xm_VSync(0);
+    rect.x = 0;
+    rect.y = 0;
+    rect.w = 0x140;
+    rect.h = 0xD8;
+    xm_MoveImage(&rect, 0, 0xD8);
+    xm_PutDispEnv(&xm_worldmap_display_buffers[xm_worldmap_display_buffer_index].disp);
+    xm_PutDrawEnv(&xm_worldmap_display_buffers[xm_worldmap_display_buffer_index].draw);
+    xm_pad_vblank_count = saved;
+}
+#endif
+
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_wait_for_controller (src/decomp/src/worldmap/worldmap_open_map.c:1658). */
+#ifndef XM_S_worldmap_wait_for_controller
+#define XM_S_worldmap_wait_for_controller
+void xm_worldmap_wait_for_controller(void) __asm__("func_80076594");
+#endif
+#ifndef XM_S_pad_get_controller_kind
+#define XM_S_pad_get_controller_kind
+s32 xm_pad_get_controller_kind(s32 port) __asm__("ControllerGetType");
+#endif
+void func_80076594(void) {
+    RECT rect;
+    s32 saved;
+
+    saved = xm_pad_vblank_count;
+    xm_DrawSync(0);
+    xm_VSync(0);
+    if (xm_worldmap_display_buffer_index == 0) {
+        rect.x = 0;
+        rect.y = 0xD8;
+        rect.w = 0x140;
+        rect.h = 0xD8;
+        xm_MoveImage(&rect, 0, 0);
+    }
+    xm_PutDispEnv(&xm_worldmap_display_buffers[1].disp);
+    xm_PutDrawEnv(&xm_worldmap_display_buffers[1].draw);
+    xm_sound_silence_voices();
+    do {
+        xm_DrawSync(0);
+        xm_VSync(0);
+        xm_sprite_upload_pause_image(0x88, 0x64);
+        xm_worldmap_pad_unread_port1_repeated = 0;
+        xm_worldmap_pad_unread_port1_pressed = 0;
+        xm_worldmap_pad_unread_port1_held = 0;
+        xm_worldmap_pad_unread_port0_repeated = 0;
+        xm_worldmap_pad_port0_pressed = 0;
+        xm_worldmap_pad_port0_held = 0;
+        while (xm_pad_dequeue_state() != 0) {
+            xm_worldmap_pad_port0_held |= xm_pad_port0_held;
+            xm_worldmap_pad_unread_port1_held |= xm_pad_port1_held;
+            xm_worldmap_pad_port0_pressed |= xm_pad_port0_pressed;
+            xm_worldmap_pad_unread_port1_pressed |= xm_pad_port1_pressed;
+            xm_worldmap_pad_unread_port0_repeated |= xm_pad_port0_repeated;
+            xm_worldmap_pad_unread_port1_repeated |= xm_pad_port1_repeated;
+        }
+    } while (xm_pad_get_controller_kind(0) == 0);
+    xm_sound_restore_voices();
+    xm_DrawSync(0);
+    xm_VSync(0);
+    rect.x = 0;
+    rect.y = 0;
+    rect.w = 0x140;
+    rect.h = 0xD8;
+    xm_MoveImage(&rect, 0, 0xD8);
+    xm_PutDispEnv(&xm_worldmap_display_buffers[xm_worldmap_display_buffer_index].disp);
+    xm_PutDrawEnv(&xm_worldmap_display_buffers[xm_worldmap_display_buffer_index].draw);
+    xm_pad_vblank_count = saved;
+}
+#endif
 
 #ifndef XENO_PC_PORT
 extern s32 D_80062648;
@@ -3262,17 +4152,9 @@ void func_80077CC0(void) {
 #define XM_S_worldmap_scene9_camera_flight_start
 s32 xm_worldmap_scene9_camera_flight_start(s32 index) __asm__("func_80077DC8");
 #endif
-#ifndef XM_S_worldmap_view_kind
-#define XM_S_worldmap_view_kind
-extern s32 xm_worldmap_view_kind __asm__("D_8009D144");
-#endif
 #ifndef XM_S_sound_play_effect
 #define XM_S_sound_play_effect
 void xm_sound_play_effect(s32 effect) __asm__("func_80039E60");
-#endif
-#ifndef XM_S_sound_effect_bank
-#define XM_S_sound_effect_bank
-extern struct SoundBank *xm_sound_effect_bank __asm__("D_8006259C");
 #endif
 s32 func_80077DC8(s32 index) {
     WorldmapActor *actor;
@@ -3294,7 +4176,180 @@ s32 func_80077DC8(s32 index) {
 }
 #endif
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80077E68);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_scene9_camera_flight_update (src/decomp/src/worldmap/worldmap_scenes_9_10.c:51). */
+#ifndef XM_T_PathScratch
+#define XM_T_PathScratch
+typedef struct {
+    VECTOR at;         
+    VECTOR eye;        
+    s32 distance;      
+    u8 pad24[0x7C];
+    SVECTOR points[3]; 
+} PathScratch;
+#endif
+#ifndef XM_T_PATH_SCRATCH
+#define XM_T_PATH_SCRATCH
+#define PATH_SCRATCH ((PathScratch *)0x1F800000)
+#endif
+#ifndef XM_T_VIEW
+#define XM_T_VIEW
+#define VIEW xm_worldmap_view_setup
+#endif
+#ifndef XM_S_worldmap_scene9_camera_flight_update
+#define XM_S_worldmap_scene9_camera_flight_update
+s32 xm_worldmap_scene9_camera_flight_update(s32 index) __asm__("func_80077E68");
+#endif
+#ifndef XM_S_worldmap_scene9_camera_path_points
+#define XM_S_worldmap_scene9_camera_path_points
+extern SVECTOR xm_worldmap_scene9_camera_path_points[12] __asm__("D_8009A3F0");
+#endif
+#ifndef XM_S_worldmap_eval_quadratic_bspline
+#define XM_S_worldmap_eval_quadratic_bspline
+void xm_worldmap_eval_quadratic_bspline(s32 t, SVECTOR *p0, SVECTOR *p1, SVECTOR *p2, VECTOR *out) __asm__("func_80076858");
+#endif
+#ifndef XM_S_worldmap_get_matrix_angles
+#define XM_S_worldmap_get_matrix_angles
+void xm_worldmap_get_matrix_angles(MATRIX *m, SVECTOR *angle) __asm__("func_80097070");
+#endif
+#ifndef XM_S_worldmap_effects_start_emitters
+#define XM_S_worldmap_effects_start_emitters
+void xm_worldmap_effects_start_emitters(s32 group, SVECTOR *position, SVECTOR *angle) __asm__("func_80089160");
+#endif
+#ifndef XM_S_sound_slide_effect_volume
+#define XM_S_sound_slide_effect_volume
+void xm_sound_slide_effect_volume(s32 id, s32 volume, s32 frames) __asm__("func_8003A3B8");
+#endif
+#ifndef XM_S_worldmap_actor_request
+#define XM_S_worldmap_actor_request
+s32 xm_worldmap_actor_request(s32 index, s32 argument) __asm__("func_80097770");
+#endif
+#ifndef XM_S_worldmap_screen_fade_rate
+#define XM_S_worldmap_screen_fade_rate
+extern s32 xm_worldmap_screen_fade_rate __asm__("D_8009CCA4");
+#endif
+#ifndef XM_S_worldmap_screen_fade_step
+#define XM_S_worldmap_screen_fade_step
+extern s32 xm_worldmap_screen_fade_step __asm__("D_8009D3CC");
+#endif
+#ifndef XM_S_worldmap_loop_running
+#define XM_S_worldmap_loop_running
+extern s32 xm_worldmap_loop_running __asm__("D_8009D554");
+#endif
+#ifndef XM_S_worldmap_get_ground_distance
+#define XM_S_worldmap_get_ground_distance
+s32 xm_worldmap_get_ground_distance(VECTOR *a, VECTOR *b) __asm__("func_80094154");
+#endif
+#ifndef XM_S_sound_set_effect_volume
+#define XM_S_sound_set_effect_volume
+void xm_sound_set_effect_volume(s32 id, s32 volume) __asm__("func_8003A2E4");
+#endif
+s32 func_80077E68(s32 index) {
+    WorldmapActor *actor;
+    SVECTOR *points;
+    s32 segment;
+    s32 distance;
+    PathScratch *scratch;
+
+    actor = &xm_worldmap_actor_slots[index];
+    scratch = PATH_SCRATCH;
+    points = xm_worldmap_scene9_camera_path_points;
+    segment = actor->u.step >> 12;
+    points += segment;
+    actor->unk54 = segment;
+    if (points[2].pad != -1) {
+        PATH_SCRATCH->points[0].vx = points[0].vx;
+        PATH_SCRATCH->points[0].vz = points[0].vz;
+        PATH_SCRATCH->points[1].vx = points[1].vx;
+        PATH_SCRATCH->points[1].vz = points[1].vz;
+        PATH_SCRATCH->points[2].vx = points[2].vx;
+        PATH_SCRATCH->points[2].vz = points[2].vz;
+        PATH_SCRATCH->points[0].vy = points[0].vy;
+        PATH_SCRATCH->points[1].vy = points[1].vy;
+        PATH_SCRATCH->points[2].vy = points[2].vy;
+        xm_worldmap_eval_quadratic_bspline(actor->u.step & 0xFFF, &PATH_SCRATCH->points[0], &PATH_SCRATCH->points[1],
+                      &PATH_SCRATCH->points[2], &scratch->at);
+        VIEW.at.vz = 0;
+        VIEW.at.vx = 0;
+        VIEW.up.vz = 0;
+        VIEW.up.vx = 0;
+        VIEW.up.vy = -0x1000;
+        VIEW.eye.vx = scratch->at.vx >> 16;
+        VIEW.eye.vz = -(scratch->at.vz >> 16);
+        VIEW.eye.vy = scratch->at.vy >> 16;
+        VIEW.at.vy = xm_worldmap_camera.target.vy >> 12;
+    }
+    xm_worldmap_camera_build_look_at(&xm_worldmap_view_setup);
+    xm_worldmap_get_matrix_angles(&xm_worldmap_camera_matrix, &xm_worldmap_camera_angle);
+    switch (actor->state) {
+    case 0:
+        actor->unk58 += 5;
+        if (--actor->wait < 0) {
+            actor->unk58 = 0x80;
+            actor->state++;
+            scratch->points[0].vy = -0x20D;
+            scratch->points[0].vx = (xm_worldmap_camera.target.vx >> 12) + 0x32;
+            scratch->points[0].vz = (xm_worldmap_camera.target.vz >> 12) - 0x70;
+            xm_worldmap_effects_start_emitters(8, &scratch->points[0], NULL);
+        }
+        break;
+    case 1:
+        if (actor->u.step >= 0x6000) {
+            actor->state++;
+        }
+        break;
+    case 2:
+        actor->unk58 -= 2;
+        if (actor->unk58 < 0x19) {
+            actor->unk58 = 0x18;
+            actor->state++;
+        }
+        break;
+    case 3:
+        if (actor->u.step > 0x7FFF) {
+            actor->state++;
+        }
+        break;
+    case 4:
+        actor->unk58 -= 1;
+        if (actor->unk58 < 5) {
+            actor->unk58 = 4;
+            actor->state++;
+        }
+        break;
+    case 5:
+        if (actor->u.step > 0x83FF) {
+            xm_sound_slide_effect_volume((xm_sound_effect_bank->id << 16) | 0xA4, 0, 0x100);
+            xm_worldmap_actor_request(0, 0xD);
+            xm_worldmap_screen_fade_rate = 2;
+            xm_worldmap_screen_fade_step = 4;
+            actor->wait = 0x50;
+            actor->unk58 = 0;
+            actor->state++;
+        }
+        break;
+    case 6:
+        if (--actor->wait <= 0) {
+            xm_worldmap_loop_running = 0;
+            xm_worldmap_loop_result = 0;
+        }
+        break;
+    }
+    actor->u.step += actor->unk58;
+    if (actor->state < 6) {
+        scratch->at.vx = VIEW.at.vx << 12;
+        scratch->at.vy = VIEW.at.vy << 12;
+        scratch->at.vz = VIEW.at.vz << 12;
+        scratch->eye.vx = VIEW.eye.vx << 12;
+        scratch->eye.vy = VIEW.eye.vy << 12;
+        scratch->eye.vz = VIEW.eye.vz << 12;
+        distance = xm_worldmap_get_ground_distance(&scratch->at, &scratch->eye) >> 3;
+        scratch->distance = distance;
+        xm_sound_set_effect_volume((xm_sound_effect_bank->id << 16) | 0xA4, 0x87 - distance);
+    }
+    return 1;
+}
+#endif
 
 #ifndef XENO_PC_PORT
 /* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_scene9_rig_start (src/decomp/src/worldmap/worldmap_scenes_9_10.c:158). */
@@ -3716,37 +4771,9 @@ typedef struct xm_Camera {
 #define XM_S_worldmap_scene10_script_update
 s32 xm_worldmap_scene10_script_update(s32 index) __asm__("func_80078EA4");
 #endif
-#ifndef XM_S_worldmap_actor_request
-#define XM_S_worldmap_actor_request
-s32 xm_worldmap_actor_request(s32 index, s32 argument) __asm__("func_80097770");
-#endif
 #ifndef XM_S_worldmap_camera_place_orbit
 #define XM_S_worldmap_camera_place_orbit
 void xm_worldmap_camera_place_orbit(xm_ViewSetup *view, xm_Camera *camera, s32 distance, SVECTOR *angle) __asm__("func_80096F18");
-#endif
-#ifndef XM_S_worldmap_view_setup
-#define XM_S_worldmap_view_setup
-extern xm_ViewSetup xm_worldmap_view_setup __asm__("D_8009BD40");
-#endif
-#ifndef XM_S_sound_slide_effect_volume
-#define XM_S_sound_slide_effect_volume
-void xm_sound_slide_effect_volume(s32 id, s32 volume, s32 frames) __asm__("func_8003A3B8");
-#endif
-#ifndef XM_S_worldmap_screen_fade_rate
-#define XM_S_worldmap_screen_fade_rate
-extern s32 xm_worldmap_screen_fade_rate __asm__("D_8009CCA4");
-#endif
-#ifndef XM_S_worldmap_screen_fade_step
-#define XM_S_worldmap_screen_fade_step
-extern s32 xm_worldmap_screen_fade_step __asm__("D_8009D3CC");
-#endif
-#ifndef XM_S_worldmap_loop_running
-#define XM_S_worldmap_loop_running
-extern s32 xm_worldmap_loop_running __asm__("D_8009D554");
-#endif
-#ifndef XM_S_worldmap_loop_result
-#define XM_S_worldmap_loop_result
-extern s32 xm_worldmap_loop_result __asm__("D_8009D7CC");
 #endif
 s32 func_80078EA4(s32 index) {
     xm_CameraScratch *scratch;
@@ -4457,10 +5484,6 @@ s32 xm_worldmap_scene12_drift_object5_update(s32 index) __asm__("func_8007CF18")
 #ifndef XM_S_worldmap_terrain_get_wave_height
 #define XM_S_worldmap_terrain_get_wave_height
 s32 xm_worldmap_terrain_get_wave_height(s32 x, s32 z) __asm__("func_80093A5C");
-#endif
-#ifndef XM_S_worldmap_effects_start_emitters
-#define XM_S_worldmap_effects_start_emitters
-void xm_worldmap_effects_start_emitters(s32 group, SVECTOR *position, SVECTOR *angle) __asm__("func_80089160");
 #endif
 s32 func_8007CF18(s32 index) {
     WorldmapActor *actor;
@@ -5712,7 +6735,157 @@ INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80084068);
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8008440C);
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80084580);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_objects_build (src/decomp/src/worldmap/worldmap_objects_effects_party.c:421). */
+#ifndef XM_T_ScenePlacement
+#define XM_T_ScenePlacement
+typedef struct {
+    u16 def;
+    u16 flags;
+    s16 x, y, z;
+    s16 ax, ay, az;
+} ScenePlacement;
+#endif
+#ifndef XM_T_ModelListEntry
+#define XM_T_ModelListEntry
+typedef struct {
+    s32 unk0;
+    u8 *first;
+    u8 *second;
+} ModelListEntry;
+#endif
+#ifndef XM_T_ModelList
+#define XM_T_ModelList
+typedef struct {
+    s32 last;
+    ModelListEntry entries[1];
+} ModelList;
+#endif
+#ifndef XM_T_Model
+#define XM_T_Model
+typedef struct {
+    u8 unk0[4];
+    u8 *table0;
+    u8 *table4;
+    u8 *table8;
+    u8 *primitives;
+    u8 unk14[4];
+    ModelList *list; 
+    u8 unk1C[0x1C];
+} Model;
+#endif
+#ifndef XM_T_ModelGroup
+#define XM_T_ModelGroup
+typedef struct {
+    s32 count;
+    s32 flags;       
+    u8 unk8[0xC];
+    Model models[1];
+} ModelGroup;
+#endif
+#ifndef XM_T_SpriteDefTable
+#define XM_T_SpriteDefTable
+typedef struct {
+    u8 header[0x10];
+    SpriteModel defs[1];
+} SpriteDefTable;
+#endif
+#ifndef XM_T_RenderPacket
+#define XM_T_RenderPacket
+typedef struct RenderPacket {
+    u8 unk0[3];
+    u8 code;
+    s32 value;
+} RenderPacket;
+#endif
+#ifndef XM_S_worldmap_objects_build
+#define XM_S_worldmap_objects_build
+void xm_worldmap_objects_build(void) __asm__("func_80084580");
+#endif
+#ifndef XM_S_worldmap_object_model_count
+#define XM_S_worldmap_object_model_count
+extern s16 xm_worldmap_object_model_count __asm__("D_8009BD28");
+#endif
+#ifndef XM_S_model_relocate_group
+#define XM_S_model_relocate_group
+s32 xm_model_relocate_group(ModelGroup *group) __asm__("func_8002C3E8");
+#endif
+#ifndef XM_S_worldmap_object_count
+#define XM_S_worldmap_object_count
+extern s16 xm_worldmap_object_count __asm__("D_8009D7E0");
+#endif
+#ifndef XM_S_SetColorMatrix
+#define XM_S_SetColorMatrix
+void xm_SetColorMatrix(MATRIX *m) __asm__("SetColorMatrix");
+#endif
+#ifndef XM_S_SetLightMatrix
+#define XM_S_SetLightMatrix
+void xm_SetLightMatrix(MATRIX *m) __asm__("SetLightMatrix");
+#endif
+#ifndef XM_S_model_alloc_packet_buffers
+#define XM_S_model_alloc_packet_buffers
+void xm_model_alloc_packet_buffers(SpriteModel *def, void **prims, void **prims2, SceneObject *object) __asm__("func_8002CB54");
+#endif
+#ifndef XM_S_model_build_packets
+#define XM_S_model_build_packets
+void xm_model_build_packets(SpriteModel *model, RenderPacket *packets, s32 mode) __asm__("func_8002C8CC");
+#endif
+#ifndef XM_S_model_ot_depth_shift
+#define XM_S_model_ot_depth_shift
+extern s32 xm_model_ot_depth_shift __asm__("D_80050100");
+#endif
+#ifndef XM_S_worldmap_walker_face
+#define XM_S_worldmap_walker_face
+extern s32 xm_worldmap_walker_face __asm__("D_8009C16C");
+#endif
+#ifndef XM_S_worldmap_walker_object
+#define XM_S_worldmap_walker_object
+extern s32 xm_worldmap_walker_object __asm__("D_8009C840");
+#endif
+void func_80084580(void) {
+    ScenePlacement *placement;
+    s32 *base;
+    s32 *offsets;
+    s32 i;
+
+    i = 0;
+    xm_worldmap_object_model_count = xm_model_relocate_group(xm_worldmap_object_models);
+    base = xm_worldmap_object_meshes;
+    offsets = base + 1;
+    xm_worldmap_object_meshes = offsets;
+    for (; i < xm_worldmap_object_model_count; i++) {
+        offsets[i] = (s32)base + offsets[i];
+    }
+    xm_worldmap_object_count = *(s16 *)xm_worldmap_object_placement_list;
+    xm_worldmap_objects = xm_heap_alloc(xm_worldmap_object_count * sizeof(SceneObject), 0);
+    placement = (ScenePlacement *)((u8 *)xm_worldmap_object_placement_list + 2);
+    xm_SetColorMatrix(&xm_worldmap_light_color_matrix);
+    xm_SetLightMatrix(&xm_worldmap_light_direction_matrix);
+    for (i = 0; i < xm_worldmap_object_count; i++, placement++) {
+        xm_worldmap_objects[i].visible = 0;
+        xm_worldmap_objects[i].unk2 = placement->def;
+        xm_worldmap_objects[i].flags = placement->flags;
+        xm_worldmap_objects[i].position.vx = placement->x;
+        xm_worldmap_objects[i].position.vy = placement->y;
+        xm_worldmap_objects[i].position.vz = -placement->z;
+        xm_worldmap_objects[i].angle.vx = placement->ax;
+        xm_worldmap_objects[i].angle.vy = placement->ay;
+        xm_worldmap_objects[i].angle.vz = placement->az;
+        xm_RotMatrixYXZ(&xm_worldmap_objects[i].angle, &xm_worldmap_objects[i].matrix);
+        xm_worldmap_objects[i].def = &((SpriteDefTable *)xm_worldmap_object_models)->defs[xm_worldmap_objects[i].unk2];
+        xm_model_alloc_packet_buffers(xm_worldmap_objects[i].def, &xm_worldmap_objects[i].prims, &xm_worldmap_objects[i].prims2, &xm_worldmap_objects[i]);
+        xm_model_build_packets(xm_worldmap_objects[i].def, xm_worldmap_objects[i].prims, 1);
+        xm_memcpy(xm_worldmap_objects[i].prims2, xm_worldmap_objects[i].prims, xm_worldmap_objects[i].def->packet_size);
+        xm_worldmap_objects[i].unk44 = ((s32 *)xm_worldmap_object_meshes)[xm_worldmap_objects[i].unk2];
+        ((s32 *)xm_worldmap_objects[i].unk44)[1] = xm_worldmap_objects[i].unk44 + ((s32 *)xm_worldmap_objects[i].unk44)[1];
+        xm_worldmap_objects[i].parent = NULL;
+    }
+    xm_model_ot_depth_shift = 2;
+    xm_worldmap_walker_face = -1;
+    xm_worldmap_walker_object = -1;
+    xm_worldmap_objects[4].visible = 1;
+}
+#endif
 
 
 #ifndef XENO_PC_PORT
@@ -7149,7 +8322,79 @@ s32 func_8008A5B8(s32 index) {
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8008A72C);
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8008B2BC);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_second_member_start (src/decomp/src/worldmap/worldmap_objects_effects_party.c:3026). */
+#ifndef XM_S_worldmap_second_member_start
+#define XM_S_worldmap_second_member_start
+s32 xm_worldmap_second_member_start(s32 index) __asm__("func_8008B2BC");
+#endif
+s32 func_8008B2BC(s32 index) {
+    WorldmapActor *actor;
+    s32 result;
+
+    actor = &xm_worldmap_actor_slots[index];
+    result = 1;
+    if (xm_game_data.party[1] != 0xFF) {
+        actor->handle = xm_sprite_create(xm_worldmap_character_models[1], 0x110, 0x1E0, 0x150, 0x100, 0x40);
+        xm_sprite_start_animation(actor->handle, 0);
+        xm_sprite_set_scale(actor->handle, 0x1800);
+        actor->handle->render.word &= ~SPRITE_HIDDEN;
+        actor->unk24 = 0;
+    } else {
+        actor->unk24 = 1;
+        result = 3;
+    }
+    actor->position.vx = xm_game_data.worldmap.x << 12;
+    actor->position.vz = xm_game_data.worldmap.z << 12;
+    actor->position.vy = xm_worldmap_terrain_get_height(actor->position.vx, actor->position.vz);
+    actor->motion.vz = 0;
+    actor->motion.vy = 0;
+    actor->motion.vx = 0;
+    actor->heading = xm_game_data.worldmap.heading;
+    actor->turn = 8;
+    actor->unk58 = 0xF;
+    actor->unk5C = actor->heading;
+    switch (xm_worldmap_movement_mode) {
+    case 1:
+    case 2:
+    case 3:
+        if (xm_game_data.inGear[1] == 0) {
+            actor->position.vx = xm_worldmap_player_position.vx;
+            actor->position.vz = xm_worldmap_player_position.vz;
+            actor->position.vy = xm_worldmap_terrain_get_height(actor->position.vx, actor->position.vz);
+            actor->heading = xm_worldmap_player_heading;
+        } else {
+            actor->state = 1;
+            actor->unk24 = 1;
+        }
+        break;
+    case 4:
+    case 5:
+    case 6:
+        actor->state = 3;
+        actor->unk24 = 1;
+        if (xm_game_data.party[1] != 0xFF) {
+            xm_game_data.inGear[1] = 1;
+        }
+        break;
+    case 7:
+        actor->state = 2;
+        actor->unk24 = 1;
+        if (xm_game_data.party[1] != 0xFF) {
+            xm_game_data.inGear[1] = 1;
+        }
+        break;
+    case 8:
+    case 9:
+    case 10:
+    case 11:
+    case 12:
+    case 13:
+        break;
+    }
+    return result;
+}
+#endif
 
 
 #ifndef XENO_PC_PORT
@@ -7209,7 +8454,79 @@ s32 func_8008B54C(s32 index) {
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8008B644);
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8008BB40);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_third_member_start (src/decomp/src/worldmap/worldmap_objects_effects_party.c:3279). */
+#ifndef XM_S_worldmap_third_member_start
+#define XM_S_worldmap_third_member_start
+s32 xm_worldmap_third_member_start(s32 index) __asm__("func_8008BB40");
+#endif
+s32 func_8008BB40(s32 index) {
+    WorldmapActor *actor;
+    s32 result;
+
+    actor = &xm_worldmap_actor_slots[index];
+    result = 1;
+    if (xm_game_data.party[2] != 0xFF) {
+        actor->handle = xm_sprite_create(xm_worldmap_character_models[2], 0x120, 0x1E0, 0x160, 0x100, 0x40);
+        xm_sprite_start_animation(actor->handle, 0);
+        xm_sprite_set_scale(actor->handle, 0x1800);
+        actor->handle->render.word &= ~SPRITE_HIDDEN;
+        actor->unk24 = 0;
+    } else {
+        actor->unk24 = 1;
+        result = 3;
+    }
+    actor->position.vx = xm_game_data.worldmap.x << 12;
+    actor->position.vz = xm_game_data.worldmap.z << 12;
+    actor->position.vy = xm_worldmap_terrain_get_height(actor->position.vx, actor->position.vz);
+    actor->motion.vz = 0;
+    actor->motion.vy = 0;
+    actor->motion.vx = 0;
+    actor->heading = xm_game_data.worldmap.heading;
+    actor->turn = 8;
+    actor->unk58 = 0x1E;
+    actor->unk5C = actor->heading;
+    switch (xm_worldmap_movement_mode) {
+    case 1:
+    case 2:
+    case 3:
+        if (xm_game_data.inGear[2] == 0) {
+            actor->position.vx = xm_worldmap_player_position.vx;
+            actor->position.vz = xm_worldmap_player_position.vz;
+            actor->position.vy = xm_worldmap_terrain_get_height(actor->position.vx, actor->position.vz);
+            actor->heading = xm_worldmap_player_heading;
+        } else {
+            actor->state = 1;
+            actor->unk24 = 1;
+        }
+        break;
+    case 4:
+    case 5:
+    case 6:
+        actor->state = 3;
+        actor->unk24 = 1;
+        if (xm_game_data.party[2] != 0xFF) {
+            xm_game_data.inGear[2] = 1;
+        }
+        break;
+    case 7:
+        actor->state = 2;
+        actor->unk24 = 1;
+        if (xm_game_data.party[2] != 0xFF) {
+            xm_game_data.inGear[2] = 1;
+        }
+        break;
+    case 8:
+    case 9:
+    case 10:
+    case 11:
+    case 12:
+    case 13:
+        break;
+    }
+    return result;
+}
+#endif
 
 
 #ifndef XENO_PC_PORT
@@ -8879,10 +10196,6 @@ void func_800960BC(void) {
 
 #ifndef XENO_PC_PORT
 /* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_stream_wait_for_slot (src/decomp/src/worldmap/worldmap_movement_terrain.c:894). */
-#ifndef XM_S_worldmap_stream_wait_for_slot
-#define XM_S_worldmap_stream_wait_for_slot
-void xm_worldmap_stream_wait_for_slot(void) __asm__("func_80096130");
-#endif
 #ifndef XM_S_worldmap_stream_step
 #define XM_S_worldmap_stream_step
 s32 xm_worldmap_stream_step(void) __asm__("func_800967E4");
@@ -9201,14 +10514,6 @@ INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80096C0C);
 
 #ifndef XENO_PC_PORT
 /* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_camera_place_orbit (src/decomp/src/worldmap/worldmap_movement_terrain.c:1295). */
-#ifndef XM_T_ViewSetup
-#define XM_T_ViewSetup
-typedef struct ViewSetup {
-    SVECTOR eye;
-    SVECTOR at;
-    VECTOR up;
-} ViewSetup;
-#endif
 #ifndef XM_T_OrbitScratch
 #define XM_T_OrbitScratch
 typedef struct {
@@ -9271,10 +10576,6 @@ void func_80096F18(ViewSetup *view, Camera *camera, s32 distance, SVECTOR *angle
 #define XM_T_SCRATCH_MATRIX_C
 #define SCRATCH_MATRIX_C ((MATRIX *)0x1F800130)
 #endif
-#ifndef XM_S_worldmap_get_matrix_angles
-#define XM_S_worldmap_get_matrix_angles
-void xm_worldmap_get_matrix_angles(MATRIX *m, SVECTOR *angle) __asm__("func_80097070");
-#endif
 #ifndef XM_S_ratan2
 #define XM_S_ratan2
 long xm_ratan2(long y, long x) __asm__("ratan2");
@@ -9323,10 +10624,6 @@ typedef struct {
 #ifndef XM_T_LOOKAT_SCRATCH
 #define XM_T_LOOKAT_SCRATCH
 #define LOOKAT_SCRATCH ((LookAtScratch *)0x1F800000)
-#endif
-#ifndef XM_S_worldmap_camera_build_look_at
-#define XM_S_worldmap_camera_build_look_at
-void xm_worldmap_camera_build_look_at(void *arg) __asm__("func_80097244");
 #endif
 #ifndef XM_S_OuterProduct12
 #define XM_S_OuterProduct12
@@ -9379,10 +10676,6 @@ void func_80097244(void *arg) {
 #ifndef XM_T_SCRATCH_VECTOR
 #define XM_T_SCRATCH_VECTOR
 #define SCRATCH_VECTOR ((VECTOR *)0x1F800000)
-#endif
-#ifndef XM_S_worldmap_camera_build_from_angles
-#define XM_S_worldmap_camera_build_from_angles
-void xm_worldmap_camera_build_from_angles(void *arg) __asm__("func_80097440");
 #endif
 #ifndef XM_S_RotMatrixZ
 #define XM_S_RotMatrixZ
@@ -9544,10 +10837,6 @@ typedef s32 (*ActorFunc)(s32 index);
 #define XM_S_worldmap_actor_run_all
 void xm_worldmap_actor_run_all(void) __asm__("func_80097800");
 #endif
-#ifndef XM_S_sprite_destroy
-#define XM_S_sprite_destroy
-void xm_sprite_destroy(Sprite *sprite) __asm__("func_800230A8");
-#endif
 void func_80097800(void) {
     WorldmapActor *actor;
     s32 i;
@@ -9580,7 +10869,38 @@ void func_80097800(void) {
 }
 #endif
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_800978FC);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_terrain_alloc_packets (src/decomp/src/worldmap/worldmap_movement_terrain.c:1529). */
+#ifndef XM_T_xm_DisplayBuffer
+#define XM_T_xm_DisplayBuffer
+typedef struct xm_DisplayBuffer {
+    DRAWENV draw;
+    DISPENV disp;
+    u_long *ot;    
+    void *packets; 
+} xm_DisplayBuffer;
+#endif
+#ifndef XM_T_xm_TriangleBuffer
+#define XM_T_xm_TriangleBuffer
+typedef struct {
+    POLY_FT3 prims[0x800];
+} xm_TriangleBuffer;
+#endif
+void func_800978FC(void) {
+    POLY_FT3 *prim;
+    s32 i;
+
+    xm_worldmap_display_buffers[0].packets = xm_heap_alloc(0x10000, 1);
+    xm_worldmap_display_buffers[1].packets = xm_heap_alloc(0x10000, 1);
+    prim = xm_worldmap_display_buffers[0].packets;
+    for (i = 0; i < 0x800; i++, prim++) {
+        setlen(prim, 7);
+        setcode(prim, 0x24);
+        setRGB0(prim, 0x80, 0x80, 0x80);
+    }
+    *(xm_TriangleBuffer *)xm_worldmap_display_buffers[1].packets = *(xm_TriangleBuffer *)xm_worldmap_display_buffers[0].packets;
+}
+#endif
 
 INCLUDE_ASM("asm/world_map/nonmatchings/main", func_800979C8);
 
@@ -9598,17 +10918,9 @@ void xm_worldmap_terrain_reset_at(VECTOR *position) __asm__("func_80097BC0");
 #define XM_S_worldmap_terrain_matrix
 extern MATRIX xm_worldmap_terrain_matrix __asm__("D_8009D534");
 #endif
-#ifndef XM_S_worldmap_wave_phase_x
-#define XM_S_worldmap_wave_phase_x
-extern s32 xm_worldmap_wave_phase_x __asm__("D_8009C5BC");
-#endif
 #ifndef XM_S_worldmap_wave_phase_z
 #define XM_S_worldmap_wave_phase_z
 extern s32 xm_worldmap_wave_phase_z __asm__("D_8009C618");
-#endif
-#ifndef XM_S_worldmap_terrain_update_grid
-#define XM_S_worldmap_terrain_update_grid
-void xm_worldmap_terrain_update_grid(Camera *camera) __asm__("func_800981C8");
 #endif
 #ifndef XM_S_worldmap_terrain_queue_missing_blocks
 #define XM_S_worldmap_terrain_queue_missing_blocks
@@ -9777,14 +11089,6 @@ void func_80098044(void) {
 
 #ifndef XENO_PC_PORT
 /* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_terrain_wrap_origin (src/decomp/src/worldmap/worldmap_movement_terrain.c:1704). */
-#ifndef XM_S_worldmap_terrain_wrap_origin
-#define XM_S_worldmap_terrain_wrap_origin
-void xm_worldmap_terrain_wrap_origin(void *arg) __asm__("func_800980D4");
-#endif
-#ifndef XM_S_worldmap_terrain_crossed_edges
-#define XM_S_worldmap_terrain_crossed_edges
-extern s16 xm_worldmap_terrain_crossed_edges __asm__("D_8009D558");
-#endif
 void func_800980D4(void *arg) {
     VECTOR *position;
     s32 x;
