@@ -345,8 +345,11 @@ def analyze(row,fe,mode=''):
         for n0,r0 in renames.items(): txt=re.sub(r'(?<![\w.>])%s\b'%re.escape(n0),r0,txt)
         return txt
     for t in um: out.append('#pragma push_macro("%s")\n#undef %s\n%s'%(t,t,_rn(XMAC[t])))
+    _ps=EA_MODE and re.search(r'PSX_SCRATCH\s*\(',body+''.join(o for o in out))
+    if _ps: out.append('#pragma push_macro("PSX_SCRATCH")\n#undef PSX_SCRATCH\n#define PSX_SCRATCH(addr) (addr)')
     out.extend(jt_markers(row['blizz_name']) if not a.nojt else [])
     out.append(body)
+    if _ps: out.append('#pragma pop_macro("PSX_SCRATCH")')
     for t in um: out.append('#pragma pop_macro("%s")'%t)
     out.append('#endif')
     return '\n'.join(out)+'\n'
@@ -410,6 +413,7 @@ def func_dump(obj):
         ad+=off
         pf='' if sec is None else sec+':'
         if t=='R_MIPS_26': out.append('J %s%08x'%(pf,ad+((w&0x3ffffff)<<2)))
+        elif t=='R_MIPS_LO16' and sec is None and nm0.startswith('D_1F80'): out.append('%08x'%((w&0xffff0000)|((ad+sx16(w&0xffff))&0xffff)))
         elif t=='R_MIPS_LO16': out.append('%04x LO %s%08x'%(w>>16,pf,ad+sx16(w&0xffff)))
         elif t=='R_MIPS_HI16':
             lo=0
