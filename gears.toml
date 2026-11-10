@@ -181,7 +181,7 @@ name = "MenuG0"
 # (the decomp.me "gcc2.6.3-psx" ps1 compiler).
 #   sha256(cc1) = 16696ec7b00a15c76bb5c245904799b547af59028416896e833eabc2939ed17a
 build_variables = {
-    gcc = "gcc-2.6.3-psx",
+    gcc = "gcc-2.6.3-psx-jt",
     gp_flag = "-G0"
 }
 paths = [ "src/menu/main/misc.", "src/menu/main/misc2.", "src/menu/main/misc3." ]

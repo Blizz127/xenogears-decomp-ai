@@ -13248,7 +13248,202 @@ void func_801DBDB4(void) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DBE54);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): menu_item_screen_run (src/decomp/src/slot39/menu_member_screens.c:70). */
+#ifndef XM_S_menu_item_screen_run
+#define XM_S_menu_item_screen_run
+u8 xm_menu_item_screen_run(void) __asm__("func_801DBE54");
+#endif
+#ifndef XM_S_menu_item_screen_open
+#define XM_S_menu_item_screen_open
+void xm_menu_item_screen_open(void) __asm__("func_801DA4A8");
+#endif
+#ifndef XM_S_menu_item_screen_size_scroll_bar
+#define XM_S_menu_item_screen_size_scroll_bar
+void xm_menu_item_screen_size_scroll_bar(void) __asm__("func_801DBDB4");
+#endif
+#ifndef XM_S_menu_list_cursor_alloc
+#define XM_S_menu_list_cursor_alloc
+void xm_menu_list_cursor_alloc(u8 index) __asm__("func_801DB02C");
+#endif
+#ifndef XM_S_menu_scroll_bar_show
+#define XM_S_menu_scroll_bar_show
+void xm_menu_scroll_bar_show(s32 x, s32 y, s32 h) __asm__("func_801D3344");
+#endif
+#ifndef XM_S_menu_item_screen_bar_step
+#define XM_S_menu_item_screen_bar_step
+extern s16 xm_menu_item_screen_bar_step __asm__("D_801EA72C");
+#endif
+#ifndef XM_S_menu_item_screen_bar_height
+#define XM_S_menu_item_screen_bar_height
+extern s16 xm_menu_item_screen_bar_height __asm__("D_801EA724");
+#endif
+#ifndef XM_S_menu_list_cursor_place
+#define XM_S_menu_list_cursor_place
+void xm_menu_list_cursor_place(s32 entry, s32 row, u8 kind, u8 index) __asm__("func_801DB0A8");
+#endif
+#ifndef XM_S_menu_item_screen_show_description
+#define XM_S_menu_item_screen_show_description
+void xm_menu_item_screen_show_description(s32 entry, s32 row) __asm__("func_801DA9A8");
+#endif
+#ifndef XM_S_menu_view_start_zoom_in
+#define XM_S_menu_view_start_zoom_in
+void xm_menu_view_start_zoom_in(void) __asm__("func_801D1E80");
+#endif
+#ifndef XM_S_menu_item_screen_use_item
+#define XM_S_menu_item_screen_use_item
+u8 xm_menu_item_screen_use_item(s32 row, s32 entry) __asm__("func_801DB920");
+#endif
+#ifndef XM_S_menu_item_screen_swap_entries
+#define XM_S_menu_item_screen_swap_entries
+void xm_menu_item_screen_swap_entries(s32 a, s32 b) __asm__("func_801DBD4C");
+#endif
+#ifndef XM_S_menu_item_screen_scroll_limit
+#define XM_S_menu_item_screen_scroll_limit
+extern s32 xm_menu_item_screen_scroll_limit __asm__("D_801EA728");
+#endif
+#ifndef XM_S_menu_markers_hide
+#define XM_S_menu_markers_hide
+void xm_menu_markers_hide(void) __asm__("func_801D2484");
+#endif
+#ifndef XM_S_menu_list_cursor_free
+#define XM_S_menu_list_cursor_free
+void xm_menu_list_cursor_free(u8 index) __asm__("func_801DB340");
+#endif
+u8 xm_menu_item_screen_run(void) __asm__("func_801DBE54");
+__asm__(".xeno_jt 4 48");
+u8 xm_menu_item_screen_run(void) {
+    u8 running;
+    u8 windows;
+    s32 scroll;
+    s32 scrollShown;
+    s32 cursor;
+    s32 cursorShown;
+    s32 selected;
+
+    running = 1;
+    windows = 1;
+    scroll = 0;
+    scrollShown = 0xff;
+    cursor = 0;
+    cursorShown = 0xff;
+    selected = 0xff;
+    xm_menu_item_screen_open();
+    xm_menu_item_screen_size_scroll_bar();
+    xm_menu_list_cursor_alloc(0);
+    xm_menu_list_cursor_alloc(1);
+    while (running) {
+        xm_menu_run_frame();
+        if (scroll != scrollShown) {
+            xm_menu_item_screen_build_list(scroll);
+            xm_menu_scroll_bar_show(0xc, (u16)xm_menu_item_screen_bar_step * scroll / 100 + 0x12, (u16)xm_menu_item_screen_bar_height);
+            scrollShown = scroll;
+        }
+        xm_menu_list_cursor_place(cursor, scroll, 0, 0);
+        if (cursor != cursorShown) {
+            xm_menu_item_screen_show_description(cursor, scroll);
+            cursorShown = cursor;
+        }
+        if (windows) {
+            xm_menu_panel_open(3, 0xc, 0xa, 0x124, 0x84, 0, 1, 4, 1);
+            xm_menu_panel_open(4, 8, 0x8f, 0x130, 0x22, 0, 1, 4, 0);
+            windows = 0;
+            xm_menu_view_start_zoom_in();
+            xm_menu_field_blocks_slide(0, 0);
+        }
+        xm_menu_list_cursor_place(selected, scroll, 1, 1);
+        switch (xm_menu_state_current->input) {
+        case 4:
+            if (selected == 0xff) {
+                selected = scroll * 2 + cursor;
+            } else {
+                if (scroll * 2 + cursor == selected) {
+                    if (xm_menu_item_screen_use_item(scroll, cursor)) {
+                        scrollShown = 0xff;
+                        cursorShown = 0xff;
+                    }
+                } else {
+                    xm_menu_item_screen_swap_entries(scroll * 2 + cursor, selected);
+                    scrollShown = 0xff;
+                    cursorShown = 0xff;
+                }
+                selected = 0xff;
+            }
+            break;
+        case 5:
+            if (selected == 0xff) {
+                running = 0;
+            } else {
+                selected = 0xff;
+            }
+            break;
+        case 1:
+            if (cursor + 2 >= 16) {
+                if (xm_menu_item_screen_scroll_limit < ++scroll) {
+                    scroll--;
+                }
+            } else {
+                cursor += 2;
+            }
+            cursorShown = 0xff;
+            break;
+        case 3:
+            if (cursor - 2 < 0) {
+                if (--scroll < 0) {
+                    scroll++;
+                }
+            } else {
+                cursor -= 2;
+            }
+            cursorShown = 0xff;
+            break;
+        case 0:
+            if (cursor + 1 >= 16) {
+                if (xm_menu_item_screen_scroll_limit < ++scroll) {
+                    scroll--;
+                } else {
+                    cursor = 14;
+                }
+            } else {
+                cursor++;
+            }
+            cursorShown = 0xff;
+            break;
+        case 2:
+            if (cursor - 1 < 0) {
+                if (--scroll < 0) {
+                    scroll++;
+                } else {
+                    cursor = 1;
+                }
+            } else {
+                cursor--;
+            }
+            cursorShown = 0xff;
+            break;
+        case 9:
+            scroll += 8;
+            if (xm_menu_item_screen_scroll_limit < scroll) {
+                scroll = xm_menu_item_screen_scroll_limit;
+            }
+            cursorShown = 0xff;
+            break;
+        case 10:
+            scroll -= 8;
+            if (scroll < 0) {
+                scroll = 0;
+            }
+            cursorShown = 0xff;
+            break;
+        }
+    }
+    xm_menu_markers_hide();
+    xm_menu_list_cursor_free(0);
+    xm_menu_list_cursor_free(1);
+    xm_menu_label_clear_shown(8, xm_menu_state_current->flags->labels10e0_shown);
+    return 1;
+}
+#endif
 #else
 extern void func_801DA5BC(s32);
 extern void func_801DB0A8(s32, s32, s32, s32);
@@ -13956,7 +14151,141 @@ INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DD790);
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801DDF24);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): menu_arts_screen_run (src/decomp/src/slot39/menu_member_screens.c:677). */
+#ifndef XM_T_FINISH_OPENING
+#define XM_T_FINISH_OPENING
+#define FINISH_OPENING(windows, zoom)                  \
+    do {                                               \
+        (windows) = 0;                                 \
+        if (zoom) {                                    \
+            xm_menu_view_start_zoom_in();                           \
+            xm_menu_field_blocks_slide(0, 0);                       \
+            xm_menu_run_frame();                           \
+        }                                              \
+        xm_menu_state_current->flags->field_menu2_shown = 0;      \
+        xm_menu_state_current->flags->panels_shown[1] = 0;        \
+    } while (0)
+#endif
+#ifndef XM_S_menu_arts_screen_run
+#define XM_S_menu_arts_screen_run
+void xm_menu_arts_screen_run(u8 member, u8 zoom, u8 kind) __asm__("func_801DDF24");
+#endif
+#ifndef XM_S_menu_arts_screen_open
+#define XM_S_menu_arts_screen_open
+void xm_menu_arts_screen_open(u8 kind) __asm__("func_801DC1D4");
+#endif
+#ifndef XM_S_menu_arts_screen_build_list
+#define XM_S_menu_arts_screen_build_list
+void xm_menu_arts_screen_build_list(u8 slot, u8 kind) __asm__("func_801DC3D8");
+#endif
+#ifndef XM_S_menu_arts_screen_show_description
+#define XM_S_menu_arts_screen_show_description
+void xm_menu_arts_screen_show_description(u8 slot, u8 row, u8 kind) __asm__("func_801DCE60");
+#endif
+#ifndef XM_S_menu_arts_screen_panel6_widths
+#define XM_S_menu_arts_screen_panel6_widths
+extern s32 xm_menu_arts_screen_panel6_widths[3] __asm__("D_801E9788");
+#endif
+#ifndef XM_S_menu_arts_screen_panel4_x_table
+#define XM_S_menu_arts_screen_panel4_x_table
+extern s32 xm_menu_arts_screen_panel4_x_table[3] __asm__("D_801E9794");
+#endif
+#ifndef XM_S_menu_arts_screen_panel4_widths
+#define XM_S_menu_arts_screen_panel4_widths
+extern s32 xm_menu_arts_screen_panel4_widths[3] __asm__("D_801E97A0");
+#endif
+#ifndef XM_S_menu_arts_screen_use_art
+#define XM_S_menu_arts_screen_use_art
+void xm_menu_arts_screen_use_art(u8 slot, s32 row, u8 kind) __asm__("func_801DD790");
+#endif
+#ifndef XM_S_menu_step_party_slot
+#define XM_S_menu_step_party_slot
+s32 xm_menu_step_party_slot(s32 slot, u8 dir, u8 readyOnly) __asm__("func_801D9704");
+#endif
+__asm__(".xeno_jt 4 48");
+void func_801DDF24(u8 member, u8 zoom, u8 kind) {
+    s32 cursor;
+    s32 cursorShown;
+    u8 slot;
+    u8 slotShown;
+    u8 windows;
+    u8 running;
+
+    running = 1;
+    windows = 1;
+    cursor = 0;
+    cursorShown = 0xff;
+    slot = member;
+    slotShown = 0xff;
+    xm_menu_arts_screen_open(kind);
+    xm_menu_list_cursor_alloc(0);
+    do {
+        xm_menu_run_frame();
+        if (slot != slotShown) {
+            xm_menu_arts_screen_build_list(slot, kind);
+            slotShown = slot;
+            cursorShown = 0xff;
+        }
+        xm_menu_list_cursor_place(cursor, 0, 2, 0);
+        if (cursor != cursorShown) {
+            xm_menu_arts_screen_show_description(slot, cursor, kind);
+            cursorShown = cursor;
+        }
+        if (windows) {
+            xm_menu_panel_open(6, 0x10, 0xa, xm_menu_arts_screen_panel6_widths[kind], 0x70, 0, 1, 4, 0);
+            xm_menu_panel_open(5, 0xc, 0x86, 0xac, 0x38, 0, 1, 4, 0);
+            xm_menu_panel_open(4, xm_menu_arts_screen_panel4_x_table[kind], 0xa6, xm_menu_arts_screen_panel4_widths[kind], 0x18, 0, 1, 4, 0);
+            xm_menu_panel_open(3, 0xc8, 0x86, 0x50, 0x18, 0, 1, 4, 0);
+            FINISH_OPENING(windows, zoom);
+        }
+        switch (xm_menu_state_current->input) {
+        case 4:
+            if (xm_menu_state_current->arts_list->shown[cursor] & 0x80) {
+                xm_menu_arts_screen_use_art(slot, cursor, kind);
+                slotShown = 0xff;
+                cursorShown = 0xff;
+            }
+            break;
+        case 5:
+            running = 0;
+            break;
+        case 0:
+            if (kind != 2) {
+                if (++cursor >= 12) {
+                    cursor = 11;
+                }
+            }
+            break;
+        case 2:
+            if (kind != 2) {
+                if (--cursor < 0) {
+                    cursor = 0;
+                }
+            }
+            break;
+        case 1:
+            if (cursor + 2 < 12) {
+                cursor += 2;
+            }
+            break;
+        case 3:
+            if (cursor - 2 >= 0) {
+                cursor -= 2;
+            }
+            break;
+        case 9:
+            slot = xm_menu_step_party_slot(slot, 0, kind);
+            break;
+        case 10:
+            slot = xm_menu_step_party_slot(slot, 1, kind);
+            break;
+        }
+    } while (running);
+    xm_menu_label_clear_shown(8, xm_menu_state_current->flags->labels10e0_shown);
+    xm_menu_list_cursor_free(0);
+}
+#endif
 #else
 
 extern u16 D_801E9788[];
@@ -15597,7 +15926,174 @@ void func_801E2B80(void) {
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E2BE4);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): menu_character_command_run (src/decomp/src/slot39/menu_member_screens.c:2202). */
+#ifndef XM_S_menu_character_command_run
+#define XM_S_menu_character_command_run
+u8 xm_menu_character_command_run(void) __asm__("func_801E2BE4");
+#endif
+#ifndef XM_S_menu_character_command_open
+#define XM_S_menu_character_command_open
+void xm_menu_character_command_open(void) __asm__("func_801E2AE0");
+#endif
+#ifndef XM_S_menu_compute_character_equipment
+#define XM_S_menu_compute_character_equipment
+void xm_menu_compute_character_equipment(MenuTables *tables, u8 id) __asm__("func_801E36D4");
+#endif
+#ifndef XM_S_menu_compute_character_stats
+#define XM_S_menu_compute_character_stats
+void xm_menu_compute_character_stats(MenuTables *tables, u8 id) __asm__("func_801E3A80");
+#endif
+#ifndef XM_S_menu_member_page_build
+#define XM_S_menu_member_page_build
+void xm_menu_member_page_build(u8 slot, u8 mode) __asm__("func_801D2EC0");
+#endif
+#ifndef XM_S_menu_choice_window_open
+#define XM_S_menu_choice_window_open
+void xm_menu_choice_window_open(u8 offset) __asm__("func_801E86C8");
+#endif
+#ifndef XM_S_menu_choice_window_set_cursor
+#define XM_S_menu_choice_window_set_cursor
+void xm_menu_choice_window_set_cursor(u8 offset) __asm__("func_801E8B4C");
+#endif
+#ifndef XM_S_menu_row_labels_hide
+#define XM_S_menu_row_labels_hide
+void xm_menu_row_labels_hide(void) __asm__("func_801D25E4");
+#endif
+#ifndef XM_S_menu_equip_screen_run
+#define XM_S_menu_equip_screen_run
+void xm_menu_equip_screen_run(u8 slot, u8 fade, u8 gear) __asm__("func_801E05D0");
+#endif
+#ifndef XM_S_menu_equip_screen_close
+#define XM_S_menu_equip_screen_close
+void xm_menu_equip_screen_close(void) __asm__("func_801DE36C");
+#endif
+#ifndef XM_S_menu_equip_panel_build
+#define XM_S_menu_equip_panel_build
+void xm_menu_equip_panel_build(u8 slot, u8 lower, u8 compare, u8 mode) __asm__("func_801D8DE4");
+#endif
+#ifndef XM_S_menu_equip_labels_layout_parts
+#define XM_S_menu_equip_labels_layout_parts
+void xm_menu_equip_labels_layout_parts(u8 slot, u8 mode, u8 kept, u8 gear) __asm__("func_801D8EA4");
+#endif
+#ifndef XM_S_menu_arts_screen_close
+#define XM_S_menu_arts_screen_close
+void xm_menu_arts_screen_close(u8 kind) __asm__("func_801DC2CC");
+#endif
+#ifndef XM_S_menu_deathblow_screen_run
+#define XM_S_menu_deathblow_screen_run
+u8 xm_menu_deathblow_screen_run(u8 slot) __asm__("func_801E20C8");
+#endif
+u8 xm_menu_character_command_run(void) __asm__("func_801E2BE4");
+__asm__(".xeno_jt 4 40");
+u8 xm_menu_character_command_run(void) {
+    s32 slot;
+    u8 shown;
+    u8 stay;
+    u8 first;
+    s32 i;
+
+    stay = 1;
+    shown = 0xf3;
+    first = 1;
+    slot = xm_menu_state_current->first_member;
+    xm_menu_state_current->choice = 2;
+    xm_menu_state_current->choice_shown = 0xff;
+    xm_menu_character_command_open();
+    for (i = 0; i < 3; i++) {
+        if (xm_menu_state_current->flags->party[i] != 0xff) {
+            slot = i;
+            break;
+        }
+    }
+    while (stay) {
+        xm_menu_run_frame();
+        if (slot != shown) {
+            xm_menu_compute_character_equipment(xm_menu_state_current->tables, xm_menu_state_current->flags->party[slot]);
+            xm_menu_compute_character_stats(xm_menu_state_current->tables, xm_menu_state_current->flags->party[slot]);
+            xm_menu_member_page_build(slot, 0);
+            shown = slot;
+            if (first) {
+                first = 0;
+                xm_menu_view_start_zoom_in();
+                xm_menu_field_blocks_slide(0, 0);
+                xm_menu_choice_window_open(0);
+            }
+        }
+        if (xm_menu_state_current->choice != xm_menu_state_current->choice_shown) {
+            xm_menu_choice_label_place();
+            xm_menu_choice_window_set_cursor(0);
+            xm_menu_state_current->choice_shown = xm_menu_state_current->choice;
+        }
+        switch (xm_menu_state_current->input) {
+        case 4:
+            xm_menu_highlight_hide();
+            xm_menu_row_labels_hide();
+            xm_menu_state_current->flags->detail_shown = 0;
+            xm_menu_state_current->flags->equipment_shown = 0;
+            xm_menu_state_current->flags->equip_labels_shown = 0;
+            switch (xm_menu_state_current->choice) {
+            case 0:
+                xm_menu_state_current->flags->lists_shown = 0;
+                xm_menu_equip_screen_run(slot, 0, 0);
+                xm_menu_equip_screen_close();
+                xm_menu_equip_panel_build(slot, 0, 0, 0);
+                xm_menu_equip_labels_layout_parts(slot, 0, 0, 0);
+                shown = 0xff;
+                xm_menu_state_current->flags->lists_shown = 1;
+                break;
+            case 1:
+                xm_menu_arts_screen_run(slot, 0, 0);
+                xm_menu_arts_screen_close(0);
+                shown = 0xff;
+                break;
+            case 2:
+                xm_menu_deathblow_screen_run(slot);
+                break;
+            }
+            xm_menu_party_labels_show(1);
+            xm_menu_state_current->flags->detail_shown = 1;
+            xm_menu_state_current->flags->equipment_shown = 1;
+            xm_menu_state_current->flags->equip_labels_shown = 1;
+            xm_menu_highlight_place(xm_menu_state_current->choice + 7, 1);
+            xm_menu_state_current->flags->sprite_shown = 1;
+            xm_menu_state_current->choice_shown = 0xff;
+            xm_menu_member_marks_show(0, 0);
+            break;
+        case 5:
+            stay = 0;
+            break;
+        case 2:
+        case 6:
+        case 7:
+        case 8:
+            break;
+        case 1:
+            if (xm_menu_state_current->choice != 0) {
+                xm_menu_state_current->choice--;
+            } else {
+                xm_menu_state_current->choice = xm_menu_state_current->choice_count - 1;
+            }
+            break;
+        case 3:
+            if (++xm_menu_state_current->choice >= xm_menu_state_current->choice_count) {
+                xm_menu_state_current->choice = 0;
+            }
+            break;
+        case 9:
+            slot = xm_menu_step_party_slot(slot, 0, 0);
+            break;
+        case 10:
+            slot = xm_menu_step_party_slot(slot, 1, 0);
+            break;
+        }
+    }
+    xm_menu_party_labels_show(0);
+    xm_menu_state_current->flags->sprite_shown = 0;
+    xm_menu_state_current->flags->cursor_shown = 0;
+    return 1;
+}
+#endif
 #else
 /* The retail Status controller is not translated yet.  Calling the generated
  * port stub returned without running func_801E2AE0, but func_801C531C still
@@ -15617,7 +16113,70 @@ s32 func_801E2BE4(void) {
 #endif
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E3088);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): menu_top_command_close (src/decomp/src/slot39/menu_member_screens.c:2311). */
+#ifndef XM_S_menu_top_command_close
+#define XM_S_menu_top_command_close
+void xm_menu_top_command_close(u8 offset) __asm__("func_801E3088");
+#endif
+#ifndef XM_S_menu_file_screen_leave_card_mode
+#define XM_S_menu_file_screen_leave_card_mode
+void xm_menu_file_screen_leave_card_mode(void) __asm__("func_801D9E3C");
+#endif
+#ifndef XM_S_menu_gear_command_close
+#define XM_S_menu_gear_command_close
+void xm_menu_gear_command_close(void) __asm__("func_801E2368");
+#endif
+#ifndef XM_S_menu_item_screen_close
+#define XM_S_menu_item_screen_close
+void xm_menu_item_screen_close(void) __asm__("func_801DA518");
+#endif
+#ifndef XM_S_menu_equip_command_close
+#define XM_S_menu_equip_command_close
+void xm_menu_equip_command_close(void) __asm__("func_801DE400");
+#endif
+#ifndef XM_S_menu_character_command_close
+#define XM_S_menu_character_command_close
+void xm_menu_character_command_close(void) __asm__("func_801E2B80");
+#endif
+void xm_menu_top_command_close(u8 offset) __asm__("func_801E3088");
+__asm__(".xeno_jt 4 40");
+void xm_menu_top_command_close(u8 offset) {
+    switch (xm_menu_state_current->cursor + offset) {
+    case 1:
+    case 8:
+        xm_menu_file_screen_leave_card_mode();
+        break;
+    case 2:
+        xm_menu_state_current->flags->detail_shown = 0;
+        xm_menu_state_current->flags->equipment_shown = 0;
+        xm_menu_state_current->flags->equip_labels_shown = 0;
+        xm_menu_gear_command_close();
+        break;
+    case 3:
+        xm_menu_arts_screen_close(0);
+        break;
+    case 4:
+        xm_menu_item_screen_close();
+        break;
+    case 5:
+        xm_menu_equip_screen_close();
+        xm_menu_equip_command_close();
+        break;
+    case 6:
+        xm_menu_state_current->flags->detail_shown = 0;
+        xm_menu_state_current->flags->equipment_shown = 0;
+        xm_menu_state_current->flags->equip_labels_shown = 0;
+        xm_menu_row_labels_hide();
+        xm_menu_character_command_close();
+        break;
+    case 0:
+    case 7:
+    case 9:
+        break;
+    }
+}
+#endif
 #else
 extern void func_801D9E3C(void);
 extern void func_801E2368(void);
@@ -15824,7 +16383,116 @@ void func_801E35BC(void* pCtx, u8 charIdx, u8 statIdx, u8 slotIdx, u8 isReverse)
 }
 
 #ifndef XENO_PC_PORT
-INCLUDE_ASM("../asm/menu/nonmatchings/main/misc", func_801E36D4);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): menu_compute_character_equipment (src/decomp/src/slot39/menu_member_screens.c:2496). */
+__asm__(".xeno_jt 4 40");
+void func_801E36D4(MenuTables *tables, u8 id) {
+    CharacterRecord *chara;
+    AccessoryInfo *accessory;
+    EquipInfo *weapon;
+    u8 i;
+    u8 amount;
+
+    chara = &xm_game_data.characters[id];
+    chara->bodyDefense = 0;
+    chara->flags32 = 0;
+    chara->equipAttack = 0;
+    chara->equipDefense = 0;
+    chara->equipSpeed = 0;
+    chara->equipEther = 0;
+    chara->equipEtherDefense = 0;
+    chara->equip5E = 0;
+    chara->equip5F = 0;
+    chara->hpBonus = 0;
+    chara->epBonus = 0;
+    chara->status7E = 0;
+    chara->status82 = 0;
+    chara->status84.half.permanent = 0;
+    chara->status88.half.permanent = 0;
+    chara->status8C.half.permanent = 0;
+    chara->fieldA1 = 0;
+    for (i = 0; i < 3; i++) {
+        accessory = tables->accessories;
+        accessory += chara->accessories[i];
+        chara->bodyDefense += accessory->amount;
+        switch (accessory->kind) {
+        case 1:
+            chara->status7E |= accessory->value;
+            break;
+        case 2:
+            chara->status82 |= accessory->value;
+            break;
+        case 3:
+            chara->status84.half.permanent |= accessory->value;
+            break;
+        case 4:
+            chara->status88.half.permanent |= accessory->value;
+            break;
+        case 7:
+            chara->status8C.half.permanent |= accessory->value;
+            break;
+        case 5:
+            chara->flags32 |= accessory->value;
+            break;
+        case 8:
+        case 9:
+            chara->hpBonus += accessory->value;
+            break;
+        case 10:
+            chara->fieldA1 += accessory->value;
+            break;
+        }
+        amount = accessory->stats;
+        if (accessory->stats & 0x8000) {
+            chara->equipAttack += amount;
+        }
+        if (accessory->stats & 0x4000) {
+            chara->equipDefense += amount;
+        }
+        if (accessory->stats & 0x2000) {
+            chara->equipSpeed += amount;
+        }
+        if (accessory->stats & 0x1000) {
+            chara->equipEther += amount;
+        }
+        if (accessory->stats & 0x800) {
+            chara->equipEtherDefense += amount;
+        }
+        if (accessory->stats & 0x400) {
+            chara->equip5E += amount;
+        }
+        if (accessory->stats & 0x200) {
+            chara->equip5F += amount;
+        }
+        if (accessory->stats & 0x100) {
+            chara->bodyDefense += amount;
+        }
+    }
+    weapon = tables->equipment;
+    weapon += chara->weapons[0];
+    chara->entries[0].value4 = weapon->power;
+    chara->entries[0].field0 = weapon->value;
+    chara->entries[0].value2 = weapon->a;
+    chara->entries[0].value3 = weapon->b;
+    if (chara->characterId == 4) {
+        weapon = tables->equipment;
+        weapon += chara->entryItems[0];
+        chara->entries[0].value4 = weapon->power;
+        chara->entries[0].field0 = weapon->value;
+        chara->entries[0].value2 = weapon->a;
+        chara->entries[0].value3 = weapon->b;
+        weapon = tables->equipment;
+        weapon += chara->entryItems[3];
+        chara->entries[3].value4 = weapon->power;
+        chara->entries[3].field0 = weapon->value;
+        chara->entries[3].value2 = weapon->a;
+        chara->entries[3].value3 = weapon->b;
+    }
+    if (chara->entries[0].value3 == 100) {
+        chara->status8C.half.permanent |= chara->entries[0].field0;
+    }
+}
+#endif
 #else
 /* Retail character equipment effects. Access packed records by byte so the
  * native pointer width cannot change the 16-byte item or 0xA4 character stride. */
