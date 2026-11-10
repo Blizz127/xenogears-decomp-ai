@@ -36,6 +36,11 @@ if not EA_MODE and xmap[MOD]!='resident': xsym.update(load_syms(X+'overlays/%s.s
 if not EA_MODE:
     for _f in sorted(glob.glob(X+'overlays/*.symbols.txt')):
         for _k,_v in load_syms(_f).items(): xsym.setdefault(_k,_v)
+if not EA_MODE:
+    try:
+        for _k,_v in json.load(open(WORK+'/ext/xem/src/port/symbols.json')).items():
+            if isinstance(_v,int) and _k not in xsym: xsym[_k]=(_v,'')
+    except Exception as _e: pass
 # Blizz known symbol names for this module
 def toks(path,S):
     try: t=open(path,errors='ignore').read()
@@ -229,6 +234,8 @@ def analyze(row,fe,mode=''):
         if not has_ro(row['blizz_name']): raise Reject('rodata not migrated into function .s')
     pf=fe['file']; CTXF[0]=pf; decls=[]; typeents=[]; seen_t=set(); symdone={}; inprog=set(); fwd=set()
     base_toks=ident_tokens(src)
+    for _m in list(base_toks):
+        if _m in XMAC2: base_toks+= [t3 for t3 in ident_tokens(XMAC2[_m]) if t3!=_m]
     renames={}
     ISO='iso' in mode; ASMDEF='asmdef' in mode; tmap={}
     def isotype(n): return ISO and n not in PSYQ and any(e['kind'] in ('typedef','tag') for e in (idx.get(n,[])+idx.get('tag:'+n,[])))
@@ -334,20 +341,32 @@ def analyze(row,fe,mode=''):
         for t2 in ident_tokens(XMAC[um[k_]].split('\n',1)[0].split(')',1)[-1]+'\n'+'\n'.join(XMAC[um[k_]].split('\n')[1:])):
             if t2 in XMAC and t2 not in um and t2!=um[k_]: um.append(t2)
         k_+=1
-    for t in um: out.append('#pragma push_macro("%s")\n#undef %s\n%s'%(t,t,XMAC[t]))
+    def _rn(txt):
+        for n0,r0 in renames.items(): txt=re.sub(r'(?<![\w.>])%s\b'%re.escape(n0),r0,txt)
+        return txt
+    for t in um: out.append('#pragma push_macro("%s")\n#undef %s\n%s'%(t,t,_rn(XMAC[t])))
     out.extend(jt_markers(row['blizz_name']) if not a.nojt else [])
     out.append(body)
     for t in um: out.append('#pragma pop_macro("%s")'%t)
     out.append('#endif')
     return '\n'.join(out)+'\n'
 XMAC={}
+XMAC2={}
 def _load_xmac():
     p=WORK+'/ext/xem/src/decomp/include/psyq/inline_c.h'
     try: t=open(p,errors='ignore').read()
     except: return
     for m in re.finditer(r'^#define (\w+)((?:[^\n]*\\\n)*[^\n]*)',t,re.M):
         XMAC[m.group(1)]=m.group(0)
-_load_xmac()
+def _load_xmac2():
+    import glob as _g
+    pat=re.compile(r"^#define (SCRIPT_VECTOR|SCRATCH_SVECTOR|GROUND_SCROLL|SPRITE_HIDDEN|VIEW_VECTORS|\w*_SCRATCH_?\w*)[ \t]+(\(\((?:SVECTOR|VECTOR|s32|s16|u8|u16|u32) \*\)(?:0x[0-9A-Fa-f]+|&\w+)\)|\d+)[ \t]*(?:/\*.*\*/)?[ \t]*$",re.M)
+    for f in _g.glob(WORK+'/ext/xem/src/decomp/src/worldmap/*.[hc]'):
+        try: t=open(f,errors='ignore').read()
+        except: continue
+        for m in pat.finditer(t):
+            XMAC.setdefault(m.group(1),'#define %s %s'%(m.group(1),m.group(2))); XMAC2[m.group(1)]=XMAC[m.group(1)]
+_load_xmac2()
 def run(cmd,**k):
     return subprocess.run(cmd,shell=True,capture_output=True,text=True,**k)
 N2A=globals().get("N2A",{})
