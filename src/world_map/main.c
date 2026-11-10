@@ -4233,9 +4233,114 @@ void func_80077480(void) {
 #endif
 
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8007756C);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_scene8_camera_start (src/decomp/src/worldmap/worldmap_open_map.c:2088). */
+#ifndef XM_S_worldmap_scene8_camera_start
+#define XM_S_worldmap_scene8_camera_start
+s32 xm_worldmap_scene8_camera_start(s32 index) __asm__("func_8007756C");
+#endif
+#ifndef XM_S_worldmap_camera_place_orbit
+#define XM_S_worldmap_camera_place_orbit
+void xm_worldmap_camera_place_orbit(ViewSetup *view, Camera *camera, s32 distance, SVECTOR *angle) __asm__("func_80096F18");
+#endif
+#pragma push_macro("SCRIPT_VECTOR")
+#undef SCRIPT_VECTOR
+#define SCRIPT_VECTOR ((SVECTOR *)0x1F8000A0)
+#pragma push_macro("VIEW_VECTORS")
+#undef VIEW_VECTORS
+#define VIEW_VECTORS ((SVECTOR *)&xm_worldmap_view_setup)
+s32 func_8007756C(s32 index) {
+    WorldmapActor *actor;
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_800776E0);
+    xm_worldmap_camera_angle.vx = -0x80;
+    xm_worldmap_camera_angle.vy = 0x200;
+    xm_worldmap_camera_distance = 0x400000;
+    xm_worldmap_camera_angle.vz = 0;
+    actor = &xm_worldmap_actor_slots[index];
+    actor->position.vx = -0x80000;
+    xm_worldmap_view_center_y = 0x78;
+    actor->position.vy = xm_worldmap_camera_angle.vy << 12;
+    actor->motion = actor->position;
+    xm_worldmap_view_kind = 0;
+    xm_worldmap_camera.target.vx = xm_worldmap_player_position.vx;
+    xm_worldmap_camera.target.vy = xm_worldmap_player_position.vy;
+    xm_worldmap_camera.target.vz = xm_worldmap_player_position.vz;
+    xm_worldmap_camera_place_orbit(&xm_worldmap_view_setup, &xm_worldmap_camera, xm_worldmap_camera_distance, &xm_worldmap_camera_angle);
+    *SCRIPT_VECTOR = VIEW_VECTORS[0];
+    VIEW_VECTORS[0] = VIEW_VECTORS[1];
+    VIEW_VECTORS[1] = *SCRIPT_VECTOR;
+    return 1;
+}
+#pragma pop_macro("SCRIPT_VECTOR")
+#pragma pop_macro("VIEW_VECTORS")
+#endif
+
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_scene8_camera_update (src/decomp/src/worldmap/worldmap_open_map.c:2113). */
+#ifndef XM_T_CameraScratch
+#define XM_T_CameraScratch
+typedef struct {
+    VECTOR delta;     
+    u8 pad10[0x90];
+    SVECTOR view;     
+} CameraScratch;
+#endif
+#ifndef XM_S_worldmap_scene8_camera_update
+#define XM_S_worldmap_scene8_camera_update
+s32 xm_worldmap_scene8_camera_update(s32 index) __asm__("func_800776E0");
+#endif
+#ifndef XM_S_worldmap_loop_running
+#define XM_S_worldmap_loop_running
+extern s32 xm_worldmap_loop_running __asm__("D_8009D554");
+#endif
+#pragma push_macro("VIEW_VECTORS")
+#undef VIEW_VECTORS
+#define VIEW_VECTORS ((SVECTOR *)&xm_worldmap_view_setup)
+s32 func_800776E0(s32 index) {
+    CameraScratch *scratch;
+    WorldmapActor *actor;
+
+    scratch = (CameraScratch *)0x1F800000;
+    actor = &xm_worldmap_actor_slots[index];
+    if (xm_worldmap_pad_port0_pressed & 0x40) {
+        xm_worldmap_loop_running = 0;
+        xm_worldmap_loop_result = 0;
+    }
+    if (xm_worldmap_pad_port0_held & 0x1000) {
+        actor->position.vx += 0x8000;
+    }
+    if (xm_worldmap_pad_port0_held & 0x4000) {
+        actor->position.vx -= 0x8000;
+    }
+    if (actor->position.vx < -0x180000) {
+        actor->position.vx = -0x180000;
+    } else if (actor->position.vx > 0x18000) {
+        actor->position.vx = 0x18000;
+    }
+    if (xm_worldmap_pad_port0_held & 0x8004) {
+        actor->position.vy -= 0x10000;
+    }
+    if (xm_worldmap_pad_port0_held & 0x2008) {
+        actor->position.vy += 0x10000;
+    }
+    if ((actor->motion.vx != actor->position.vx) | (actor->motion.vy != actor->position.vy)) {
+        scratch->delta.vx = actor->position.vx - actor->motion.vx;
+        scratch->delta.vy = actor->position.vy - actor->motion.vy;
+        actor->motion.vx += scratch->delta.vx >> 3;
+        actor->motion.vy += scratch->delta.vy >> 3;
+    }
+    xm_worldmap_camera_angle.vx = actor->motion.vx >> 12;
+    xm_worldmap_camera_angle.vy = actor->motion.vy >> 12;
+    xm_worldmap_camera_place_orbit(&xm_worldmap_view_setup, &xm_worldmap_camera, xm_worldmap_camera_distance, &xm_worldmap_camera_angle);
+    scratch->view = VIEW_VECTORS[0];
+    VIEW_VECTORS[0] = VIEW_VECTORS[1];
+    VIEW_VECTORS[1] = scratch->view;
+    xm_worldmap_camera_angle.vy = (xm_worldmap_camera_angle.vy + 0x800) & 0xFFF;
+    xm_SetGeomScreen(xm_worldmap_projection_distance);
+    return 1;
+}
+#pragma pop_macro("VIEW_VECTORS")
+#endif
 
 
 #ifndef XENO_PC_PORT
@@ -4390,10 +4495,6 @@ extern s32 xm_worldmap_screen_fade_rate __asm__("D_8009CCA4");
 #ifndef XM_S_worldmap_screen_fade_step
 #define XM_S_worldmap_screen_fade_step
 extern s32 xm_worldmap_screen_fade_step __asm__("D_8009D3CC");
-#endif
-#ifndef XM_S_worldmap_loop_running
-#define XM_S_worldmap_loop_running
-extern s32 xm_worldmap_loop_running __asm__("D_8009D554");
 #endif
 #ifndef XM_S_worldmap_get_ground_distance
 #define XM_S_worldmap_get_ground_distance
@@ -4959,10 +5060,6 @@ typedef struct xm_Camera {
 #ifndef XM_S_worldmap_scene10_script_update
 #define XM_S_worldmap_scene10_script_update
 s32 xm_worldmap_scene10_script_update(s32 index) __asm__("func_80078EA4");
-#endif
-#ifndef XM_S_worldmap_camera_place_orbit
-#define XM_S_worldmap_camera_place_orbit
-void xm_worldmap_camera_place_orbit(xm_ViewSetup *view, xm_Camera *camera, s32 distance, SVECTOR *angle) __asm__("func_80096F18");
 #endif
 __asm__(".xeno_jt 8 80 jtbl_8006FB60");
 s32 func_80078EA4(s32 index) {
@@ -5769,7 +5866,124 @@ s32 func_8007AD34(s32 arg0) {
 #endif
 
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8007ADD4);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_scene14_camera_update (src/decomp/src/worldmap/worldmap_scene14.c:161). */
+#ifndef XM_S_worldmap_scene14_camera_update
+#define XM_S_worldmap_scene14_camera_update
+s32 xm_worldmap_scene14_camera_update(s32 index) __asm__("func_8007ADD4");
+#endif
+__asm__(".xeno_jt 4 32 jtbl_8006FBF4");
+__asm__(".xeno_jt 4 24 jtbl_8006FC14");
+s32 func_8007ADD4(s32 index) {
+    WorldmapActor *actor;
+    CameraScratch *scratch;
+    s32 originZ;
+
+    actor = &xm_worldmap_actor_slots[index];
+    scratch = (CameraScratch *)0x1F800000;
+    switch (actor->unk4) {
+    case 1:
+        actor->unk4 = 0;
+        actor->state = 1;
+        break;
+    case 2:
+        actor->state = 2;
+        actor->unk4 = 0;
+        actor->u.step = 0x40000;
+        break;
+    case 3:
+        xm_worldmap_camera_distance = 0x640000;
+        actor->unk4 = 0;
+        actor->state = 0;
+        xm_worldmap_camera_angle.vx = -0x1E0;
+        xm_worldmap_camera_angle.vy = 0x480;
+        xm_worldmap_camera_angle.vz = 0;
+        break;
+    case 4:
+        actor->unk4 = 0;
+        actor->state = 0;
+        xm_worldmap_camera_distance = 0x1E0000;
+        xm_worldmap_camera_angle.vx = 0x40;
+        xm_worldmap_camera_angle.vy = 0x418;
+        xm_worldmap_camera_angle.vz = 0;
+        xm_worldmap_view_kind = 0;
+        xm_worldmap_camera.target.vz = xm_worldmap_player_position.vz;
+        break;
+    case 5:
+        actor->unk4 = 0;
+        actor->state = 3;
+        break;
+    case 6:
+        actor->unk4 = 0;
+        actor->state = 4;
+        actor->unk58 = xm_worldmap_player_position.vx + 0xC7C00;
+        xm_worldmap_view_kind = 1;
+        actor->unk5C = xm_worldmap_player_position.vz + 0x3EC400;
+        break;
+    case 7:
+        actor->unk4 = 0;
+        actor->state = 5;
+        break;
+    }
+    switch (actor->state) {
+    case 0:
+        xm_worldmap_camera_place_orbit(&xm_worldmap_view_setup, &xm_worldmap_camera, xm_worldmap_camera_distance, &xm_worldmap_camera_angle);
+        break;
+    case 1:
+        actor->u.step += 0x200;
+        if (actor->u.step > 0x8000) {
+            actor->u.step = 0x8000;
+            actor->state = 0;
+        }
+        xm_worldmap_camera_place_orbit(&xm_worldmap_view_setup, &xm_worldmap_camera, xm_worldmap_camera_distance, &xm_worldmap_camera_angle);
+        break;
+    case 2:
+        actor->u.step -= 0x200;
+        if (actor->u.step < 0x8000) {
+            actor->u.step = 0x8000;
+            actor->state = 0;
+        }
+        xm_worldmap_camera_place_orbit(&xm_worldmap_view_setup, &xm_worldmap_camera, xm_worldmap_camera_distance, &xm_worldmap_camera_angle);
+        break;
+    case 3:
+        actor->u.step -= 0x100;
+        if (actor->u.step < 0x1000) {
+            actor->u.step = 0x1000;
+            actor->state = 0;
+        }
+        xm_worldmap_camera_place_orbit(&xm_worldmap_view_setup, &xm_worldmap_camera, xm_worldmap_camera_distance, &xm_worldmap_camera_angle);
+        break;
+    case 4:
+        xm_worldmap_camera.target.vz += 0x3A000;
+        if (xm_worldmap_camera.target.vz > 0x77FFFFF) {
+            actor->state = 0;
+        }
+        VIEW.eye.vx = (actor->unk58 - xm_worldmap_camera.target.vx) >> 12;
+        originZ = actor->unk5C;
+        VIEW.at.vx = VIEW.at.vz = 0;
+        VIEW.at.vy = xm_worldmap_camera.target.vy >> 12;
+        VIEW.eye.vy = (xm_worldmap_camera.target.vy >> 12) - 0x40;
+        VIEW.eye.vz = (xm_worldmap_camera.target.vz - originZ) >> 12;
+        xm_worldmap_camera_build_look_at(&xm_worldmap_view_setup);
+        xm_worldmap_get_matrix_angles(&xm_worldmap_camera_matrix, &xm_worldmap_camera_angle);
+        break;
+    case 5:
+        xm_worldmap_camera_angle.vy += 4;
+        if (xm_worldmap_camera_angle.vy > 0x600) {
+            actor->state = 0;
+        }
+        xm_worldmap_camera_place_orbit(&xm_worldmap_view_setup, &xm_worldmap_camera, xm_worldmap_camera_distance, &xm_worldmap_camera_angle);
+        break;
+    }
+    scratch->view.vx = xm_rand() % (actor->u.step >> 12) - (actor->u.step >> 13);
+    scratch->view.vy = xm_rand() % (actor->u.step >> 12) - (actor->u.step >> 13);
+    VIEW.eye.vx += scratch->view.vx;
+    VIEW.at.vx += scratch->view.vx;
+    VIEW.eye.vy += scratch->view.vy;
+    VIEW.at.vy += scratch->view.vy;
+    return 1;
+}
+#endif
 
 #ifndef XENO_PC_PORT
 /* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_scene14_grow_objects_4_5_start (src/decomp/src/worldmap/worldmap_scene14.c:272). */
@@ -8591,7 +8805,66 @@ s32 func_80084068(s32 index) {
 }
 #endif
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8008440C);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_upload_area_image (src/decomp/src/worldmap/worldmap_objects_effects_party.c:363). */
+#ifndef XM_T_CVECTOR
+#define XM_T_CVECTOR
+typedef struct {
+    u_char r, g, b, cd;
+} CVECTOR;
+#endif
+#ifndef XM_S_model_load_tim_list
+#define XM_S_model_load_tim_list
+void xm_model_load_tim_list(u32 *list) __asm__("func_8002DD20");
+#endif
+#ifndef XM_S_worldmap_area_image_cluts
+#define XM_S_worldmap_area_image_cluts
+extern u16 xm_worldmap_area_image_cluts[16] __asm__("D_8009BCE0");
+#endif
+#ifndef XM_S_worldmap_build_palette_fades
+#define XM_S_worldmap_build_palette_fades
+void xm_worldmap_build_palette_fades(u16 *clut, u16 *out, s32 steps, u8 *colour) __asm__("func_800931D8");
+#endif
+void func_8008440C(void) {
+    RECT rect;
+    CVECTOR fade = {0xE0, 0xF5, 0xFF, 0x00};
+    s32 i;
+    u16 *clut;
+    void *source;
+    void *faded;
+
+    source = xm_text_unpack_lzss_alloc(xm_worldmap_area_image, 1);
+    i = 0;
+    xm_model_load_tim_list(source);
+    xm_DrawSync(0);
+    xm_heap_free(source);
+    clut = xm_worldmap_area_image_cluts;
+    xm_heap_free(xm_worldmap_area_image);
+    source = xm_heap_alloc(0x200, 1);
+    faded = xm_heap_alloc(0x2000, 1);
+    rect.x = 0;
+    rect.y = 0x1F0;
+    rect.w = 0x100;
+    rect.h = 1;
+    xm_StoreImage(&rect, source);
+    xm_DrawSync(0);
+    xm_worldmap_build_palette_fades(source, faded, 0x10, (u8 *)&fade);
+    rect.x = 0;
+    rect.y = 0x1F0;
+    rect.w = 0x100;
+    rect.h = 0xF;
+    xm_LoadImage(&rect, faded);
+    xm_DrawSync(0);
+    do {
+        i++;
+        *clut = xm_GetClut(rect.x, rect.y);
+        rect.y++;
+        clut++;
+    } while (i < 0x10);
+    xm_heap_free(faded);
+    xm_heap_free(source);
+}
+#endif
 
 #ifndef XENO_PC_PORT
 /* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_objects_build (src/decomp/src/worldmap/worldmap_objects_effects_party.c:421). */
@@ -9102,7 +9375,42 @@ void func_80085F58(void) {
     }
 }
 #endif
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80085FE0);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_billboards_alloc_quads (src/decomp/src/worldmap/worldmap_objects_effects_party.c:1000). */
+#ifndef XM_T_QuadBlock512
+#define XM_T_QuadBlock512
+typedef struct {
+    POLY_FT4 quads[0x200];
+} QuadBlock512;
+#endif
+#ifndef XM_S_worldmap_billboard_quads
+#define XM_S_worldmap_billboard_quads
+extern void *xm_worldmap_billboard_quads[2] __asm__("D_8009D7E8");
+#endif
+void func_80085FE0(void) {
+    POLY_FT4 *quad;
+    s32 i;
+
+    xm_worldmap_billboard_quads[0] = xm_heap_alloc(sizeof(QuadBlock512), 1);
+    xm_worldmap_billboard_quads[1] = xm_heap_alloc(sizeof(QuadBlock512), 1);
+    quad = xm_worldmap_billboard_quads[0];
+    for (i = 0; i < 0x200; i++, quad++) {
+        setPolyFT4(quad);
+        setRGB0(quad, 0x80, 0x80, 0x80);
+        quad->u0 = 0;
+        quad->v0 = 0x40;
+        quad->u1 = 0x1F;
+        quad->v1 = 0x40;
+        quad->u2 = 0;
+        quad->v2 = 0x6F;
+        quad->u3 = 0x1F;
+        quad->v3 = 0x6F;
+        quad->clut = xm_GetClut(0xF0, 0x1FF);
+        quad->tpage = xm_GetTPage(0, 0, 0x380, 0x100);
+    }
+    *(QuadBlock512 *)xm_worldmap_billboard_quads[1] = *(QuadBlock512 *)xm_worldmap_billboard_quads[0];
+}
+#endif
 
 
 #ifndef XENO_PC_PORT
@@ -9113,7 +9421,91 @@ void func_80086124(void) {
 #endif
 
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8008615C);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_billboards_draw (src/decomp/src/worldmap/worldmap_objects_effects_party.c:1045). */
+#ifndef XM_T_BillboardScratch
+#define XM_T_BillboardScratch
+typedef struct {
+    SVECTOR corner[4]; 
+    u8 pad20[8];
+    MATRIX view;       
+    MATRIX roll;       
+    u16 clut[16];      
+} BillboardScratch;
+#endif
+#ifndef XM_T_BILLBOARD_SCRATCH
+#define XM_T_BILLBOARD_SCRATCH
+#define BILLBOARD_SCRATCH ((BillboardScratch *)0x1F800000)
+#endif
+#ifndef XM_T_BlockGrid
+#define XM_T_BlockGrid
+typedef struct BlockGrid {
+    s16 cells[81];
+} BlockGrid;
+#endif
+#ifndef XM_S_RotMatrixZ
+#define XM_S_RotMatrixZ
+MATRIX *xm_RotMatrixZ(long r, MATRIX *m) __asm__("RotMatrixZ");
+#endif
+#ifndef XM_S_worldmap_billboard_quad_count
+#define XM_S_worldmap_billboard_quad_count
+extern s16 xm_worldmap_billboard_quad_count __asm__("D_8009BE04");
+#endif
+#ifndef XM_S_worldmap_terrain_visible_blocks
+#define XM_S_worldmap_terrain_visible_blocks
+extern s16 xm_worldmap_terrain_visible_blocks[25] __asm__("D_8009D618");
+#endif
+#ifndef XM_S_worldmap_terrain_grid
+#define XM_S_worldmap_terrain_grid
+extern BlockGrid xm_worldmap_terrain_grid __asm__("D_8009D570");
+#endif
+#ifndef XM_S_worldmap_billboards_draw_block
+#define XM_S_worldmap_billboards_draw_block
+void xm_worldmap_billboards_draw_block(u8 *data, s32 count, u_long *ot, POLY_FT4 *quads) __asm__("func_80099BFC");
+#endif
+#pragma push_macro("BILLBOARD_SCRATCH")
+#undef BILLBOARD_SCRATCH
+#define BILLBOARD_SCRATCH ((BillboardScratch *)0x1F800000)
+void func_8008615C(void) {
+    BillboardList *textures;
+    s32 index;
+    s32 i;
+    s32 row;
+
+    BILLBOARD_SCRATCH->corner[0].vx = -0x18;
+    BILLBOARD_SCRATCH->corner[0].vy = -0x48;
+    BILLBOARD_SCRATCH->corner[0].vz = 0;
+    BILLBOARD_SCRATCH->corner[1].vx = 0x18;
+    BILLBOARD_SCRATCH->corner[1].vy = -0x48;
+    BILLBOARD_SCRATCH->corner[1].vz = 0;
+    BILLBOARD_SCRATCH->corner[2].vx = -0x18;
+    BILLBOARD_SCRATCH->corner[2].vy = 0;
+    BILLBOARD_SCRATCH->corner[2].vz = 0;
+    BILLBOARD_SCRATCH->corner[3].vx = 0x18;
+    BILLBOARD_SCRATCH->corner[3].vy = 0;
+    BILLBOARD_SCRATCH->corner[3].vz = 0;
+    BILLBOARD_SCRATCH->view = xm_worldmap_camera_matrix;
+    BILLBOARD_SCRATCH->roll = xm_worldmap_identity_matrix;
+    xm_RotMatrixZ(-xm_worldmap_camera_angle.vz, &BILLBOARD_SCRATCH->roll);
+    for (i = 0; i < 0x10; i++) {
+        BILLBOARD_SCRATCH->clut[i] = xm_worldmap_billboard_cluts[i];
+    }
+    textures = xm_worldmap_billboard_lists;
+    xm_worldmap_billboard_quad_count = 0;
+    for (row = 0; row < 5; row++) {
+        for (i = 0; i < 5; i++) {
+            if (xm_worldmap_terrain_visible_blocks[row * 5 + i] != -1) {
+                index = xm_worldmap_terrain_grid.cells[(row + xm_worldmap_camera_block_cell.vz) * 9 + i + xm_worldmap_camera_block_cell.vx];
+                if (textures[index].count != 0) {
+                    xm_worldmap_billboards_draw_block(textures[index].data, textures[index].count, xm_worldmap_current_display_buffer->ot,
+                                  (POLY_FT4 *)xm_worldmap_billboard_quads[xm_worldmap_display_buffer_index] + xm_worldmap_billboard_quad_count);
+                }
+            }
+        }
+    }
+}
+#pragma pop_macro("BILLBOARD_SCRATCH")
+#endif
 
 #ifndef XENO_PC_PORT
 /* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_clouds_scatter (src/decomp/src/worldmap/worldmap_objects_effects_party.c:1086). */
@@ -9190,7 +9582,43 @@ void func_80086568(void) {
 #endif
 
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_800865A0);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_clouds_alloc_quads (src/decomp/src/worldmap/worldmap_objects_effects_party.c:1128). */
+#ifndef XM_T_QuadBlock288
+#define XM_T_QuadBlock288
+typedef struct {
+    POLY_FT4 quads[0x120];
+} QuadBlock288;
+#endif
+#ifndef XM_S_worldmap_cloud_quads
+#define XM_S_worldmap_cloud_quads
+extern void *xm_worldmap_cloud_quads[2] __asm__("D_8009D7F8");
+#endif
+void func_800865A0(void) {
+    POLY_FT4 *quad;
+    s32 i;
+    s32 code;
+    s32 colour;
+    s32 length;
+
+    xm_worldmap_cloud_quads[0] = xm_heap_alloc(sizeof(QuadBlock288), 1);
+    xm_worldmap_cloud_quads[1] = xm_heap_alloc(sizeof(QuadBlock288), 1);
+    colour = 0x26;
+    i = 0;
+    quad = xm_worldmap_cloud_quads[0];
+    length = 9;
+    code = 0x2C;
+    for (; i < 0x120; i++, quad++) {
+        setlen(quad, length);
+        setcode(quad, code);
+        setRGB0(quad, colour, colour, colour);
+        quad->tpage = xm_GetTPage(0, 1, 0x3C0, 0x100);
+        quad->clut = xm_GetClut(0x130, 0x1FE);
+        xm_SetSemiTrans(quad, 1);
+    }
+    *(QuadBlock288 *)xm_worldmap_cloud_quads[1] = *(QuadBlock288 *)xm_worldmap_cloud_quads[0];
+}
+#endif
 
 
 #ifndef XENO_PC_PORT
@@ -9946,7 +10374,35 @@ void func_80088FF4(void) {
 #endif
 
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8008901C);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_effects_alloc_quads (src/decomp/src/worldmap/worldmap_objects_effects_party.c:2123). */
+#ifndef XM_T_EffectQuads
+#define XM_T_EffectQuads
+typedef struct {
+    POLY_FT4 quads[256];
+} EffectQuads;
+#endif
+#ifndef XM_S_worldmap_effect_quads
+#define XM_S_worldmap_effect_quads
+extern void *xm_worldmap_effect_quads[2] __asm__("D_8009BE1C");
+#endif
+void func_8008901C(void) {
+    POLY_FT4 *quad;
+    s32 i;
+
+    xm_worldmap_effect_quads[0] = xm_heap_alloc(sizeof(EffectQuads), 1);
+    xm_worldmap_effect_quads[1] = xm_heap_alloc(sizeof(EffectQuads), 1);
+    quad = xm_worldmap_effect_quads[0];
+    for (i = 0xFF; i != -1; i--) {
+        setPolyFT4(quad);
+        quad->tpage = xm_GetTPage(1, 1, 0x340, 0x100);
+        quad->clut = xm_GetClut(0x100, 0x1FF);
+        setSemiTrans(quad, 1);
+        quad++;
+    }
+    *(EffectQuads *)xm_worldmap_effect_quads[1] = *(EffectQuads *)xm_worldmap_effect_quads[0];
+}
+#endif
 
 
 #ifndef XENO_PC_PORT
@@ -13891,11 +14347,236 @@ s32 func_800968E0(void) {
 }
 #endif
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_8009699C);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_stream_start_disc_list (src/decomp/src/worldmap/worldmap_movement_terrain.c:1140). */
+#ifndef XM_T_CdlLOC
+#define XM_T_CdlLOC
+typedef struct {
+    u_char minute;
+    u_char second;
+    u_char sector;
+    u_char track;
+} CdlLOC;
+#endif
+#ifndef XM_T_CdlCB
+#define XM_T_CdlCB
+typedef void (*CdlCB)(u_char intr, u_char *result);
+#endif
+#ifndef XM_T_CdlSetloc
+#define XM_T_CdlSetloc
+#define CdlSetloc 0x02
+#endif
+#ifndef XM_S_worldmap_stream_next_request
+#define XM_S_worldmap_stream_next_request
+extern DiscReadRequest *volatile xm_worldmap_stream_next_request __asm__("D_8009D3BC");
+#endif
+#ifndef XM_S_worldmap_stream_drive_sector
+#define XM_S_worldmap_stream_drive_sector
+extern s32 xm_worldmap_stream_drive_sector __asm__("D_8009D7F4");
+#endif
+#ifndef XM_S_worldmap_stream_wanted_sector
+#define XM_S_worldmap_stream_wanted_sector
+extern s32 xm_worldmap_stream_wanted_sector __asm__("D_8009D614");
+#endif
+#ifndef XM_S_worldmap_stream_sectors_left
+#define XM_S_worldmap_stream_sectors_left
+extern u32 xm_worldmap_stream_sectors_left __asm__("D_8009D56C");
+#endif
+#ifndef XM_S_worldmap_stream_bytes_left
+#define XM_S_worldmap_stream_bytes_left
+extern s32 xm_worldmap_stream_bytes_left __asm__("D_8009CEB8");
+#endif
+#ifndef XM_S_worldmap_stream_destination
+#define XM_S_worldmap_stream_destination
+extern u8 *xm_worldmap_stream_destination __asm__("D_8009C590");
+#endif
+#ifndef XM_S_CdIntToPos
+#define XM_S_CdIntToPos
+CdlLOC *xm_CdIntToPos(int i, CdlLOC *p) __asm__("CdIntToPos");
+#endif
+#ifndef XM_S_worldmap_stream_seek_position
+#define XM_S_worldmap_stream_seek_position
+extern CdlLOC xm_worldmap_stream_seek_position __asm__("D_8009CEBC");
+#endif
+#ifndef XM_S_CdSyncCallback
+#define XM_S_CdSyncCallback
+CdlCB xm_CdSyncCallback(CdlCB func) __asm__("CdSyncCallback");
+#endif
+#ifndef XM_S_worldmap_stream_on_command_done
+#define XM_S_worldmap_stream_on_command_done
+void xm_worldmap_stream_on_command_done(s32 status, u8 *result) __asm__("func_80096A6C");
+#endif
+#ifndef XM_S_CdControlF
+#define XM_S_CdControlF
+int xm_CdControlF(u_char com, u_char *param) __asm__("CdControlF");
+#endif
+void func_8009699C(DiscReadRequest *request) {
+    s32 sector;
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80096A6C);
+    sector = request->sector;
+    xm_worldmap_stream_state = 1;
+    xm_worldmap_stream_next_request = request;
+    xm_worldmap_stream_next_request = request + 1;
+    xm_worldmap_stream_unread_cleared_word_1 = 0;
+    xm_worldmap_stream_unread_cleared_word_2 = 0;
+    xm_worldmap_stream_status_error_count = 0;
+    xm_worldmap_stream_read_error_count = 0;
+    xm_worldmap_stream_drive_sector = sector;
+    xm_worldmap_stream_wanted_sector = sector;
+    xm_worldmap_stream_sectors_left = (u32)(request->bytes + 0x7FF) >> 11;
+    xm_worldmap_stream_bytes_left = request->bytes;
+    xm_worldmap_stream_destination = request->destination;
+    xm_CdIntToPos(sector, &xm_worldmap_stream_seek_position);
+    xm_CdSyncCallback((CdlCB)xm_worldmap_stream_on_command_done);
+    xm_CdControlF(CdlSetloc, (u8 *)&xm_worldmap_stream_seek_position);
+}
+#endif
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_80096C0C);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_stream_on_command_done (src/decomp/src/worldmap/worldmap_movement_terrain.c:1163). */
+#ifndef XM_T_CdlPause
+#define XM_T_CdlPause
+#define CdlPause 0x09
+#endif
+#ifndef XM_S_worldmap_stream_sector_header
+#define XM_S_worldmap_stream_sector_header
+extern s32 xm_worldmap_stream_sector_header[3] __asm__("D_8009BCCC");
+#endif
+#ifndef XM_S_CdReadyCallback
+#define XM_S_CdReadyCallback
+CdlCB xm_CdReadyCallback(CdlCB func) __asm__("CdReadyCallback");
+#endif
+#ifndef XM_S_worldmap_stream_on_data_ready
+#define XM_S_worldmap_stream_on_data_ready
+void xm_worldmap_stream_on_data_ready(s32 status, u8 *result) __asm__("func_80096C0C");
+#endif
+__asm__(".xeno_jt 8 48 jtbl_80070CB8");
+void func_80096A6C(s32 status, u8 *result) {
+    if (status == 2) {
+        switch (xm_worldmap_stream_state) {
+        case 1:
+            xm_worldmap_stream_state = 2;
+            xm_worldmap_stream_sector_header[2] = 0;
+            xm_worldmap_stream_sector_header[1] = 0;
+            xm_worldmap_stream_sector_header[0] = 0;
+            xm_CdReadyCallback((CdlCB)xm_worldmap_stream_on_data_ready);
+            xm_CdControlF(0x1B, NULL);
+            break;
+        case 3:
+            if (xm_worldmap_stream_wanted_sector == 0) {
+                xm_worldmap_stream_state = 4;
+                xm_worldmap_stream_wait = 1;
+                xm_CdSyncCallback(NULL);
+            }
+            break;
+        case 10:
+            if (result[0] & 0x10) {
+                xm_CdControlF(1, NULL);
+            } else {
+                xm_CdControlF(0x13, NULL);
+                xm_worldmap_stream_state = 0xB;
+            }
+            break;
+        case 11:
+            xm_worldmap_stream_state = 0xC;
+            xm_CdControlF(CdlPause, NULL);
+            break;
+        case 12:
+            xm_worldmap_stream_state = 1;
+            xm_CdIntToPos(xm_worldmap_stream_drive_sector, &xm_worldmap_stream_seek_position);
+            xm_CdControlF(CdlSetloc, (u8 *)&xm_worldmap_stream_seek_position);
+            break;
+        }
+    } else if (result[0] & 0x10) {
+        xm_worldmap_stream_state = 0xA;
+        xm_worldmap_stream_status_error_count++;
+        xm_CdControlF(1, NULL);
+    } else {
+        xm_worldmap_stream_state = 0xB;
+        xm_CdControlF(0x13, NULL);
+    }
+}
+#endif
+
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_stream_on_data_ready (src/decomp/src/worldmap/worldmap_movement_terrain.c:1212). */
+#ifndef XM_S_CdGetSector
+#define XM_S_CdGetSector
+int xm_CdGetSector(void *madr, int size) __asm__("CdGetSector");
+#endif
+#ifndef XM_S_CdPosToInt
+#define XM_S_CdPosToInt
+int xm_CdPosToInt(CdlLOC *p) __asm__("CdPosToInt");
+#endif
+void func_80096C0C(s32 status, u8 *result) {
+    DiscReadRequest *request;
+    s32 sector;
+    s32 next;
+
+    if (status == 1) {
+        xm_CdGetSector(xm_worldmap_stream_sector_header, 3);
+        sector = xm_CdPosToInt((CdlLOC *)xm_worldmap_stream_sector_header);
+        if (sector == xm_worldmap_stream_drive_sector) {
+            if (xm_worldmap_stream_wanted_sector == sector) {
+                if (xm_worldmap_stream_bytes_left < 0x800) {
+                    xm_CdGetSector(xm_worldmap_stream_destination, xm_worldmap_stream_bytes_left / 4);
+                    xm_CdGetSector(xm_worldmap_stream_drain_buffer, (0x800 - xm_worldmap_stream_bytes_left) / 4);
+                } else {
+                    xm_CdGetSector(xm_worldmap_stream_destination, 0x200);
+                    xm_worldmap_stream_bytes_left -= 0x800;
+                }
+                if (--xm_worldmap_stream_sectors_left != 0) {
+                    xm_worldmap_stream_wanted_sector++;
+                    xm_worldmap_stream_destination += 0x800;
+                } else {
+                    request = xm_worldmap_stream_next_request++;
+                    next = request->sector;
+                    xm_worldmap_stream_wanted_sector = next;
+                    xm_worldmap_stream_sectors_left = (u32)(request->bytes + 0x7FF) >> 11;
+                    xm_worldmap_stream_bytes_left = request->bytes;
+                    xm_worldmap_stream_destination = request->destination;
+                    if (next != 0) {
+                        if (next - xm_worldmap_stream_drive_sector >= 0x13) {
+                            xm_worldmap_stream_drive_sector = next;
+                            xm_worldmap_stream_state = 1;
+                            xm_CdIntToPos(next, &xm_worldmap_stream_seek_position);
+                            xm_CdControlF(CdlSetloc, (u8 *)&xm_worldmap_stream_seek_position);
+                            return;
+                        }
+                    } else {
+                        xm_worldmap_stream_state = 3;
+                        xm_CdReadyCallback(NULL);
+                        xm_CdControlF(CdlPause, NULL);
+                    }
+                }
+            }
+            xm_worldmap_stream_drive_sector++;
+            return;
+        }
+        xm_worldmap_stream_read_error_count++;
+        xm_CdReadyCallback(NULL);
+        if (result[0] & 0x10) {
+            xm_worldmap_stream_state = 0xA;
+            xm_worldmap_stream_status_error_count++;
+            xm_CdControlF(1, NULL);
+        } else {
+            xm_worldmap_stream_state = 0xB;
+            xm_CdControlF(0x13, NULL);
+        }
+    } else {
+        xm_worldmap_stream_read_error_count++;
+        xm_CdReadyCallback(NULL);
+        if (result[0] & 0x10) {
+            xm_worldmap_stream_state = 0xA;
+            xm_worldmap_stream_status_error_count++;
+            xm_CdControlF(1, NULL);
+        } else {
+            xm_worldmap_stream_state = 0xB;
+            xm_CdControlF(0x13, NULL);
+        }
+    }
+}
+#endif
 
 #ifndef XENO_PC_PORT
 /* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_camera_place_orbit (src/decomp/src/worldmap/worldmap_movement_terrain.c:1295). */
@@ -14045,10 +14726,6 @@ void func_80097244(void *arg) {
 #ifndef XM_T_SCRATCH_VECTOR
 #define XM_T_SCRATCH_VECTOR
 #define SCRATCH_VECTOR ((VECTOR *)0x1F800000)
-#endif
-#ifndef XM_S_RotMatrixZ
-#define XM_S_RotMatrixZ
-MATRIX *xm_RotMatrixZ(long r, MATRIX *m) __asm__("RotMatrixZ");
 #endif
 void func_80097440(void *arg) {
     SVECTOR *eye;
@@ -14271,7 +14948,65 @@ void func_800978FC(void) {
 }
 #endif
 
-INCLUDE_ASM("asm/world_map/nonmatchings/main", func_800979C8);
+#ifndef XENO_PC_PORT
+/* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_terrain_upload_image (src/decomp/src/worldmap/worldmap_movement_terrain.c:1547). */
+#ifndef XM_S_worldmap_terrain_upload_image
+#define XM_S_worldmap_terrain_upload_image
+void xm_worldmap_terrain_upload_image(void) __asm__("func_800979C8");
+#endif
+#ifndef XM_S_worldmap_terrain_cluts
+#define XM_S_worldmap_terrain_cluts
+extern u16 xm_worldmap_terrain_cluts[0x40] __asm__("D_8009CCB4");
+#endif
+#ifndef XM_S_worldmap_terrain_tpages
+#define XM_S_worldmap_terrain_tpages
+extern u16 xm_worldmap_terrain_tpages[7] __asm__("D_8009CD54");
+#endif
+void func_800979C8(void) {
+    RECT rect;
+    u16 *cluts;
+    u16 *faded;
+    s32 i;
+    s32 x;
+    s32 y;
+
+    cluts = xm_text_unpack_lzss_alloc(xm_worldmap_terrain_image, 1);
+    xm_model_load_tim_list((u32 *)cluts);
+    xm_DrawSync(0);
+    xm_heap_free(cluts);
+    xm_heap_free(xm_worldmap_terrain_image);
+    cluts = xm_heap_alloc(0x400, 1);
+    faded = xm_heap_alloc(0x8000, 1);
+    rect.x = 0;
+    rect.y = 0x1E0;
+    rect.w = 0x100;
+    rect.h = 2;
+    xm_StoreImage(&rect, (u_long *)cluts);
+    xm_DrawSync(0);
+    xm_worldmap_build_palette_fades(cluts, faded, 0x20, xm_worldmap_background_color);
+    xm_worldmap_build_palette_fades(cluts + 0x100, faded + 0x2000, 0x20, xm_worldmap_background_color);
+    rect.x = 0;
+    rect.y = 0x1B0;
+    rect.w = 0x100;
+    rect.h = 0x40;
+    xm_LoadImage(&rect, (u_long *)faded);
+    xm_DrawSync(0);
+    for (i = 0; i < 0x40; i++) {
+        xm_worldmap_terrain_cluts[i] = xm_GetClut(rect.x, rect.y);
+        rect.y++;
+    }
+    for (x = 0x200, y = 0, i = 0; i < 4; i++) {
+        xm_worldmap_terrain_tpages[i] = xm_GetTPage(1, 0, x, y);
+        x += 0x80;
+    }
+    for (x = 0x180, y = 0x100, i = 4; i < 7; i++) {
+        xm_worldmap_terrain_tpages[i] = xm_GetTPage(1, 0, x, y);
+        x += 0x80;
+    }
+    xm_heap_free(faded);
+    xm_heap_free(cluts);
+}
+#endif
 
 #ifndef XENO_PC_PORT
 /* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_terrain_reset_at (src/decomp/src/worldmap/worldmap_movement_terrain.c:1593). */
@@ -14355,12 +15090,6 @@ void func_80097D64(void) {
 
 #ifndef XENO_PC_PORT
 /* Adopted from ex-machina (MIT, github.com/brianblakely/xenogears-ex-machina @20011c4): worldmap_terrain_queue_missing_blocks (src/decomp/src/worldmap/worldmap_movement_terrain.c:1639). */
-#ifndef XM_T_BlockGrid
-#define XM_T_BlockGrid
-typedef struct BlockGrid {
-    s16 cells[81];
-} BlockGrid;
-#endif
 #ifndef XM_S_cd_get_file_sector
 #define XM_S_cd_get_file_sector
 s32 xm_cd_get_file_sector(s32 file) __asm__("ArchiveDecodeSector");
@@ -14368,10 +15097,6 @@ s32 xm_cd_get_file_sector(s32 file) __asm__("ArchiveDecodeSector");
 #ifndef XM_S_worldmap_terrain_row_file
 #define XM_S_worldmap_terrain_row_file
 extern s32 xm_worldmap_terrain_row_file __asm__("D_8009BCD8");
-#endif
-#ifndef XM_S_worldmap_terrain_grid
-#define XM_S_worldmap_terrain_grid
-extern BlockGrid xm_worldmap_terrain_grid __asm__("D_8009D570");
 #endif
 #ifndef XM_S_worldmap_stream_submit_disc_list
 #define XM_S_worldmap_stream_submit_disc_list
@@ -14551,10 +15276,6 @@ typedef struct {
     MATRIX local;    
     MATRIX world;    
 } GridScratch;
-#endif
-#ifndef XM_S_worldmap_terrain_visible_blocks
-#define XM_S_worldmap_terrain_visible_blocks
-extern s16 xm_worldmap_terrain_visible_blocks[25] __asm__("D_8009D618");
 #endif
 #ifndef XM_S_worldmap_terrain_quarter_visibility
 #define XM_S_worldmap_terrain_quarter_visibility
@@ -14826,14 +15547,6 @@ typedef struct {
     MATRIX local;      
     MATRIX world;      
 } TerrainDrawScratch;
-#endif
-#ifndef XM_S_worldmap_terrain_cluts
-#define XM_S_worldmap_terrain_cluts
-extern u16 xm_worldmap_terrain_cluts[0x40] __asm__("D_8009CCB4");
-#endif
-#ifndef XM_S_worldmap_terrain_tpages
-#define XM_S_worldmap_terrain_tpages
-extern u16 xm_worldmap_terrain_tpages[7] __asm__("D_8009CD54");
 #endif
 #ifndef XM_S_worldmap_terrain_packet_count
 #define XM_S_worldmap_terrain_packet_count

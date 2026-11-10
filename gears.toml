@@ -613,6 +613,7 @@ name = "WorldMapDiv"
 # constants are literal li (addiu $x, $zero, n), so --dont-expand-li too.
 build_variables = {
     gcc = "gcc-2.7.2-psx-jt",
+    gp_flag = "-G0",
     maspsx_flags = "--dont-expand-li --expand-div --use-comm-section --run-assembler"
 }
 paths = [ "src/world_map/" ]
