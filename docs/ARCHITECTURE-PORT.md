@@ -133,7 +133,7 @@ found-and-fixed case: [port/RETAIL_DIVERGENCES.md](port/RETAIL_DIVERGENCES.md).
 
 | # | Area | Divergence | Status |
 |---|---|---|---|
-| D1 | field `func_800ACB90` | uploads a TIM at VRAM (0x380, 0) instead of (0x380, 0x100) | open; retail C still `INCLUDE_ASM` |
+| D1 | field `func_800ACB90` | uploaded a TIM at VRAM (0x380, 0) instead of (0x380, 0x100) | port y fixed; retail C still `INCLUDE_ASM`; pinned by `run_field_acb90_tim_y_pins_test.sh` |
 | D2 | menu `func_801CD710` | retail returns 0 when the case handler returns nonzero; the handlers (`func_801CD2AC` / `CC6D8` / `CB304` / `CBD90`) have no port body, so the result is not used | partly fixed (433db88e) |
 | D3 | slus `MenuExecute` debug branch | the developer KernelMenu route reserves/loads nothing where retail reserves the heap top for two overlays (the port runs them natively) | by design for that developer-only route; retail bytes unchanged |
 | D4 | CD / movies | XA ADPCM audio sectors (read mode 0x200, 2340-byte sectors) are refused (fail-closed), so XA audio is not played | open: needs the XA sector path in the platform layer |

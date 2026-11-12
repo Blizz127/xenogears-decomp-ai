@@ -919,13 +919,19 @@ void func_800ACB90(void) {
     s32 i;
     u8* pBuf;
 
-    FieldLoadTIMWithClut(D_800AF784, 0x380, 0, 0, 0x1FF, 0, 0);
+    /* Retail 800ACB90: FieldLoadTIMWithClut(D_800AF784, 0x380, 0x100, 0, 0x1FF, 0, 0).
+     * y=0 uploaded the TIM into framebuffer row 0 and left the y=0x100 texture
+     * page empty. The 64x4 fill LoadImage later in this function is already at y=0x100. */
+    FieldLoadTIMWithClut(D_800AF784, 0x380, 0x100, 0, 0x1FF, 0, 0);
     DrawSync(0);
     HeapFree(D_800AF784);
 
     pBuf = HeapAlloc(0x200, 1);
+    /* 128 words = the 0x200-byte 64x4 16-bit image. `+ 0x1FC` with a
+     * rising i*4 index wrote the last in-buffer word and then 0x1FC bytes
+     * past the allocation (heap smash on the FE60 path). */
     for (i = 0x7F; i >= 0; i--) {
-        *(s32*)(pBuf + i * 4 + 0x1FC) = -1;
+        *(s32*)(pBuf + i * 4) = -1;
     }
 
     rect.x = 0x3C0;
