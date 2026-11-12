@@ -924,8 +924,11 @@ void func_800ACB90(void) {
     HeapFree(D_800AF784);
 
     pBuf = HeapAlloc(0x200, 1);
+    /* 128 words = the 0x200-byte 64x4 16-bit image. `+ 0x1FC` with a
+     * rising i*4 index wrote the last in-buffer word and then 0x1FC bytes
+     * past the allocation (heap smash on the FE60 path). */
     for (i = 0x7F; i >= 0; i--) {
-        *(s32*)(pBuf + i * 4 + 0x1FC) = -1;
+        *(s32*)(pBuf + i * 4) = -1;
     }
 
     rect.x = 0x3C0;
