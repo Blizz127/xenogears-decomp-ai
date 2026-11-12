@@ -919,7 +919,10 @@ void func_800ACB90(void) {
     s32 i;
     u8* pBuf;
 
-    FieldLoadTIMWithClut(D_800AF784, 0x380, 0, 0, 0x1FF, 0, 0);
+    /* Retail 800ACB90: FieldLoadTIMWithClut(D_800AF784, 0x380, 0x100, 0, 0x1FF, 0, 0).
+     * y=0 uploaded the TIM into framebuffer row 0 and left the y=0x100 texture
+     * page empty. The 64x4 fill LoadImage later in this function is already at y=0x100. */
+    FieldLoadTIMWithClut(D_800AF784, 0x380, 0x100, 0, 0x1FF, 0, 0);
     DrawSync(0);
     HeapFree(D_800AF784);
 
