@@ -2946,26 +2946,32 @@ extern void SoundHeapSetBlockMemory(void*, void*, s32);
 #ifndef XENO_PC_PORT
 INCLUDE_ASM("asm/slus_006.64/nonmatchings/system/sound", func_8003ADCC);
 #else
+/* Port snapshot of an AudioManager for looping restart (mode 1). Retail
+ * stores the backup pointer in the 4-byte SoundPsxAddress at +0x4; a host
+ * `*(void**)` load/store there merges/clobbers the seq-file pointer at +0x8
+ * (unk_0x8). Mode 2 (func_8003AE84, tick path) restores from that backup. */
 void func_8003ADCC(void* pManager) {
-    void* pAlloc;
+    AudioManager* manager = (AudioManager*)pManager;
+    AudioManager* pAlloc;
     s32 size;
+
     DisableEvent(g_unk_SoundEvent);
-    size = SoundCalculateAudioManagerSize(*(u8*)((u8*)pManager + 0x14));
-    if (*(void**)((u8*)pManager + 4) == NULL) {
+    size = SoundCalculateAudioManagerSize(manager->elementCount);
+    if (manager->unk_Manager_0x4 == 0) {
         pAlloc = SoundHeapAllocate(size);
     } else {
-        pAlloc = *(void**)((u8*)pManager + 4);
+        pAlloc = SOUND_PSX_TO_PTR(AudioManager, manager->unk_Manager_0x4);
     }
     if (pAlloc == NULL) {
         EnableEvent(g_unk_SoundEvent);
         return;
     }
-    *(void**)((u8*)pManager + 4) = pAlloc;
-    *(u16*)((u8*)pManager + 0x10) |= 0x10;
-    SoundHeapSetBlockMemory(pAlloc, pManager, size);
-    *(u32*)pAlloc = 0;
-    *(u32*)((u8*)pAlloc + 4) = 0;
-    *(u32*)((u8*)pManager + 0x2C) = 0;
+    manager->unk_Manager_0x4 = SOUND_PTR_TO_PSX(pAlloc);
+    manager->unk_Flags |= 0x10;
+    SoundHeapSetBlockMemory(pAlloc, manager, size);
+    pAlloc->next = SOUND_PTR_TO_PSX(NULL);
+    pAlloc->unk_Manager_0x4 = SOUND_PTR_TO_PSX(NULL);
+    manager->unk_0x2c = 0;
     EnableEvent(g_unk_SoundEvent);
 }
 #endif
