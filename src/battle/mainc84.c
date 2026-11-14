@@ -15,7 +15,11 @@ INCLUDE_ASM("asm/battle/nonmatchings/mainc84", func_800B57E4);
  * +0x9E and copies +0x30 into the target's +0x64.  The dirty flag is live
  * across the call, so retail keeps it in a callee-saved register. */
 void func_800B5854(u8* task) {
-    u8* tgt = *(u8**)(task + 0x1C);
+    /* Packed 4-byte slots: +0x1C is the actor (func_800B5924 stores it with
+     * sw), +0xC is onFreeCallback. A host-width pointer / function-pointer
+     * load concatenates the neighbouring word (+0x20 leftover / +0x10 flags)
+     * and the first timer tick follows a wild actor pointer. */
+    u8* tgt = (u8*)(uintptr_t)*(u32*)(task + 0x1C);
     s32 prev = *(s32*)(task + 0x28);
     u32 dirty = 0;
     s32 cur;
@@ -34,7 +38,7 @@ void func_800B5854(u8* task) {
         dirty = 1;
     }
     if (dirty & 0xFF) {
-        (*(void (**)(u8*))(task + 0xC))(task);
+        ((void (*)(u8*))(uintptr_t)*(u32*)(task + 0xC))(task);
     }
 }
 #else

@@ -7,12 +7,26 @@
 void func_800BF73C(u8* task) {
     u8* t = task;
     s32 prev = *(s32*)(task + 0x24);
+#ifdef XENO_PC_PORT
+    /* Packed 4-byte slots: func_800BF7C8 stores the actor at +0x1C and the
+     * +0xAF state byte at +0x20, the floor callback at +0x2C, and reuses the
+     * work-list +0xC free slot. A host-width pointer load concatenates the
+     * neighbour (state / flags / the word past the 0x14 payload). */
+    u8* tgt = (u8*)(uintptr_t)*(u32*)(task + 0x1C);
+    s32 cur = func_800B57E4(tgt);
+#else
     s32 cur = func_800B57E4(*(u8**)(task + 0x1C));
+#endif
 
     *(s32*)(task + 0x24) = cur;
     if (prev < cur || cur < *(s32*)(task + 0x28)) {
+#ifdef XENO_PC_PORT
+        ((void (*)(u8*))(uintptr_t)*(u32*)(t + 0x2C))(tgt);
+        ((void (*)(u8*))(uintptr_t)*(u32*)(t + 0xC))(t);
+#else
         (*(void (**)(u8*))(t + 0x2C))(*(u8**)(t + 0x1C));
         (*(void (**)(u8*))(t + 0xC))(t);
+#endif
     }
 }
 
