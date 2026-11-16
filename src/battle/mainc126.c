@@ -16,18 +16,25 @@ extern u32 D_800C3618[];
 extern u32 D_800C361C;
 #endif
 #ifdef XENO_PC_PORT
+#include "battle_host_guest.h"
 /* Coexistence: decompiled and logic-faithful, but not byte-exact yet, so the
  * matching build assembles retail bytes below and the port uses this body. */
 /* func_800BF2B8.s: read the task's archive file (id at **(task + 0x7C)) into a
  * fresh heap buffer recorded in D_800C3618, then pack the task's +0xAC low two
- * bits above the +0xA8 top two bits into D_800C361C. */
+ * bits above the +0xA8 top two bits into D_800C361C.
+ *
+ * SpriteData +0x7C is a 4-byte packed pointer (func_800239A0 stores
+ * pData+0xF4 there as u32). +0x80/+0x82 are neighbouring s16 fields; the
+ * actor spawner writes scale 0x2000 at +0x82. A host `*(u32**)` load
+ * concatenates those neighbours into a wild pointer, so party-slot
+ * cleanup (func_800BA4E0, index 0..2) crashes on the file-id deref. */
 void func_800BF2B8(u8* task) {
     u32 file;
     u8* buf;
 
     func_800B8D7C(task);
     ArchiveSetIndex(0x2C, 1);
-    file = **(u32**)(task + 0x7C);
+    file = BG_U32(*(u32*)(task + 0x7C));
     buf = HeapAlloc(ArchiveDecodeAlignedSize(file), 1);
     ArchiveReadFileToBuffer(file, buf, 0, 0x80);
     D_800C3618[0] = (u32)buf;
