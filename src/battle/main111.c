@@ -39,16 +39,23 @@ extern u8 D_800C3EB0[];
 extern void func_800223B0(u8* p, s32 v);
 extern void func_80021FE0(u8* p, s32 v);
 #ifdef XENO_PC_PORT
+#include "battle_host_guest.h"
 /* Coexistence: decompiled and logic-faithful, but not byte-exact yet, so the
  * matching build assembles retail bytes below and the port uses this body. */
 /* func_800BAEB8.s: for party slot a0 (pointer table at D_800C3EB0 + 0x8C8C),
  * unless its +0xAF state byte is 0x15, apply flag 0x800 (set when the slot's
- * 28-byte record byte +0xA is nonzero) through func_800223B0/func_80021FE0. */
+ * 28-byte record byte +0xA is nonzero) through func_800223B0/func_80021FE0.
+ *
+ * The table is eleven packed u32 guest (or truncated host) pointers.  A
+ * native `u8**` index is an 8-byte load at stride 8, so slot 0 concatenates
+ * slots 0 and 1 into a wild pointer and slot 1 reads slots 2/3.  Battle
+ * start (func_800BFE48) and the command-finish path (mainl110) then apply
+ * the direction flag to the wrong sprite or crash on +0xAF. */
 void func_800BAEB8(s32 a0) {
-    u8* s1 = ((u8**)(D_800C3EB0 + 0x8C8C))[a0];
+    u8* s1 = BG_PTR(BG_U32(0x800C3EB0u + a0 * 4 + 0x8C8C));
 
     if (*(s8*)(s1 + 0xAF) != 0x15) {
-        s32 f = (D_800C3EB0[a0 * 28 + 0xA] != 0) << 11;
+        s32 f = (BG_U8(0x800C3EB0u + a0 * 28 + 0xA) != 0) << 11;
 
         func_800223B0(s1, f);
         func_80021FE0(s1, f);
